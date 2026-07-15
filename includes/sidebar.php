@@ -1,0 +1,117 @@
+<?php
+// Sidebar Component - Attendance and Academic Management System
+// Usage: Include this file and set $current_role and $current_page variables before including
+
+if (session_status() === PHP_SESSION_NONE) {
+}
+
+// Default values if not set
+if (!isset($current_role)) $current_role = 'admin';
+if (!isset($current_page)) $current_page = 'dashboard';
+
+// Define sidebar menus for each role
+$sidebar_menus = [
+    'admin' => [
+        ['id' => 'dashboard', 'icon' => 'bi-speedometer2', 'label' => 'Dashboard', 'link' => 'Admin.php'],
+        ['id' => 'users', 'icon' => 'bi-people', 'label' => 'Manage Users', 'link' => 'Admin_Users.php'],
+        ['id' => 'enrollments', 'icon' => 'bi-person-video2', 'label' => 'Enrollments', 'link' => 'Admin_Enrollments.php'],
+        ['id' => 'classes', 'icon' => 'bi-journal-bookmark', 'label' => 'Manage Classes', 'link' => 'Admin_Classes.php'],
+        ['id' => 'sections', 'icon' => 'bi-diagram-3', 'label' => 'Sections', 'link' => 'Admin_Sections.php'],
+        ['id' => 'attendance', 'icon' => 'bi-calendar-check', 'label' => 'Attendance', 'link' => 'Admin_Attendance.php'],
+        ['id' => 'announcements', 'icon' => 'bi-megaphone', 'label' => 'Announcements', 'link' => 'Admin_Announcements.php'],
+        ['id' => 'grade_approvals', 'icon' => 'bi-check2-square', 'label' => 'Grade Approvals', 'link' => 'Admin_Grade_Approvals.php'],
+        ['id' => 'reports', 'icon' => 'bi-graph-up', 'label' => 'Reports', 'link' => 'admin_Reports.php'],
+        ['id' => 'archives', 'icon' => 'bi-archive', 'label' => 'Archived Records', 'link' => 'admin_Archives.php'],
+    ],
+    'teacher' => [
+        ['id' => 'dashboard', 'icon' => 'bi-speedometer2', 'label' => 'Dashboard', 'link' => 'Teacher.php'],
+        ['id' => 'attendance', 'icon' => 'bi-calendar-check', 'label' => 'Attendance', 'link' => 'Teacher_Attendance.php'],
+        ['id' => 'grades', 'icon' => 'bi-clipboard-data', 'label' => 'Grade Entry', 'link' => 'Teacher_Grades.php'],
+        ['id' => 'advisory', 'icon' => 'bi-file-earmark-text', 'label' => 'Report Card', 'link' => 'Teacher_Advisory.php'],
+        ['id' => 'classes', 'icon' => 'bi-journal-bookmark', 'label' => 'Classes', 'link' => 'Teacher_Classes.php'],
+        ['id' => 'announcements', 'icon' => 'bi-megaphone', 'label' => 'Announcements', 'link' => 'Teacher_Announcements.php'],
+        ['id' => 'chat', 'icon' => 'bi-chat-dots', 'label' => 'Messages', 'link' => 'Teacher_Chat.php'],
+        ['id' => 'reports', 'icon' => 'bi-graph-up', 'label' => 'Reports', 'link' => 'teacher_Reports.php'],
+        ['id' => 'archives', 'icon' => 'bi-archive', 'label' => 'Archives', 'link' => 'teacher_Archives.php'],
+    ],
+    'student' => [
+        ['id' => 'dashboard', 'icon' => 'bi-speedometer2', 'label' => 'Dashboard', 'link' => 'Student.php'],
+        ['id' => 'attendance', 'icon' => 'bi-calendar-check', 'label' => 'Attendance', 'link' => 'Student_Attendance.php'],
+        ['id' => 'qr_code', 'icon' => 'bi-qr-code', 'label' => 'My QR Code', 'link' => 'Student_QR.php'],
+        ['id' => 'classes', 'icon' => 'bi-journal-bookmark', 'label' => 'Classes', 'link' => 'Student_Classes.php'],
+        ['id' => 'report_card', 'icon' => 'bi-file-earmark-text', 'label' => 'Report Card', 'link' => 'Student_Report_Card.php'],
+        ['id' => 'announcements', 'icon' => 'bi-megaphone', 'label' => 'Announcements', 'link' => 'Student_Announcements.php'],
+    ],
+    'parent' => [
+        ['id' => 'dashboard', 'icon' => 'bi-speedometer2', 'label' => 'Dashboard', 'link' => 'Parent.php'],
+        ['id' => 'progress', 'icon' => 'bi-graph-up-arrow', 'label' => 'Student Progress', 'link' => 'Parent_Progress.php'],
+        ['id' => 'report_card', 'icon' => 'bi-file-earmark-text', 'label' => 'Report Card', 'link' => 'Parent_Report_Card.php'],
+        ['id' => 'announcements', 'icon' => 'bi-megaphone', 'label' => 'Announcements', 'link' => 'Parent_Announcements.php'],
+        ['id' => 'chat', 'icon' => 'bi-chat-dots', 'label' => 'Messages', 'link' => 'Parent_Chat.php'],
+    ],
+];
+
+$menu_items = $sidebar_menus[$current_role] ?? $sidebar_menus['admin'];
+?>
+
+<!-- Sidebar -->
+<aside class="sidebar" id="sidebar">
+    <!-- Toggle Button -->
+    <button class="sidebar-toggle" type="button" onclick="toggleSidebar()" aria-label="Toggle sidebar navigation" title="Toggle sidebar navigation">
+        <i class="bi bi-chevron-left" id="toggleIcon"></i>
+    </button>
+
+    <!-- Sidebar Header -->
+    <div class="sidebar-header">
+        <div class="sidebar-logo">
+            <img src="../assets/images/bshs-logo.jpg" alt="Balingasag SHS Logo" class="sidebar-logo-img">
+        </div>
+        <span class="sidebar-title">Balingasag SHS</span>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="sidebar-nav">
+        <?php foreach ($menu_items as $item): ?>
+        <div class="nav-item">
+            <a href="<?php echo $item['link']; ?>" class="nav-link <?php echo ($current_page === $item['id']) ? 'active' : ''; ?>" title="<?php echo htmlspecialchars($item['label']); ?>" aria-label="<?php echo htmlspecialchars($item['label']); ?>">
+                <i class="bi <?php echo $item['icon']; ?>"></i>
+                <span class="nav-text"><?php echo $item['label']; ?></span>
+            </a>
+        </div>
+        <?php endforeach; ?>
+    </nav>
+
+    <!-- Sidebar Footer -->
+    <div class="sidebar-footer">
+        <div class="sidebar-system-text">Academic Management System v1.0.0</div>
+    </div>
+</aside>
+
+<!-- Mobile Overlay -->
+<div class="mobile-overlay" id="mobileOverlay" onclick="closeMobileSidebar()"></div>
+
+<script>
+(() => {
+    try {
+        if (window.innerWidth < 992) return;
+        const sidebar = document.getElementById('sidebar');
+        if (!sidebar) return;
+
+        const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+        if (!isCollapsed) return;
+
+        const toggleIcon = document.getElementById('toggleIcon');
+        sidebar.classList.add('collapsed', 'sidebar-no-transition');
+        if (toggleIcon) {
+            toggleIcon.classList.remove('bi-chevron-left');
+            toggleIcon.classList.add('bi-chevron-right');
+        }
+
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                sidebar.classList.remove('sidebar-no-transition');
+            });
+        });
+    } catch (e) {}
+})();
+</script>

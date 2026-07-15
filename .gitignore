@@ -1,0 +1,15 @@
+.DS_Store
+Thumbs.db
+
+.env
+.env.*
+!.env.example
+*.local.php
+
+storage/
+assets/uploads/ecr/*
+!assets/uploads/ecr/.gitkeep
+tmp_ecr_template/
+*.zip
+
+/vendor/

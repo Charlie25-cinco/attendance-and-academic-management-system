@@ -1,0 +1,5 @@
+# Deny execution of any PHP (or other executable) file uploaded into this directory.
+# Uploads are user-supplied files and must never be executed as code.
+<FilesMatch "\.(php|phtml|php3|php4|php5|php7|phar|cgi|pl|py|asp|aspx)$">
+    Require all denied
+</FilesMatch>

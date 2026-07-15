@@ -1,0 +1,590 @@
+/* ============================================
+   Attendance and Academic Management System
+   Main JavaScript File
+   ============================================ */
+
+// ============================================
+// SIDEBAR FUNCTIONS
+// ============================================
+
+// Toggle sidebar collapse (desktop)
+function toggleSidebar() {
+  const sidebar = document.getElementById("sidebar");
+  const toggleIcon = document.getElementById("toggleIcon");
+
+  sidebar.classList.toggle("collapsed");
+
+  if (sidebar.classList.contains("collapsed")) {
+    toggleIcon.classList.remove("bi-chevron-left");
+    toggleIcon.classList.add("bi-chevron-right");
+    localStorage.setItem("sidebarCollapsed", "true");
+  } else {
+    toggleIcon.classList.remove("bi-chevron-right");
+    toggleIcon.classList.add("bi-chevron-left");
+    localStorage.setItem("sidebarCollapsed", "false");
+  }
+
+}
+
+// Open mobile sidebar
+function openMobileSidebar() {
+  const sidebar = document.getElementById("sidebar");
+  const overlay = document.getElementById("mobileOverlay");
+
+  sidebar.classList.add("mobile-open");
+  overlay.classList.add("active");
+  document.body.style.overflow = "hidden";
+}
+
+// Close mobile sidebar
+function closeMobileSidebar() {
+  const sidebar = document.getElementById("sidebar");
+  const overlay = document.getElementById("mobileOverlay");
+
+  sidebar.classList.remove("mobile-open");
+  overlay.classList.remove("active");
+  document.body.style.overflow = "";
+}
+
+// Restore sidebar state on page load
+document.addEventListener("DOMContentLoaded", function () {
+  const sidebar = document.getElementById("sidebar");
+  const toggleIcon = document.getElementById("toggleIcon");
+
+  if (sidebar && toggleIcon) {
+    const isCollapsed = localStorage.getItem("sidebarCollapsed") === "true";
+
+    if (isCollapsed && window.innerWidth >= 992) {
+      sidebar.classList.add("sidebar-no-transition");
+      sidebar.classList.add("collapsed");
+      toggleIcon.classList.remove("bi-chevron-left");
+      toggleIcon.classList.add("bi-chevron-right");
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          sidebar.classList.remove("sidebar-no-transition");
+        });
+      });
+    }
+  }
+
+  // Initialize page transitions and loader
+  initPageTransitions();
+
+  // Initialize tooltips
+  initTooltips();
+
+  // Initialize attendance toggles
+  initAttendanceToggles();
+
+  // Initialize progress circles
+  initProgressCircles();
+
+  // Focus the first usable field when modal forms open
+  initModalAutofocus();
+
+  // Add slight delay for sidebar navigation to soften page transitions
+  initSidebarNavigationDelay();
+
+});
+
+// ============================================
+// MODAL FORM AUTOFOCUS
+// ============================================
+
+function isFocusableFormField(field) {
+  if (!field) return false;
+  if (field.disabled || field.readOnly) return false;
+  if (field.matches('[type="hidden"], [tabindex="-1"], [data-autofocus-skip="true"]')) return false;
+  if (field.offsetParent === null && field.getClientRects().length === 0) return false;
+  return true;
+}
+
+function focusFirstModalField(modalEl) {
+  if (!modalEl) return;
+  const selectors = [
+    "[data-autofocus]",
+    "input:not([type='hidden'])",
+    "select",
+    "textarea",
+  ].join(",");
+  const fields = Array.from(modalEl.querySelectorAll(selectors));
+  const firstField = fields.find(isFocusableFormField);
+  if (!firstField) return;
+
+  window.setTimeout(() => {
+    firstField.focus({ preventScroll: true });
+    if (typeof firstField.select === "function" && firstField.matches("input[type='text'], input[type='email'], input[type='tel'], input[type='search'], input:not([type])")) {
+      firstField.select();
+    }
+  }, 80);
+}
+
+function initModalAutofocus() {
+  document.addEventListener("shown.bs.modal", function (event) {
+    focusFirstModalField(event.target);
+  });
+}
+
+// Handle window resize
+window.addEventListener("resize", function () {
+  if (window.innerWidth >= 992) {
+    closeMobileSidebar();
+  }
+});
+
+// ============================================
+// TOOLTIPS
+// ============================================
+
+function initTooltips() {
+  const tooltipTriggerList = [].slice.call(
+    document.querySelectorAll('[data-bs-toggle="tooltip"]'),
+  );
+  tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl);
+  });
+}
+
+// ============================================
+// ATTENDANCE FUNCTIONS
+// ============================================
+
+function initAttendanceToggles() {
+  const attendanceButtons = document.querySelectorAll(".attendance-status");
+
+  attendanceButtons.forEach((button) => {
+    button.addEventListener("click", function () {
+      // Cycle through states: present -> absent -> late -> present
+      if (this.classList.contains("present")) {
+        this.classList.remove("present");
+        this.classList.add("absent");
+        this.innerHTML = '<i class="bi bi-x-circle"></i> Absent';
+      } else if (this.classList.contains("absent")) {
+        this.classList.remove("absent");
+        this.classList.add("late");
+        this.innerHTML = '<i class="bi bi-clock"></i> Late';
+      } else if (this.classList.contains("late")) {
+        this.classList.remove("late");
+        this.classList.add("present");
+        this.innerHTML = '<i class="bi bi-check-circle"></i> Present';
+      }
+    });
+  });
+}
+
+// Submit attendance
+function submitAttendance() {
+  const btn = document.getElementById("submitAttendanceBtn");
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML =
+      '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Attendance Saved';
+      btn.classList.remove("btn-primary");
+      btn.classList.add("btn-success");
+
+      // Show success notification
+      showNotification("Attendance submitted successfully!", "success");
+
+      setTimeout(() => {
+        btn.innerHTML = '<i class="bi bi-save me-2"></i>Submit Attendance';
+        btn.classList.remove("btn-success");
+        btn.classList.add("btn-primary");
+      }, 2000);
+    }, 1500);
+  }
+}
+
+// ============================================
+// PROGRESS CIRCLES
+// ============================================
+
+function initProgressCircles() {
+  const circles = document.querySelectorAll(".attendance-circle-progress");
+
+  circles.forEach((circle) => {
+    const radius = circle.r.baseVal.value;
+    const circumference = radius * 2 * Math.PI;
+    const percent = circle.getAttribute("data-percent") || 0;
+
+    circle.style.strokeDasharray = `${circumference} ${circumference}`;
+    circle.style.strokeDashoffset = circumference;
+
+    const offset = circumference - (percent / 100) * circumference;
+
+    setTimeout(() => {
+      circle.style.strokeDashoffset = offset;
+    }, 300);
+  });
+}
+
+// ============================================
+// NOTIFICATIONS
+// ============================================
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function getNotificationMeta(type = "info") {
+  const normalized = String(type || "info").toLowerCase();
+  if (normalized === "danger" || normalized === "error") {
+    return {
+      tone: "error",
+      icon: "bi-exclamation-octagon-fill",
+      title: "Action failed",
+    };
+  }
+  if (normalized === "success") {
+    return {
+      tone: "success",
+      icon: "bi-check-circle-fill",
+      title: "Success",
+    };
+  }
+  if (normalized === "warning") {
+    return {
+      tone: "warning",
+      icon: "bi-exclamation-triangle-fill",
+      title: "Heads up",
+    };
+  }
+  return {
+    tone: "info",
+    icon: "bi-info-circle-fill",
+    title: "Notice",
+  };
+}
+
+function ensureNotificationHost() {
+  let host = document.getElementById("appNotificationHost");
+  if (host) return host;
+  host = document.createElement("div");
+  host.id = "appNotificationHost";
+  host.className = "notification-host";
+  document.body.appendChild(host);
+  return host;
+}
+
+function showNotification(message, type = "info", title = "") {
+  const host = ensureNotificationHost();
+  const meta = getNotificationMeta(type);
+  const notification = document.createElement("div");
+  notification.className = `notification-toast ${meta.tone}`;
+  notification.setAttribute("role", "status");
+  notification.setAttribute("aria-live", "polite");
+  notification.innerHTML = `
+    <div class="notification-icon">
+      <i class="bi ${meta.icon}"></i>
+    </div>
+    <div class="notification-content">
+      <div class="notification-title">${escapeHtml(title || meta.title)}</div>
+      <div class="notification-message">${escapeHtml(String(message || ""))}</div>
+    </div>
+    <button type="button" class="notification-close" aria-label="Dismiss notification">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  `;
+
+  const closeBtn = notification.querySelector(".notification-close");
+  const removeNotification = function () {
+    notification.style.animation = "slideOutRight 0.2s ease forwards";
+    window.setTimeout(() => notification.remove(), 180);
+  };
+  if (closeBtn) {
+    closeBtn.addEventListener("click", removeNotification);
+  }
+
+  host.appendChild(notification);
+  window.setTimeout(removeNotification, 5000);
+}
+
+function ensureAppConfirmModal() {
+  const modalEl = document.getElementById("appConfirmModal");
+  if (!modalEl || typeof bootstrap === "undefined" || !bootstrap.Modal) return null;
+  return bootstrap.Modal.getOrCreateInstance(modalEl);
+}
+
+function showAppConfirm(options = {}) {
+  const modalEl = document.getElementById("appConfirmModal");
+  const modal = ensureAppConfirmModal();
+  if (!modalEl || !modal) {
+    return Promise.resolve(window.confirm(String(options.message || "Are you sure?")));
+  }
+
+  const opts = Object.assign(
+    {
+      title: "Please confirm",
+      message: "Are you sure you want to continue?",
+      confirmText: "Continue",
+      cancelText: "Cancel",
+      tone: "primary",
+      icon: "bi-question-circle-fill",
+      subtitle: "",
+    },
+    options || {},
+  );
+
+  const kicker = modalEl.querySelector("[data-confirm-kicker]");
+  const titleEl = modalEl.querySelector("[data-confirm-title]");
+  const subtitleEl = modalEl.querySelector("[data-confirm-subtitle]");
+  const messageEl = modalEl.querySelector("[data-confirm-message]");
+  const iconEl = modalEl.querySelector("[data-confirm-icon]");
+  const confirmBtn = modalEl.querySelector("[data-confirm-accept]");
+  const cancelBtn = modalEl.querySelector("[data-confirm-cancel]");
+  const contentEl = modalEl.querySelector(".app-modal-content");
+
+  if (kicker) {
+    const label = opts.tone === "danger" ? "Confirm action" : "Confirmation";
+    kicker.innerHTML = `<i class="bi ${escapeHtml(opts.icon)}"></i>${escapeHtml(label)}`;
+  }
+  if (titleEl) titleEl.textContent = String(opts.title || "Please confirm");
+  if (subtitleEl) {
+    const subtitle = String(opts.subtitle || "");
+    subtitleEl.textContent = subtitle;
+    subtitleEl.style.display = subtitle ? "" : "none";
+  }
+  if (messageEl) messageEl.innerHTML = String(opts.message || "");
+  if (iconEl) {
+    iconEl.className = `bi ${opts.icon} app-confirm-hero-icon text-${opts.tone === "danger" ? "danger" : "primary"}`;
+  }
+  if (confirmBtn) {
+    confirmBtn.textContent = String(opts.confirmText || "Continue");
+    confirmBtn.className = `btn ${opts.tone === "danger" ? "btn-danger" : "btn-primary-custom"}`;
+  }
+  if (cancelBtn) cancelBtn.textContent = String(opts.cancelText || "Cancel");
+  if (contentEl) {
+    contentEl.classList.toggle("app-modal-danger", opts.tone === "danger");
+  }
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const cleanup = function (value) {
+      if (settled) return;
+      settled = true;
+      modalEl.removeEventListener("hidden.bs.modal", handleHidden);
+      if (confirmBtn) confirmBtn.removeEventListener("click", handleConfirm);
+      resolve(value);
+    };
+    const handleHidden = function () {
+      cleanup(false);
+    };
+    const handleConfirm = function () {
+      cleanup(true);
+      modal.hide();
+    };
+
+    modalEl.addEventListener("hidden.bs.modal", handleHidden, { once: true });
+    if (confirmBtn) confirmBtn.addEventListener("click", handleConfirm, { once: true });
+    modal.show();
+  });
+}
+
+// Remove invalid class on input
+document.addEventListener("input", function (e) {
+  if (e.target.classList.contains("is-invalid")) {
+    e.target.classList.remove("is-invalid");
+  }
+});
+
+function exportToPDF() {
+  showNotification("Exporting to PDF...", "info");
+
+  setTimeout(() => {
+    showNotification("PDF exported successfully!", "success");
+  }, 1500);
+}
+
+function exportToExcel() {
+  showNotification("Exporting to Excel...", "info");
+
+  setTimeout(() => {
+    showNotification("Excel file exported successfully!", "success");
+  }, 1500);
+}
+
+// Intersection Observer for scroll animations
+const observerOptions = {
+  threshold: 0.1,
+  rootMargin: "0px 0px -50px 0px",
+};
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((entry) => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add("animate-fade-in");
+      observer.unobserve(entry.target);
+    }
+  });
+}, observerOptions);
+
+// Observe elements with animation class
+document.addEventListener("DOMContentLoaded", () => {
+  const animatedElements = document.querySelectorAll(".animate-on-scroll");
+  animatedElements.forEach((el) => observer.observe(el));
+});
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+
+function capitalizeFirst(string) {
+  return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
+function initSidebarNavigationDelay() {
+  let isNavigating = false;
+  const navDelayMs = 180;
+
+  document.addEventListener("click", function (e) {
+    const link = e.target.closest(".sidebar .nav-link[href]");
+    if (!link || isNavigating) return;
+
+    const href = link.getAttribute("href");
+    if (!href || href.startsWith("#")) return;
+    if (link.target && link.target.toLowerCase() === "_blank") return;
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
+    e.preventDefault();
+    isNavigating = true;
+    link.classList.add("active");
+
+    setTimeout(() => {
+      window.location.assign(href);
+    }, navDelayMs);
+  });
+}
+
+
+// ============================================
+// PAGE LOADER / TRANSITIONS
+// ============================================
+
+const PAGE_LOADER_HTML = `
+  <div class="page-loader-backdrop" id="pageLoader" aria-hidden="true">
+    <div class="page-loader-panel" role="status" aria-live="polite">
+      <div class="page-loader-mark">
+        <span></span><span></span><span></span>
+      </div>
+      <div class="page-loader-copy">
+        <strong>Loading page</strong>
+        <small>Please wait a moment...</small>
+      </div>
+    </div>
+  </div>
+`;
+
+let pageLoaderNode = null;
+let pageLoaderVisible = false;
+
+function ensurePageLoader() {
+  if (pageLoaderNode) return pageLoaderNode;
+  document.body.insertAdjacentHTML("beforeend", PAGE_LOADER_HTML);
+  pageLoaderNode = document.getElementById("pageLoader");
+  return pageLoaderNode;
+}
+
+function showPageLoader(message = "Loading page", detail = "Please wait a moment...") {
+  const loader = ensurePageLoader();
+  const title = loader.querySelector("strong");
+  const subtitle = loader.querySelector("small");
+
+  if (title) title.textContent = message;
+  if (subtitle) subtitle.textContent = detail;
+
+  loader.classList.add("is-visible");
+  document.body.classList.add("page-loader-active");
+  pageLoaderVisible = true;
+}
+
+function hidePageLoader() {
+  if (!pageLoaderNode) {
+    document.body.classList.remove("page-loader-active");
+    document.body.classList.add("page-ready");
+    pageLoaderVisible = false;
+    return;
+  }
+
+  pageLoaderNode.classList.remove("is-visible");
+  document.body.classList.remove("page-loader-active");
+  document.body.classList.add("page-ready");
+  pageLoaderVisible = false;
+}
+
+function shouldAnimateNavigation(link) {
+  if (!link) return false;
+  const href = link.getAttribute("href");
+  if (!href || href.startsWith("#") || href.startsWith("javascript:")) return false;
+  if (link.hasAttribute("download")) return false;
+  if ((link.target || "").toLowerCase() === "_blank") return false;
+  if (link.getAttribute("data-skip-loader") === "true") return false;
+  if (link.closest(".sidebar")) return false;
+
+  try {
+    const targetUrl = new URL(link.href, window.location.href);
+    if (targetUrl.origin !== window.location.origin) return false;
+    if (targetUrl.pathname === window.location.pathname && targetUrl.search === window.location.search && targetUrl.hash !== "") {
+      return false;
+    }
+  } catch (error) {
+    return false;
+  }
+
+  return true;
+}
+
+function initPageTransitions() {
+  ensurePageLoader();
+  document.body.classList.add("page-booting");
+  showPageLoader("Loading page", "Preparing your screen...");
+
+  const finishBoot = function () {
+    window.requestAnimationFrame(() => {
+      document.body.classList.remove("page-booting");
+      hidePageLoader();
+    });
+  };
+
+  window.addEventListener("load", finishBoot, { once: true });
+  window.addEventListener("pageshow", finishBoot);
+
+  window.addEventListener("beforeunload", function () {
+    showPageLoader("Opening page", "Preparing your screen...");
+  });
+
+  document.addEventListener("click", function (event) {
+    const link = event.target.closest("a[href]");
+    if (!shouldAnimateNavigation(link)) return;
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+    const href = link.href;
+    event.preventDefault();
+    showPageLoader("Opening page", "Preparing your screen...");
+
+    window.setTimeout(() => {
+      window.location.assign(href);
+    }, 140);
+  });
+
+  document.addEventListener("submit", function (event) {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement)) return;
+    if (form.getAttribute("data-skip-loader") === "true") return;
+
+    const method = (form.getAttribute("method") || "get").toLowerCase();
+    if (method === "dialog") return;
+
+    showPageLoader("Submitting request", "Saving your changes...");
+  });
+}
+
+
+
