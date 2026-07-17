@@ -42,7 +42,9 @@ if ($route === 'sync-attendance' && $method === 'POST') {
             continue;
         }
 
-        $existing = $db->prepare("SELECT id FROM attendance WHERE class_id = ? AND student_id = ? AND date = ? LIMIT 1");
+        $existing = $db->prepare(
+            "SELECT id FROM attendance WHERE class_id = ? AND student_id = ? AND date = ? LIMIT 1"
+        );
         $existing->execute([$classId, $studentId, $date]);
         $existingId = $existing->fetchColumn();
 
@@ -51,7 +53,10 @@ if ($route === 'sync-attendance' && $method === 'POST') {
                 ($hasTermColumns ? ", academic_year = ?, semester = ?" : "") .
                 " WHERE id = ?";
             $params = [$status, $recordedBy];
-            if ($hasTermColumns) { $params[] = $academicYear; $params[] = $semester; }
+            if ($hasTermColumns) {
+                $params[] = $academicYear;
+                $params[] = $semester;
+            }
             $params[] = (int)$existingId;
             $db->prepare($sql)->execute($params);
         } else {
@@ -60,7 +65,10 @@ if ($route === 'sync-attendance' && $method === 'POST') {
                     VALUES (?, ?, ?, ?, ?, NOW(), NOW()" .
                 ($hasTermColumns ? ", ?, ?" : "") . ")";
             $params = [$classId, $studentId, $date, $status, $recordedBy];
-            if ($hasTermColumns) { $params[] = $academicYear; $params[] = $semester; }
+            if ($hasTermColumns) {
+                $params[] = $academicYear;
+                $params[] = $semester;
+            }
             $db->prepare($sql)->execute($params);
         }
         $saved++;
@@ -91,21 +99,34 @@ if ($route === 'sync-users' && $method === 'POST') {
         $role = strtolower(trim((string)($userData['role'] ?? '')));
         $status = strtolower(trim((string)($userData['status'] ?? 'active')));
 
-        if ($referenceCode === '' || $firstName === '' || $lastName === '' || $role === '') continue;
-        if (!in_array($role, ['admin', 'teacher', 'student', 'parent'], true)) continue;
-        if (!in_array($status, ['active', 'pending', 'inactive'], true)) $status = 'active';
+        if ($referenceCode === '' || $firstName === '' || $lastName === '' || $role === '') {
+            continue;
+        }
+        if (!in_array($role, ['admin', 'teacher', 'student', 'parent'], true)) {
+            continue;
+        }
+        if (!in_array($status, ['active', 'pending', 'inactive'], true)) {
+            $status = 'active';
+        }
 
         $existing = $db->prepare("SELECT id FROM users WHERE reference_code = ? LIMIT 1");
         $existing->execute([$referenceCode]);
         $userId = $existing->fetchColumn();
 
         if ($userId) {
-            $db->prepare("UPDATE users SET first_name = ?, last_name = ?, email = ?, role = ?, status = ?, updated_at = NOW() WHERE id = ?")
+            $db->prepare(
+                "UPDATE users
+                 SET first_name = ?, last_name = ?, email = ?, role = ?, status = ?, updated_at = NOW()
+                 WHERE id = ?"
+            )
                 ->execute([$firstName, $lastName, $email, $role, $status, (int)$userId]);
         } else {
             $password = password_hash(getDefaultNewUserPassword(), PASSWORD_DEFAULT);
-            $stmt = $db->prepare("INSERT INTO users (reference_code, first_name, last_name, email, role, password, status, created_at)
-                                  VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
+            $stmt = $db->prepare(
+                "INSERT INTO users
+                    (reference_code, first_name, last_name, email, role, password, status, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, NOW())"
+            );
             $stmt->execute([$referenceCode, $firstName, $lastName, $email, $role, $password, $status]);
         }
         $saved++;

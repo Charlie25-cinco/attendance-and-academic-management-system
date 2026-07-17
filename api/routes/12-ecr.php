@@ -1,4 +1,5 @@
 <?php
+// phpcs:disable PSR1.Files.SideEffects.FoundWithSymbols
 $__appRoot = __DIR__;
 while ($__appRoot !== dirname($__appRoot) && !is_file($__appRoot . '/functions/bootstrap.php')) {
     $__appRoot = dirname($__appRoot);
@@ -11,7 +12,8 @@ unset($__appRoot);
 // =============================================================================
 
 if (!function_exists('apiEcrSchoolMetaValue')) {
-    function apiEcrSchoolMetaValue(string $localKey, string $envKey, string $fallback = ''): string {
+    function apiEcrSchoolMetaValue(string $localKey, string $envKey, string $fallback = ''): string
+    {
         $envValue = trim(apiEnvValue($envKey));
         if ($envValue !== '') {
             return $envValue;
@@ -39,7 +41,8 @@ if (!function_exists('apiEcrSchoolMetaValue')) {
 $DB = null;
 $IS_ADMIN = false;
 
-function ecrEnsureUploadDir(string $subDir = ''): string {
+function ecrEnsureUploadDir(string $subDir = ''): string
+{
     $uploadsRoot = __DIR__ . '/../../deped';
     if (!is_dir($uploadsRoot)) {
         @mkdir($uploadsRoot, 0755, true);
@@ -54,36 +57,44 @@ function ecrEnsureUploadDir(string $subDir = ''): string {
     return $uploadsRoot;
 }
 
-function ecrValidAcademicYear(string $year): bool {
+function ecrValidAcademicYear(string $year): bool
+{
     return preg_match('/^\d{4}-\d{4}$/', $year) === 1;
 }
 
-function ecrValidSection(string $section): bool {
+function ecrValidSection(string $section): bool
+{
     $section = trim($section);
     return $section !== '';
 }
 
-function ecrSchoolId(): string {
+function ecrSchoolId(): string
+{
     return apiEcrSchoolMetaValue('school_id', 'ECR_SCHOOL_ID', '341227');
 }
 
-function ecrSchoolName(): string {
+function ecrSchoolName(): string
+{
     return apiEcrSchoolMetaValue('school_name', 'ECR_SCHOOL_NAME', 'Balingasag Senior High School');
 }
 
-function ecrDivision(): string {
+function ecrDivision(): string
+{
     return apiEcrSchoolMetaValue('division', 'ECR_DIVISION', 'Misamis Oriental');
 }
 
-function ecrRegion(): string {
+function ecrRegion(): string
+{
     return apiEcrSchoolMetaValue('region', 'ECR_REGION', 'Region X');
 }
 
-function ecrDistrict(): string {
+function ecrDistrict(): string
+{
     return apiEcrSchoolMetaValue('district', 'ECR_DISTRICT', 'Balingasag');
 }
 
-function ecrRequireTeacherOrAdmin(PDO $db, int $classId = 0): array {
+function ecrRequireTeacherOrAdmin(PDO $db, int $classId = 0): array
+{
     $user = apiRequireUser();
     $role = (string)($user['role'] ?? '');
     if (!in_array($role, ['teacher', 'admin'], true)) {
@@ -95,20 +106,23 @@ function ecrRequireTeacherOrAdmin(PDO $db, int $classId = 0): array {
     return $user;
 }
 
-function ecrValidTermForYear(string $academicYear, string $term): string {
+function ecrValidTermForYear(string $academicYear, string $term): string
+{
     $gradingSystem = SshsGradeCalculator::gradingSystem($academicYear);
     $valid = SshsGradeCalculator::validTerms($gradingSystem);
     return in_array($term, $valid, true) ? $term : $valid[0];
 }
 
-function ecrSemesterForTerm(string $academicYear, string $term): ?string {
+function ecrSemesterForTerm(string $academicYear, string $term): ?string
+{
     if (SshsGradeCalculator::gradingSystem($academicYear) === '3_term') {
         return null;
     }
     return in_array($term, ['Q3', 'Q4'], true) ? 'S2' : 'S1';
 }
 
-function ecrPeriodBounds(PDO $db, string $academicYear, string $term, ?string $semester): array {
+function ecrPeriodBounds(PDO $db, string $academicYear, string $term, ?string $semester): array
+{
     if (!preg_match('/^(\d{4})-(\d{4})$/', $academicYear, $m)) {
         return ['', ''];
     }
@@ -118,22 +132,37 @@ function ecrPeriodBounds(PDO $db, string $academicYear, string $term, ?string $s
 
     if ($gradingSystem === '4_quarter') {
         if ($semester === 'S2') {
-            if ($term === 'Q1') return [$startYear . '-12-01', $endYear . '-02-28'];
-            if ($term === 'Q2') return [$endYear . '-03-01', $endYear . '-05-31'];
+            if ($term === 'Q1') {
+                return [$startYear . '-12-01', $endYear . '-02-28'];
+            }
+            if ($term === 'Q2') {
+                return [$endYear . '-03-01', $endYear . '-05-31'];
+            }
             return [$startYear . '-12-01', $endYear . '-05-31'];
         }
-        if ($term === 'Q1') return [$startYear . '-06-01', $startYear . '-08-31'];
-        if ($term === 'Q2') return [$startYear . '-09-01', $startYear . '-11-30'];
+        if ($term === 'Q1') {
+            return [$startYear . '-06-01', $startYear . '-08-31'];
+        }
+        if ($term === 'Q2') {
+            return [$startYear . '-09-01', $startYear . '-11-30'];
+        }
         return [$startYear . '-06-01', $startYear . '-11-30'];
     }
 
-    if ($term === 'Term1') return [$startYear . '-07-01', $startYear . '-09-30'];
-    if ($term === 'Term2') return [$startYear . '-10-01', $startYear . '-12-31'];
-    if ($term === 'Term3') return [$endYear . '-01-01', $endYear . '-03-31'];
+    if ($term === 'Term1') {
+        return [$startYear . '-07-01', $startYear . '-09-30'];
+    }
+    if ($term === 'Term2') {
+        return [$startYear . '-10-01', $startYear . '-12-31'];
+    }
+    if ($term === 'Term3') {
+        return [$endYear . '-01-01', $endYear . '-03-31'];
+    }
     return [$startYear . '-07-01', $endYear . '-03-31'];
 }
 
-function ecrClassContext(PDO $db, int $classId, int $teacherId, string $academicYear): array {
+function ecrClassContext(PDO $db, int $classId, int $teacherId, string $academicYear): array
+{
     $stmt = $db->prepare(
         "SELECT c.*, u.first_name AS teacher_first_name, u.last_name AS teacher_last_name
          FROM classes c
@@ -165,7 +194,11 @@ function ecrClassContext(PDO $db, int $classId, int $teacherId, string $academic
         if ($lrn === '') {
             $lrn = trim((string)($student['reference_code'] ?? ''));
         }
-        $name = trim((string)($student['last_name'] ?? '') . ', ' . (string)($student['first_name'] ?? '') . ' ' . (string)($student['middle_name'] ?? ''));
+        $name = trim(
+            (string)($student['last_name'] ?? '') . ', '
+            . (string)($student['first_name'] ?? '') . ' '
+            . (string)($student['middle_name'] ?? '')
+        );
         $student['lrn'] = $lrn;
         $student['name'] = $name;
         $student['export_key'] = $lrn !== '' ? $lrn : ('student:' . (int)$student['id']);
@@ -175,9 +208,21 @@ function ecrClassContext(PDO $db, int $classId, int $teacherId, string $academic
     return [$class, $students];
 }
 
-function ecrGradeItems(PDO $db, int $classId, int $teacherId, array $students, string $academicYear, string $term): array {
+function ecrGradeItems(
+    PDO $db,
+    int $classId,
+    int $teacherId,
+    array $students,
+    string $academicYear,
+    string $term
+): array {
     if (!apiTableExists($db, 'grade_items') || !apiTableExists($db, 'grade_item_scores')) {
-        return ['items' => ['ww' => [], 'pt' => [], 'qa' => []], 'scores' => [], 'export_items' => [], 'truncated' => ['ww' => false, 'pt' => false, 'qa' => false]];
+        return [
+            'items' => ['ww' => [], 'pt' => [], 'qa' => []],
+            'scores' => [],
+            'export_items' => [],
+            'truncated' => ['ww' => false, 'pt' => false, 'qa' => false],
+        ];
     }
 
     $semester = ecrSemesterForTerm($academicYear, $term);
@@ -234,7 +279,11 @@ function ecrGradeItems(PDO $db, int $classId, int $teacherId, array $students, s
     if (!empty($itemLookup)) {
         $ids = array_keys($itemLookup);
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $scoreStmt = $db->prepare("SELECT grade_item_id, student_id, score FROM grade_item_scores WHERE grade_item_id IN ($placeholders)");
+        $scoreStmt = $db->prepare(
+            "SELECT grade_item_id, student_id, score
+             FROM grade_item_scores
+             WHERE grade_item_id IN ($placeholders)"
+        );
         $scoreStmt->execute($ids);
         foreach ($scoreStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $itemId = (int)$row['grade_item_id'];
@@ -257,10 +306,16 @@ function ecrGradeItems(PDO $db, int $classId, int $teacherId, array $students, s
         }
     }
 
-    return ['items' => $items, 'scores' => $scores, 'export_items' => $exportItems, 'truncated' => $truncated];
+    return [
+        'items' => $items,
+        'scores' => $scores,
+        'export_items' => $exportItems,
+        'truncated' => $truncated,
+    ];
 }
 
-function ecrConfiguredExporter(PDO $db, int $classId, int $teacherId, string $academicYear, string $term): array {
+function ecrConfiguredExporter(PDO $db, int $classId, int $teacherId, string $academicYear, string $term): array
+{
     [$class, $students] = ecrClassContext($db, $classId, $teacherId, $academicYear);
     $gradeData = ecrGradeItems($db, $classId, $teacherId, $students, $academicYear, $term);
     $weights = [
@@ -268,7 +323,10 @@ function ecrConfiguredExporter(PDO $db, int $classId, int $teacherId, string $ac
         'pt' => (float)($class['pt_weight'] ?? 50),
         'assessment' => (float)($class['assessment_weight'] ?? 25),
     ];
-    $teacherName = trim((string)($class['teacher_first_name'] ?? '') . ' ' . (string)($class['teacher_last_name'] ?? ''));
+    $teacherName = trim(
+        (string)($class['teacher_first_name'] ?? '') . ' '
+        . (string)($class['teacher_last_name'] ?? '')
+    );
 
     $exporter = new EcrExporter();
     $exporter->setHeader([
@@ -307,9 +365,17 @@ if ($route === 'ecr-template' && $method === 'GET') {
     $exporter = new EcrExporter();
     $templatePath = $exporter->getTemplatePath();
     $info = $exporter->getTemplateInfo($templatePath);
-    $meta = $info['exists'] ? ['size' => filesize($templatePath), 'modified' => date('Y-m-d H:i:s', filemtime($templatePath))] : null;
+    $meta = $info['exists']
+        ? ['size' => filesize($templatePath), 'modified' => date('Y-m-d H:i:s', filemtime($templatePath))]
+        : null;
 
-    apiJson(['ok' => true, 'exists' => $info['exists'], 'file' => basename($templatePath), 'meta' => $meta, 'template' => $info]);
+    apiJson([
+        'ok' => true,
+        'exists' => $info['exists'],
+        'file' => basename($templatePath),
+        'meta' => $meta,
+        'template' => $info,
+    ]);
 }
 
 if ($route === 'ecr-export-preview' && $method === 'GET') {
@@ -322,7 +388,13 @@ if ($route === 'ecr-export-preview' && $method === 'GET') {
     }
 
     $user = ecrRequireTeacherOrAdmin($db, $classId);
-    [, , $students, $gradeData, $weights] = ecrConfiguredExporter($db, $classId, (int)$user['id'], $academicYear, $term);
+    [, , $students, $gradeData, $weights] = ecrConfiguredExporter(
+        $db,
+        $classId,
+        (int)$user['id'],
+        $academicYear,
+        $term
+    );
 
     apiJson([
         'ok' => true,
@@ -364,13 +436,20 @@ if ($route === 'ecr-export' && $method === 'GET') {
     $ok = $format === 'csv' ? $exporter->exportToCsv($outputPath) : $exporter->exportToXlsx($outputPath);
     if (!$ok || !is_file($outputPath)) {
         @unlink($outputPath);
-        apiJson(['ok' => false, 'message' => 'Unable to generate ECR file. Check that a compatible .xlsx template is available.'], 500);
+        apiJson([
+            'ok' => false,
+            'message' => 'Unable to generate ECR file. Check that a compatible .xlsx template is available.',
+        ], 500);
     }
 
     while (ob_get_level() > 0) {
         ob_end_clean();
     }
-    header($format === 'csv' ? 'Content-Type: text/csv; charset=utf-8' : 'Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header(
+        $format === 'csv'
+            ? 'Content-Type: text/csv; charset=utf-8'
+            : 'Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
     header('Content-Disposition: attachment; filename="' . $baseName . '.' . $format . '"');
     header('Content-Length: ' . filesize($outputPath));
     readfile($outputPath);
@@ -412,7 +491,11 @@ if ($route === 'ecr-import' && $method === 'POST') {
     $academicYear = trim((string)($body['academic_year'] ?? currentAcademicYear()));
     $term = ecrValidTermForYear($academicYear, trim((string)($body['term'] ?? 'Term1')));
     $fileKey = basename((string)($body['file_key'] ?? ''));
-    if ($classId <= 0 || !ecrValidAcademicYear($academicYear) || $fileKey === '' || !str_ends_with(strtolower($fileKey), '.xlsx')) {
+    $invalidImportRequest = $classId <= 0
+        || !ecrValidAcademicYear($academicYear)
+        || $fileKey === ''
+        || !str_ends_with(strtolower($fileKey), '.xlsx');
+    if ($invalidImportRequest) {
         apiJson(['ok' => false, 'message' => 'Class, academic year, and .xlsx ECR file are required'], 422);
     }
 
@@ -437,5 +520,11 @@ if ($route === 'ecr-import' && $method === 'POST') {
         'mode' => 'merge',
     ]);
 
-    apiJson(['ok' => (bool)($result['success'] ?? false), 'message' => ($result['success'] ?? false) ? 'ECR imported successfully' : 'ECR import completed with errors', 'result' => $result]);
+    apiJson([
+        'ok' => (bool)($result['success'] ?? false),
+        'message' => ($result['success'] ?? false)
+            ? 'ECR imported successfully'
+            : 'ECR import completed with errors',
+        'result' => $result,
+    ]);
 }
