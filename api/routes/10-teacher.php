@@ -162,6 +162,7 @@ if ($route === 'teacher-grades' && $method === 'GET') {
     }
 
     $periodColumn = $gradingSystem === '4_quarter' ? 'quarter' : 'term';
+    $periodColumn = in_array($periodColumn, ['term', 'quarter'], true) ? $periodColumn : 'term';
     $params = [$classId, $academicYear, $period];
 
     if (!apiTeacherOwnsClass($db, $teacherId, $classId)) {
@@ -231,6 +232,7 @@ if ($route === 'teacher-grades' && $method === 'POST') {
         $period = apiDefaultPeriodLabel($academicYear);
     }
     $periodColumn = $gradingSystem === '4_quarter' ? 'quarter' : 'term';
+    $periodColumn = in_array($periodColumn, ['term', 'quarter'], true) ? $periodColumn : 'term';
 
     $teacherId = (int)$user['id'];
     $saved = 0;

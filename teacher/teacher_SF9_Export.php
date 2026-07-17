@@ -6,7 +6,7 @@ while ($__appRoot !== dirname($__appRoot) && !is_file($__appRoot . '/functions/b
 require_once $__appRoot . '/functions/bootstrap.php';
 unset($__appRoot);
 if (!isset($_SESSION['logged_in']) || !in_array($_SESSION['role'], ['teacher', 'admin'], true)) {
-    header("Location: ../auth/Login.php");
+    header("Location: ../auth/login.php");
     exit();
 }
 

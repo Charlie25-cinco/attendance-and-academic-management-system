@@ -13,15 +13,6 @@ if (!$db) {
     exit();
 }
 
-function adminGradeApprovalRequireCsrf() {
-    $sessionToken = (string)($_SESSION['csrf_token'] ?? '');
-    $requestToken = trim((string)($_POST['csrf_token'] ?? $_GET['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '')));
-    if ($sessionToken === '' || $requestToken === '' || !hash_equals($sessionToken, $requestToken)) {
-        echo json_encode(['success' => false, 'message' => 'Invalid CSRF token']);
-        exit();
-    }
-}
-
 function ensureGradeApprovalsTableForAdminAction($db) {
     static $ready = false; if ($ready) return; $ready = true;
     $db->exec("CREATE TABLE IF NOT EXISTS grade_approvals (
@@ -64,7 +55,7 @@ function ensureReportCardApprovalsTableForAdminAction($db) {
 
 $action = $_GET['action'] ?? '';
 if ($action === 'review') {
-    adminGradeApprovalRequireCsrf();
+    requireCsrfToken();
     ensureGradeApprovalsTableForAdminAction($db);
     $approvalId = (int)($_POST['approval_id'] ?? 0);
     $status = strtolower(trim((string)($_POST['status'] ?? '')));
@@ -94,7 +85,7 @@ if ($action === 'review') {
 }
 
 if ($action === 'review_grade_batch') {
-    adminGradeApprovalRequireCsrf();
+    requireCsrfToken();
     ensureGradeApprovalsTableForAdminAction($db);
     $gradeLevel = (int)($_POST['grade_level'] ?? 0);
     $section = trim((string)($_POST['section'] ?? ''));
@@ -145,7 +136,7 @@ if ($action === 'review_grade_batch') {
 }
 
 if ($action === 'review_report_card') {
-    adminGradeApprovalRequireCsrf();
+    requireCsrfToken();
     ensureReportCardApprovalsTableForAdminAction($db);
     $approvalId = (int)($_POST['approval_id'] ?? 0);
     $status = strtolower(trim((string)($_POST['status'] ?? '')));
@@ -175,7 +166,7 @@ if ($action === 'review_report_card') {
 }
 
 if ($action === 'review_report_card_batch') {
-    adminGradeApprovalRequireCsrf();
+    requireCsrfToken();
     ensureReportCardApprovalsTableForAdminAction($db);
     $gradeLevel = (int)($_POST['grade_level'] ?? 0);
     $section = trim((string)($_POST['section'] ?? ''));

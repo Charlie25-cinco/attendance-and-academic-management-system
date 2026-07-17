@@ -106,11 +106,6 @@
     });
     
     // Helper functions
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
     
     function capitalizeFirst(string) {
         return string.charAt(0).toUpperCase() + string.slice(1);

@@ -20,15 +20,6 @@ if (!$db) {
 
 $action = $_GET['action'] ?? '';
 
-function adminClassesRequireCsrf() {
-    $sessionToken = (string)($_SESSION['csrf_token'] ?? '');
-    $requestToken = trim((string)($_POST['csrf_token'] ?? $_GET['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '')));
-    if ($sessionToken === '' || $requestToken === '' || !hash_equals($sessionToken, $requestToken)) {
-        echo json_encode(['success' => false, 'message' => 'Invalid CSRF token']);
-        exit();
-    }
-}
-
 function ensureAdminClassAuditLogTable($db) {
     static $ready = false;
     if ($ready) {
@@ -77,7 +68,7 @@ function adminClassAuditLog($db, string $actionName, int $targetId = 0, array $d
 }
 
 if (in_array($action, ['create', 'update', 'delete', 'generate_core_classes'], true)) {
-    adminClassesRequireCsrf();
+    requireCsrfToken();
 }
 
 if ($action === 'export_sf2') {
@@ -99,25 +90,6 @@ switch ($action) {
         break;
     default:
         echo json_encode(['success' => false, 'message' => 'Invalid action']);
-}
-
-function normalizeRoomValue($room) {
-    $room = preg_replace('/\\s+/', ' ', trim((string)$room));
-    if ($room === '') {
-        return '';
-    }
-    return strtoupper(substr($room, 0, 1)) . substr($room, 1);
-}
-
-function normalizeSubjectNameValue($name) {
-    $name = preg_replace('/\s+/', ' ', trim((string)$name));
-    if ($name === '') {
-        return '';
-    }
-    if (function_exists('mb_convert_case')) {
-        return mb_convert_case($name, MB_CASE_TITLE, 'UTF-8');
-    }
-    return ucwords(strtolower($name));
 }
 
 function ensureClassTrackColumn($db) {

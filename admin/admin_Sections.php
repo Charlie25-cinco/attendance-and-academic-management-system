@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../functions/bootstrap.php';
 if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'admin') {
-    header("Location: ../auth/Login.php");
+    header("Location: ../auth/login.php");
     exit();
 }
 
@@ -18,7 +18,7 @@ $page_title = 'Sections';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $page_title; ?> - Balingasag Senior High School</title>
+    <title><?php echo htmlspecialchars($page_title, ENT_QUOTES, 'UTF-8'); ?> - Balingasag Senior High School</title>
     <link href="<?php echo appAssetPath('src/vendor/bootstrap/bootstrap.min.css'); ?>" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo appAssetPath('src/vendor/bootstrap-icons/bootstrap-icons.css'); ?>">
     <link rel="stylesheet" href="../assets/css/main.css">
@@ -174,12 +174,6 @@ $page_title = 'Sections';
         const csrfToken = (window.APP_CSRF_TOKEN || '').toString();
 
         document.addEventListener('DOMContentLoaded', loadSections);
-
-        function programLabel(section) {
-            if (section.program === 'academic_strengthened') return 'Academic Track (Strengthened)';
-            if (section.program === 'technical_professional') return 'Technical Professional';
-            return section.track === 'techpro' ? 'TechPro' : 'Academic';
-        }
 
         function loadSections() {
             fetch('admin_Sections_Action.php?action=list')
@@ -357,8 +351,5 @@ $page_title = 'Sections';
             });
         }
 
-        function escHtml(str) {
-            return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-        }
     </script>
 <?php include '../includes/footer.php'; ?>

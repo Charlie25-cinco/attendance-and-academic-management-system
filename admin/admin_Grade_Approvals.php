@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../functions/bootstrap.php';
 if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'admin') {
-    header("Location: ../auth/Login.php");
+    header("Location: ../auth/login.php");
     exit();
 }
 
@@ -141,7 +141,7 @@ $page_title = 'Grade Approvals';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $page_title; ?> - Balingasag Senior High School</title>
+    <title><?php echo htmlspecialchars($page_title, ENT_QUOTES, 'UTF-8'); ?> - Balingasag Senior High School</title>
     <link href="<?php echo appAssetPath('src/vendor/bootstrap/bootstrap.min.css'); ?>" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo appAssetPath('src/vendor/bootstrap-icons/bootstrap-icons.css'); ?>">
     <link rel="stylesheet" href="../assets/css/main.css">
@@ -216,7 +216,7 @@ $page_title = 'Grade Approvals';
                                         </div>
                                         <div class="d-flex gap-2 flex-wrap">
                                         <a class="btn btn-sm btn-primary-custom"
-                                                href="Admin_Grade_Approvals_Detail.php?grade_level=<?php echo (int)$row['grade_level']; ?>&section=<?php echo urlencode((string)$row['section']); ?>&academic_year=<?php echo urlencode((string)$row['academic_year']); ?>&semester=<?php echo urlencode((string)$row['semester'] ?? ''); ?>&status=<?php echo urlencode($selectedStatus); ?>">
+                                                href="admin_Grade_Approvals_Detail.php?grade_level=<?php echo (int)$row['grade_level']; ?>&section=<?php echo urlencode((string)$row['section']); ?>&academic_year=<?php echo urlencode((string)$row['academic_year']); ?>&semester=<?php echo urlencode((string)$row['semester'] ?? ''); ?>&status=<?php echo urlencode($selectedStatus); ?>">
                                             View
                                         </a>
                                         <?php if ($status === 'pending'): ?>

@@ -47,8 +47,10 @@ class Database {
                 $dsn .= ";port=" . $this->port;
             }
 
-            $this->connection = new PDO($dsn, $this->username, $this->password);
-            $this->connection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $this->connection = new PDO($dsn, $this->username, $this->password, [
+                PDO::ATTR_PERSISTENT => true,
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            ]);
             $this->connection->exec("SET NAMES utf8mb4");
         } catch(PDOException $e) {
             error_log("Database connection error: " . $e->getMessage());

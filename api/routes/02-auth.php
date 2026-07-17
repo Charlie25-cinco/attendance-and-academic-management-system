@@ -68,11 +68,7 @@ if ($route === 'login' && $method === 'POST') {
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$user || !password_verify($password, $user['password'])) {
-        $details = [];
-        if ($user) {
-            $details = ['reason' => 'invalid_password', 'user_id' => (int)$user['id']];
-        }
-        apiJson(['ok' => false, 'message' => 'Invalid reference code or password'] + $details, 401);
+        apiJson(['ok' => false, 'message' => 'Invalid reference code or password'], 401);
     }
 
     if (password_verify(getDefaultNewUserPassword(), $user['password'])) {
@@ -301,7 +297,32 @@ if ($route === 'reset-password' && $method === 'POST') {
         apiJson(['ok' => false, 'message' => $errorMsg], 422);
     }
 
+    apiEnsureRateLimitsTable($db);
     apiEnsurePasswordResetsTable($db);
+
+    $identifierHash = hash('sha256', $token . '|' . ($_SERVER['REMOTE_ADDR'] ?? ''));
+    $maxAttempts = 5;
+    $lockSeconds = 900;
+
+    $rateStmt = $db->prepare("SELECT lock_until FROM rate_limits WHERE context = 'api' AND action_key = 'reset-password' AND identifier_hash = ? AND expires_at > NOW() LIMIT 1");
+    $rateStmt->execute([$identifierHash]);
+    $lockUntil = $rateStmt->fetchColumn();
+    if ($lockUntil) {
+        $remaining = strtotime((string)$lockUntil) - time();
+        if ($remaining > 0) {
+            apiJson(['ok' => false, 'message' => "Too many requests. Try again in " . ceil($remaining / 60) . " minutes."], 429);
+        }
+    }
+
+    $db->prepare("INSERT INTO rate_limits (context, action_key, identifier_hash, attempts, first_attempt, lock_until, expires_at)
+                  VALUES ('api', 'reset-password', ?, 1, UNIX_TIMESTAMP(), NULL, DATE_ADD(NOW(), INTERVAL ? SECOND))
+                  ON DUPLICATE KEY UPDATE
+                    attempts = attempts + 1,
+                    first_attempt = IF(attempts = 0, UNIX_TIMESTAMP(), first_attempt),
+                    lock_until = IF(attempts + 1 >= ?, DATE_ADD(NOW(), INTERVAL ? SECOND), NULL),
+                    expires_at = DATE_ADD(NOW(), INTERVAL ? SECOND),
+                    updated_at = NOW()")
+        ->execute([$identifierHash, $lockSeconds, $maxAttempts, $lockSeconds]);
 
     $tokenHash = hash('sha256', $token);
     $tokenStmt = $db->prepare("SELECT id, user_id FROM auth_password_resets WHERE token_hash = ? AND used_at IS NULL AND expires_at > NOW() LIMIT 1");

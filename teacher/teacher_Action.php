@@ -12,7 +12,7 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'teacher') {
     exit();
 }
 
-require_once __DIR__ . '/Teacher_Enrollment_Helper.php';
+require_once __DIR__ . '/teacher_Enrollment_Helper.php';
 require_once __DIR__ . '/../api/pushnotifications.php';
 
 if (function_exists('date_default_timezone_set')) {
@@ -31,15 +31,6 @@ if (!$db) {
 $teacherId = (int)($_SESSION['user_id'] ?? 0);
 $action = $_GET['action'] ?? '';
 
-function teacherRequireCsrf() {
-    $sessionToken = (string)($_SESSION['csrf_token'] ?? '');
-    $requestToken = trim((string)($_POST['csrf_token'] ?? $_GET['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '')));
-    if ($sessionToken === '' || $requestToken === '' || !hash_equals($sessionToken, $requestToken)) {
-        echo json_encode(['success' => false, 'message' => 'Invalid CSRF token']);
-        exit();
-    }
-}
-
 $writeActions = [
     'submit_attendance',
     'submit_grades',
@@ -57,7 +48,7 @@ $writeActions = [
     'recall_report_card'
 ];
 if (in_array($action, $writeActions, true)) {
-    teacherRequireCsrf();
+    requireCsrfToken();
 }
 
 if (!in_array($action, ['download_material', 'export_grades'], true)) {
@@ -136,14 +127,6 @@ switch ($action) {
         break;
     default:
         echo json_encode(['success' => false, 'message' => 'Invalid action']);
-}
-
-function normalizeDate($value) {
-    if (!is_string($value)) {
-        return date('Y-m-d');
-    }
-    $value = trim($value);
-    return preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) ? $value : date('Y-m-d');
 }
 
 function teacherNormalizeScheduleDays($days) {

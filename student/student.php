@@ -6,7 +6,7 @@ while ($__appRoot !== dirname($__appRoot) && !is_file($__appRoot . '/functions/b
 require_once $__appRoot . '/functions/bootstrap.php';
 unset($__appRoot);
 if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'student') {
-    header("Location: ../auth/Login.php");
+    header("Location: ../auth/login.php");
     exit();
 }
 
@@ -132,8 +132,8 @@ if ($db && $studentId > 0) {
                              COUNT(CASE WHEN status='late' THEN 1 END) AS late_count,
                              COUNT(*) AS total_count
                              FROM attendance
-                             WHERE student_id = ?");
-    $attStmt->execute([$studentId]);
+                             WHERE student_id = ? AND academic_year = ?");
+    $attStmt->execute([$studentId, currentAcademicYear()]);
     $attRow = $attStmt->fetch(PDO::FETCH_ASSOC);
     $attendance['present'] = (int)($attRow['present_count'] ?? 0);
     $attendance['absent'] = (int)($attRow['absent_count'] ?? 0);
@@ -289,7 +289,7 @@ $nextClassLabel = !empty($todaySchedule)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $page_title; ?> - Balingasag Senior High School</title>
+    <title><?php echo htmlspecialchars($page_title, ENT_QUOTES, 'UTF-8'); ?> - Balingasag Senior High School</title>
     <link href="<?php echo appAssetPath('vendor/bootstrap/bootstrap.min.css'); ?>" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo appAssetPath('vendor/bootstrap-icons/bootstrap-icons.css'); ?>">
     <link rel="stylesheet" href="../assets/css/main.css">

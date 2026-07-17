@@ -3,7 +3,7 @@ require_once __DIR__ . '/../functions/bootstrap.php';
 // Admin - Manage Classes Page
 // Check if user is logged in and is admin
 if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'admin') {
-    header("Location: ../auth/Login.php");
+    header("Location: ../auth/login.php");
     exit();
 }
 
@@ -123,7 +123,7 @@ $page_title = 'Manage Classes';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $page_title; ?> - Balingasag Senior High School</title>
+    <title><?php echo htmlspecialchars($page_title, ENT_QUOTES, 'UTF-8'); ?> - Balingasag Senior High School</title>
     <link href="<?php echo appAssetPath('src/vendor/bootstrap/bootstrap.min.css'); ?>" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo appAssetPath('src/vendor/bootstrap-icons/bootstrap-icons.css'); ?>">
     <link rel="stylesheet" href="../assets/css/main.css">
@@ -223,7 +223,7 @@ $page_title = 'Manage Classes';
                             <button type="submit" class="btn btn-primary-custom flex-fill">
                                 <i class="bi bi-funnel me-1"></i>Apply
                             </button>
-                            <a href="Admin_Classes.php" class="btn btn-outline-secondary flex-fill">Reset</a>
+                            <a href="admin_Classes.php" class="btn btn-outline-secondary flex-fill">Reset</a>
                         </div>
                     </form>
                 </div>
@@ -657,11 +657,11 @@ $page_title = 'Manage Classes';
             return rows;
         }
         function viewClass(id) {
-            window.location.href = 'Admin_Class_Detail.php?id=' + id;
+            window.location.href = 'admin_Class_Detail.php?id=' + id;
         }
         
         function editClass(id) {
-            window.location.href = 'Admin_Class_Edit.php?id=' + id;
+            window.location.href = 'admin_Class_Edit.php?id=' + id;
         }
         
         // Delete class - uses reusable modal

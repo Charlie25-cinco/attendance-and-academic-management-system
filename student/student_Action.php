@@ -6,16 +6,18 @@ while ($__appRoot !== dirname($__appRoot) && !is_file($__appRoot . '/functions/b
 require_once $__appRoot . '/functions/bootstrap.php';
 unset($__appRoot);
 if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'student') {
+    header('Content-Type: application/json');
     http_response_code(403);
-    echo 'Unauthorized access';
+    echo json_encode(['success' => false, 'message' => 'Unauthorized access']);
     exit();
 }
 
 
 $db = (new Database())->getConnection();
 if (!$db) {
+    header('Content-Type: application/json');
     http_response_code(500);
-    echo 'Database connection failed';
+    echo json_encode(['success' => false, 'message' => 'Database connection failed']);
     exit();
 }
 
@@ -27,16 +29,18 @@ switch ($action) {
         downloadStudentMaterial($db, $studentId);
         break;
     default:
+        header('Content-Type: application/json');
         http_response_code(400);
-        echo 'Invalid action';
+        echo json_encode(['success' => false, 'message' => 'Invalid action']);
 }
 
 function downloadStudentMaterial($db, $studentId) {
+    header('Content-Type: application/json');
     try {
         $materialId = (int)($_GET['id'] ?? 0);
         if ($materialId <= 0) {
             http_response_code(400);
-            echo 'Invalid material ID';
+            echo json_encode(['success' => false, 'message' => 'Invalid material ID']);
             return;
         }
 
@@ -51,21 +55,21 @@ function downloadStudentMaterial($db, $studentId) {
 
         if (!$material) {
             http_response_code(404);
-            echo 'Material not found';
+            echo json_encode(['success' => false, 'message' => 'Material not found']);
             return;
         }
 
         $baseDir = realpath(__DIR__ . '/../../') . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'materials';
         if ($baseDir === false) {
             http_response_code(500);
-            echo 'Upload path not found';
+            echo json_encode(['success' => false, 'message' => 'Upload path not found']);
             return;
         }
 
         $filePath = $baseDir . DIRECTORY_SEPARATOR . $material['file_name'];
         if (!is_file($filePath)) {
             http_response_code(404);
-            echo 'File not found';
+            echo json_encode(['success' => false, 'message' => 'File not found']);
             return;
         }
 
@@ -90,7 +94,7 @@ function downloadStudentMaterial($db, $studentId) {
         exit();
     } catch (PDOException $e) {
         http_response_code(500);
-        echo 'Database error';
+        echo json_encode(['success' => false, 'message' => 'Database error']);
     }
 }
 ?>

@@ -3,7 +3,7 @@ require_once __DIR__ . '/../functions/bootstrap.php';
 // Admin - Edit Class Page
 // Check if user is logged in and is admin
 if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'admin') {
-    header("Location: ../auth/Login.php");
+    header("Location: ../auth/login.php");
     exit();
 }
 
@@ -15,7 +15,7 @@ $classId = $_GET['id'] ?? '';
 $hasTrack = false;
 
 if (empty($classId) || !$db) {
-    header("Location: Admin_Classes.php");
+    header("Location: admin_Classes.php");
     exit();
 }
 
@@ -40,7 +40,7 @@ $stmt->execute([$classId]);
 $class = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$class) {
-    header("Location: Admin_Classes.php");
+    header("Location: admin_Classes.php");
     exit();
 }
 
@@ -64,7 +64,7 @@ $page_title = 'Edit Class - ' . $class['class_name'];
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $page_title; ?> - Balingasag Senior High School</title>
+    <title><?php echo htmlspecialchars($page_title, ENT_QUOTES, 'UTF-8'); ?> - Balingasag Senior High School</title>
     <link href="<?php echo appAssetPath('src/vendor/bootstrap/bootstrap.min.css'); ?>" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo appAssetPath('src/vendor/bootstrap-icons/bootstrap-icons.css'); ?>">
     <link rel="stylesheet" href="../assets/css/main.css">
@@ -93,7 +93,7 @@ $page_title = 'Edit Class - ' . $class['class_name'];
         <?php include '../includes/header.php'; ?>
         <div class="page-content">
             <!-- Back Button -->
-            <a href="Admin_Class_Detail.php?id=<?php echo $classId; ?>" class="btn btn-link text-decoration-none mb-3">
+            <a href="admin_Class_Detail.php?id=<?php echo $classId; ?>" class="btn btn-link text-decoration-none mb-3">
                 <i class="bi bi-arrow-left me-2"></i>Back to Class Details
             </a>
 
@@ -197,7 +197,7 @@ $page_title = 'Edit Class - ' . $class['class_name'];
                         </div>
                         
                         <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-secondary" onclick="window.location.href='Admin_Class_Detail.php?id=<?php echo $classId; ?>'">Cancel</button>
+                            <button type="button" class="btn btn-secondary" onclick="window.location.href='admin_Class_Detail.php?id=<?php echo $classId; ?>'">Cancel</button>
                             <button type="button" class="btn btn-primary" onclick="updateClass()">Save Changes</button>
                         </div>
                     </form>
@@ -533,7 +533,7 @@ $page_title = 'Edit Class - ' . $class['class_name'];
             .then(data => {
                 if (data.success) {
                     showNotification('Class updated successfully', 'success');
-                    setTimeout(() => window.location.href = 'Admin_Class_Detail.php?id=<?php echo $classId; ?>', 1000);
+                    setTimeout(() => window.location.href = 'admin_Class_Detail.php?id=<?php echo $classId; ?>', 1000);
                 } else {
                     showNotification(data.message || 'Failed to update class', 'danger');
                 }

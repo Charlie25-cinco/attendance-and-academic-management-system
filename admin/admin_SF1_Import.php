@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../functions/bootstrap.php';
 // Redirect to Enrollments page where SF1 import is now integrated
 if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'admin') {
-    header("Location: ../auth/Login.php");
+    header("Location: ../auth/login.php");
     exit();
 }
 
@@ -18,5 +18,5 @@ if (isset($_GET['download_template'])) {
     exit();
 }
 
-header("Location: Admin_Enrollments.php");
+header("Location: admin_Enrollments.php");
 exit();

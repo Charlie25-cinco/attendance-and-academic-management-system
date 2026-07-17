@@ -87,12 +87,21 @@ Open `http://localhost:5000`.
 3. Adviser submits compiled report cards: `report_card_approvals.status = 'submitted_admin'`.
 4. Admin approves or rejects report cards: `approved` or `rejected`.
 
+## Instructor RBAC Branch
+
+- The `instructor-rbac-requirements` branch contains the instructor-specific RBAC requirement work and should stay separate from `main`.
+- RBAC tables are defined in `database/rbac_migration.sql` and default permissions are in `database/rbac_seed.sql`.
+- Runtime helpers also auto-create and seed RBAC tables when the RBAC control panel or protected pages are loaded.
+- Permission checks are enforced through `functions/bootstrap.php` using the current script-to-permission map in `functions/app-helpers.php`.
+- The Admin RBAC Control Panel is available from the admin sidebar.
+
 ## DepEd Templates
 
 - Active SF1, SF2, and ECR templates live in `deped/`.
 - SF1 uses `deped/SF1_Senior_High_School.xlsx`.
 - SF2 uses `deped/SF2_Senior_High_School.xlsx`.
 - ECR XLSX export requires a compatible three-term Strengthened SHS `.xlsx` template at `deped/ecr_template.xlsx` or `ECR_TEMPLATE_PATH`.
+- If `deped/ecr_template.xlsx` is missing, ECR CSV export can still work but ECR XLSX export should report that a compatible template is required.
 - ECR teacher imports accept `.xlsx` only.
 - SF1, SF2, and ECR user-facing exports should be CSV or XLSX only.
 - SF1 import is handled through Admin Enrollments.

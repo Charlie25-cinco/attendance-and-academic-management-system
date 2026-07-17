@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../functions/bootstrap.php';
 if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'admin') {
-    header("Location: ../auth/Login.php");
+    header("Location: ../auth/login.php");
     exit();
 }
 
@@ -41,7 +41,7 @@ if (isset($_GET['download_template'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $page_title; ?> - Balingasag Senior High School</title>
+    <title><?php echo htmlspecialchars($page_title, ENT_QUOTES, 'UTF-8'); ?> - Balingasag Senior High School</title>
     <link href="<?php echo appAssetPath('src/vendor/bootstrap/bootstrap.min.css'); ?>" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo appAssetPath('src/vendor/bootstrap-icons/bootstrap-icons.css'); ?>">
     <link rel="stylesheet" href="../assets/css/main.css">
@@ -514,9 +514,6 @@ if (isset($_GET['download_template'])) {
         let sectionsCache = {};
         let studentsRequestController = null;
         let studentsRequestSeq = 0;
-        function appendCsrfToFormData(fd) {
-            if (fd && csrfToken) fd.set('csrf_token', csrfToken);
-        }
 
         document.addEventListener('DOMContentLoaded', () => {
             loadStudents();
@@ -659,17 +656,6 @@ if (isset($_GET['download_template'])) {
             return str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
         }
 
-        function programLabel(row) {
-            if (row.program === 'academic_strengthened') return 'Academic Track (Strengthened)';
-            if (row.program === 'technical_professional') return 'Technical Professional';
-            if (row.track === 'techpro') return 'TechPro';
-            if (row.track === 'academic') return 'Academic';
-            return '';
-        }
-
-        function escHtml(str) {
-            return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-        }
 
         function capitalizeWords(input) {
             input.value = input.value.replace(/\b\w/g, c => c.toUpperCase());

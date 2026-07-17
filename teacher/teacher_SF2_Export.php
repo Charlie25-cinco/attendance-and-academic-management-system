@@ -7,7 +7,7 @@ require_once $__appRoot . '/functions/bootstrap.php';
 unset($__appRoot);
 
 if (!isset($_SESSION['logged_in']) || !in_array($_SESSION['role'], ['teacher', 'admin'], true)) {
-    header("Location: ../auth/Login.php");
+    header("Location: ../auth/login.php");
     exit();
 }
 

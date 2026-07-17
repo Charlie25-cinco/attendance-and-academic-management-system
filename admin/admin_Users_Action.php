@@ -74,17 +74,8 @@ if (!$db) {
 
 $action = $_GET['action'] ?? '';
 
-function adminUsersRequireCsrf() {
-    $sessionToken = (string)($_SESSION['csrf_token'] ?? '');
-    $requestToken = trim((string)($_POST['csrf_token'] ?? $_GET['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '')));
-    if ($sessionToken === '' || $requestToken === '' || !hash_equals($sessionToken, $requestToken)) {
-        echo json_encode(['success' => false, 'message' => 'Invalid CSRF token']);
-        exit();
-    }
-}
-
 if (in_array($action, ['create', 'update', 'delete', 'reset_password', 'set_status'], true)) {
-    adminUsersRequireCsrf();
+    requireCsrfToken();
 }
 
 switch ($action) {

@@ -29,17 +29,84 @@ function appGuardProductionSecret(string $envKey, ?string $value, array $blocked
     }
 }
 
+function appWarnUnsafeDefaults(string $envKey, ?string $value, array $blockedValues): void {
+    $value = trim((string)$value);
+    if ($value === '') { return; }
+    foreach ($blockedValues as $blockedValue) {
+        if (hash_equals((string)$blockedValue, $value)) {
+            if (appIsProductionEnv()) {
+                error_log('[SECURITY] ' . $envKey . ' must be changed before production deployment.');
+                die('Application configuration error - ' . $envKey . ' is not configured securely');
+            }
+            error_log('[SECURITY WARNING] ' . $envKey . ' is using a known default value. Change it before deploying to production.');
+            return;
+        }
+    }
+}
+
+function requireCsrfToken(): void {
+    $sessionToken = (string)($_SESSION['csrf_token'] ?? '');
+    $requestToken = trim((string)($_POST['csrf_token'] ?? ($_GET['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? ''))));
+    if ($sessionToken === '' || $requestToken === '' || !hash_equals($sessionToken, $requestToken)) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => 'Invalid CSRF token']);
+        exit();
+    }
+}
+
+function normalizeDate($value): string {
+    if (!is_string($value)) {
+        return '';
+    }
+    $value = trim($value);
+    return preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) ? $value : '';
+}
+
+function normalizeInt($value): int {
+    if (!is_scalar($value)) {
+        return 0;
+    }
+    $value = trim((string)$value);
+    return ctype_digit($value) ? (int)$value : 0;
+}
+
+function normalizeText($value): string {
+    if (!is_scalar($value)) {
+        return '';
+    }
+    return trim((string)$value);
+}
+
+function normalizeRoomValue($room): string {
+    $room = preg_replace('/\\s+/', ' ', trim((string)$room));
+    if ($room === '') {
+        return '';
+    }
+    return strtoupper(substr($room, 0, 1)) . substr($room, 1);
+}
+
+function normalizeSubjectNameValue($name): string {
+    $name = preg_replace('/\s+/', ' ', trim((string)$name));
+    if ($name === '') {
+        return '';
+    }
+    if (function_exists('mb_convert_case')) {
+        return mb_convert_case($name, MB_CASE_TITLE, 'UTF-8');
+    }
+    return ucwords(strtolower($name));
+}
+
 function getDefaultNewUserPassword(): string {
     $env = appEnvValue('DEFAULT_NEW_USER_PASSWORD', '');
     if ($env !== '' && $env !== false) {
-        appGuardProductionSecret('DEFAULT_NEW_USER_PASSWORD', (string)$env, ['bshsams341227', 'change-me', 'change-this-before-production']);
+        appWarnUnsafeDefaults('DEFAULT_NEW_USER_PASSWORD', (string)$env, ['bshsams341227', 'change-me', 'change-this-before-production']);
         return (string)$env;
     }
     $localPath = __DIR__ . '/../config/App.local.php';
     if (file_exists($localPath)) {
         $config = require $localPath;
         if (is_array($config) && !empty($config['default_new_user_password'])) {
-            appGuardProductionSecret('DEFAULT_NEW_USER_PASSWORD', (string)$config['default_new_user_password'], ['bshsams341227', 'change-me', 'change-this-before-production']);
+            appWarnUnsafeDefaults('DEFAULT_NEW_USER_PASSWORD', (string)$config['default_new_user_password'], ['bshsams341227', 'change-me', 'change-this-before-production']);
             return (string)$config['default_new_user_password'];
         }
     }
@@ -55,7 +122,7 @@ function getDefaultNewUserPassword(): string {
 function getFirstRunAdminPassword(): string {
     $env = appEnvValue('FIRST_RUN_ADMIN_PASSWORD', '');
     if ($env !== '' && $env !== false) {
-        appGuardProductionSecret('FIRST_RUN_ADMIN_PASSWORD', (string)$env, ['bshsams341227', 'change-me', 'change-this-before-production']);
+        appWarnUnsafeDefaults('FIRST_RUN_ADMIN_PASSWORD', (string)$env, ['bshsams341227', 'change-me', 'change-this-before-production']);
         return (string)$env;
     }
     return getDefaultNewUserPassword();
@@ -343,4 +410,289 @@ function setSchoolSetting(PDO $db, string $key, string $value): bool {
         $stmt = $db->prepare("INSERT INTO school_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)");
         return $stmt->execute([$key, $value]);
     } catch (Throwable $e) { error_log('School setting update failed: ' . $e->getMessage()); return false; }
+}
+
+// =============================================================================
+// RBAC (Role-Based Access Control) Helpers
+// =============================================================================
+
+function ensureRbacTables(PDO $db): void {
+    static $ready = false;
+    if ($ready) { return; }
+    $migrations = [
+        "CREATE TABLE IF NOT EXISTS rbac_roles (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            role_key VARCHAR(30) UNIQUE NOT NULL,
+            label VARCHAR(50) NOT NULL,
+            description TEXT NULL,
+            is_system TINYINT(1) NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+        "CREATE TABLE IF NOT EXISTS rbac_permissions (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            permission_key VARCHAR(50) UNIQUE NOT NULL,
+            label VARCHAR(100) NOT NULL,
+            description TEXT NULL,
+            category VARCHAR(50) NOT NULL DEFAULT 'general',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+        "CREATE TABLE IF NOT EXISTS rbac_role_permissions (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            role_id INT NOT NULL,
+            permission_id INT NOT NULL,
+            enabled TINYINT(1) NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_role_permission (role_id, permission_id),
+            CONSTRAINT fk_rbac_rp_role FOREIGN KEY (role_id) REFERENCES rbac_roles(id) ON DELETE CASCADE,
+            CONSTRAINT fk_rbac_rp_perm FOREIGN KEY (permission_id) REFERENCES rbac_permissions(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+    ];
+    foreach ($migrations as $sql) {
+        try { $db->exec($sql); } catch (Throwable $e) { error_log('RBAC table creation failed: ' . $e->getMessage()); }
+    }
+    $ready = true;
+}
+
+function ensureRbacRolesSeeded(PDO $db): void {
+    static $done = false;
+    if ($done) { return; }
+    ensureRbacTables($db);
+    try {
+        $roleCount = (int)$db->query("SELECT COUNT(*) FROM rbac_roles")->fetchColumn();
+        $mappingCount = (int)$db->query("SELECT COUNT(*) FROM rbac_role_permissions")->fetchColumn();
+        if ($roleCount > 0 && $mappingCount > 0) { $done = true; return; }
+    } catch (Throwable $e) { return; }
+
+    $roles = [
+        ['admin', 'Administrator', 'Full system access.', 1],
+        ['teacher', 'Teacher', 'Can manage attendance, grades, and view assigned classes.', 1],
+        ['student', 'Student', 'Can view attendance, grades, and class schedules.', 1],
+        ['parent', 'Parent', 'Can view child progress and report cards.', 1],
+    ];
+    $stmt = $db->prepare("INSERT IGNORE INTO rbac_roles (role_key, label, description, is_system) VALUES (?, ?, ?, ?)");
+    foreach ($roles as $r) { $stmt->execute($r); }
+
+    $permissions = [
+        ['attendance.view', 'View Attendance', 'attendance'],
+        ['attendance.manage', 'Manage Attendance', 'attendance'],
+        ['attendance.reports', 'Attendance Reports', 'attendance'],
+        ['grades.view', 'View Grades', 'grades'],
+        ['grades.enter', 'Enter Grades', 'grades'],
+        ['grades.approve', 'Approve Grades', 'grades'],
+        ['grades.reports', 'Grade Reports', 'grades'],
+        ['classes.view', 'View Classes', 'classes'],
+        ['classes.manage', 'Manage Classes', 'classes'],
+        ['classes.assign', 'Assign Teachers', 'classes'],
+        ['users.view', 'View Users', 'users'],
+        ['users.create', 'Create Users', 'users'],
+        ['users.edit', 'Edit Users', 'users'],
+        ['users.delete', 'Delete Users', 'users'],
+        ['users.reset_password', 'Reset Passwords', 'users'],
+        ['announcements.view', 'View Announcements', 'announcements'],
+        ['announcements.create', 'Create Announcements', 'announcements'],
+        ['announcements.delete', 'Delete Announcements', 'announcements'],
+        ['reports.view', 'View Reports', 'reports'],
+        ['reports.export', 'Export Reports', 'reports'],
+        ['settings.view', 'View Settings', 'settings'],
+        ['settings.manage', 'Manage Settings', 'settings'],
+        ['messages.view', 'View Messages', 'messages'],
+        ['messages.send', 'Send Messages', 'messages'],
+        ['archives.view', 'View Archives', 'archives'],
+        ['archives.manage', 'Manage Archives', 'archives'],
+    ];
+    $permStmt = $db->prepare("INSERT IGNORE INTO rbac_permissions (permission_key, label, category) VALUES (?, ?, ?)");
+    foreach ($permissions as $p) { $permStmt->execute($p); }
+
+    $teacherPerms = [
+        'attendance.view', 'attendance.manage', 'attendance.reports',
+        'grades.view', 'grades.enter',
+        'classes.view',
+        'users.view',
+        'announcements.view',
+        'reports.view', 'reports.export',
+        'messages.view', 'messages.send',
+        'archives.view',
+    ];
+    $studentPerms = ['attendance.view', 'grades.view', 'classes.view', 'announcements.view'];
+    $parentPerms = ['attendance.view', 'grades.view', 'reports.view', 'announcements.view'];
+
+    $roleMap = [
+        'admin' => null,
+        'teacher' => $teacherPerms,
+        'student' => $studentPerms,
+        'parent' => $parentPerms,
+    ];
+
+    foreach ($roleMap as $roleKey => $perms) {
+        $roleId = (int)$db->query("SELECT id FROM rbac_roles WHERE role_key = " . $db->quote($roleKey, PDO::PARAM_STR))->fetchColumn();
+        if ($roleId <= 0) { continue; }
+        if ($roleKey === 'admin') {
+            $db->exec("INSERT IGNORE INTO rbac_role_permissions (role_id, permission_id, enabled) SELECT $roleId, id, 1 FROM rbac_permissions");
+        } else {
+            foreach ($perms as $permKey) {
+                $permId = (int)$db->query("SELECT id FROM rbac_permissions WHERE permission_key = " . $db->quote($permKey, PDO::PARAM_STR))->fetchColumn();
+                if ($permId > 0) {
+                    $db->exec("INSERT IGNORE INTO rbac_role_permissions (role_id, permission_id, enabled) VALUES ($roleId, $permId, 1)");
+                }
+            }
+        }
+    }
+    $done = true;
+}
+
+function loadRbacPermissions(PDO $db, string $roleKey): array {
+    ensureRbacRolesSeeded($db);
+    $stmt = $db->prepare("SELECT p.permission_key
+                          FROM rbac_role_permissions rp
+                          JOIN rbac_roles r ON r.id = rp.role_id
+                          JOIN rbac_permissions p ON p.id = rp.permission_id
+                          WHERE r.role_key = ? AND rp.enabled = 1");
+    $stmt->execute([$roleKey]);
+    return $stmt->fetchAll(PDO::FETCH_COLUMN);
+}
+
+function hasPermission(string $permissionKey): bool {
+    if (!isset($_SESSION['role'])) { return false; }
+    $perms = $_SESSION['rbac_permissions'] ?? null;
+    if ($perms === null) {
+        $dbInstance = new Database();
+        $db = $dbInstance->getConnection();
+        if (!$db) { return false; }
+        $perms = loadRbacPermissions($db, $_SESSION['role']);
+        $_SESSION['rbac_permissions'] = $perms;
+    }
+    return in_array($permissionKey, $perms, true);
+}
+
+function requirePermission(string $permissionKey): void {
+    if (!hasPermission($permissionKey)) {
+        header('Content-Type: application/json');
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Insufficient permissions.']);
+        exit();
+    }
+}
+
+function requirePagePermission(string $permissionKey): void {
+    if (hasPermission($permissionKey)) { return; }
+    http_response_code(403);
+    echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Access denied</title></head><body style="font-family:Arial,sans-serif;padding:2rem;"><h1>Access denied</h1><p>You do not have permission to access this page.</p></body></html>';
+    exit();
+}
+
+function permissionForScript(string $scriptName): string {
+    $scriptName = strtolower($scriptName);
+    $map = [
+        'admin_users.php' => 'users.view',
+        'admin_users_action.php' => 'users.view',
+        'admin_enrollments.php' => 'users.view',
+        'admin_enrollments_action.php' => 'users.view',
+        'admin_sf1_import.php' => 'users.create',
+        'admin_sf1_import_action.php' => 'users.create',
+        'admin_classes.php' => 'classes.view',
+        'admin_class_detail.php' => 'classes.view',
+        'admin_class_edit.php' => 'classes.manage',
+        'admin_classes_action.php' => 'classes.manage',
+        'admin_sections.php' => 'classes.view',
+        'admin_section_detail.php' => 'classes.view',
+        'admin_sections_action.php' => 'classes.manage',
+        'admin_attendance.php' => 'attendance.view',
+        'admin_announcements.php' => 'announcements.view',
+        'admin_announcements_action.php' => 'announcements.create',
+        'admin_grade_approvals.php' => 'grades.approve',
+        'admin_grade_approvals_detail.php' => 'grades.approve',
+        'admin_grade_approvals_action.php' => 'grades.approve',
+        'admin_reports.php' => 'reports.view',
+        'admin_reports_action.php' => 'reports.view',
+        'admin_archives.php' => 'archives.view',
+        'admin_rbac.php' => 'settings.manage',
+        'admin_rbac_action.php' => 'settings.manage',
+        'teacher_attendance.php' => 'attendance.view',
+        'teacher_classes.php' => 'classes.view',
+        'teacher_grades.php' => 'grades.view',
+        'teacher_reports.php' => 'reports.view',
+        'teacher_reports_action.php' => 'reports.view',
+        'teacher_advisory.php' => 'grades.view',
+        'teacher_announcements.php' => 'announcements.view',
+        'teacher_archives.php' => 'archives.view',
+        'teacher_chat.php' => 'messages.view',
+        'teacher_chat_action.php' => 'messages.send',
+        'teacher_sf2_export.php' => 'reports.export',
+        'teacher_action.php' => 'classes.view',
+        'student.php' => 'classes.view',
+        'student_attendance.php' => 'attendance.view',
+        'student_classes.php' => 'classes.view',
+        'student_report_card.php' => 'grades.view',
+        'student_announcements.php' => 'announcements.view',
+        'student_action.php' => 'classes.view',
+        'parent.php' => 'reports.view',
+        'parent_progress.php' => 'grades.view',
+        'parent_report_card.php' => 'grades.view',
+        'parent_announcements.php' => 'announcements.view',
+        'parent_chat.php' => 'messages.view',
+        'parent_chat_action.php' => 'messages.send',
+    ];
+    return $map[$scriptName] ?? '';
+}
+
+function enforceScriptPermission(PDO $db): void {
+    if (empty($_SESSION['logged_in']) || empty($_SESSION['role'])) { return; }
+    $script = basename((string)($_SERVER['SCRIPT_NAME'] ?? ''));
+    $permission = permissionForScript($script);
+    if ($permission === '') { return; }
+    $_SESSION['rbac_permissions'] = loadRbacPermissions($db, (string)$_SESSION['role']);
+    $isJson = str_ends_with(strtolower($script), '_action.php') || str_contains((string)($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json');
+    if (hasPermission($permission)) { return; }
+    http_response_code(403);
+    if ($isJson) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => 'Insufficient permissions.']);
+    } else {
+        echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Access denied</title></head><body style="font-family:Arial,sans-serif;padding:2rem;"><h1>Access denied</h1><p>You do not have permission to access this page.</p></body></html>';
+    }
+    exit();
+}
+
+function loadAllRbacRoles(PDO $db): array {
+    ensureRbacRolesSeeded($db);
+    $stmt = $db->query("SELECT id, role_key, label, description, is_system FROM rbac_roles ORDER BY role_key");
+    return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
+
+function loadAllRbacPermissions(PDO $db): array {
+    ensureRbacRolesSeeded($db);
+    $stmt = $db->query("SELECT id, permission_key, label, description, category FROM rbac_permissions ORDER BY category, permission_key");
+    return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
+
+function loadRolePermissionMap(PDO $db): array {
+    ensureRbacRolesSeeded($db);
+    $stmt = $db->query("SELECT r.role_key, p.permission_key, rp.enabled
+                         FROM rbac_role_permissions rp
+                         JOIN rbac_roles r ON r.id = rp.role_id
+                         JOIN rbac_permissions p ON p.id = rp.permission_id
+                         ORDER BY r.role_key, p.category, p.permission_key");
+    $map = [];
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $map[$row['role_key']][$row['permission_key']] = (int)$row['enabled'];
+    }
+    return $map;
+}
+
+function syncRbacPermissions(PDO $db, int $roleId, array $enabledPermissions): void {
+    $db->exec("UPDATE rbac_role_permissions SET enabled = 0 WHERE role_id = " . (int)$roleId);
+    $permStmt = $db->prepare("UPDATE rbac_role_permissions SET enabled = 1 WHERE role_id = ? AND permission_id = (SELECT id FROM (SELECT id FROM rbac_permissions WHERE permission_key = ?) AS tmp)");
+    foreach ($enabledPermissions as $permKey) {
+        $permStmt->execute([$roleId, $permKey]);
+    }
+}
+
+function refreshSessionPermissions(): void {
+    if (!isset($_SESSION['role'])) { return; }
+    $dbInstance = new Database();
+    $db = $dbInstance->getConnection();
+    if ($db) {
+        $_SESSION['rbac_permissions'] = loadRbacPermissions($db, $_SESSION['role']);
+    }
 }

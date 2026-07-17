@@ -38,7 +38,7 @@ function requirePostAndCsrfOrExit() {
     }
 
     $sessionToken = (string)($_SESSION['csrf_token'] ?? '');
-    $requestToken = trim((string)($_POST['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '')));
+    $requestToken = trim((string)($_POST['csrf_token'] ?? ($_GET['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? ''))));
     if ($sessionToken === '' || $requestToken === '' || !hash_equals($sessionToken, $requestToken)) {
         header('Content-Type: application/json');
         http_response_code(403);
@@ -231,29 +231,6 @@ function handleUpdateNote($db) {
         'message' => 'Report note updated.'
     ]);
     exit();
-}
-
-function normalizeDate($value) {
-    if (!is_string($value)) {
-        return '';
-    }
-    $value = trim($value);
-    return preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) ? $value : '';
-}
-
-function normalizeInt($value) {
-    if (!is_scalar($value)) {
-        return 0;
-    }
-    $value = trim((string)$value);
-    return ctype_digit($value) ? (int)$value : 0;
-}
-
-function normalizeText($value) {
-    if (!is_scalar($value)) {
-        return '';
-    }
-    return trim((string)$value);
 }
 
 function appendDateFilter($column, &$where, &$params, $dateFrom, $dateTo) {

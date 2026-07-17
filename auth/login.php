@@ -162,7 +162,7 @@ function establishLoginSession($db, $user) {
 function redirectByRole($role) {
     switch ($role) {
         case 'admin': header("Location: ../admin/admin.php"); break;
-        case 'teacher': header("Location: ../teacher/Teacher.php"); break;
+        case 'teacher': header("Location: ../teacher/teacher.php"); break;
         case 'student': header("Location: ../student/Student.php"); break;
         case 'parent': header("Location: ../parent/parent.php"); break;
         default: header("Location: ../index.php"); break;

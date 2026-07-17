@@ -7,7 +7,7 @@ require_once $__appRoot . '/functions/bootstrap.php';
 unset($__appRoot);
 // Teacher Chat Page - Teacher communicates with parents
 if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'teacher') {
-    header("Location: ../auth/Login.php");
+    header("Location: ../auth/login.php");
     exit();
 }
 
@@ -98,7 +98,7 @@ $page_title = 'Messages';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $page_title; ?> - Balingasag Senior High School</title>
+    <title><?php echo htmlspecialchars($page_title, ENT_QUOTES, 'UTF-8'); ?> - Balingasag Senior High School</title>
     <link href="<?php echo appAssetPath('vendor/bootstrap/bootstrap.min.css'); ?>" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo appAssetPath('vendor/bootstrap-icons/bootstrap-icons.css'); ?>">
     <link rel="stylesheet" href="../assets/css/main.css">
@@ -212,7 +212,7 @@ $page_title = 'Messages';
                         $sName = trim(($selectedConv['student_first'] ?? '') . ' ' . ($selectedConv['student_last'] ?? ''));
                         ?>
                         <div class="chat-header teacher-chat-header d-flex align-items-center gap-3">
-                            <a href="Teacher_Chat.php" class="btn btn-sm btn-outline-secondary d-lg-none"><i class="bi bi-arrow-left"></i></a>
+                            <a href="teacher_Chat.php" class="btn btn-sm btn-outline-secondary d-lg-none"><i class="bi bi-arrow-left"></i></a>
                             <div>
                                 <div class="fw-bold"><?php echo htmlspecialchars($pName); ?></div>
                                 <small class="text-muted">Parent of <?php echo htmlspecialchars($sName); ?> · Grade <?php echo (int)($selectedConv['grade_level'] ?? 0); ?> <?php echo htmlspecialchars($selectedConv['section'] ?? ''); ?></small>
@@ -262,7 +262,7 @@ $page_title = 'Messages';
     <script src="<?php echo appAssetPath('vendor/bootstrap/bootstrap.bundle.min.js'); ?>"></script>
     <script src="../assets/js/main.js"></script>
     <script>
-    const chatActionUrl = 'Teacher_Chat_Action.php';
+    const chatActionUrl = 'teacher_Chat_Action.php';
     const selectedParentId = <?php echo $selectedParentId; ?>;
 
     // Auto-scroll to bottom

@@ -121,6 +121,11 @@ function mailerSendHtml(string $to, string $subject, string $html, string $fromE
     $from = $fromEmail !== '' ? $fromEmail : ($cfg['from_email'] ?: $user);
     $name = $fromName !== '' ? $fromName : $cfg['from_name'];
 
+    $to = str_replace(["\r", "\n"], '', $to);
+    $from = str_replace(["\r", "\n"], '', $from);
+    $name = str_replace(["\r", "\n"], '', $name);
+    $subject = str_replace(["\r", "\n"], '', $subject);
+
     $fp = @stream_socket_client("tcp://{$host}:{$port}", $errno, $errstr, 20, STREAM_CLIENT_CONNECT);
     if (!$fp) {
         return false;

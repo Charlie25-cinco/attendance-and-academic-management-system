@@ -22,7 +22,7 @@ $action = $_GET['action'] ?? '';
 
 function adminAnnouncementsRequireCsrf() {
     $sessionToken = (string)($_SESSION['csrf_token'] ?? '');
-    $requestToken = trim((string)($_POST['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '')));
+    $requestToken = trim((string)($_POST['csrf_token'] ?? ($_GET['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? ''))));
     if ($sessionToken === '' || $requestToken === '' || !hash_equals($sessionToken, $requestToken)) {
         echo json_encode(['success' => false, 'message' => 'Invalid CSRF token']);
         exit();
@@ -93,7 +93,7 @@ function createAnnouncement($db) {
             $titleText = 'School announcement: ' . $title;
             $bodyText = ucfirst($category) . ' · Tap to read more';
             pushNotifyUsers($db, $recipientIds, $titleText, $bodyText, [
-                'link' => 'Admin_Announcements.php',
+                'link' => 'admin_Announcements.php',
             ]);
         }
 

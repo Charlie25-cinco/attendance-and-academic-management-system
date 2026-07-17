@@ -6,11 +6,11 @@ while ($__appRoot !== dirname($__appRoot) && !is_file($__appRoot . '/functions/b
 require_once $__appRoot . '/functions/bootstrap.php';
 unset($__appRoot);
 if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'teacher') {
-    header("Location: ../auth/Login.php");
+    header("Location: ../auth/login.php");
     exit();
 }
 
-require_once __DIR__ . '/Teacher_Reports_Helper.php';
+require_once __DIR__ . '/teacher_Reports_Helper.php';
 
 $db = (new Database())->getConnection();
 $teacherId = (int)($_SESSION['user_id'] ?? 0);
@@ -268,7 +268,7 @@ $page_title = 'Report Card';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $page_title; ?> - Balingasag Senior High School</title>
+    <title><?php echo htmlspecialchars($page_title, ENT_QUOTES, 'UTF-8'); ?> - Balingasag Senior High School</title>
     <link href="<?php echo appAssetPath('vendor/bootstrap/bootstrap.min.css'); ?>" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo appAssetPath('vendor/bootstrap-icons/bootstrap-icons.css'); ?>">
     <link rel="stylesheet" href="../assets/css/main.css">
@@ -469,7 +469,7 @@ function submitReportCardToAdmin(academicYear){
     const fd=new FormData();
     fd.append('academic_year',academicYear);
     if(window.APP_CSRF_TOKEN)fd.append('csrf_token',window.APP_CSRF_TOKEN);
-    fetch('Teacher_Action.php?action=submit_report_card',{method:'POST',body:fd})
+    fetch('teacher_Action.php?action=submit_report_card',{method:'POST',body:fd})
       .then(r=>r.json())
       .then(d=>{if(d.success){showNotification(d.message||'Report card submitted to admin','success');setTimeout(()=>location.reload(),700);}else{showNotification(d.message||'Failed to submit report card','danger');}})
       .catch(()=>showNotification('Error submitting report card','danger'));
@@ -478,7 +478,7 @@ function recallReportCard(academicYear){
     const fd=new FormData();
     fd.append('academic_year',academicYear);
     if(window.APP_CSRF_TOKEN)fd.append('csrf_token',window.APP_CSRF_TOKEN);
-    fetch('Teacher_Action.php?action=recall_report_card',{method:'POST',body:fd})
+    fetch('teacher_Action.php?action=recall_report_card',{method:'POST',body:fd})
       .then(r=>r.json())
       .then(d=>{if(d.success){showNotification(d.message||'Report cards recalled','success');setTimeout(()=>location.reload(),700);}else{showNotification(d.message||'Failed to recall report cards','danger');}})
       .catch(()=>showNotification('Error recalling report cards','danger'));

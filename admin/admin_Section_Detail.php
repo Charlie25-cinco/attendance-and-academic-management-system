@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../functions/bootstrap.php';
 // Admin - Section Detail Page
 if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'admin') {
-    header("Location: ../auth/Login.php");
+    header("Location: ../auth/login.php");
     exit();
 }
 
@@ -14,7 +14,7 @@ $gradeLevel = (int)($_GET['grade_level'] ?? 0);
 $section = trim((string)($_GET['section'] ?? ''));
 
 if ($gradeLevel <= 0 || $section === '' || !$db) {
-    header("Location: Admin_Sections.php");
+    header("Location: admin_Sections.php");
     exit();
 }
 
@@ -130,7 +130,7 @@ $page_title = 'Section Detail - Grade ' . $gradeLevel . ' - ' . $section;
     <div class="main-content">
         <?php include '../includes/header.php'; ?>
         <div class="page-content">
-            <a href="Admin_Sections.php" class="btn btn-link text-decoration-none mb-3">
+            <a href="admin_Sections.php" class="btn btn-link text-decoration-none mb-3">
                 <i class="bi bi-arrow-left me-2"></i>Back to Sections
             </a>
 

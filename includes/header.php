@@ -2,8 +2,6 @@
 // Header Component - Attendance and Academic Management System
 // Usage: Include this file and optionally set $page_title variable before including
 
-if (session_status() === PHP_SESSION_NONE) {
-}
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
@@ -56,8 +54,8 @@ if ($displayInitials === '') {
 }
 
 $rolePages = [
-    'admin' => ['dashboard' => 'Admin.php', 'attendance' => 'Admin_Attendance.php', 'announcements' => 'Admin_Announcements.php'],
-    'teacher' => ['dashboard' => 'Teacher.php', 'attendance' => 'Teacher_Attendance.php', 'announcements' => 'Teacher_Announcements.php', 'classes' => 'Teacher_Classes.php'],
+    'admin' => ['dashboard' => 'admin.php', 'attendance' => 'admin_Attendance.php', 'announcements' => 'admin_Announcements.php'],
+    'teacher' => ['dashboard' => 'teacher.php', 'attendance' => 'teacher_Attendance.php', 'announcements' => 'teacher_Announcements.php', 'classes' => 'teacher_Classes.php'],
     'student' => ['dashboard' => 'Student.php', 'attendance' => 'Student_Attendance.php', 'announcements' => 'Student_Announcements.php', 'classes' => 'student_Classes.php'],
     'parent' => ['dashboard' => 'Parent.php', 'attendance' => 'Parent_Progress.php', 'announcements' => 'Parent_Announcements.php'],
 ];

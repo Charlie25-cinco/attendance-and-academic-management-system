@@ -20,7 +20,6 @@
         ],
         "files": [
             "config/constants.php",
-            "config/session.php",
             "functions/app-helpers.php"
         ]
     },

@@ -7,7 +7,7 @@ require_once $__appRoot . '/functions/bootstrap.php';
 unset($__appRoot);
 // Teacher - SF5 Report on Promotion and Level of Proficiency (Printable + XLSX)
 if (!isset($_SESSION['logged_in']) || !in_array($_SESSION['role'], ['teacher', 'admin'], true)) {
-    header("Location: ../auth/Login.php");
+    header("Location: ../auth/login.php");
     exit();
 }
 

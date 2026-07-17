@@ -3,7 +3,7 @@ require_once __DIR__ . '/../functions/bootstrap.php';
 // Admin - Manage Attendance Page
 // Check if user is logged in and is admin
 if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'admin') {
-    header("Location: ../auth/Login.php");
+    header("Location: ../auth/login.php");
     exit();
 }
 
@@ -99,7 +99,7 @@ function buildPageUrl($page) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $page_title; ?> - Balingasag Senior High School</title>
+    <title><?php echo htmlspecialchars($page_title, ENT_QUOTES, 'UTF-8'); ?> - Balingasag Senior High School</title>
     <link href="<?php echo appAssetPath('src/vendor/bootstrap/bootstrap.min.css'); ?>" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo appAssetPath('src/vendor/bootstrap-icons/bootstrap-icons.css'); ?>">
     <link rel="stylesheet" href="../assets/css/main.css">
@@ -131,7 +131,7 @@ function buildPageUrl($page) {
                         <div class="row g-3 mb-3">
                             <div class="col-md-3">
                                 <label class="form-label">Date</label>
-                                <input type="date" name="date" class="form-control" value="<?php echo $selectedDate; ?>">
+                                <input type="date" name="date" class="form-control" value="<?php echo htmlspecialchars($selectedDate, ENT_QUOTES, 'UTF-8'); ?>">
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Class</label>
@@ -171,7 +171,7 @@ function buildPageUrl($page) {
                             </div>
                             <?php if ($searchQuery || $selectedClass || $selectedStatus || $selectedDate != date('Y-m-d')): ?>
                             <div class="col-md-2 d-flex align-items-end">
-                                <a href="Admin_Attendance.php" class="btn btn-outline-secondary w-100">
+                                <a href="admin_Attendance.php" class="btn btn-outline-secondary w-100">
                                     <i class="bi bi-x-circle me-2"></i>Clear All
                                 </a>
                             </div>
@@ -305,14 +305,6 @@ function buildPageUrl($page) {
     </div>
 
     <script>
-        function escapeHtml(text) {
-            return String(text ?? '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
-        }
 
         function getAttendanceExportData() {
             const table = document.querySelector('.custom-table');

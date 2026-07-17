@@ -80,6 +80,13 @@ function pushFetchMobileTokens(PDO $db, array $userIds): array {
 }
 
 function pushGetServiceAccount(): ?array {
+    static $cached = null;
+    static $loaded = false;
+    if ($loaded) {
+        return $cached;
+    }
+    $loaded = true;
+
     $keyFile = __DIR__ . '/../../Mobile/iprojects-96359-1ad492a4cdc5.json';
     error_log('[push] Looking for service account at: ' . $keyFile);
     if (!is_file($keyFile)) {
@@ -97,6 +104,7 @@ function pushGetServiceAccount(): ?array {
         return null;
     }
     error_log('[push] Service account loaded: ' . ($data['client_email'] ?? 'no email'));
+    $cached = $data;
     return $data;
 }
 

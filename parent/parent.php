@@ -6,7 +6,7 @@ while ($__appRoot !== dirname($__appRoot) && !is_file($__appRoot . '/functions/b
 require_once $__appRoot . '/functions/bootstrap.php';
 unset($__appRoot);
 if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'parent') {
-    header("Location: ../auth/Login.php");
+    header("Location: ../auth/login.php");
     exit();
 }
 
@@ -226,10 +226,21 @@ if ($db && $parentId > 0) {
         $gradeCards = $gradeStmt->fetchAll(PDO::FETCH_ASSOC);
 
         $today = parentDayAbbrNow();
+
+        $todaySchedule = [];
+        $classIds = array_map('intval', array_column($classes, 'id'));
+        $attMap = [];
+        if (!empty($classIds)) {
+            $ph = implode(',', array_fill(0, count($classIds), '?'));
+            $attBatchStmt = $db->prepare("SELECT class_id, status FROM attendance WHERE student_id = ? AND class_id IN ($ph) AND date = CURDATE()");
+            $attBatchStmt->execute(array_merge([$selectedStudentId], $classIds));
+            while ($attRow = $attBatchStmt->fetch(PDO::FETCH_ASSOC)) {
+                $attMap[(int)$attRow['class_id']] = $attRow['status'];
+            }
+        }
+
         foreach ($classes as $class) {
-            $statusStmt = $db->prepare("SELECT status FROM attendance WHERE student_id = ? AND class_id = ? AND date = CURDATE() LIMIT 1");
-            $statusStmt->execute([$selectedStudentId, $class['id']]);
-            $attStatus = (string)($statusStmt->fetchColumn() ?: 'pending');
+            $attStatus = $attMap[(int)$class['id']] ?? 'pending';
             $times = parentScheduleTimesForDay($class['schedule'] ?? '', $today);
             foreach ($times as $time) {
                 $todaySchedule[] = [
@@ -242,7 +253,6 @@ if ($db && $parentId > 0) {
             }
         }
 
-        $classIds = array_map('intval', array_column($classes, 'id'));
         if (!empty($classIds)) {
             $ph = implode(',', array_fill(0, count($classIds), '?'));
             $classAnnStmt = $db->prepare("SELECT ca.title, ca.content, ca.created_at, c.class_name
@@ -284,7 +294,7 @@ $nextClassLabel = !empty($todaySchedule)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $page_title; ?> - Balingasag Senior High School</title>
+    <title><?php echo htmlspecialchars($page_title, ENT_QUOTES, 'UTF-8'); ?> - Balingasag Senior High School</title>
     <link href="<?php echo appAssetPath('vendor/bootstrap/bootstrap.min.css'); ?>" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo appAssetPath('vendor/bootstrap-icons/bootstrap-icons.css'); ?>">
     <link rel="stylesheet" href="../assets/css/main.css">

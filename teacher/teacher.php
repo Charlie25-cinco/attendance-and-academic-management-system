@@ -7,7 +7,7 @@ require_once $__appRoot . '/functions/bootstrap.php';
 unset($__appRoot);
 // Teacher Dashboard
 if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'teacher') {
-    header("Location: ../auth/Login.php");
+    header("Location: ../auth/login.php");
     exit();
 }
 
@@ -195,7 +195,7 @@ $page_title = 'Teacher Dashboard';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $page_title; ?> - Balingasag Senior High School</title>
+    <title><?php echo htmlspecialchars($page_title, ENT_QUOTES, 'UTF-8'); ?> - Balingasag Senior High School</title>
     <link href="<?php echo appAssetPath('vendor/bootstrap/bootstrap.min.css'); ?>" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo appAssetPath('vendor/bootstrap-icons/bootstrap-icons.css'); ?>">
     <link rel="stylesheet" href="../assets/css/main.css">
@@ -382,19 +382,19 @@ $page_title = 'Teacher Dashboard';
         <div class="row g-4 mb-3">
             <div class="col-12">
                 <div class="teacher-quick-grid">
-                    <a href="Teacher_Attendance.php" class="teacher-quick-card">
+                    <a href="teacher_Attendance.php" class="teacher-quick-card">
                         <span class="teacher-quick-icon" style="background: rgba(16, 185, 129, 0.1); color: var(--accent-color);"><i class="bi bi-calendar-check"></i></span>
                         <span class="teacher-quick-copy"><strong>Take Attendance</strong><span>Open the current class attendance workflow</span></span>
                     </a>
-                    <a href="Teacher_Grades.php" class="teacher-quick-card">
+                    <a href="teacher_Grades.php" class="teacher-quick-card">
                         <span class="teacher-quick-icon" style="background: rgba(59, 130, 246, 0.1); color: var(--secondary-color);"><i class="bi bi-clipboard-data"></i></span>
                         <span class="teacher-quick-copy"><strong>Enter Grades</strong><span>Update subject scores and approval-ready records</span></span>
                     </a>
-                    <a href="Teacher_Advisory.php" class="teacher-quick-card">
+                    <a href="teacher_Advisory.php" class="teacher-quick-card">
                         <span class="teacher-quick-icon" style="background: rgba(99, 102, 241, 0.12); color: #4f46e5;"><i class="bi bi-file-earmark-text"></i></span>
                         <span class="teacher-quick-copy"><strong>Report Cards</strong><span>Review advisory learners and submission status</span></span>
                     </a>
-                    <a href="Teacher_Classes.php" class="teacher-quick-card">
+                    <a href="teacher_Classes.php" class="teacher-quick-card">
                         <span class="teacher-quick-icon" style="background: rgba(245, 158, 11, 0.1); color: var(--warning-color);"><i class="bi bi-file-earmark-arrow-up"></i></span>
                         <span class="teacher-quick-copy"><strong>Upload Material</strong><span>Manage files and class learning resources</span></span>
                     </a>
@@ -404,7 +404,7 @@ $page_title = 'Teacher Dashboard';
                 <div class="content-card">
                     <div class="content-card-header">
                         <h5 class="content-card-title">School Announcements</h5>
-                        <a href="Teacher_Announcements.php" class="btn btn-sm btn-primary-custom">View All</a>
+                        <a href="teacher_Announcements.php" class="btn btn-sm btn-primary-custom">View All</a>
                     </div>
                     <div class="content-card-body">
                         <?php if (empty($announcements)): ?>
@@ -430,7 +430,7 @@ $page_title = 'Teacher Dashboard';
                 <div class="content-card">
                     <div class="content-card-header">
                         <h5 class="content-card-title">Class Announcements</h5>
-                        <a href="Teacher_Announcements.php" class="btn btn-sm btn-primary-custom">View All</a>
+                        <a href="teacher_Announcements.php" class="btn btn-sm btn-primary-custom">View All</a>
                     </div>
                     <div class="content-card-body">
                         <?php if (empty($classAnnouncements)): ?>

@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../functions/bootstrap.php';
 if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'admin') {
-    header("Location: ../auth/Login.php");
+    header("Location: ../auth/login.php");
     exit();
 }
 
@@ -33,12 +33,12 @@ $isFourQuarter = ($gs === '4_quarter');
 $termLabels = SshsGradeCalculator::validTerms($gs);
 
 if ($gradeLevel <= 0 || $section === '' || $academicYear === '') {
-    header("Location: Admin_Grade_Approvals.php?status=" . urlencode($selectedStatus));
+    header("Location: admin_Grade_Approvals.php?status=" . urlencode($selectedStatus));
     exit();
 }
 
 if ($isFourQuarter && !in_array($semester, ['S1', 'S2'], true)) {
-    header("Location: Admin_Grade_Approvals.php?status=" . urlencode($selectedStatus));
+    header("Location: admin_Grade_Approvals.php?status=" . urlencode($selectedStatus));
     exit();
 }
 
@@ -328,7 +328,7 @@ $page_title = 'Grade Approval Details';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $page_title; ?> - Balingasag Senior High School</title>
+    <title><?php echo htmlspecialchars($page_title, ENT_QUOTES, 'UTF-8'); ?> - Balingasag Senior High School</title>
     <link href="<?php echo appAssetPath('src/vendor/bootstrap/bootstrap.min.css'); ?>" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo appAssetPath('src/vendor/bootstrap-icons/bootstrap-icons.css'); ?>">
     <link rel="stylesheet" href="../assets/css/main.css">
@@ -340,7 +340,7 @@ $page_title = 'Grade Approval Details';
 <div class="main-content">
     <?php include '../includes/header.php'; ?>
     <div class="page-content">
-        <a href="Admin_Grade_Approvals.php?tab=<?php echo urlencode($activeTab); ?>&status=<?php echo urlencode($selectedStatus); ?>" class="btn btn-link text-decoration-none mb-3">
+        <a href="admin_Grade_Approvals.php?tab=<?php echo urlencode($activeTab); ?>&status=<?php echo urlencode($selectedStatus); ?>" class="btn btn-link text-decoration-none mb-3">
             <i class="bi bi-arrow-left me-2"></i>Back to Grade Approvals
         </a>
 

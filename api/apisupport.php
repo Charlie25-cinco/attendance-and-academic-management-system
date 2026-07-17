@@ -195,7 +195,13 @@ function apiRequestBody(): array {
 }
 
 function apiHandleCors(): void {
-    $origin = apiConfig('API_ALLOWED_ORIGIN', '*');
+    $origin = apiConfig('API_ALLOWED_ORIGIN', '');
+    if ($origin === '') {
+        if (apiConfig('APP_ENV', 'development') === 'production') {
+            apiFailSecretConfiguration('API_ALLOWED_ORIGIN must be set to a trusted origin in production.');
+        }
+        return;
+    }
     if ($origin === '*' && apiConfig('APP_ENV', 'development') === 'production') {
         apiFailSecretConfiguration('API_ALLOWED_ORIGIN must be set to a trusted origin in production.');
     }

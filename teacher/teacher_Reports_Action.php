@@ -11,7 +11,7 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'teacher') {
     exit();
 }
 
-require_once __DIR__ . '/Teacher_Reports_Helper.php';
+require_once __DIR__ . '/teacher_Reports_Helper.php';
 $db = (new Database())->getConnection();
 if (!$db) {
     http_response_code(500);
@@ -34,7 +34,7 @@ function requirePostAndCsrfOrExit() {
     }
 
     $sessionToken = (string)($_SESSION['csrf_token'] ?? '');
-    $requestToken = trim((string)($_POST['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '')));
+    $requestToken = trim((string)($_POST['csrf_token'] ?? ($_GET['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? ''))));
     if ($sessionToken === '' || $requestToken === '' || !hash_equals($sessionToken, $requestToken)) {
         header('Content-Type: application/json');
         http_response_code(403);

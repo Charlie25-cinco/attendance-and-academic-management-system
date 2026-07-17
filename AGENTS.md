@@ -19,6 +19,7 @@ Use "Accept or Reject" before moving from Plan to Build, and before making code 
 - Keep the project GitHub-ready by maintaining `.gitignore`, setup docs, and clear validation commands.
 - Treat `deped/` as the source of truth for SF1, SF2, and ECR templates unless the user explicitly replaces a template.
 - Runtime web pages should bootstrap through `functions/bootstrap.php`.
+- Instructor-only requirements should be developed on a separate branch, not directly on `main`.
 
 ## Validation
 
@@ -39,6 +40,8 @@ For local manual testing, `composer run serve` starts the PHP development server
 - Production must provide strong `API_AUTH_SECRET` and `API_SYNC_SECRET` values.
 - Production must set `API_ALLOWED_ORIGIN` to a trusted origin.
 - API first-login password changes require the temporary token returned by the login endpoint.
+- RBAC permission enforcement is centralized from `functions/bootstrap.php`; keep the script-to-permission map in `functions/app-helpers.php` current when adding protected pages or action handlers.
+- Existing AJAX flows may pass CSRF by POST body, query string, or `X-CSRF-Token`; keep `requireCsrfToken()` compatible with all three unless those callers are migrated.
 
 ## DepEd Forms
 
@@ -49,4 +52,5 @@ For local manual testing, `composer run serve` starts the PHP development server
 - Keep Admin SF1/SF2 export controls in Admin Reports and Teacher SF2 export controls in Teacher Reports.
 - Teacher ECR preview, upload, import, and export routes live in `api/routes/12-ecr.php`; keep uploads `.xlsx` only and downloads `.csv`/`.xlsx`.
 - Do not use `.xlsm` ECR workbooks as export templates.
+- ECR XLSX export requires `deped/ecr_template.xlsx` or `ECR_TEMPLATE_PATH`; do not mark XLSX export ready without that file.
 - Do not reintroduce admin portal pages for ECR template management or academic year settings unless explicitly requested.

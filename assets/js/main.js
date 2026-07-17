@@ -234,6 +234,29 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
+const escHtml = escapeHtml;
+const esc = escapeHtml;
+
+function programLabel(row) {
+  if (row.program === "academic_strengthened") return "Academic Track (Strengthened)";
+  if (row.program === "technical_professional") return "Technical Professional";
+  if (row.track === "techpro") return "TechPro";
+  if (row.track === "academic") return "Academic";
+  return "";
+}
+
+function appendCsrfToFormData(fd) {
+  if (fd && typeof csrfToken !== "undefined" && csrfToken) {
+    fd.set("csrf_token", csrfToken);
+  }
+  return fd;
+}
+
+function withCsrfUrl(url) {
+  if (typeof csrfToken === "undefined" || !csrfToken) return url;
+  return url + (url.includes("?") ? "&" : "?") + "csrf_token=" + encodeURIComponent(csrfToken);
+}
+
 function getNotificationMeta(type = "info") {
   const normalized = String(type || "info").toLowerCase();
   if (normalized === "danger" || normalized === "error") {

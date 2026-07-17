@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../functions/bootstrap.php';
 // Admin - Archived Records Page
 if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'admin') {
-    header("Location: ../auth/Login.php");
+    header("Location: ../auth/login.php");
     exit();
 }
 
@@ -278,7 +278,7 @@ $page_title = 'Archived Records';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $page_title; ?> - Balingasag Senior High School</title>
+    <title><?php echo htmlspecialchars($page_title, ENT_QUOTES, 'UTF-8'); ?> - Balingasag Senior High School</title>
     <link href="<?php echo appAssetPath('src/vendor/bootstrap/bootstrap.min.css'); ?>" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo appAssetPath('src/vendor/bootstrap-icons/bootstrap-icons.css'); ?>">
     <link rel="stylesheet" href="../assets/css/main.css">
@@ -622,10 +622,6 @@ $page_title = 'Archived Records';
 
     <script>
         const csrfToken = (window.APP_CSRF_TOKEN || '').toString();
-        function withCsrfUrl(url) {
-            if (!csrfToken) return url;
-            return url + (url.includes('?') ? '&' : '?') + 'csrf_token=' + encodeURIComponent(csrfToken);
-        }
 
         function restoreAnnouncement(id) {
             fetch(withCsrfUrl('admin_Announcements_Action.php?action=restore&id=' + id))

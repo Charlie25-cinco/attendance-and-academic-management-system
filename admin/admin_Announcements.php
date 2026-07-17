@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../functions/bootstrap.php';
 // Admin - Announcements Page
 if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'admin') {
-    header("Location: ../auth/Login.php");
+    header("Location: ../auth/login.php");
     exit();
 }
 
@@ -61,7 +61,7 @@ $visibleAnnouncementCount = count($announcements);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $page_title; ?> - Balingasag Senior High School</title>
+    <title><?php echo htmlspecialchars($page_title, ENT_QUOTES, 'UTF-8'); ?> - Balingasag Senior High School</title>
     <link href="<?php echo appAssetPath('src/vendor/bootstrap/bootstrap.min.css'); ?>" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo appAssetPath('src/vendor/bootstrap-icons/bootstrap-icons.css'); ?>">
     <link rel="stylesheet" href="../assets/css/main.css">
@@ -331,16 +331,6 @@ $visibleAnnouncementCount = count($announcements);
         const createAnnouncementModalEl = document.getElementById('createAnnouncementModal');
         const editAnnouncementModalEl = document.getElementById('editAnnouncementModal');
         const csrfToken = (window.APP_CSRF_TOKEN || '').toString();
-
-        function withCsrfUrl(url) {
-            if (!csrfToken) return url;
-            return url + (url.includes('?') ? '&' : '?') + 'csrf_token=' + encodeURIComponent(csrfToken);
-        }
-
-        function appendCsrfToFormData(fd) {
-            if (fd && csrfToken) fd.set('csrf_token', csrfToken);
-            return fd;
-        }
 
         function resetCreateAnnouncementModal() {
             const form = document.getElementById('createAnnouncementForm');

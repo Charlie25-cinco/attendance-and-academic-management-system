@@ -3,7 +3,7 @@ require_once __DIR__ . '/../functions/bootstrap.php';
 // Admin Dashboard - Attendance and Academic Management System
 // Check if user is logged in and is admin
 if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'admin') {
-    header("Location: ../auth/Login.php");
+    header("Location: ../auth/login.php");
     exit();
 }
 
@@ -143,7 +143,7 @@ $page_title = 'Admin Dashboard';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $page_title; ?> - Balingasag Senior High School</title>
+    <title><?php echo htmlspecialchars($page_title, ENT_QUOTES, 'UTF-8'); ?> - Balingasag Senior High School</title>
     
     <!-- Bootstrap CSS -->
     <link href="<?php echo appAssetPath('src/vendor/bootstrap/bootstrap.min.css'); ?>" rel="stylesheet">
@@ -186,10 +186,10 @@ $page_title = 'Admin Dashboard';
                             </div>
                         </div>
                         <div class="admin-action-strip">
-                            <a href="Admin_Users.php" class="btn btn-primary-custom">
+                            <a href="admin_Users.php" class="btn btn-primary-custom">
                                 <i class="bi bi-people me-1"></i>Manage Users
                             </a>
-                            <a href="Admin_Grade_Approvals.php" class="btn btn-outline-primary">
+                            <a href="admin_Grade_Approvals.php" class="btn btn-outline-primary">
                                 <i class="bi bi-folder-check me-1"></i>Review Approvals
                             </a>
                             <a href="admin_Reports.php" class="btn btn-outline-primary">
@@ -301,19 +301,19 @@ $page_title = 'Admin Dashboard';
                         </div>
                         <div class="content-card-body">
                             <div class="admin-quick-stack">
-                                <a href="Admin_Users.php" class="quick-action">
+                                <a href="admin_Users.php" class="quick-action">
                                     <div class="quick-action-icon" style="background: rgba(59, 130, 246, 0.1); color: var(--secondary-color);">
                                         <i class="bi bi-person-plus"></i>
                                     </div>
                                     <span class="quick-action-text">Add New User</span>
                                 </a>
-                                <a href="Admin_Classes.php" class="quick-action">
+                                <a href="admin_Classes.php" class="quick-action">
                                     <div class="quick-action-icon" style="background: rgba(16, 185, 129, 0.1); color: var(--accent-color);">
                                         <i class="bi bi-journal-plus"></i>
                                     </div>
                                     <span class="quick-action-text">Create New Class</span>
                                 </a>
-                                <a href="Admin_Announcements.php" class="quick-action">
+                                <a href="admin_Announcements.php" class="quick-action">
                                     <div class="quick-action-icon" style="background: rgba(245, 158, 11, 0.1); color: var(--warning-color);">
                                         <i class="bi bi-megaphone"></i>
                                     </div>
@@ -378,7 +378,7 @@ $page_title = 'Admin Dashboard';
                     <div class="content-card">
                         <div class="content-card-header">
                             <h5 class="content-card-title">School Announcements</h5>
-                            <a href="Admin_Announcements.php" class="btn btn-sm btn-primary-custom">View All</a>
+                            <a href="admin_Announcements.php" class="btn btn-sm btn-primary-custom">View All</a>
                         </div>
                         <div class="content-card-body">
                             <?php if (empty($announcements)): ?>
@@ -406,7 +406,7 @@ $page_title = 'Admin Dashboard';
                     <div class="content-card">
                         <div class="content-card-header">
                             <h5 class="content-card-title">Recently Added Users</h5>
-                            <a href="Admin_Users.php" class="btn btn-sm btn-primary-custom">View All</a>
+                            <a href="admin_Users.php" class="btn btn-sm btn-primary-custom">View All</a>
                         </div>
                         <div class="content-card-body">
                             <?php foreach ($recentUsers as $user): ?>
@@ -431,7 +431,7 @@ $page_title = 'Admin Dashboard';
                     <div class="content-card">
                         <div class="content-card-header">
                             <h5 class="content-card-title">Classes Overview</h5>
-                            <a href="Admin_Classes.php" class="btn btn-sm btn-primary-custom">Manage Classes</a>
+                            <a href="admin_Classes.php" class="btn btn-sm btn-primary-custom">Manage Classes</a>
                         </div>
                         <div class="content-card-body">
                             <div class="row g-4">
