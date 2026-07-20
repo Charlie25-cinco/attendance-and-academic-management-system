@@ -42,6 +42,7 @@ jobs:
               "DB_NAME",
               "DB_USER",
               "DB_PASS",
+              "DEFAULT_NEW_USER_PASSWORD",
               "API_AUTH_SECRET",
               "API_SYNC_SECRET",
               "RESEND_API_KEY",
@@ -59,6 +60,8 @@ jobs:
               "DB_PASS",
               "DB_SSL_CA",
               "DB_SSL_CA_CONTENT",
+              "DEFAULT_NEW_USER_PASSWORD",
+              "FIRST_RUN_ADMIN_PASSWORD",
               "API_AUTH_SECRET",
               "API_SYNC_SECRET",
               "SMTP_HOST",
@@ -104,6 +107,8 @@ jobs:
           DB_SSL_CA: ${{ secrets.DB_SSL_CA }}
           DB_SSL_CA_CONTENT: ${{ secrets.DB_SSL_CA_CONTENT }}
           DB_SSL_VERIFY_SERVER_CERT: ${{ secrets.DB_SSL_VERIFY_SERVER_CERT }}
+          DEFAULT_NEW_USER_PASSWORD: ${{ secrets.DEFAULT_NEW_USER_PASSWORD }}
+          FIRST_RUN_ADMIN_PASSWORD: ${{ secrets.FIRST_RUN_ADMIN_PASSWORD }}
           API_AUTH_SECRET: ${{ secrets.API_AUTH_SECRET }}
           API_SYNC_SECRET: ${{ secrets.API_SYNC_SECRET }}
           SMTP_HOST: ${{ secrets.SMTP_HOST }}

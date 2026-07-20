@@ -143,12 +143,14 @@ Open `http://localhost:5000`.
   - `WASMER_OWNER`
   - `WASMER_APP_NAME`, for example `balingasagshs`; if omitted, the package default is `bshs-ams`
   - `APP_PUBLIC_BASE_URL`, for example `https://balingasagshs.wasmer.app`
+  - `DEFAULT_NEW_USER_PASSWORD` and optional `FIRST_RUN_ADMIN_PASSWORD`
   - `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, and optional `RESEND_FROM_NAME`
 - Configure production secrets in Wasmer for database and API values:
   - `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`
   - `DB_SSL_CA` or `DB_SSL_CA_CONTENT` when TiDB Cloud requires TLS CA verification
   - `DB_SSL_VERIFY_SERVER_CERT` optional, defaults to `1`
   - `APP_SESSION_DRIVER=database`
+  - `DEFAULT_NEW_USER_PASSWORD`, and `FIRST_RUN_ADMIN_PASSWORD` if first-admin seeding will run in that environment
   - `API_AUTH_SECRET`, `API_SYNC_SECRET`
   - `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `RESEND_FROM_NAME` for password reset OTP email
   - SMTP, SMS, or push secrets if those fallback/features are enabled

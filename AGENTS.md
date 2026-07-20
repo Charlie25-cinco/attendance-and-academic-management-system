@@ -115,7 +115,7 @@ For local manual testing, `composer run serve` starts the PHP development server
 - GitHub deployment should use `.github/workflows/wasmer-deploy.yml`.
 - The workflow must install production Composer dependencies before `wasmer deploy` because `vendor/` is not committed.
 - Do not commit real Wasmer owner names, tokens, database credentials, API secrets, or production URLs unless they are intentionally public.
-- Configure GitHub secrets for `WASMER_TOKEN`, `WASMER_OWNER`, `WASMER_APP_NAME`, `APP_PUBLIC_BASE_URL`, `RESEND_API_KEY`, and `RESEND_FROM_EMAIL`; use `WASMER_APP_NAME=balingasagshs` and `APP_PUBLIC_BASE_URL=https://balingasagshs.wasmer.app` for the school deployment.
+- Configure GitHub secrets for `WASMER_TOKEN`, `WASMER_OWNER`, `WASMER_APP_NAME`, `APP_PUBLIC_BASE_URL`, `DEFAULT_NEW_USER_PASSWORD`, optional `FIRST_RUN_ADMIN_PASSWORD`, `RESEND_API_KEY`, and `RESEND_FROM_EMAIL`; use `WASMER_APP_NAME=balingasagshs` and `APP_PUBLIC_BASE_URL=https://balingasagshs.wasmer.app` for the school deployment.
 - Configure Wasmer app secrets for TiDB/MySQL credentials, optional `DB_SSL_CA` or `DB_SSL_CA_CONTENT`, `APP_SESSION_DRIVER=database`, `API_AUTH_SECRET`, `API_SYNC_SECRET`, Resend OTP email secrets, and optional SMTP/SMS/push credentials.
 - Keep Composer `platform-check` disabled for Wasmer unless the runtime is confirmed to provide a 64-bit PHP build.
 - Treat Wasmer app instances as stateless; use configured volumes for `/app/storage` and `/app/assets/uploads`, and keep durable school records plus active PHP sessions in TiDB/MySQL.
