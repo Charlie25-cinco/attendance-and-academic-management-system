@@ -27,12 +27,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $lastId = (int)($_GET['last_id'] ?? 0);
         if ($parentId <= 0) { echo json_encode(['messages' => []]); exit(); }
 
-        // Verify parent is linked to teacher's student
+        // Verify parent is linked to one of the teacher's advisory students.
         $verifyStmt = $db->prepare("
-            SELECT 1 FROM parent_students ps
-            JOIN enrollments e ON e.student_id = ps.student_id
-            JOIN class_subjects cs ON cs.class_id = e.class_id AND cs.teacher_id = ?
-            WHERE ps.parent_id = ? LIMIT 1
+            SELECT 1
+            FROM parent_students ps
+            JOIN users st ON st.id = ps.student_id AND st.role = 'student' AND st.status = 'active'
+            JOIN classes c ON c.teacher_id = ?
+                AND c.status = 'active'
+                AND c.grade_level = st.grade_level
+                AND (
+                    LOWER(TRIM(COALESCE(c.section, ''))) = LOWER(TRIM(COALESCE(st.section, '')))
+                    OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(c.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(st.section, ''), '(', 1)))
+                )
+            WHERE ps.parent_id = ?
+            LIMIT 1
         ");
         $verifyStmt->execute([$teacherId, $parentId]);
         if (!$verifyStmt->fetch()) { echo json_encode(['messages' => []]); exit(); }
@@ -90,22 +98,32 @@ if ($action === 'send_message') {
         exit();
     }
 
-    // Verify recipient is a parent linked to teacher's student
+    // Verify recipient is a parent linked to one of the teacher's advisory students.
     $verifyStmt = $db->prepare("
-        SELECT 1 FROM parent_students ps
-        JOIN enrollments e ON e.student_id = ps.student_id
-        JOIN class_subjects cs ON cs.class_id = e.class_id AND cs.teacher_id = ?
-        WHERE ps.parent_id = ? LIMIT 1
+        SELECT ps.student_id
+        FROM parent_students ps
+        JOIN users st ON st.id = ps.student_id AND st.role = 'student' AND st.status = 'active'
+        JOIN classes c ON c.teacher_id = ?
+            AND c.status = 'active'
+            AND c.grade_level = st.grade_level
+            AND (
+                LOWER(TRIM(COALESCE(c.section, ''))) = LOWER(TRIM(COALESCE(st.section, '')))
+                OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(c.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(st.section, ''), '(', 1)))
+            )
+        WHERE ps.parent_id = ?
+          AND (? <= 0 OR ps.student_id = ?)
+        LIMIT 1
     ");
-    $verifyStmt->execute([$teacherId, $toUserId]);
-    if (!$verifyStmt->fetch()) {
+    $verifyStmt->execute([$teacherId, $toUserId, $studentId, $studentId]);
+    $verifiedStudentId = (int)($verifyStmt->fetchColumn() ?: 0);
+    if ($verifiedStudentId <= 0) {
         echo json_encode(['success' => false, 'message' => 'Unauthorized recipient.']);
         exit();
     }
 
     $insertStmt = $db->prepare("INSERT INTO messages (from_user_id, to_user_id, student_id, message, created_at)
                                 VALUES (?, ?, ?, ?, NOW())");
-    $insertStmt->execute([$teacherId, $toUserId, $studentId > 0 ? $studentId : null, $message]);
+    $insertStmt->execute([$teacherId, $toUserId, $verifiedStudentId, $message]);
 
     echo json_encode(['success' => true, 'message' => 'Sent.', 'id' => (int)$db->lastInsertId()]);
     exit();

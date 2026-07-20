@@ -44,6 +44,7 @@ $writeActions = [
     'finish_grade_item',
     'delete_grade_item',
     'restore_grade_item',
+    'recall_grades',
     'submit_report_card',
     'recall_report_card'
 ];
@@ -70,6 +71,9 @@ switch ($action) {
         break;
     case 'submit_grades':
         submitGrades($db, $teacherId);
+        break;
+    case 'recall_grades':
+        recallGrades($db, $teacherId);
         break;
     case 'upload_material':
         uploadMaterial($db, $teacherId);
@@ -1109,6 +1113,64 @@ function gradePeriodBounds($academicYear, $term = null, $semester = null) {
     return [$startYear . '-07-01', $endYear . '-03-31'];
 }
 
+function gradePeriodFromActivityDate($activityDate): array {
+    $ts = strtotime((string)$activityDate);
+    if ($ts === false) {
+        $ts = time();
+    }
+    $year = (int)date('Y', $ts);
+    $month = (int)date('n', $ts);
+    $startYear = ($month >= 6) ? $year : ($year - 1);
+    $academicYear = $startYear . '-' . ($startYear + 1);
+    $gs = gradingSystemFromYear($academicYear);
+
+    if ($gs === '4_quarter') {
+        if ($month >= 12 || $month <= 5) {
+            return [$academicYear, ($month <= 2 || $month === 12) ? 'Q1' : 'Q2', 'S2'];
+        }
+        return [$academicYear, $month <= 8 ? 'Q1' : 'Q2', 'S1'];
+    }
+
+    if ($month >= 10 && $month <= 12) {
+        return [$academicYear, 'Term2', null];
+    }
+    if ($month >= 1 && $month <= 3) {
+        return [$academicYear, 'Term3', null];
+    }
+    return [$academicYear, 'Term1', null];
+}
+
+function gradeActivityPeriodLockMessage($db, $teacherId, $classId, $activityDate): ?string {
+    if (!gradesHasTermColumn($db)) {
+        return null;
+    }
+    ensureGradeApprovalsTable($db);
+    [$academicYear, $term, $semester] = gradePeriodFromActivityDate($activityDate);
+    $tc = getTermColumnName($db);
+    $sql = "SELECT ga.status
+            FROM grade_approvals ga
+            JOIN grades g ON g.id = ga.grade_id
+            JOIN class_subjects cs ON cs.id = g.class_subject_id
+            WHERE cs.class_id = ?
+            AND cs.teacher_id = ?
+            AND g.{$tc} = ?
+            AND g.academic_year = ?
+            AND ga.status = 'submitted'
+            LIMIT 1";
+    $params = [(int)$classId, (int)$teacherId, $term, $academicYear];
+    if ($semester !== null) {
+        $sql .= " AND g.semester = ?";
+        $params[] = $semester;
+    }
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
+    $status = strtolower((string)($stmt->fetchColumn() ?: ''));
+    if ($status === '') {
+        return null;
+    }
+    return 'This grading period was already submitted to admin. Recall the submission before editing grade activities.';
+}
+
 function computeQuarterSummaryFromItems($db, $classId, $teacherId, $dateFrom, $dateTo, $weights) {
     $sql = "SELECT gis.student_id, gi.component,
             SUM(gis.score) AS score_sum,
@@ -1499,9 +1561,10 @@ function fetchGrades($db, $teacherId) {
             if ($hasGradeApprovals) {
                 $approvalSql = "SELECT g.student_id,
                                        CASE
-                                         WHEN SUM(CASE WHEN COALESCE(ga.status, 'approved') = 'rejected' THEN 1 ELSE 0 END) > 0 THEN 'rejected'
-                                         WHEN SUM(CASE WHEN COALESCE(ga.status, 'approved') = 'pending' THEN 1 ELSE 0 END) > 0 THEN 'pending'
-                                         ELSE 'approved'
+                                         WHEN SUM(CASE WHEN COALESCE(ga.status, 'pending') = 'rejected' THEN 1 ELSE 0 END) > 0 THEN 'rejected'
+                                         WHEN SUM(CASE WHEN COALESCE(ga.status, 'pending') = 'submitted' THEN 1 ELSE 0 END) > 0 THEN 'submitted'
+                                         WHEN SUM(CASE WHEN COALESCE(ga.status, 'pending') = 'admin_verified' THEN 1 ELSE 0 END) > 0 THEN 'admin_verified'
+                                         ELSE 'pending'
                                        END AS approval_status
                                 FROM grades g
                                 JOIN class_subjects cs ON cs.id = g.class_subject_id
@@ -1522,7 +1585,7 @@ function fetchGrades($db, $teacherId) {
                 $approvalStmt = $db->prepare($approvalSql);
                 $approvalStmt->execute($approvalParams);
                 foreach ($approvalStmt->fetchAll(PDO::FETCH_ASSOC) as $ap) {
-                    $approvalMap[(int)$ap['student_id']] = ucfirst((string)$ap['approval_status']);
+                    $approvalMap[(int)$ap['student_id']] = strtolower((string)$ap['approval_status']);
                 }
             }
 
@@ -1546,7 +1609,7 @@ function fetchGrades($db, $teacherId) {
                     'assessment_score' => $cur['assessment_score'],
                     'quarter_final_grade' => $cur['quarter_final_grade'],
                     'semester_final_grade' => null,
-                    'approval_status' => $approvalMap[$sid] ?? 'Approved'
+                    'approval_status' => $approvalMap[$sid] ?? 'pending'
                 ];
             }
             echo json_encode([
@@ -1593,7 +1656,7 @@ function fetchGrades($db, $teacherId) {
                   q.ww_raw_score, q.ww_total_score, q.pt_raw_score, q.pt_total_score, q.assessment_raw_score, q.assessment_total_score,
                   q.ww_score, q.pt_score, q.assessment_score, q.quarter_final_grade,
                   NULL AS semester_final_grade,
-                  COALESCE(ap.approval_status, 'approved') AS approval_status
+                  COALESCE(ap.approval_status, 'pending') AS approval_status
                   FROM users u
                   " . tEnrollActiveUsersJoinSql() . "
                   LEFT JOIN (
@@ -1614,9 +1677,10 @@ function fetchGrades($db, $teacherId) {
                   LEFT JOIN (
                     SELECT g.student_id,
                            CASE
-                             WHEN SUM(CASE WHEN COALESCE(ga.status, 'approved') = 'rejected' THEN 1 ELSE 0 END) > 0 THEN 'rejected'
-                             WHEN SUM(CASE WHEN COALESCE(ga.status, 'approved') = 'pending' THEN 1 ELSE 0 END) > 0 THEN 'pending'
-                             ELSE 'approved'
+                             WHEN SUM(CASE WHEN COALESCE(ga.status, 'pending') = 'rejected' THEN 1 ELSE 0 END) > 0 THEN 'rejected'
+                             WHEN SUM(CASE WHEN COALESCE(ga.status, 'pending') = 'submitted' THEN 1 ELSE 0 END) > 0 THEN 'submitted'
+                             WHEN SUM(CASE WHEN COALESCE(ga.status, 'pending') = 'admin_verified' THEN 1 ELSE 0 END) > 0 THEN 'admin_verified'
+                             ELSE 'pending'
                            END AS approval_status
                     FROM grades g
                     JOIN class_subjects cs ON cs.id = g.class_subject_id
@@ -1643,7 +1707,7 @@ function fetchGrades($db, $teacherId) {
         $stmt->execute($params);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         foreach ($rows as &$row) {
-            $row['approval_status'] = ucfirst((string)($row['approval_status'] ?? 'approved'));
+            $row['approval_status'] = strtolower((string)($row['approval_status'] ?? 'pending'));
         }
         unset($row);
 
@@ -1708,8 +1772,32 @@ function submitGrades($db, $teacherId) {
             echo json_encode(['success' => false, 'message' => "Database update required: add grades.term column first"]);
             return;
         }
-
         ensureGradeApprovalsTable($db);
+        ensureReportCardApprovalsTable($db);
+
+        $lockedSql = "SELECT ga.status
+                      FROM grade_approvals ga
+                      JOIN grades g ON g.id = ga.grade_id
+                      JOIN class_subjects cs ON cs.id = g.class_subject_id
+                      WHERE cs.class_id = ?
+                      AND cs.teacher_id = ?
+                      AND g.{$tc} = ?
+                      AND g.academic_year = ?
+                      AND ga.status = 'submitted'
+                      LIMIT 1";
+        $lockedParams = [$classId, $teacherId, $term, $academicYear];
+        if ($gs === '4_quarter') {
+            $lockedSql .= " AND g.semester = ?";
+            $lockedParams[] = $semester;
+        }
+        $lockedStmt = $db->prepare($lockedSql);
+        $lockedStmt->execute($lockedParams);
+        $lockedStatus = strtolower((string)($lockedStmt->fetchColumn() ?: ''));
+        if ($lockedStatus !== '') {
+            echo json_encode(['success' => false, 'message' => 'These grades are already submitted to admin. Recall the submission before editing or resubmitting.']);
+            return;
+        }
+
         $weights = getClassWeights($db, $classId);
         $hasRaw = gradesHasRawComponentColumns($db);
 
@@ -1758,6 +1846,7 @@ function submitGrades($db, $teacherId) {
         }
 
         $db->beginTransaction();
+        $submittedStudentIds = [];
 
         foreach ($records as $record) {
             $studentId = (int)($record['student_id'] ?? 0);
@@ -1850,7 +1939,30 @@ function submitGrades($db, $teacherId) {
 
             if ($gradeId > 0) {
                 markGradePendingApproval($db, $gradeId, $teacherId);
+                $submittedStudentIds[$studentId] = true;
             }
+        }
+
+        if (!empty($submittedStudentIds)) {
+            $studentIds = array_keys($submittedStudentIds);
+            $placeholders = implode(',', array_fill(0, count($studentIds), '?'));
+            $reportSql = "UPDATE report_card_approvals
+                          SET status = 'rejected',
+                              reviewed_by = NULL,
+                              reviewed_at = NOW(),
+                              remarks = 'Subject grade correction submitted by teacher.'
+                          WHERE student_id IN ({$placeholders})
+                          AND academic_year = ?
+                          AND status = 'approved'";
+            $reportParams = array_merge($studentIds, [$academicYear]);
+            if ($gs === '4_quarter') {
+                $reportSql .= " AND semester = ?";
+                $reportParams[] = $semester;
+            } else {
+                $reportSql .= " AND (semester IS NULL OR semester = '')";
+            }
+            $reportStmt = $db->prepare($reportSql);
+            $reportStmt->execute($reportParams);
         }
 
         $db->commit();
@@ -1861,6 +1973,92 @@ function submitGrades($db, $teacherId) {
             $db->rollBack();
         }
         error_log("submitGrades error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Database error. Please try again.']);
+    }
+}
+
+function recallGrades($db, $teacherId) {
+    try {
+        ensureGradeApprovalsTable($db);
+        $rawBody = file_get_contents('php://input');
+        $payload = json_decode($rawBody, true);
+        if (!is_array($payload)) {
+            echo json_encode(['success' => false, 'message' => 'Invalid request payload']);
+            return;
+        }
+
+        $classId = (int)($payload['class_id'] ?? 0);
+        $term = normalizeTerm($payload['term'] ?? ($payload['quarter'] ?? 'Term1'));
+        $academicYear = trim((string)($payload['academic_year'] ?? ''));
+        $gs = gradingSystemFromYear($academicYear);
+        $semester = null;
+        if ($gs === '4_quarter') {
+            $semester = trim((string)($payload['semester'] ?? ''));
+            if ($semester === '') {
+                $semester = in_array($term, ['Q1', 'Q2'], true) ? 'S1' : 'S2';
+            }
+        }
+
+        if ($classId <= 0 || $academicYear === '' || !preg_match('/^\d{4}-\d{4}$/', $academicYear)) {
+            echo json_encode(['success' => false, 'message' => 'Class and valid academic year are required']);
+            return;
+        }
+        if (!teacherOwnsClass($db, $teacherId, $classId)) {
+            echo json_encode(['success' => false, 'message' => 'You are not assigned to this class']);
+            return;
+        }
+        if (!gradesHasTermColumn($db)) {
+            echo json_encode(['success' => false, 'message' => "Database update required: add grades.term column first"]);
+            return;
+        }
+
+        $tc = getTermColumnName($db);
+        $lockedSql = "SELECT COUNT(*)
+                      FROM grade_approvals ga
+                      JOIN grades g ON g.id = ga.grade_id
+                      JOIN class_subjects cs ON cs.id = g.class_subject_id
+                      WHERE cs.class_id = ?
+                      AND cs.teacher_id = ?
+                      AND g.{$tc} = ?
+                      AND g.academic_year = ?
+                      AND ga.status IN ('admin_verified','approved')";
+        $lockedParams = [$classId, $teacherId, $term, $academicYear];
+        if ($gs === '4_quarter') {
+            $lockedSql .= " AND g.semester = ?";
+            $lockedParams[] = $semester;
+        }
+        $lockedStmt = $db->prepare($lockedSql);
+        $lockedStmt->execute($lockedParams);
+        if ((int)$lockedStmt->fetchColumn() > 0) {
+            echo json_encode(['success' => false, 'message' => 'These grades were already verified by admin. Ask admin to return them as rejected before recalling or resubmitting.']);
+            return;
+        }
+
+        $deleteSql = "DELETE ga
+                      FROM grade_approvals ga
+                      JOIN grades g ON g.id = ga.grade_id
+                      JOIN class_subjects cs ON cs.id = g.class_subject_id
+                      WHERE cs.class_id = ?
+                      AND cs.teacher_id = ?
+                      AND g.{$tc} = ?
+                      AND g.academic_year = ?
+                      AND ga.status IN ('pending','submitted','rejected')";
+        $deleteParams = [$classId, $teacherId, $term, $academicYear];
+        if ($gs === '4_quarter') {
+            $deleteSql .= " AND g.semester = ?";
+            $deleteParams[] = $semester;
+        }
+        $deleteStmt = $db->prepare($deleteSql);
+        $deleteStmt->execute($deleteParams);
+
+        if ($deleteStmt->rowCount() <= 0) {
+            echo json_encode(['success' => false, 'message' => 'No teacher grade submission is available to recall.']);
+            return;
+        }
+
+        echo json_encode(['success' => true, 'message' => 'Grade submission recalled. You can edit and submit again.']);
+    } catch (PDOException $e) {
+        error_log("recallGrades error: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Database error. Please try again.']);
     }
 }
@@ -2271,10 +2469,17 @@ function createGradeItem($db, $teacherId) {
             echo json_encode(['success' => false, 'message' => 'You are not assigned to this class']);
             return;
         }
+        $lockMessage = gradeActivityPeriodLockMessage($db, $teacherId, $classId, $activityDate);
+        if ($lockMessage !== null) {
+            echo json_encode(['success' => false, 'message' => $lockMessage]);
+            return;
+        }
 
         $stmt = $db->prepare("INSERT INTO grade_items (class_id, teacher_id, title, component, total_score, activity_date, status, created_at)
                               VALUES (?, ?, ?, ?, ?, ?, 'active', NOW())");
         $stmt->execute([$classId, $teacherId, $title, $component, round($totalScore, 2), $activityDate]);
+        $gradeItemId = (int)$db->lastInsertId();
+        appNotifyGradeActivityCreated($db, $classId, $gradeItemId, $title, $component, round($totalScore, 2));
 
         $classLabel = teacherGetClassSubtitle($db, $classId);
         $recipients = pushActiveClassRecipientIds($db, $classId);
@@ -2399,6 +2604,11 @@ function saveGradeItemScores($db, $teacherId) {
             echo json_encode(['success' => false, 'message' => 'Grade activity is already finished']);
             return;
         }
+        $lockMessage = gradeActivityPeriodLockMessage($db, $teacherId, (int)$item['class_id'], $item['activity_date'] ?? date('Y-m-d'));
+        if ($lockMessage !== null) {
+            echo json_encode(['success' => false, 'message' => $lockMessage]);
+            return;
+        }
         $total = (float)$item['total_score'];
 
         $enrolled = array_fill_keys(getActiveEnrollmentStudentIds($db, (int)$item['class_id']), true);
@@ -2450,7 +2660,7 @@ function finishGradeItem($db, $teacherId) {
             echo json_encode(['success' => false, 'message' => 'Invalid grade activity']);
             return;
         }
-        $itemStmt = $db->prepare("SELECT id, class_id, status
+        $itemStmt = $db->prepare("SELECT id, class_id, status, activity_date
                                   FROM grade_items
                                   WHERE id = ? AND teacher_id = ?
                                   LIMIT 1");
@@ -2462,6 +2672,11 @@ function finishGradeItem($db, $teacherId) {
         }
         if (($item['status'] ?? '') !== 'active') {
             echo json_encode(['success' => false, 'message' => 'Grade activity not found or already finished']);
+            return;
+        }
+        $lockMessage = gradeActivityPeriodLockMessage($db, $teacherId, (int)$item['class_id'], $item['activity_date'] ?? date('Y-m-d'));
+        if ($lockMessage !== null) {
+            echo json_encode(['success' => false, 'message' => $lockMessage]);
             return;
         }
 
@@ -2513,6 +2728,17 @@ function deleteGradeItem($db, $teacherId) {
             return;
         }
 
+        $item = fetchGradeItemRecord($db, $teacherId, $gradeItemId);
+        if (!$item) {
+            echo json_encode(['success' => false, 'message' => 'Grade activity not found']);
+            return;
+        }
+        $lockMessage = gradeActivityPeriodLockMessage($db, $teacherId, (int)$item['class_id'], $item['activity_date'] ?? date('Y-m-d'));
+        if ($lockMessage !== null) {
+            echo json_encode(['success' => false, 'message' => $lockMessage]);
+            return;
+        }
+
         $stmt = $db->prepare("DELETE FROM grade_items WHERE id = ? AND teacher_id = ?");
         $stmt->execute([$gradeItemId, $teacherId]);
         if ($stmt->rowCount() <= 0) {
@@ -2540,6 +2766,17 @@ function restoreGradeItem($db, $teacherId) {
     }
 
     try {
+        $item = fetchGradeItemRecord($db, $teacherId, $itemId);
+        if (!$item) {
+            echo json_encode(['success' => false, 'message' => 'Grade activity not found']);
+            return;
+        }
+        $lockMessage = gradeActivityPeriodLockMessage($db, $teacherId, (int)$item['class_id'], $item['activity_date'] ?? date('Y-m-d'));
+        if ($lockMessage !== null) {
+            echo json_encode(['success' => false, 'message' => $lockMessage]);
+            return;
+        }
+
         $stmt = $db->prepare("UPDATE grade_items
                               SET status = 'active', finished_at = NULL
                               WHERE id = ? AND teacher_id = ? AND status = 'finished'");
@@ -2721,7 +2958,7 @@ function recallReportCard($db, $teacherId) {
                       WHERE student_id = ?
                       AND academic_year = ?
                       AND advisory_teacher_id = ?
-                      AND status IN ('submitted_admin','approved') "
+                      AND status IN ('submitted_admin','rejected') "
                       . ($semester !== null ? "AND semester = ?" : "AND semester IS NULL");
         $deleteStmt = $db->prepare($deleteSql);
 
@@ -2742,7 +2979,7 @@ function recallReportCard($db, $teacherId) {
         $db->commit();
 
         if ($deletedCount <= 0) {
-            echo json_encode(['success' => false, 'message' => 'No submitted or approved report cards found to recall.']);
+            echo json_encode(['success' => false, 'message' => 'No adviser report card submission is available to recall, or it was already finally approved by admin.']);
             return;
         }
         echo json_encode(['success' => true, 'message' => 'Recalled ' . $deletedCount . ' report card submission(s).']);

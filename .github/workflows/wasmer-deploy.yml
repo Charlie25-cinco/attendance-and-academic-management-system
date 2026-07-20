@@ -1,0 +1,58 @@
+name: Deploy to Wasmer
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - instructor-rbac-requirements
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo, mbstring, zip, dom
+          coverage: none
+
+      - name: Install production dependencies
+        run: composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
+
+      - name: Configure Wasmer app
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import os
+
+          app_yaml = Path("app.yaml")
+          text = app_yaml.read_text(encoding="utf-8")
+          text = text.replace("CHANGE_ME_WASMER_OWNER", os.environ["WASMER_OWNER"])
+          text = text.replace("bshs-ams", os.environ.get("WASMER_APP_NAME") or "bshs-ams", 1)
+          text = text.replace("https://CHANGE_ME_WASMER_APP_URL", os.environ["APP_PUBLIC_BASE_URL"])
+          app_yaml.write_text(text, encoding="utf-8")
+          PY
+        env:
+          WASMER_OWNER: ${{ secrets.WASMER_OWNER }}
+          WASMER_APP_NAME: ${{ secrets.WASMER_APP_NAME }}
+          APP_PUBLIC_BASE_URL: ${{ secrets.APP_PUBLIC_BASE_URL }}
+
+      - name: Install Wasmer
+        shell: bash
+        run: curl https://get.wasmer.io -sSfL | sh
+
+      - name: Deploy
+        shell: bash
+        env:
+          WASMER_TOKEN: ${{ secrets.WASMER_TOKEN }}
+        run: |
+          export PATH="$HOME/.wasmer/bin:$PATH"
+          wasmer deploy --publish-package --non-interactive

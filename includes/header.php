@@ -190,6 +190,26 @@ if ($headerDb && $sessionUserId > 0) {
     } catch (Throwable $e) {
         error_log('Header settings query error: ' . $e->getMessage());
     }
+
+    try {
+        if (dbHasTable($headerDb, 'user_notifications')) {
+            $notifStmt = $headerDb->prepare("SELECT id, title, subtitle, icon, color, link, event_at, is_read
+                                             FROM user_notifications
+                                             WHERE user_id = ?
+                                             ORDER BY is_read ASC, event_at DESC, id DESC
+                                             LIMIT 8");
+            $notifStmt->execute([$sessionUserId]);
+            foreach ($notifStmt->fetchAll(PDO::FETCH_ASSOC) as $item) {
+                $item['time'] = headerTimeAgo($item['event_at'] ?? '');
+                $notificationItems[] = $item;
+                if ((int)($item['is_read'] ?? 0) === 0) {
+                    $notification_count++;
+                }
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('Header notifications query error: ' . $e->getMessage());
+    }
 }
 
 if ($displayFirstName === '' && $rawFirstName !== '') {

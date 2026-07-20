@@ -5,7 +5,7 @@ while ($__appRoot !== dirname($__appRoot) && !is_file($__appRoot . '/functions/b
 }
 require_once $__appRoot . '/functions/bootstrap.php';
 unset($__appRoot);
-// Teacher Chat Page - Teacher communicates with parents
+// Teacher Chat Page - Adviser communicates with parents
 if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'teacher') {
     header("Location: ../auth/login.php");
     exit();
@@ -14,8 +14,7 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'teacher') {
 $db = (new Database())->getConnection();
 $teacherId = (int)($_SESSION['user_id'] ?? 0);
 
-// Get students in advisory class (adviser) + students in teacher's subject classes
-// and their linked parents
+// Get parents linked to students in the teacher's advisory section.
 $conversations = [];
 if ($db) {
     try {
@@ -42,8 +41,13 @@ if ($db) {
             FROM parent_students ps
             JOIN users u_parent ON u_parent.id = ps.parent_id AND u_parent.role = 'parent' AND u_parent.status = 'active'
             JOIN users u_student ON u_student.id = ps.student_id AND u_student.status = 'active'
-            JOIN enrollments e ON e.student_id = u_student.id
-            JOIN class_subjects cs ON cs.class_id = e.class_id AND cs.teacher_id = ?
+            JOIN classes c ON c.teacher_id = ?
+                AND c.status = 'active'
+                AND c.grade_level = u_student.grade_level
+                AND (
+                    LOWER(TRIM(COALESCE(c.section, ''))) = LOWER(TRIM(COALESCE(u_student.section, '')))
+                    OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(c.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(u_student.section, ''), '(', 1)))
+                )
             ORDER BY last_message_at DESC, u_student.last_name ASC
         ");
         $stmt->execute([$teacherId, $teacherId, $teacherId, $teacherId, $teacherId, $teacherId]);
@@ -136,9 +140,9 @@ $page_title = 'Messages';
             <div class="teacher-hero mb-4">
                 <div class="teacher-hero-grid">
                     <div class="teacher-hero-copy">
-                        <div class="app-detail-kicker mb-2">Parent Messaging</div>
+                        <div class="app-detail-kicker mb-2">Adviser-Parent Messaging</div>
                         <h4 class="mb-2">Messages</h4>
-                        <p class="mb-0">Communicate with parents about attendance, academic progress, and important class updates from a cleaner teacher messaging workspace.</p>
+                        <p class="mb-0">Communicate with parents of students in your advisory section about attendance, academic progress, and important updates.</p>
                         <div class="teacher-chip-row">
                             <span class="teacher-chip"><i class="bi bi-people"></i><?php echo number_format(count($conversations)); ?> parent conversations</span>
                             <span class="teacher-chip"><i class="bi bi-chat-dots"></i><?php echo $selectedParentId > 0 ? 'Active thread open' : 'Select a thread'; ?></span>
@@ -170,7 +174,7 @@ $page_title = 'Messages';
                         <?php if (empty($conversations)): ?>
                         <div class="text-center text-muted py-5 px-3">
                             <i class="bi bi-chat-dots" style="font-size:2rem;opacity:.3;"></i>
-                            <p class="mt-2 small">No parents linked to your classes yet.</p>
+                            <p class="mt-2 small">No parents linked to your advisory section yet.</p>
                         </div>
                         <?php endif; ?>
                         <?php foreach ($conversations as $conv): ?>

@@ -271,9 +271,23 @@ if (isset($_GET['download_template'])) {
                                         <input type="text" name="contact_number" id="addContact" class="form-control" maxlength="20" placeholder="e.g. 09XX-XXX-XXXX" autocomplete="tel">
                                     </div>
                                 </div>
-                                <div class="mb-0">
-                                    <label class="form-label" for="addAddress">Address</label>
-                                    <textarea name="address" id="addAddress" class="form-control" rows="2" placeholder="House/Unit No., Street, Barangay, Municipality, Province" autocomplete="street-address"></textarea>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label" for="addHouseStreet">House No./Street/Sitio/Purok</label>
+                                        <input type="text" name="house_street" id="addHouseStreet" class="form-control" maxlength="120" autocomplete="street-address">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label" for="addBarangay">Barangay</label>
+                                        <input type="text" name="barangay" id="addBarangay" class="form-control" maxlength="120">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label" for="addMunicipality">Municipality/City</label>
+                                        <input type="text" name="municipality" id="addMunicipality" class="form-control" maxlength="120">
+                                    </div>
+                                    <div class="col-md-6 mb-0">
+                                        <label class="form-label" for="addProvince">Province</label>
+                                        <input type="text" name="province" id="addProvince" class="form-control" maxlength="120">
+                                    </div>
                                 </div>
                             </div>
                             <div class="app-modal-note">

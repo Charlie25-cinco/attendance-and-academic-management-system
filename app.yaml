@@ -1,0 +1,20 @@
+kind: wasmer.io/App.v0
+name: bshs-ams
+owner: CHANGE_ME_WASMER_OWNER
+package: .
+
+env:
+  APP_ENV: production
+  API_ALLOWED_ORIGIN: "https://CHANGE_ME_WASMER_APP_URL"
+  APP_PUBLIC_BASE_URL: "https://CHANGE_ME_WASMER_APP_URL"
+
+capabilities:
+  instaboot:
+    requests:
+      - path: /
+
+volumes:
+  - name: storage
+    mount: /app/storage
+  - name: uploads
+    mount: /app/assets/uploads

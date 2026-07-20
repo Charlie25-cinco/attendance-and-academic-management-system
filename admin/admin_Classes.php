@@ -17,6 +17,7 @@ $gradeFilter = trim((string)($_GET['grade_level'] ?? ''));
 $sectionFilter = trim((string)($_GET['section'] ?? ''));
 $statusFilter = trim((string)($_GET['status'] ?? 'active'));
 $availableSections = [];
+$classFormSections = [];
 
 if (!in_array($gradeFilter, ['11', '12'], true)) {
     $gradeFilter = '';
@@ -31,6 +32,22 @@ if ($db) {
     $hasTrack = dbHasColumn($db, 'classes', 'track');
     $hasCurriculum = dbHasColumn($db, 'classes', 'curriculum');
     $hasProgram = dbHasColumn($db, 'classes', 'program');
+
+    if (dbHasTable($db, 'sections')) {
+        $formSectionRows = $db->query("SELECT id, name, grade_level, track, curriculum, program
+                                       FROM sections
+                                       ORDER BY grade_level ASC, track ASC, name ASC");
+        foreach (($formSectionRows ? $formSectionRows->fetchAll(PDO::FETCH_ASSOC) : []) as $row) {
+            $classFormSections[] = [
+                'id' => (int)($row['id'] ?? 0),
+                'name' => trim((string)($row['name'] ?? '')),
+                'grade_level' => (string)($row['grade_level'] ?? ''),
+                'track' => trim((string)($row['track'] ?? '')),
+                'curriculum' => trim((string)($row['curriculum'] ?? '')),
+                'program' => trim((string)($row['program'] ?? '')),
+            ];
+        }
+    }
 
     $sectionRows = $db->query("SELECT DISTINCT grade_level, section
                                FROM classes
@@ -417,25 +434,54 @@ $page_title = 'Manage Classes';
 
     <script>
         let sectionsCache = {};
+        const serverSections = <?php echo json_encode($classFormSections, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
         const addClassModalEl = document.getElementById('addClassModal');
-        const addClassModal = addClassModalEl ? new bootstrap.Modal(addClassModalEl) : null;
+        let addClassModal = null;
+
+        function getAddClassModal() {
+            if (!addClassModalEl || !window.bootstrap?.Modal) {
+                return null;
+            }
+            addClassModal = addClassModal || bootstrap.Modal.getOrCreateInstance(addClassModalEl);
+            return addClassModal;
+        }
+
+        function hydrateSectionsCache(sections) {
+            const nextCache = {};
+            (sections || []).forEach(section => {
+                const name = (section.name || '').toString().trim();
+                const gradeLevel = (section.grade_level || '').toString().trim();
+                const track = (section.track || '').toString().trim();
+
+                if (!name || !gradeLevel) {
+                    return;
+                }
+
+                const key = gradeLevel + '_' + track;
+                if (!nextCache[key]) {
+                    nextCache[key] = [];
+                }
+
+                const suffix = section.program === 'academic_strengthened'
+                    ? ' - Academic Track (Strengthened)'
+                    : (section.program === 'technical_professional' ? ' - Technical Professional' : '');
+                nextCache[key].push({ value: name, label: name + suffix });
+            });
+
+            sectionsCache = nextCache;
+            return sectionsCache;
+        }
 
         function loadSectionsCache() {
             return fetch('admin_Sections_Action.php?action=list')
-                .then(r => r.json())
+                .then(response => response.json())
                 .then(data => {
-                    sectionsCache = {};
-                    if (data.success && data.sections) {
-                        data.sections.forEach(s => {
-                            const key = s.grade_level + '_' + (s.track || '');
-                            if (!sectionsCache[key]) sectionsCache[key] = [];
-                            const suffix = s.program === 'academic_strengthened' ? ' - Academic Track (Strengthened)' : (s.program === 'technical_professional' ? ' - Technical Professional' : '');
-                            sectionsCache[key].push({ value: s.name, label: s.name + suffix });
-                        });
+                    if (data.success && Array.isArray(data.sections)) {
+                        return hydrateSectionsCache(data.sections);
                     }
                     return sectionsCache;
                 })
-                .catch(() => { sectionsCache = {}; });
+                .catch(() => sectionsCache);
         }
 
         function getSectionsFor(grade, track) {
@@ -466,7 +512,11 @@ $page_title = 'Manage Classes';
         }
 
         if (addClassModalEl) {
-            addClassModalEl.addEventListener('show.bs.modal', resetAddClassModal);
+            addClassModalEl.addEventListener('show.bs.modal', function() {
+                resetAddClassModal();
+                hydrateSectionsCache(serverSections);
+                loadSectionsCache().then(updateSections);
+            });
             addClassModalEl.addEventListener('hidden.bs.modal', resetAddClassModal);
         }
         
@@ -497,7 +547,10 @@ $page_title = 'Manage Classes';
             }
         }
 
-        document.addEventListener('DOMContentLoaded', loadSectionsCache);
+        document.addEventListener('DOMContentLoaded', function () {
+            hydrateSectionsCache(serverSections);
+            loadSectionsCache();
+        });
         
         const weightPresets = {
             core: { ww: 25, pt: 50, qa: 25 },
@@ -739,7 +792,8 @@ $page_title = 'Manage Classes';
             .then(data => {
                 if (data.success) {
                     showNotification('Class created successfully', 'success');
-                    if (addClassModal) addClassModal.hide();
+                    const modal = getAddClassModal();
+                    if (modal) modal.hide();
                     setTimeout(() => location.reload(), 1000);
                 } else {
                     showNotification(data.message || 'Failed to create class', 'danger');

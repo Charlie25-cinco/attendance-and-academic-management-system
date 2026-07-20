@@ -301,30 +301,33 @@ if ($db && $parentId > 0) {
         }
         $progressRows = $rowsStmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $activityParams = [$selectedStudentId];
-        $activityWhere = "WHERE gis.student_id = ?";
-        if ($activityClassId > 0) {
-            $activityWhere .= " AND gi.class_id = ?";
-            $activityParams[] = $activityClassId;
+        if (dbHasTable($db, 'grade_items') && dbHasTable($db, 'grade_item_scores')) {
+            $activityParams = [$selectedStudentId];
+            $activityWhere = "WHERE e.student_id = ? AND COALESCE(e.status, 'enrolled') = 'enrolled'";
+            if ($activityClassId > 0) {
+                $activityWhere .= " AND gi.class_id = ?";
+                $activityParams[] = $activityClassId;
+            }
+            if ($activityFrom !== '') {
+                $activityWhere .= " AND gi.activity_date >= ?";
+                $activityParams[] = $activityFrom;
+            }
+            if ($activityTo !== '') {
+                $activityWhere .= " AND gi.activity_date <= ?";
+                $activityParams[] = $activityTo;
+            }
+            $activityStmt = $db->prepare("SELECT gi.id, gi.title, gi.component, gi.activity_date, gi.total_score,
+                                                 gi.status, gis.score, c.class_name, c.grade_level, c.section
+                                          FROM grade_items gi
+                                          JOIN enrollments e ON e.class_id = gi.class_id
+                                          JOIN classes c ON c.id = gi.class_id
+                                          LEFT JOIN grade_item_scores gis ON gis.grade_item_id = gi.id AND gis.student_id = e.student_id
+                                          $activityWhere
+                                          ORDER BY gi.activity_date DESC, gi.id DESC
+                                          LIMIT 60");
+            $activityStmt->execute($activityParams);
+            $activityRows = $activityStmt->fetchAll(PDO::FETCH_ASSOC);
         }
-        if ($activityFrom !== '') {
-            $activityWhere .= " AND gi.activity_date >= ?";
-            $activityParams[] = $activityFrom;
-        }
-        if ($activityTo !== '') {
-            $activityWhere .= " AND gi.activity_date <= ?";
-            $activityParams[] = $activityTo;
-        }
-        $activityStmt = $db->prepare("SELECT gi.id, gi.title, gi.component, gi.activity_date, gi.total_score,
-                                             gis.score, c.class_name, c.grade_level, c.section
-                                      FROM grade_item_scores gis
-                                      JOIN grade_items gi ON gi.id = gis.grade_item_id
-                                      JOIN classes c ON c.id = gi.class_id
-                                      $activityWhere
-                                      ORDER BY gi.activity_date DESC, gi.id DESC
-                                      LIMIT 60");
-        $activityStmt->execute($activityParams);
-        $activityRows = $activityStmt->fetchAll(PDO::FETCH_ASSOC);
 
         if ($total >= 10 && $stats['attendance_rate'] > 0 && $stats['attendance_rate'] < 90) {
             $alerts[] = [
@@ -467,24 +470,31 @@ if ($db && $parentId > 0 && ($_GET['action'] ?? '') === 'export') {
         exit();
     }
     if ($type === 'activities') {
+        if (!dbHasTable($db, 'grade_items') || !dbHasTable($db, 'grade_item_scores')) {
+            header('Content-Disposition: attachment; filename=activities_' . $filenameSuffix . '.csv');
+            fputcsv($out, ['Date', 'Class', 'Grade', 'Section', 'Activity', 'Component', 'Status', 'Score', 'Total']);
+            fclose($out);
+            exit();
+        }
         $exportFrom = trim((string)($_GET['act_from'] ?? ''));
         $exportTo = trim((string)($_GET['act_to'] ?? ''));
         $exportClassId = (int)($_GET['act_class_id'] ?? 0);
         normalizeDateRange($exportFrom, $exportTo);
         $params = [$exportStudentId];
-        $where = "WHERE gis.student_id = ?";
+        $where = "WHERE e.student_id = ? AND COALESCE(e.status, 'enrolled') = 'enrolled'";
         if ($exportClassId > 0) { $where .= " AND gi.class_id = ?"; $params[] = $exportClassId; }
         if ($exportFrom !== '') { $where .= " AND gi.activity_date >= ?"; $params[] = $exportFrom; }
         if ($exportTo !== '') { $where .= " AND gi.activity_date <= ?"; $params[] = $exportTo; }
-        $stmt = $db->prepare("SELECT gi.activity_date, c.class_name, c.grade_level, c.section, gi.title, gi.component, gis.score, gi.total_score
-                              FROM grade_item_scores gis
-                              JOIN grade_items gi ON gi.id = gis.grade_item_id
+        $stmt = $db->prepare("SELECT gi.activity_date, c.class_name, c.grade_level, c.section, gi.title, gi.component, gi.status, gis.score, gi.total_score
+                              FROM grade_items gi
+                              JOIN enrollments e ON e.class_id = gi.class_id
                               JOIN classes c ON c.id = gi.class_id
+                              LEFT JOIN grade_item_scores gis ON gis.grade_item_id = gi.id AND gis.student_id = e.student_id
                               $where
                               ORDER BY gi.activity_date DESC, gi.id DESC");
         $stmt->execute($params);
         header('Content-Disposition: attachment; filename=activities_' . $filenameSuffix . '.csv');
-        fputcsv($out, ['Date', 'Class', 'Grade', 'Section', 'Activity', 'Component', 'Score', 'Total']);
+        fputcsv($out, ['Date', 'Class', 'Grade', 'Section', 'Activity', 'Component', 'Status', 'Score', 'Total']);
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             fputcsv($out, [
                 $row['activity_date'],
@@ -493,6 +503,7 @@ if ($db && $parentId > 0 && ($_GET['action'] ?? '') === 'export') {
                 $row['section'],
                 $row['title'],
                 $row['component'],
+                $row['status'],
                 $row['score'],
                 $row['total_score']
             ]);
@@ -697,7 +708,7 @@ if ($db && $parentId > 0 && ($_GET['action'] ?? '') === 'export') {
 
             <div class="content-card mb-4">
                 <div class="content-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <h5 class="content-card-title mb-0">Activity Scores</h5>
+                    <h5 class="content-card-title mb-0">Grade Activities & Scores</h5>
                     <div class="d-flex gap-2">
                         <a class="btn btn-sm btn-secondary-custom" href="?student_id=<?php echo (int)$selectedStudentId; ?>&action=export&type=activities&act_class_id=<?php echo (int)$activityClassId; ?>&act_from=<?php echo urlencode($activityFrom); ?>&act_to=<?php echo urlencode($activityTo); ?>">
                             <i class="bi bi-download me-1"></i>Export CSV
@@ -738,12 +749,13 @@ if ($db && $parentId > 0 && ($_GET['action'] ?? '') === 'export') {
                                     <th>Class</th>
                                     <th>Activity</th>
                                     <th>Component</th>
+                                    <th>Status</th>
                                     <th>Score</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php if (empty($activityRows)): ?>
-                                    <tr><td colspan="5" class="text-center text-muted py-3">No activity scores found.</td></tr>
+                                    <tr><td colspan="6" class="text-center text-muted py-3">No grade activities found.</td></tr>
                                 <?php else: ?>
                                     <?php foreach ($activityRows as $row): ?>
                                         <tr>
@@ -751,7 +763,8 @@ if ($db && $parentId > 0 && ($_GET['action'] ?? '') === 'export') {
                                             <td><?php echo htmlspecialchars((string)$row['class_name']); ?> <span class="text-muted small">(G<?php echo (int)$row['grade_level']; ?> - <?php echo htmlspecialchars((string)$row['section']); ?>)</span></td>
                                             <td><?php echo htmlspecialchars((string)$row['title']); ?></td>
                                             <td><?php echo htmlspecialchars((string)$row['component']); ?></td>
-                                            <td><?php echo htmlspecialchars((string)$row['score']); ?> / <?php echo htmlspecialchars((string)$row['total_score']); ?></td>
+                                            <td><span class="badge bg-<?php echo $row['status'] === 'finished' ? 'secondary' : 'primary'; ?>"><?php echo htmlspecialchars(ucfirst((string)$row['status'])); ?></span></td>
+                                            <td><?php echo $row['score'] !== null ? htmlspecialchars((string)$row['score']) . ' / ' . htmlspecialchars((string)$row['total_score']) : 'Not recorded'; ?></td>
                                         </tr>
                                     <?php endforeach; ?>
                                 <?php endif; ?>

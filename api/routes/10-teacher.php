@@ -101,6 +101,7 @@ if ($route === 'teacher-attendance' && $method === 'POST') {
     $teacherId = (int)$user['id'];
     $updated = 0;
     $inserted = 0;
+    $savedRecords = [];
 
     foreach ($records as $rec) {
         $studentId = (int)($rec['student_id'] ?? 0);
@@ -132,7 +133,10 @@ if ($route === 'teacher-attendance' && $method === 'POST') {
             $db->prepare($insertSql)->execute($insertParams);
             $inserted++;
         }
+        $savedRecords[] = ['student_id' => $studentId, 'status' => $status];
     }
+
+    appNotifyAttendanceRecords($db, $classId, $date, $savedRecords, $teacherId);
 
     apiJson(['ok' => true, 'message' => "Attendance saved: $inserted new, $updated updated"]);
 }

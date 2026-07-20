@@ -24,159 +24,19 @@
     </div>
 </div>
 
-<style>
-    .settings-modal-content {
-        border: 0;
-        border-radius: 24px;
-        overflow: hidden;
-        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
-    }
-    .settings-modal-header {
-        padding: 1.25rem 1.5rem 1rem;
-        border-bottom: 0;
-        background:
-            radial-gradient(circle at top right, rgba(59, 130, 246, 0.20), transparent 32%),
-            linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%);
-    }
-    .settings-modal-kicker {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 12px;
-        border-radius: 999px;
-        background: rgba(37, 99, 235, 0.10);
-        color: #1d4ed8;
-        font-size: 0.75rem;
-        font-weight: 700;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        margin-bottom: 10px;
-    }
-    .settings-modal-subtitle {
-        color: #64748b;
-        font-size: 0.92rem;
-        margin: 6px 0 0;
-    }
-    .settings-modal-body {
-        padding: 1.25rem 1.5rem 1.5rem;
-        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-    }
-    .settings-group-title {
-        font-size: 0.8rem;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: #94a3b8;
-        margin-bottom: 12px;
-    }
-    .settings-option {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        padding: 14px 16px;
-        border: 1px solid rgba(148, 163, 184, 0.18);
-        border-radius: 18px;
-        background: #fff;
-        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
-    }
-    .settings-option + .settings-option {
-        margin-top: 12px;
-    }
-    .settings-option-main {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        min-width: 0;
-    }
-    .settings-option-icon {
-        width: 42px;
-        height: 42px;
-        border-radius: 14px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(37, 99, 235, 0.10);
-        color: #2563eb;
-        font-size: 1rem;
-        flex: 0 0 auto;
-    }
-    .settings-option-title {
-        font-size: 0.95rem;
-        font-weight: 700;
-        color: #0f172a;
-        margin: 0 0 2px;
-    }
-    .settings-option-desc {
-        font-size: 0.82rem;
-        color: #64748b;
-        margin: 0;
-    }
-    .settings-modal-footer {
-        border-top: 0;
-        padding: 0 1.5rem 1.5rem;
-        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-    }
-    body.dark-mode .settings-modal-content {
-        background: #0f172a;
-        color: #e5e7eb;
-        box-shadow: 0 26px 64px rgba(0, 0, 0, 0.42);
-    }
-    body.dark-mode .settings-modal-header {
-        background:
-            radial-gradient(circle at top right, rgba(96, 165, 250, 0.14), transparent 32%),
-            linear-gradient(135deg, #111827 0%, #0f172a 100%);
-    }
-    body.dark-mode .settings-modal-kicker {
-        background: rgba(59, 130, 246, 0.18);
-        color: #bfdbfe;
-    }
-    body.dark-mode .settings-modal-subtitle,
-    body.dark-mode .settings-group-title,
-    body.dark-mode .settings-option-desc {
-        color: #94a3b8;
-    }
-    body.dark-mode .settings-modal-body,
-    body.dark-mode .settings-modal-footer {
-        background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
-    }
-    body.dark-mode .settings-option {
-        background: rgba(17, 24, 39, 0.9);
-        border-color: rgba(148, 163, 184, 0.16);
-        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.22);
-    }
-    body.dark-mode .settings-option-title {
-        color: #f8fafc;
-    }
-    body.dark-mode .settings-option-icon {
-        background: rgba(59, 130, 246, 0.16);
-        color: #93c5fd;
-    }
-    body.dark-mode .settings-modal-content .btn-light {
-        background: #1f2937;
-        border-color: #374151;
-        color: #e5e7eb;
-    }
-    body.dark-mode .settings-modal-content .btn-light:hover {
-        background: #374151;
-        border-color: #4b5563;
-        color: #f8fafc;
-    }
-</style>
-
 <!-- Settings Modal -->
 <div class="modal fade" id="settingsModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content settings-modal-content">
-            <div class="modal-header settings-modal-header">
+        <div class="modal-content app-modal-content settings-modal-content">
+            <div class="modal-header app-modal-header settings-modal-header">
                 <div>
-                    <div class="settings-modal-kicker"><i class="bi bi-sliders"></i>Preferences</div>
+                    <div class="app-modal-kicker settings-modal-kicker"><i class="bi bi-sliders"></i>Preferences</div>
                     <h5 class="modal-title mb-0">Settings</h5>
-                    <p class="settings-modal-subtitle">Control the way your dashboard looks and how notifications behave.</p>
+                    <p class="app-modal-subtitle settings-modal-subtitle">Control the way your dashboard looks and how notifications behave.</p>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body settings-modal-body">
+            <div class="modal-body app-modal-body settings-modal-body">
                 <div class="settings-group-title">Appearance</div>
                 <div class="settings-preview-note text-muted" id="settingsPreviewNote"></div>
                 <label class="settings-option" for="darkModeSwitch">
@@ -219,9 +79,9 @@
                     </span>
                 </label>
             </div>
-            <div class="modal-footer settings-modal-footer">
-                <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary px-4" id="saveSettingsBtn">Save Changes</button>
+            <div class="modal-footer app-modal-footer settings-modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary-custom px-4" id="saveSettingsBtn">Save Changes</button>
             </div>
         </div>
     </div>

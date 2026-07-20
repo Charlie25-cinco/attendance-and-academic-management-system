@@ -46,7 +46,7 @@ if (!in_array($fileExt, ['csv', 'xlsx'], true)) {
     exit();
 }
 
-$results = ['success' => true, 'created' => 0, 'skipped' => 0, 'errors' => 0, 'rows' => []];
+$results = ['success' => true, 'created' => 0, 'sections_created' => 0, 'skipped' => 0, 'errors' => 0, 'rows' => []];
 $importRows = [];
 $headerInfo = [];
 
@@ -156,6 +156,46 @@ function sf1GradeFromHeader(array $header): int {
     return 0;
 }
 
+function ensureSf1Section(PDO $db, string $section, int $gradeLevel, string $track, string $academicYear): bool {
+    static $createdOrFound = [];
+
+    $section = trim($section);
+    if ($section === '') {
+        return false;
+    }
+
+    $cacheKey = strtolower($gradeLevel . '|' . $track . '|' . $section);
+    if (isset($createdOrFound[$cacheKey])) {
+        return false;
+    }
+
+    $check = $db->prepare("SELECT id FROM sections WHERE name = ? LIMIT 1");
+    $check->execute([$section]);
+    $existingId = $check->fetchColumn();
+    if ($existingId) {
+        $createdOrFound[$cacheKey] = true;
+        return false;
+    }
+
+    $curriculum = strengthenedShsCurriculum($gradeLevel, $academicYear);
+    $program = strengthenedShsProgram($gradeLevel, $track, $academicYear);
+    $insert = $db->prepare("INSERT INTO sections (name, grade_level, track, curriculum, program) VALUES (?, ?, ?, ?, ?)");
+    $insert->execute([$section, $gradeLevel, $track, $curriculum, $program]);
+    $newId = (int)$db->lastInsertId();
+    $createdOrFound[$cacheKey] = true;
+
+    recordAdminAuditLog($db, 'section.auto_create_from_sf1', 'section', $newId, [
+        'name' => $section,
+        'grade_level' => $gradeLevel,
+        'track' => $track,
+        'curriculum' => $curriculum,
+        'program' => $program,
+        'academic_year' => $academicYear,
+    ]);
+
+    return true;
+}
+
 foreach ($importRows as $row) {
     $rowNum++;
     $lrn = preg_replace('/\D/', '', (string)($row['lrn'] ?? ''));
@@ -178,6 +218,13 @@ foreach ($importRows as $row) {
     $dateOfBirth = trim((string)($row['birthdate'] ?? ''));
     $address = trim((string)($row['address'] ?? ''));
     $contactNumber = trim((string)($row['contact_number'] ?? ''));
+    $houseStreet = trim((string)($row['house_street'] ?? ''));
+    $barangay = trim((string)($row['barangay'] ?? ''));
+    $municipality = trim((string)($row['municipality'] ?? ''));
+    $province = trim((string)($row['province'] ?? ''));
+    if ($address === '') {
+        $address = implode(', ', array_filter([$houseStreet, $barangay, $municipality, $province]));
+    }
 
     if ($lrn === '' || $lastName === '' || $firstName === '') {
         $results['rows'][] = ['row' => $rowNum, 'lrn' => $lrn, 'name' => "$firstName $lastName", 'status' => 'error', 'message' => 'Missing required fields (LRN, Last Name, First Name).'];
@@ -235,15 +282,20 @@ foreach ($importRows as $row) {
     }
 
     try {
+        if (ensureSf1Section($db, $section, $gradeLevel, $track, $academicYear)) {
+            $results['sections_created']++;
+        }
+
         $insertStmt = $db->prepare("INSERT INTO users
-            (reference_code, email, lrn, password, first_name, middle_name, last_name, name_extension, sex, date_of_birth, religion, contact_number, address, father_name, mother_name, guardian_name, guardian_relationship, grade_level, section, track, curriculum, program, role, status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'student', 'active', NOW(), NOW())");
+            (reference_code, email, lrn, password, first_name, middle_name, last_name, name_extension, sex, date_of_birth, religion, contact_number, address, house_street, barangay, municipality, province, father_name, mother_name, guardian_name, guardian_relationship, grade_level, section, track, curriculum, program, role, status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'student', 'active', NOW(), NOW())");
         $insertStmt->execute([
             $refCode, $email, $lrn, $hashedPassword,
             $firstName, $middleName ?: null, $lastName,
             $nameExtension ?: null,
             $sex ?: null, $dateOfBirth ?: null, $religion ?: null,
             $contactNumber ?: null, $address ?: null,
+            $houseStreet ?: null, $barangay ?: null, $municipality ?: null, $province ?: null,
             $fatherName ?: null, $motherName ?: null,
             $guardianName ?: null, $guardianRelationship ?: null,
             $gradeLevel, $section, $track, $curriculum, $program
@@ -275,12 +327,16 @@ if ($results['created'] === 0 && $results['errors'] === 0 && $results['skipped']
     $results['message'] = 'Import failed. Please check the errors above.';
 } else {
     $results['message'] = $results['created'] . ' students imported successfully.';
+    if ($results['sections_created'] > 0) {
+        $results['message'] .= ' ' . $results['sections_created'] . ' section(s) created.';
+    }
 }
 
 recordAdminAuditLog($db, 'sf1.import', 'student_import', null, [
     'file_name' => (string)($file['name'] ?? ''),
     'academic_year' => $academicYear,
     'created' => (int)$results['created'],
+    'sections_created' => (int)$results['sections_created'],
     'skipped' => (int)$results['skipped'],
     'errors' => (int)$results['errors'],
     'success' => (bool)$results['success'],

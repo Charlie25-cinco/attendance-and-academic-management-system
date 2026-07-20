@@ -293,13 +293,9 @@ class EcrExporter {
     }
 
     public function getUploadedTemplateInfo(): array {
-        foreach ([$this->depedTemplateDir()] as $dir) {
-            $uploadsDir = realpath($dir);
-            if (!$uploadsDir || !is_dir($uploadsDir)) { continue; }
-            foreach (['ecr_template.xlsx'] as $templateName) {
-                $path = $uploadsDir . DIRECTORY_SEPARATOR . $templateName;
-                if (is_file($path)) { return $this->getTemplateInfo($path); }
-            }
+        $path = $this->findTemplateInDir($this->depedTemplateDir());
+        if ($path !== '') {
+            return $this->getTemplateInfo($path);
         }
         return $this->getTemplateInfo('');
     }
@@ -311,6 +307,8 @@ class EcrExporter {
     private function depedTemplateCandidates(): array {
         return [
             'ecr_template.xlsx',
+            'ecr_template.xlsm',
+            'SSHS Three-Term ECR (Auto-Hide Cells by www.teachpinas.com).xlsm',
         ];
     }
 
@@ -320,6 +318,12 @@ class EcrExporter {
         foreach ($this->depedTemplateCandidates() as $templateName) {
             $path = $realDir . DIRECTORY_SEPARATOR . $templateName;
             if (is_file($path)) { return $path; }
+        }
+        foreach (glob($realDir . DIRECTORY_SEPARATOR . '*.{xlsx,xlsm}', GLOB_BRACE) ?: [] as $path) {
+            $name = strtolower(basename((string)$path));
+            if (str_contains($name, 'ecr') && $this->isThreeTermTemplate((string)$path)) {
+                return (string)$path;
+            }
         }
         return '';
     }
@@ -482,9 +486,155 @@ class EcrExporter {
 
     public function exportToXlsx(string $filePath): bool {
         $templatePath = $this->resolveTemplatePath();
-        if ($templatePath === '') { return false; }
-        if (strtolower(pathinfo($templatePath, PATHINFO_EXTENSION)) !== 'xlsx') { return false; }
+        if ($templatePath === '') { return $this->exportToGeneratedXlsx($filePath); }
+        if (!in_array(strtolower(pathinfo($templatePath, PATHINFO_EXTENSION)), ['xlsx', 'xlsm'], true)) {
+            return $this->exportToGeneratedXlsx($filePath);
+        }
         return $this->exportToXlsxUsingTemplate($filePath, $templatePath);
+    }
+
+    private function exportToGeneratedXlsx(string $filePath): bool {
+        if (!class_exists('\PhpOffice\PhpSpreadsheet\Spreadsheet')) {
+            return false;
+        }
+
+        try {
+            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('ECR Export');
+            $lastCol = $this->columnLetter(self::TOTAL_COLS - 1);
+            $wwWeight = (float)($this->weights['ww'] ?? 25);
+            $ptWeight = (float)($this->weights['pt'] ?? 50);
+            $qaWeight = (float)($this->weights['assessment'] ?? 25);
+            $termLabel = $this->gradingSystem === '3_term'
+                ? strtoupper(str_replace('Term', 'TERM ', $this->quarter))
+                : strtoupper($this->semester . ' ' . $this->quarter);
+
+            $sheet->mergeCells("A1:{$lastCol}1");
+            $sheet->setCellValue('A1', 'Senior High School E-Class Record');
+            $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+            $sheet->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+            $metaRows = [
+                ['School', $this->header['school'] ?? '', 'School ID', $this->header['school_id'] ?? '', 'School Year', $this->academicYear],
+                ['Region', $this->header['region'] ?? '', 'Division', $this->header['division'] ?? '', 'Term', $termLabel],
+                ['Grade & Section', $this->header['grade_section'] ?? ($this->header['grade_level'] ?? ''), 'Teacher', $this->header['teacher'] ?? '', 'Subject', $this->header['subject'] ?? ''],
+                ['Track/Type', $this->header['subject_type'] ?? '', '', '', '', ''],
+            ];
+            $row = 3;
+            foreach ($metaRows as $meta) {
+                $cols = ['A', 'B', 'G', 'H', 'M', 'N'];
+                foreach ($meta as $idx => $value) {
+                    $sheet->setCellValue($cols[$idx] . $row, $value);
+                    if ($idx % 2 === 0) {
+                        $sheet->getStyle($cols[$idx] . $row)->getFont()->setBold(true);
+                    }
+                }
+                $row++;
+            }
+
+            $headerRow = 9;
+            $sheet->setCellValue('A' . $headerRow, 'No.');
+            $sheet->setCellValue('B' . $headerRow, 'LRN');
+            $sheet->setCellValue('C' . $headerRow, "Learner's Name");
+            for ($i = 0; $i < self::MAX_WW; $i++) {
+                $sheet->setCellValue($this->columnLetter(self::COL_WW_START + $i) . $headerRow, 'WW ' . ($i + 1));
+            }
+            $sheet->setCellValue($this->columnLetter(self::COL_WW_TOTAL) . $headerRow, 'WW Total');
+            $sheet->setCellValue($this->columnLetter(self::COL_WW_PS) . $headerRow, 'WW PS');
+            $sheet->setCellValue($this->columnLetter(self::COL_WW_WS) . $headerRow, 'WW WS');
+            for ($i = 0; $i < self::MAX_PT; $i++) {
+                $sheet->setCellValue($this->columnLetter(self::COL_PT_START + $i) . $headerRow, 'PT ' . ($i + 1));
+            }
+            $sheet->setCellValue($this->columnLetter(self::COL_PT_TOTAL) . $headerRow, 'PT Total');
+            $sheet->setCellValue($this->columnLetter(self::COL_PT_PS) . $headerRow, 'PT PS');
+            $sheet->setCellValue($this->columnLetter(self::COL_PT_WS) . $headerRow, 'PT WS');
+            for ($i = 0; $i < self::MAX_QA; $i++) {
+                $sheet->setCellValue($this->columnLetter(self::COL_QA_START + $i) . $headerRow, 'TA ' . ($i + 1));
+            }
+            $sheet->setCellValue($this->columnLetter(self::COL_QA_PS) . $headerRow, 'TA PS');
+            $sheet->setCellValue($this->columnLetter(self::COL_QA_WS) . $headerRow, 'TA WS');
+            $sheet->setCellValue($this->columnLetter(self::COL_INITIAL) . $headerRow, 'Initial Grade');
+            $sheet->setCellValue($this->columnLetter(self::COL_QUARTERLY) . $headerRow, 'Quarterly Grade');
+
+            $hpsRow = $headerRow + 1;
+            $sheet->setCellValue('A' . $hpsRow, 'HPS');
+            $hps = $this->buildComponentHps();
+            for ($i = 0; $i < self::MAX_WW; $i++) {
+                $value = $hps['ww'][$i] ?? null;
+                if ($value !== null) { $sheet->setCellValue($this->columnLetter(self::COL_WW_START + $i) . $hpsRow, $value); }
+            }
+            for ($i = 0; $i < self::MAX_PT; $i++) {
+                $value = $hps['pt'][$i] ?? null;
+                if ($value !== null) { $sheet->setCellValue($this->columnLetter(self::COL_PT_START + $i) . $hpsRow, $value); }
+            }
+            for ($i = 0; $i < self::MAX_QA; $i++) {
+                $value = $hps['qa'][$i] ?? null;
+                if ($value !== null) { $sheet->setCellValue($this->columnLetter(self::COL_QA_START + $i) . $hpsRow, $value); }
+            }
+            $sheet->setCellValue($this->columnLetter(self::COL_WW_WS) . $hpsRow, $wwWeight . '%');
+            $sheet->setCellValue($this->columnLetter(self::COL_PT_WS) . $hpsRow, $ptWeight . '%');
+            $sheet->setCellValue($this->columnLetter(self::COL_QA_WS) . $hpsRow, $qaWeight . '%');
+
+            $dataRow = $hpsRow + 1;
+            $counter = 1;
+            foreach ($this->students as $student) {
+                $studentKey = $this->studentKey($student);
+                $grades = $this->getStudentGrades($studentKey);
+                $studentName = trim((string)($student['name'] ?? ''));
+                if ($studentName === '') {
+                    $studentName = trim((string)($student['last_name'] ?? '') . ', ' . (string)($student['first_name'] ?? ''));
+                }
+                $sheet->setCellValue('A' . $dataRow, $counter++);
+                $sheet->setCellValueExplicit('B' . $dataRow, (string)($student['lrn'] ?? ''), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+                $sheet->setCellValue('C' . $dataRow, $studentName);
+                for ($i = 0; $i < self::MAX_WW; $i++) {
+                    if (($grades['ww_scores'][$i] ?? null) !== null) { $sheet->setCellValue($this->columnLetter(self::COL_WW_START + $i) . $dataRow, $grades['ww_scores'][$i]); }
+                }
+                for ($i = 0; $i < self::MAX_PT; $i++) {
+                    if (($grades['pt_scores'][$i] ?? null) !== null) { $sheet->setCellValue($this->columnLetter(self::COL_PT_START + $i) . $dataRow, $grades['pt_scores'][$i]); }
+                }
+                for ($i = 0; $i < self::MAX_QA; $i++) {
+                    if (($grades['qa_scores'][$i] ?? null) !== null) { $sheet->setCellValue($this->columnLetter(self::COL_QA_START + $i) . $dataRow, $grades['qa_scores'][$i]); }
+                }
+                foreach ([
+                    self::COL_WW_TOTAL => 'ww_total',
+                    self::COL_WW_PS => 'ww_ps',
+                    self::COL_WW_WS => 'ww_ws',
+                    self::COL_PT_TOTAL => 'pt_total',
+                    self::COL_PT_PS => 'pt_ps',
+                    self::COL_PT_WS => 'pt_ws',
+                    self::COL_QA_PS => 'qa_ps',
+                    self::COL_QA_WS => 'qa_ws',
+                    self::COL_INITIAL => 'initial_grade',
+                    self::COL_QUARTERLY => 'quarterly_grade',
+                ] as $col => $key) {
+                    if (($grades[$key] ?? null) !== null) {
+                        $sheet->setCellValue($this->columnLetter($col) . $dataRow, $grades[$key]);
+                    }
+                }
+                $dataRow++;
+            }
+
+            $sheet->getStyle("A{$headerRow}:{$lastCol}{$hpsRow}")->getFont()->setBold(true);
+            $sheet->getStyle("A{$headerRow}:{$lastCol}" . max($hpsRow, $dataRow - 1))->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+            $sheet->getStyle("A{$headerRow}:{$lastCol}{$hpsRow}")->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('D9EAF7');
+            $sheet->freezePane('D11');
+            foreach (range('A', 'C') as $col) {
+                $sheet->getColumnDimension($col)->setAutoSize(true);
+            }
+            for ($col = self::COL_WW_START; $col < self::TOTAL_COLS; $col++) {
+                $sheet->getColumnDimension($this->columnLetter($col))->setWidth(10);
+            }
+
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+            $writer->save($filePath);
+            $spreadsheet->disconnectWorksheets();
+            return is_file($filePath) && filesize($filePath) > 0;
+        } catch (Throwable $e) {
+            error_log('Generated ECR XLSX export failed: ' . $e->getMessage());
+            return false;
+        }
     }
 
     private function resolveTemplatePath(): string {
@@ -637,10 +787,46 @@ class EcrExporter {
                 $zip->addFromString($path, $termDom->saveXML());
             }
         }
+        if (strtolower(pathinfo($templatePath, PATHINFO_EXTENSION)) === 'xlsm') {
+            $this->stripMacroPartsForXlsx($zip);
+        }
         $this->setWorkbookActiveSheet($zip, ['Term1' => 'TERM 1', 'Term2' => 'TERM 2', 'Term3' => 'TERM 3'][$targetTerm]);
         $ok = $zip->close();
         $this->domCellCache = [];
         return (bool)$ok;
+    }
+
+    private function stripMacroPartsForXlsx(ZipArchive $zip): void {
+        $zip->deleteName('xl/vbaProject.bin');
+
+        $contentTypes = $zip->getFromName('[Content_Types].xml');
+        if ($contentTypes !== false) {
+            $dom = new DOMDocument();
+            if (@$dom->loadXML($contentTypes)) {
+                $xp = new DOMXPath($dom);
+                $xp->registerNamespace('ct', 'http://schemas.openxmlformats.org/package/2006/content-types');
+                foreach ($xp->query('//ct:Override[@PartName="/xl/vbaProject.bin"]') as $node) {
+                    $node->parentNode?->removeChild($node);
+                }
+                foreach ($xp->query('//ct:Default[@ContentType="application/vnd.ms-office.vbaProject"]') as $node) {
+                    $node->parentNode?->removeChild($node);
+                }
+                $zip->addFromString('[Content_Types].xml', $dom->saveXML());
+            }
+        }
+
+        $rels = $zip->getFromName('xl/_rels/workbook.xml.rels');
+        if ($rels !== false) {
+            $dom = new DOMDocument();
+            if (@$dom->loadXML($rels)) {
+                $xp = new DOMXPath($dom);
+                $xp->registerNamespace('rel', 'http://schemas.openxmlformats.org/package/2006/relationships');
+                foreach ($xp->query('//rel:Relationship[contains(@Type, "/vbaProject")]') as $node) {
+                    $node->parentNode?->removeChild($node);
+                }
+                $zip->addFromString('xl/_rels/workbook.xml.rels', $dom->saveXML());
+            }
+        }
     }
 
     private function unhideLearnerRows(DOMDocument $dom): void {

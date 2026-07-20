@@ -131,8 +131,26 @@ $page_title = 'Classes';
                 <span>Recent Announcements</span>
             </div>
         </div>
+        <nav class="teacher-workspace-nav mb-4" aria-label="Class workspace sections">
+            <a href="#classes-section" class="teacher-workspace-link active">
+                <i class="bi bi-journal-bookmark"></i>
+                <span>Classes</span>
+            </a>
+            <a href="#materials-section" class="teacher-workspace-link">
+                <i class="bi bi-file-earmark-text"></i>
+                <span>Materials</span>
+            </a>
+            <a href="#activities-section" class="teacher-workspace-link">
+                <i class="bi bi-clipboard-data"></i>
+                <span>Activities</span>
+            </a>
+            <a href="#announcements-section" class="teacher-workspace-link">
+                <i class="bi bi-megaphone"></i>
+                <span>Announcements</span>
+            </a>
+        </nav>
         <div class="row g-4">
-            <div class="col-lg-6">
+            <div class="col-lg-6" id="classes-section">
                 <div class="content-card">
                     <div class="content-card-header">
                         <div>
@@ -171,7 +189,7 @@ $page_title = 'Classes';
                     </div>
                 </div>
             </div>
-            <div class="col-lg-6">
+            <div class="col-lg-6" id="materials-section">
                 <div class="content-card">
                     <div class="content-card-header">
                         <div>
@@ -204,7 +222,7 @@ $page_title = 'Classes';
             </div>
         </div>
 
-        <div class="row g-4 mt-2">
+        <div class="row g-4 mt-2" id="activities-section">
             <div class="col-12">
                 <div class="content-card">
                     <div class="content-card-header">
@@ -234,7 +252,7 @@ $page_title = 'Classes';
             </div>
         </div>
 
-        <div class="row g-4 mt-2">
+        <div class="row g-4 mt-2" id="announcements-section">
             <div class="col-12">
                 <div class="content-card">
                     <div class="content-card-header">
@@ -575,6 +593,28 @@ function handleDelete(id){
     }
 }
 document.addEventListener('DOMContentLoaded',()=>{loadGradeItems();});
+document.addEventListener('DOMContentLoaded',function(){
+    const links=Array.from(document.querySelectorAll('.teacher-workspace-link'));
+    const sections=links.map(link=>document.querySelector(link.getAttribute('href'))).filter(Boolean);
+    const setActive=function(id){links.forEach(link=>link.classList.toggle('active',link.getAttribute('href')==='#'+id));};
+    links.forEach(function(link){
+        link.addEventListener('click',function(event){
+            const target=document.querySelector(link.getAttribute('href'));
+            if(!target)return;
+            event.preventDefault();
+            target.scrollIntoView({behavior:'smooth',block:'start'});
+            setActive(target.id);
+            history.replaceState(null,'','#'+target.id);
+        });
+    });
+    if('IntersectionObserver' in window&&sections.length){
+        const observer=new IntersectionObserver(function(entries){
+            const visible=entries.filter(entry=>entry.isIntersecting).sort((a,b)=>b.intersectionRatio-a.intersectionRatio)[0];
+            if(visible&&visible.target&&visible.target.id)setActive(visible.target.id);
+        },{rootMargin:'-120px 0px -55% 0px',threshold:[0.1,0.35,0.6]});
+        sections.forEach(section=>observer.observe(section));
+    }
+});
 </script>
 </body>
 </html>

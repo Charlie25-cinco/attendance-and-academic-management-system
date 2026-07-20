@@ -543,11 +543,11 @@ function pwaHeadHtml(): string {
     $manifestUrl = $baseUrl !== '' ? $baseUrl . '/assets/manifest.json' : '/assets/manifest.json';
     $appleTouchIcon = $baseUrl !== '' ? $baseUrl . '/assets/images/icon-192.png' : '/assets/images/icon-192.png';
     $faviconUrl = $baseUrl !== '' ? $baseUrl . '/assets/images/icon-192.png' : '/assets/images/icon-192.png';
-    $serviceWorkerUrl = $baseUrl !== '' ? $baseUrl . '/assets/push-sw.js' : '/assets/push-sw.js';
-    $scopeUrl = $baseUrl !== '' ? $baseUrl . '/assets/' : '/assets/';
+    $serviceWorkerUrl = $baseUrl !== '' ? $baseUrl . '/sw.js' : '/sw.js';
+    $scopeUrl = $baseUrl !== '' ? $baseUrl . '/' : '/';
 
     $html = '<link rel="manifest" href="' . htmlspecialchars($manifestUrl, ENT_QUOTES, 'UTF-8') . '">' . "\n";
-    $html .= '<meta name="theme-color" content="#1d4ed8">' . "\n";
+    $html .= '<meta name="theme-color" content="#1f4f82">' . "\n";
     $html .= '<meta name="mobile-web-app-capable" content="yes">' . "\n";
     $html .= '<meta name="apple-mobile-web-app-capable" content="yes">' . "\n";
     $html .= '<meta name="apple-mobile-web-app-status-bar-style" content="default">' . "\n";
@@ -561,16 +561,22 @@ if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
         var desiredScript = '" . htmlspecialchars($serviceWorkerUrl, ENT_QUOTES, 'UTF-8') . "';
         var desiredScope = '" . htmlspecialchars($scopeUrl, ENT_QUOTES, 'UTF-8') . "';
-        var desiredAbsoluteScope = window.location.origin + desiredScope;
+        var desiredAbsoluteScope = new URL(desiredScope, window.location.origin).href;
+        var desiredAbsoluteScript = new URL(desiredScript, window.location.origin).href;
 
         navigator.serviceWorker.getRegistrations()
             .then(function (registrations) {
                 return Promise.all(registrations.map(function (registration) {
                     try {
                         var scope = registration.scope || '';
-                        var isRootScoped = scope === window.location.origin + '/';
+                        var activeScript = registration.active && registration.active.scriptURL ? registration.active.scriptURL : '';
+                        var waitingScript = registration.waiting && registration.waiting.scriptURL ? registration.waiting.scriptURL : '';
+                        var installingScript = registration.installing && registration.installing.scriptURL ? registration.installing.scriptURL : '';
+                        var scriptUrl = activeScript || waitingScript || installingScript;
+                        var isSameOrigin = scope.indexOf(window.location.origin + '/') === 0;
                         var isDifferentScope = scope !== desiredAbsoluteScope;
-                        if (isRootScoped && isDifferentScope) {
+                        var isDifferentScript = scriptUrl && scriptUrl !== desiredAbsoluteScript;
+                        if (isSameOrigin && (isDifferentScope || isDifferentScript)) {
                             return registration.unregister();
                         }
                     } catch (e) { console.warn('[PWA] SW cleanup:', e); }

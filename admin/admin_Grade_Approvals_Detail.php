@@ -354,7 +354,7 @@ $page_title = 'Grade Approval Details';
             <div class="d-flex gap-2">
                 <button class="btn btn-success" type="button"
                     onclick="reviewBatch(<?php echo (int)$gradeLevel; ?>, '<?php echo htmlspecialchars($section, ENT_QUOTES, 'UTF-8'); ?>', '<?php echo htmlspecialchars($academicYear, ENT_QUOTES, 'UTF-8'); ?>', '<?php echo $isFourQuarter ? htmlspecialchars($semester, ENT_QUOTES, 'UTF-8') : ''; ?>', '<?php echo $activeTab === 'grades' ? 'admin_verified' : 'approved'; ?>', '<?php echo $activeTab === 'grades' ? 'review_grade_batch' : 'review_report_card_batch'; ?>')">
-                    <i class="bi bi-check-circle me-1"></i>Approve Section
+                    <i class="bi bi-check-circle me-1"></i><?php echo $activeTab === 'grades' ? 'Verify for Adviser' : 'Final Approve'; ?>
                 </button>
                 <button class="btn btn-danger" type="button"
                     onclick="reviewBatch(<?php echo (int)$gradeLevel; ?>, '<?php echo htmlspecialchars($section, ENT_QUOTES, 'UTF-8'); ?>', '<?php echo htmlspecialchars($academicYear, ENT_QUOTES, 'UTF-8'); ?>', '<?php echo $isFourQuarter ? htmlspecialchars($semester, ENT_QUOTES, 'UTF-8') : ''; ?>', 'rejected', '<?php echo $activeTab === 'grades' ? 'review_grade_batch' : 'review_report_card_batch'; ?>')">
@@ -496,9 +496,11 @@ $page_title = 'Grade Approval Details';
                                                 <td>
                                                     <?php if ($qs === 'submitted'): ?>
                                                         <div class="d-flex gap-1">
-                                                            <button class="btn btn-sm btn-success" onclick="reviewApproval(<?php echo (int)$queue['approval_id']; ?>, 'admin_verified')">Verify</button>
+                                                            <button class="btn btn-sm btn-success" onclick="reviewApproval(<?php echo (int)$queue['approval_id']; ?>, 'admin_verified')">Verify for Adviser</button>
                                                             <button class="btn btn-sm btn-danger" onclick="reviewApproval(<?php echo (int)$queue['approval_id']; ?>, 'rejected')">Reject</button>
                                                         </div>
+                                                    <?php elseif ($qs === 'admin_verified'): ?>
+                                                        <button class="btn btn-sm btn-outline-danger" onclick="returnApproval(<?php echo (int)$queue['approval_id']; ?>)">Return as Rejected</button>
                                                     <?php else: ?>
                                                         <span class="text-muted">Reviewed</span>
                                                     <?php endif; ?>
@@ -550,6 +552,37 @@ async function reviewApproval(approvalId, status) {
         .catch(() => showNotification('Error updating approval', 'danger'));
 }
 
+async function returnApproval(approvalId) {
+    const confirmed = window.showAppConfirm
+        ? await window.showAppConfirm({
+            title: 'Return grade to teacher?',
+            subtitle: 'The grade will be marked rejected so the teacher can correct and resubmit.',
+            message: 'This reverses admin verification for this subject grade.',
+            confirmText: 'Return as Rejected',
+            cancelText: 'Cancel',
+            tone: 'danger',
+            icon: 'bi-arrow-return-left'
+        })
+        : window.confirm('Return this verified grade to teacher as rejected?');
+    if (!confirmed) return;
+
+    const formData = new FormData();
+    formData.append('approval_id', String(approvalId));
+    formData.append('remarks', 'Returned to teacher for correction.');
+    if (window.APP_CSRF_TOKEN) formData.append('csrf_token', window.APP_CSRF_TOKEN);
+    fetch('admin_Grade_Approvals_Action.php?action=return_grade', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(d => {
+            if (!d.success) {
+                showNotification(d.message || 'Failed to return grade', 'danger');
+                return;
+            }
+            showNotification(d.message || 'Grade returned to teacher', 'success');
+            setTimeout(() => window.location.reload(), 700);
+        })
+        .catch(() => showNotification('Error returning grade', 'danger'));
+}
+
 async function reviewBatch(gradeLevel, section, academicYear, semester, status, batchAction) {
     const isApprove = status === 'approved' || status === 'admin_verified';
     const periodLabel = semester ? `Semester ${semester}` : 'Full Year';
@@ -559,7 +592,7 @@ async function reviewBatch(gradeLevel, section, academicYear, semester, status, 
             title: isApprove ? `Approve ${label}?` : `Reject ${label}?`,
             subtitle: `Grade ${gradeLevel} - ${section} • ${academicYear} • ${periodLabel}`,
             message: isApprove
-                ? `All submitted ${label} in this batch will be approved.`
+                ? `All submitted ${label} in this batch will be ${batchAction === 'review_grade_batch' ? 'verified for adviser review' : 'finally approved'}.`
                 : `All submitted ${label} in this batch will be rejected.`,
             confirmText: isApprove ? 'Approve Batch' : 'Reject Batch',
             cancelText: 'Cancel',

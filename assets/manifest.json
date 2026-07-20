@@ -2,8 +2,8 @@
   "name": "Balingasag SHS AMS",
   "short_name": "BSHS AMS",
   "description": "Attendance and Academic Management System for Balingasag Senior High School",
-  "start_url": "auth/login.php",
-  "scope": "./",
+  "start_url": "/auth/login.php",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#f8fafc",
@@ -11,19 +11,19 @@
   "categories": ["education", "productivity"],
   "icons": [
     {
-      "src": "images/icon-192.png",
+      "src": "/assets/images/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "images/icon-512.png",
+      "src": "/assets/images/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "images/icon-maskable-512.png",
+      "src": "/assets/images/icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

@@ -365,9 +365,9 @@ $page_title = 'Report Card';
                             <span class="badge bg-<?php echo $rcBadge; ?>">Report Card Submission: <?php echo htmlspecialchars($rcText); ?></span>
                             <?php if (in_array($reportCardSectionStatus, ['', 'rejected', 'mixed'], true)): ?>
                                 <button class="btn btn-primary-custom btn-sm" type="button" onclick="submitReportCardToAdmin('<?php echo htmlspecialchars($selectedAcademicYear, ENT_QUOTES, 'UTF-8'); ?>')">
-                                    <i class="bi bi-send-check me-1"></i>Submit All to Admin
+                                    <i class="bi bi-send-check me-1"></i>Submit Report Cards to Admin
                                 </button>
-                            <?php elseif (in_array($reportCardSectionStatus, ['pending', 'approved'], true)): ?>
+                            <?php elseif ($reportCardSectionStatus === 'pending'): ?>
                                 <button class="btn btn-warning btn-sm" type="button" onclick="recallReportCard('<?php echo htmlspecialchars($selectedAcademicYear, ENT_QUOTES, 'UTF-8'); ?>')">
                                     <i class="bi bi-arrow-counterclockwise me-1"></i>Recall Report Cards
                                 </button>

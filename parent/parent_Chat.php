@@ -14,7 +14,7 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'parent') {
 $db = (new Database())->getConnection();
 $parentId = (int)($_SESSION['user_id'] ?? 0);
 
-// Get children and their subject teachers
+// Get children and their advisers.
 $conversations = [];
 if ($db) {
     try {
@@ -40,9 +40,14 @@ if ($db) {
                  ORDER BY m3.created_at DESC LIMIT 1) AS last_message_at
             FROM parent_students ps
             JOIN users u_student ON u_student.id = ps.student_id AND u_student.status = 'active'
-            JOIN enrollments e ON e.student_id = u_student.id AND e.status = 'enrolled'
-            JOIN class_subjects cs ON cs.class_id = e.class_id
-            JOIN users u_teacher ON u_teacher.id = cs.teacher_id AND u_teacher.role = 'teacher' AND u_teacher.status = 'active'
+            JOIN classes c ON c.status = 'active'
+                AND c.teacher_id IS NOT NULL
+                AND c.grade_level = u_student.grade_level
+                AND (
+                    LOWER(TRIM(COALESCE(c.section, ''))) = LOWER(TRIM(COALESCE(u_student.section, '')))
+                    OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(c.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(u_student.section, ''), '(', 1)))
+                )
+            JOIN users u_teacher ON u_teacher.id = c.teacher_id AND u_teacher.role = 'teacher' AND u_teacher.status = 'active'
             WHERE ps.parent_id = ?
             ORDER BY last_message_at DESC, u_teacher.last_name ASC
         ");
@@ -110,8 +115,8 @@ $page_title = 'Messages';
                 <div class="parent-hero-grid">
                     <div class="parent-hero-main">
                         <div class="welcome-role-chip"><i class="bi bi-chat-dots"></i><span>Parent Messages</span></div>
-                        <h4 class="mb-2">Coordinate with teachers in one shared inbox.</h4>
-                        <p class="text-muted mb-3">Open a teacher thread, review unread updates, and send quick follow-ups about your child's classes.</p>
+                        <h4 class="mb-2">Coordinate with your child's adviser in one shared inbox.</h4>
+                        <p class="text-muted mb-3">Open an adviser thread, review unread updates, and send quick follow-ups about your child's section.</p>
                         <div class="parent-chip-row">
                             <span class="parent-chip"><i class="bi bi-people"></i><?php echo number_format(count($conversations)); ?> conversation<?php echo count($conversations) === 1 ? '' : 's'; ?></span>
                             <?php if ($selectedConv): ?><span class="parent-chip"><i class="bi bi-person-badge"></i><?php echo htmlspecialchars(trim(($selectedConv['teacher_first'] ?? '') . ' ' . ($selectedConv['teacher_last'] ?? ''))); ?></span><?php endif; ?>
@@ -125,12 +130,12 @@ $page_title = 'Messages';
                     <!-- Conversation List -->
                     <div class="parent-chat-list">
                         <div class="parent-chat-section-label">
-                            <i class="bi bi-person-badge me-1"></i>Teachers
+                            <i class="bi bi-person-badge me-1"></i>Advisers
                         </div>
                         <?php if (empty($conversations)): ?>
                         <div class="text-center text-muted py-5 px-3">
                             <i class="bi bi-chat-dots" style="font-size:2rem;opacity:.3;"></i>
-                            <p class="mt-2 small">No teachers linked to your child's classes yet.</p>
+                            <p class="mt-2 small">No adviser linked to your child's section yet.</p>
                         </div>
                         <?php endif; ?>
                         <?php foreach ($conversations as $conv): ?>
@@ -175,7 +180,7 @@ $page_title = 'Messages';
                             <a href="Parent_Chat.php" class="btn btn-sm btn-outline-secondary d-lg-none"><i class="bi bi-arrow-left"></i></a>
                             <div>
                                 <div class="fw-bold"><?php echo htmlspecialchars($tName); ?></div>
-                                <small class="text-muted">Teacher of <?php echo htmlspecialchars($sName); ?><?php if (!empty($selectedConv['grade_level']) || !empty($selectedConv['section'])): ?> · <?php if (!empty($selectedConv['grade_level'])): ?>Grade <?php echo (int)$selectedConv['grade_level']; ?><?php endif; ?><?php if (!empty($selectedConv['grade_level']) && !empty($selectedConv['section'])): ?> <?php endif; ?><?php echo htmlspecialchars((string)($selectedConv['section'] ?? '')); ?><?php endif; ?></small>
+                                <small class="text-muted">Adviser of <?php echo htmlspecialchars($sName); ?><?php if (!empty($selectedConv['grade_level']) || !empty($selectedConv['section'])): ?> · <?php if (!empty($selectedConv['grade_level'])): ?>Grade <?php echo (int)$selectedConv['grade_level']; ?><?php endif; ?><?php if (!empty($selectedConv['grade_level']) && !empty($selectedConv['section'])): ?> <?php endif; ?><?php echo htmlspecialchars((string)($selectedConv['section'] ?? '')); ?><?php endif; ?></small>
                             </div>
                         </div>
                         <div class="parent-chat-messages" id="chatMessages">
@@ -210,7 +215,7 @@ $page_title = 'Messages';
                         <?php else: ?>
                         <div class="parent-chat-placeholder">
                             <i class="bi bi-chat-heart" style="font-size:3rem;"></i>
-                            <p class="mb-0">Select a teacher to start a conversation</p>
+                            <p class="mb-0">Select an adviser to start a conversation</p>
                         </div>
                         <?php endif; ?>
                     </div>

@@ -160,7 +160,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $db) {
         </div>
     </div>
     <script src="<?php echo appAssetPath('js/main.js'); ?>"></script>
-</body>
 <script>
     document.querySelectorAll('.password-toggle').forEach(function (btn) {
         btn.addEventListener('click', function () {
@@ -201,4 +200,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $db) {
         updateGuide();
     });
 </script>
+</body>
 </html>

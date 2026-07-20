@@ -11,15 +11,9 @@ USE school_db;
 -- =============================================================================
 -- DEFAULT SYSTEM ACCOUNTS
 -- =============================================================================
--- Admin user:       A341227-1  /  A341227-1@balingasag.edu.ph
--- Password:         bshsams341227  (bcrypt hash below)
--- =============================================================================
-INSERT IGNORE INTO users
-    (reference_code, email, password, first_name, last_name, role, status, created_at, updated_at)
-VALUES
-    ('A341227-1', 'A341227-1@balingasag.edu.ph',
-     '$2y$12$gDmePOBsN3m9lhTXd/DHRO3WOFnWW7OM/xj1YyhQCSg0.vx2rtr6W',
-     'System', 'Administrator', 'admin', 'active', NOW(), NOW());
+-- Admin credentials must not be hardcoded in SQL.
+-- Create the first admin with: composer run seed:admin
+-- The password comes from FIRST_RUN_ADMIN_PASSWORD in .env.
 
 -- =============================================================================
 -- WEBSITE CONTENT (admin-managed school website pages)

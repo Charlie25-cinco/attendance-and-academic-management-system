@@ -2,9 +2,9 @@
 // Seed default admin account if it doesn't exist.
 // Password comes from FIRST_RUN_ADMIN_PASSWORD env var.
 // Run this after database/schema.sql is imported.
-// Usage: php app/Console/seed_admin.php  (with env var set)
+// Usage: composer run seed:admin
 
-require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/../functions/bootstrap.php';
 
 $adminPassword = getFirstRunAdminPassword();
 

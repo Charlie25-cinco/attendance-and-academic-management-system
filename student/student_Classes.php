@@ -21,6 +21,7 @@ $selectedClassId = (int)($_GET['class_id'] ?? 0);
 $classes = [];
 $materials = [];
 $gradeRows = [];
+$gradeActivities = [];
 $hasGradeQuarter = false;
 
 $formatSchedule = function ($schedule) {
@@ -87,6 +88,26 @@ if ($db && $studentId > 0) {
         $matStmt = $db->prepare($matQuery);
         $matStmt->execute($params);
         $materials = $matStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if (dbHasTable($db, 'grade_items') && dbHasTable($db, 'grade_item_scores')) {
+            $activityWhere = ["gi.class_id IN (" . implode(',', array_fill(0, count($classIds), '?')) . ")"];
+            $activityParams = $classIds;
+            if ($selectedClassId > 0) {
+                $activityWhere[] = "gi.class_id = ?";
+                $activityParams[] = $selectedClassId;
+            }
+            $activityQuery = "SELECT gi.id, gi.title, gi.component, gi.total_score, gi.activity_date, gi.status,
+                                     gis.score, c.class_name, c.grade_level, c.section
+                              FROM grade_items gi
+                              JOIN classes c ON c.id = gi.class_id
+                              LEFT JOIN grade_item_scores gis ON gis.grade_item_id = gi.id AND gis.student_id = ?
+                              WHERE " . implode(" AND ", $activityWhere) . "
+                              ORDER BY gi.activity_date DESC, gi.created_at DESC
+                              LIMIT 40";
+            $activityStmt = $db->prepare($activityQuery);
+            $activityStmt->execute(array_merge([$studentId], $activityParams));
+            $gradeActivities = $activityStmt->fetchAll(PDO::FETCH_ASSOC);
+        }
 
         $gradeWhere = [
             "g.student_id = ?",
@@ -197,8 +218,8 @@ function formatFileSize($bytes) {
                                 <strong class="student-summary-value"><?php echo number_format(count($materials)); ?></strong>
                             </div>
                             <div class="student-summary-stat">
-                                <span class="student-summary-label">Grade Rows</span>
-                                <strong class="student-summary-value"><?php echo number_format(count($gradeRows)); ?></strong>
+                                <span class="student-summary-label">Activities</span>
+                                <strong class="student-summary-value"><?php echo number_format(count($gradeActivities)); ?></strong>
                             </div>
                         </div>
                         <p class="student-summary-note">Switch the class filter to narrow the materials and academic progress lists.</p>
@@ -210,7 +231,7 @@ function formatFileSize($bytes) {
         <div class="student-overview-grid mb-4">
             <div class="student-overview-card"><strong><?php echo number_format(count($classes)); ?></strong><span>Enrolled Classes</span></div>
             <div class="student-overview-card"><strong><?php echo number_format(count($materials)); ?></strong><span>Available Materials</span></div>
-            <div class="student-overview-card"><strong><?php echo number_format(count($gradeRows)); ?></strong><span>Progress Rows</span></div>
+            <div class="student-overview-card"><strong><?php echo number_format(count($gradeActivities)); ?></strong><span>Grade Activities</span></div>
             <div class="student-overview-card"><strong><?php echo htmlspecialchars($selectedClassLabel); ?></strong><span>Selected Filter</span></div>
         </div>
         <div class="row g-4">
@@ -287,6 +308,35 @@ function formatFileSize($bytes) {
         </div>
 
         <div class="row g-4 mt-2">
+            <div class="col-12">
+                <div class="content-card">
+                    <div class="content-card-header"><h5 class="content-card-title">Grade Activities</h5></div>
+                    <div class="content-card-body">
+                        <div class="table-container">
+                            <table class="custom-table">
+                                <thead><tr><th>Date</th><th>Class</th><th>Activity</th><th>Component</th><th>Status</th><th>Score</th></tr></thead>
+                                <tbody>
+                                <?php if (empty($gradeActivities)): ?>
+                                    <tr><td colspan="6" class="text-center text-muted py-4">No grade activities yet.</td></tr>
+                                <?php else: ?>
+                                    <?php foreach ($gradeActivities as $activity): ?>
+                                        <tr>
+                                            <td><?php echo htmlspecialchars((string)$activity['activity_date']); ?></td>
+                                            <td><?php echo htmlspecialchars((string)$activity['class_name']); ?><?php if (!empty($activity['grade_level']) || !empty($activity['section'])): ?> <?php echo htmlspecialchars('(' . (!empty($activity['grade_level']) ? 'G' . $activity['grade_level'] : '') . ((!empty($activity['grade_level']) && !empty($activity['section'])) ? ' - ' : '') . (!empty($activity['section']) ? $activity['section'] : '') . ')'); ?><?php endif; ?></td>
+                                            <td><?php echo htmlspecialchars((string)$activity['title']); ?></td>
+                                            <td><?php echo htmlspecialchars((string)$activity['component']); ?></td>
+                                            <td><span class="badge bg-<?php echo $activity['status'] === 'finished' ? 'secondary' : 'primary'; ?>"><?php echo htmlspecialchars(ucfirst((string)$activity['status'])); ?></span></td>
+                                            <td><?php echo $activity['score'] !== null ? htmlspecialchars((string)$activity['score']) . ' / ' . htmlspecialchars((string)$activity['total_score']) : 'Not recorded'; ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="col-12">
                 <div class="content-card">
                     <div class="content-card-header"><h5 class="content-card-title">Academic Progress by Class</h5></div>

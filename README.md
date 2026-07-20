@@ -34,6 +34,7 @@ Open `http://localhost:5000`.
 - `composer run lint` runs PHP CodeSniffer on `functions/`, `config/`, and `api/`.
 - `composer run test` runs PHPUnit.
 - `composer run seed:admin` runs the admin seeder.
+- `wasmer run .` tests the Wasmer PHP package locally on `http://localhost:8080/` after the Wasmer CLI is installed.
 
 ## Project Layout
 
@@ -59,6 +60,8 @@ Open `http://localhost:5000`.
 - API bearer tokens are signed with `API_AUTH_SECRET`.
 - API sync routes use `API_SYNC_SECRET`.
 - In production, set `APP_ENV=production`, `API_AUTH_SECRET`, `API_SYNC_SECRET`, and a trusted `API_ALLOWED_ORIGIN`.
+- Create the first admin with `composer run seed:admin`, which runs `database/seed_admin.php`; `database/seed.sql` does not hardcode admin credentials.
+- `FIRST_RUN_ADMIN_PASSWORD` controls first admin seeding, and `DEFAULT_NEW_USER_PASSWORD` controls newly created users.
 - The API first-login password-change flow requires the `temp_token` returned by `POST /api/index.php?route=login` when `must_change_password` is true.
 - Default or first-run passwords must be changed before production.
 
@@ -70,22 +73,78 @@ Open `http://localhost:5000`.
 
 ### Teacher
 
-- Dashboard, advisory section, attendance, classes, grades, reports, announcements, archives, chat, and SF2 export from Reports.
+- Dashboard, advisory section, attendance, classes, grades, reports, announcements, archives, adviser-parent chat, and SF2 export from Reports.
+- Created grade activities are visible to enrolled students and linked parents before scores are recorded.
+- Attendance recording creates saved in-app notifications for students and linked parents.
 
 ### Student
 
 - Dashboard, attendance, classes, announcements, QR, and report card views.
+- Classes includes grade activity status and recorded scores when available.
 
 ### Parent
 
-- Dashboard, linked student progress, report cards, announcements, and chat.
+- Dashboard, linked student progress, report cards, announcements, and adviser chat.
+- Progress includes grade activity status, recorded scores, and attendance notifications for linked students.
 
 ## Report Card Approval Pipeline
 
-1. Subject teacher submits grades: `grade_approvals.status = 'submitted'`.
-2. Admin verifies or rejects subject grades: `admin_verified` or `rejected`.
-3. Adviser submits compiled report cards: `report_card_approvals.status = 'submitted_admin'`.
-4. Admin approves or rejects report cards: `approved` or `rejected`.
+1. Subject teacher submits grades to admin: `grade_approvals.status = 'submitted'`.
+2. Subject teacher grade activities and score edits are locked only while grades are `submitted`.
+3. Subject teacher may recall while grades are `submitted`; rejected, verified, or final-released grades may be corrected by submitting again.
+4. Admin verifies subject grades for adviser review or rejects them: `admin_verified` or `rejected`.
+5. Admin may return verified subject grades to the teacher by marking them `rejected`, which unlocks teacher editing and resubmission.
+6. Adviser submits compiled report cards to admin: `report_card_approvals.status = 'submitted_admin'`.
+7. Adviser may recall while report cards are `submitted_admin` or `rejected`; final-approved report cards are locked from adviser recall.
+8. Admin gives final report-card approval or rejection: `approved` or `rejected`.
+9. Student and parent portals show grades only after final admin approval through `report_card_approvals.status = 'approved'`.
+10. After final release, teachers may submit corrected subject grades again; the affected approved report cards are marked `rejected` so student and parent portals stop showing stale final grades until approval runs again.
+
+## Chat
+
+- Chat is limited to adviser-parent communication.
+- Teacher chat lists only parents of students in the teacher's advisory section through `classes.teacher_id`.
+- Parent chat lists only the adviser for each linked student section.
+- Subject teachers must not be exposed as parent chat contacts through `class_subjects`.
+
+## UI System
+
+- Shared UI styling lives in `assets/css/main.css` and role-specific refinements live in `assets/css/role.css`.
+- Pages should use the common card, table, button, form, badge, modal, header, and chat styles instead of one-off visual treatments.
+- The current visual direction is simple, modern, professional, compact, and consistent across admin, teacher, student, and parent portals.
+- Admin core pages share compact headers, stat cards, filter forms, tables, action buttons, pagination, and modal panel styling from the shared CSS layer.
+- Teacher portal pages share compact heroes, KPI cards, filters, attendance status controls, grade tables, action bars, and chat surfaces from the shared CSS layer.
+- Modal, helper text, empty-state, and note styles should preserve readable contrast on light and dark surfaces.
+- Shared settings/profile modals and admin dashboard widgets should use the unified modal, card, chart-panel, list-row, and empty-state styling rather than inline page-only CSS.
+- The public school website lives in `site/index.php` with styling in `assets/css/Site.css`; do not place public website copies inside `assets/uploads/`.
+- Authentication pages use the shared `assets/css/auth.css` visual system; keep login, forgot password, reset password, and first-login password setup consistent while preserving CSRF, rate limit, token, and password-guidance behavior.
+- Global page loading and navigation transitions are controlled by `assets/js/main.js` and styled in `assets/css/main.css`; keep loader behavior accessible, compact, dark-mode ready, and reduced-motion compatible.
+- Multi-content workspace pages should provide compact in-page navigation so users can jump between major sections without manually scrolling through the whole page.
+- Admin hero, metric, and approval-card text must keep readable contrast and enough icon/title spacing on both light and dark surfaces.
+
+## PWA
+
+- PWA metadata lives in `assets/manifest.json`.
+- The active service worker is root-scoped at `sw.js` so it can cover `/auth/`, `/admin/`, `/teacher/`, `/student/`, `/parent/`, and `/site/`.
+- `assets/push-sw.js` is kept only as a compatibility bridge for older browser registrations.
+- Install prompts are exposed through the shared header install button when the browser supports installation.
+- Before production, test install/offline behavior on desktop and mobile browsers.
+
+## Wasmer Deployment
+
+- Wasmer Edge config lives in `app.yaml`, package config lives in `wasmer.toml`, and PHP settings live in `config/wasmer/php.ini`.
+- GitHub deployment is configured in `.github/workflows/wasmer-deploy.yml`; it installs production Composer dependencies before running `wasmer deploy --publish-package --non-interactive`.
+- Set these GitHub repository secrets before using the workflow:
+  - `WASMER_TOKEN`
+  - `WASMER_OWNER`
+  - `WASMER_APP_NAME` optional, defaults to `bshs-ams`
+  - `APP_PUBLIC_BASE_URL`, for example `https://bshs-ams-yourname.wasmer.app`
+- Configure production secrets in Wasmer for database and API values:
+  - `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`
+  - `API_AUTH_SECRET`, `API_SYNC_SECRET`
+  - mail/SMS/push secrets if those features are enabled
+- `app.yaml` intentionally contains placeholder owner/public URL values that the GitHub workflow replaces from secrets.
+- Wasmer app instances are stateless; runtime files should use the configured Wasmer volumes for `/app/storage` and `/app/assets/uploads`, while durable school data should live in MySQL/MariaDB.
 
 ## Instructor RBAC Branch
 
@@ -99,16 +158,19 @@ Open `http://localhost:5000`.
 
 - Active SF1, SF2, and ECR templates live in `deped/`.
 - SF1 uses `deped/SF1_Senior_High_School.xlsx`.
+- SF1 XLSX import reads the official DepEd layout: LRN from the merged A:B area and learner name in merged columns C:F as `Last Name, First Name, Name Extension, Middle Name`.
+- Student addresses follow SF1 separated columns: house/street, barangay, municipality/city, and province, while retaining the combined `address` value for older views.
+- SF1 import auto-creates missing section records from the template grade level, section, and track, but it does not create subject classes.
 - SF2 uses `deped/SF2_Senior_High_School.xlsx`.
-- ECR XLSX export requires a compatible three-term Strengthened SHS `.xlsx` template at `deped/ecr_template.xlsx` or `ECR_TEMPLATE_PATH`.
-- If `deped/ecr_template.xlsx` is missing, ECR CSV export can still work but ECR XLSX export should report that a compatible template is required.
+- ECR XLSX export uses a compatible three-term Strengthened SHS template in `deped/`, preferring `deped/ecr_template.xlsx`, `deped/ecr_template.xlsm`, the uploaded TeachPinas SSHS three-term `.xlsm`, or `ECR_TEMPLATE_PATH`.
+- If no compatible template is available, ECR XLSX export falls back to a generated workbook while CSV export remains available.
 - ECR teacher imports accept `.xlsx` only.
 - SF1, SF2, and ECR user-facing exports should be CSV or XLSX only.
 - SF1 import is handled through Admin Enrollments.
 - Admin SF1 and SF2 exports are available from Admin Reports.
 - Teacher SF2 export is available from Teacher Reports.
 - Teacher ECR preview, upload, import, and export are served by `api/routes/12-ecr.php`; ECR file uploads must be `.xlsx`, and ECR downloads may be `.csv` or `.xlsx`.
-- Legacy `.xlsm` ECR workbooks are not accepted as export templates or uploads.
+- Compatible `.xlsm` ECR workbooks may be used as export templates, but downloads are still served as `.xlsx`; uploads remain `.xlsx` only.
 - The admin portal does not expose ECR template management or academic year settings for the strengthened SHS rollout.
 
 ## GitHub Readiness

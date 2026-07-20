@@ -495,11 +495,14 @@ const PAGE_LOADER_HTML = `
   <div class="page-loader-backdrop" id="pageLoader" aria-hidden="true">
     <div class="page-loader-panel" role="status" aria-live="polite">
       <div class="page-loader-mark">
-        <span></span><span></span><span></span>
+        <span class="page-loader-ring"></span>
+        <span class="page-loader-core">
+          <i class="bi bi-mortarboard-fill"></i>
+        </span>
       </div>
       <div class="page-loader-copy">
-        <strong>Loading page</strong>
-        <small>Please wait a moment...</small>
+        <strong>Preparing your workspace</strong>
+        <small>Loading the school system...</small>
       </div>
     </div>
   </div>

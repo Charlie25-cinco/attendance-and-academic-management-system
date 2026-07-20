@@ -27,6 +27,7 @@ $availableClassCounts = [];
 $studentsForParent = [];
 $takenTeacherAdvisories = [];
 $takenSubjectTeachers = [];
+$sectionRowsForForms = [];
 
 if ($db) {
     // Get the highest reference code for each role
@@ -144,6 +145,21 @@ if ($db) {
                                   GROUP BY grade_level, section");
     foreach ($classCountStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
         $availableClassCounts[$row['grade_level'] . '|' . $row['section']] = (int)$row['total'];
+    }
+
+    if (dbHasTable($db, 'sections')) {
+        $sectionsStmt = $db->query("SELECT id, name, grade_level, track, program
+                                    FROM sections
+                                    ORDER BY grade_level ASC, track ASC, name ASC");
+        foreach (($sectionsStmt ? $sectionsStmt->fetchAll(PDO::FETCH_ASSOC) : []) as $row) {
+            $sectionRowsForForms[] = [
+                'id' => (int)($row['id'] ?? 0),
+                'name' => trim((string)($row['name'] ?? '')),
+                'grade_level' => (string)($row['grade_level'] ?? ''),
+                'track' => trim((string)($row['track'] ?? '')),
+                'program' => trim((string)($row['program'] ?? '')),
+            ];
+        }
     }
 
     $studentsForParentStmt = $db->query("SELECT id, reference_code, first_name, last_name
@@ -781,6 +797,7 @@ $page_title = 'Manage Users';
         const availableClassCounts = <?php echo json_encode($availableClassCounts, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
         const takenTeacherAdvisories = <?php echo json_encode($takenTeacherAdvisories, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
         const takenSubjectTeachers = <?php echo json_encode($takenSubjectTeachers, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+        const serverSections = <?php echo json_encode($sectionRowsForForms, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
         const csrfToken = (window.APP_CSRF_TOKEN || '').toString();
         let currentEditUserId = 0;
         let sectionsCache = {};
@@ -849,43 +866,43 @@ $page_title = 'Manage Users';
             
             // Show fields for teachers
             if (role === 'teacher') {
-                gradeLevelDropdown.style.display = 'block';
-                sectionDropdown.style.display = 'block';
-                trackDropdownCreate.style.display = 'none';
-                classDropdown.style.display = 'block';
-                parentStudentDropdown.style.display = 'none';
-                gradeLevelLabel.innerHTML = 'Advisory Grade Level (Optional)';
-                sectionLabel.innerHTML = 'Advisory Section (Optional)';
-                gradeLevelInput.required = false;
-                sectionInput.required = false;
-                classLabel.innerHTML = 'Assign to Subject(s) (Optional)';
-                classHelpText.textContent = 'Select subjects now or transfer a subject if needed.';
+                if (gradeLevelDropdown) gradeLevelDropdown.style.display = 'block';
+                if (sectionDropdown) sectionDropdown.style.display = 'block';
+                if (trackDropdownCreate) trackDropdownCreate.style.display = 'none';
+                if (classDropdown) classDropdown.style.display = 'block';
+                if (parentStudentDropdown) parentStudentDropdown.style.display = 'none';
+                if (gradeLevelLabel) gradeLevelLabel.innerHTML = 'Advisory Grade Level (Optional)';
+                if (sectionLabel) sectionLabel.innerHTML = 'Advisory Section (Optional)';
+                if (gradeLevelInput) gradeLevelInput.required = false;
+                if (sectionInput) sectionInput.required = false;
+                if (classLabel) classLabel.innerHTML = 'Assign to Subject(s) (Optional)';
+                if (classHelpText) classHelpText.textContent = 'Select subjects now or transfer a subject if needed.';
                 checkboxes.forEach(cb => { cb.onclick = null; });
                 refreshSubjectCheckboxAvailability('.class-checkbox', 0);
                 parentStudentChecks.forEach(cb => cb.checked = false);
             } else if (role === 'parent') {
-                gradeLevelDropdown.style.display = 'none';
-                sectionDropdown.style.display = 'none';
-                classDropdown.style.display = 'none';
-                parentStudentDropdown.style.display = 'block';
-                trackDropdownCreate.style.display = 'none';
+                if (gradeLevelDropdown) gradeLevelDropdown.style.display = 'none';
+                if (sectionDropdown) sectionDropdown.style.display = 'none';
+                if (classDropdown) classDropdown.style.display = 'none';
+                if (parentStudentDropdown) parentStudentDropdown.style.display = 'block';
+                if (trackDropdownCreate) trackDropdownCreate.style.display = 'none';
                 if (trackCreate) { trackCreate.required = false; trackCreate.value = ''; }
-                document.getElementById('gradeLevel').value = '';
-                document.getElementById('sectionSelect').value = '';
-                gradeLevelInput.required = false;
-                sectionInput.required = false;
+                if (gradeLevelInput) gradeLevelInput.value = '';
+                if (sectionInput) sectionInput.value = '';
+                if (gradeLevelInput) gradeLevelInput.required = false;
+                if (sectionInput) sectionInput.required = false;
                 checkboxes.forEach(cb => cb.checked = false);
             } else {
-                gradeLevelDropdown.style.display = 'none';
-                sectionDropdown.style.display = 'none';
-                classDropdown.style.display = 'none';
-                parentStudentDropdown.style.display = 'none';
-                trackDropdownCreate.style.display = 'none';
+                if (gradeLevelDropdown) gradeLevelDropdown.style.display = 'none';
+                if (sectionDropdown) sectionDropdown.style.display = 'none';
+                if (classDropdown) classDropdown.style.display = 'none';
+                if (parentStudentDropdown) parentStudentDropdown.style.display = 'none';
+                if (trackDropdownCreate) trackDropdownCreate.style.display = 'none';
                 if (trackCreate) { trackCreate.required = false; trackCreate.value = ''; }
-                document.getElementById('gradeLevel').value = '';
-                document.getElementById('sectionSelect').value = '';
-                gradeLevelInput.required = false;
-                sectionInput.required = false;
+                if (gradeLevelInput) gradeLevelInput.value = '';
+                if (sectionInput) sectionInput.value = '';
+                if (gradeLevelInput) gradeLevelInput.required = false;
+                if (sectionInput) sectionInput.required = false;
                 checkboxes.forEach(cb => cb.checked = false);
                 parentStudentChecks.forEach(cb => cb.checked = false);
             }
@@ -893,21 +910,38 @@ $page_title = 'Manage Users';
             updateClassAvailabilityWarning();
         }
 
+        function hydrateSectionsCache(sections) {
+            const nextCache = {};
+            (sections || []).forEach(s => {
+                const name = (s.name || '').toString().trim();
+                const gradeLevel = (s.grade_level || '').toString().trim();
+                const track = (s.track || '').toString().trim();
+
+                if (!name || !gradeLevel) {
+                    return;
+                }
+
+                const key = gradeLevel + '_' + track;
+                if (!nextCache[key]) {
+                    nextCache[key] = [];
+                }
+                nextCache[key].push({ value: name, label: name });
+            });
+
+            sectionsCache = nextCache;
+            return sectionsCache;
+        }
+
         function loadSectionsCache() {
             return fetch('admin_Sections_Action.php?action=list')
                 .then(r => r.json())
                 .then(data => {
-                    sectionsCache = {};
-                    if (data.success && data.sections) {
-                        data.sections.forEach(s => {
-                            const key = s.grade_level + '_' + s.track;
-                            if (!sectionsCache[key]) sectionsCache[key] = [];
-                            sectionsCache[key].push({ value: s.name, label: s.name });
-                        });
+                    if (data.success && Array.isArray(data.sections)) {
+                        return hydrateSectionsCache(data.sections);
                     }
                     return sectionsCache;
                 })
-                .catch(() => { sectionsCache = {}; });
+                .catch(() => sectionsCache);
         }
 
         function getSectionsFor(grade, track) {
@@ -935,16 +969,20 @@ $page_title = 'Manage Users';
         }
 
         function updateSections() {
-            const gradeLevel = document.getElementById('gradeLevel').value;
+            const gradeLevel = document.getElementById('gradeLevel')?.value || '';
             const sectionSelect = document.getElementById('sectionSelect');
-            const role = document.getElementById('userRole').value;
+            const role = document.getElementById('userRole')?.value || '';
+
+            if (!sectionSelect) {
+                return;
+            }
 
             sectionSelect.innerHTML = '<option value="">Select Section</option>';
 
             if (gradeLevel) {
                 const list = role === 'teacher'
                     ? getSectionsFor(gradeLevel, '')
-                    : getSectionsFor(gradeLevel, document.getElementById('trackCreate').value);
+                    : getSectionsFor(gradeLevel, document.getElementById('trackCreate')?.value || '');
                 sectionSelect.disabled = !list.length;
                 list.forEach(section => {
                     if (role === 'teacher' && isTakenTeacherAdvisory(gradeLevel, section.value, 0)) {
@@ -967,6 +1005,7 @@ $page_title = 'Manage Users';
         function updateClassAvailabilityWarning() {
             const warning = document.getElementById('classAvailabilityWarning');
             const createBtn = document.getElementById('createUserBtn');
+            if (!warning) return;
             warning.classList.add('d-none');
             if (createBtn) createBtn.disabled = false;
         }
@@ -1124,19 +1163,29 @@ $page_title = 'Manage Users';
                     if (data.success) {
                         const user = data.user;
                         currentEditUserId = parseInt(user.id || 0, 10);
-                        document.getElementById('editUserId').value = user.id;
-                        document.getElementById('editReferenceCode').value = user.reference_code || '';
-                        document.getElementById('editRole').value = user.role || '';
-                        document.getElementById('editFirstName').value = user.first_name || '';
-                        document.getElementById('editMiddleName').value = user.middle_name || '';
-                        document.getElementById('editLastName').value = user.last_name || '';
-                        document.getElementById('editSex').value = (user.sex || '').toString().toLowerCase();
+                        const editUserId = document.getElementById('editUserId');
+                        const editReferenceCode = document.getElementById('editReferenceCode');
+                        const editRole = document.getElementById('editRole');
+                        const editFirstName = document.getElementById('editFirstName');
+                        const editMiddleName = document.getElementById('editMiddleName');
+                        const editLastName = document.getElementById('editLastName');
+                        const editSex = document.getElementById('editSex');
+                        const editGradeLevel = document.getElementById('editGradeLevel');
+                        const editSection = document.getElementById('editSection');
 
-                        if (user.grade_level) {
-                            document.getElementById('editGradeLevel').value = user.grade_level;
+                        if (editUserId) editUserId.value = user.id;
+                        if (editReferenceCode) editReferenceCode.value = user.reference_code || '';
+                        if (editRole) editRole.value = user.role || '';
+                        if (editFirstName) editFirstName.value = user.first_name || '';
+                        if (editMiddleName) editMiddleName.value = user.middle_name || '';
+                        if (editLastName) editLastName.value = user.last_name || '';
+                        if (editSex) editSex.value = (user.sex || '').toString().toLowerCase();
+
+                        if (user.grade_level && editGradeLevel) {
+                            editGradeLevel.value = user.grade_level;
                             editUpdateSections();
-                            if (user.section) {
-                                document.getElementById('editSection').value = user.section;
+                            if (user.section && editSection) {
+                                editSection.value = user.section;
                                 editUpdateClassAvailabilityWarning();
                             }
                         }
@@ -1156,18 +1205,18 @@ $page_title = 'Manage Users';
                         const parentStudentChecks = document.querySelectorAll('.edit-parent-student-checkbox');
 
                         if (role === 'teacher' || role === 'student') {
-                            gradeLevelDiv.style.display = 'block';
-                            sectionDiv.style.display = 'block';
-                            editTrackDiv.style.display = role === 'student' ? 'block' : 'none';
+                            if (gradeLevelDiv) gradeLevelDiv.style.display = 'block';
+                            if (sectionDiv) sectionDiv.style.display = 'block';
+                            if (editTrackDiv) editTrackDiv.style.display = role === 'student' ? 'block' : 'none';
                             if (editTrack) editTrack.value = user.track || '';
                             if (role === 'teacher') {
-                                classDiv.style.display = 'block';
-                                parentStudentDiv.style.display = 'none';
-                                editGradeLevelLabel.innerHTML = 'Advisory Grade Level (Optional)';
-                                editSectionLabel.innerHTML = 'Advisory Section (Optional)';
-                                classLabel.innerHTML = 'Assign to Subject(s) (Optional)';
-                                document.getElementById('editGradeLevel').required = false;
-                                document.getElementById('editSection').required = false;
+                                if (classDiv) classDiv.style.display = 'block';
+                                if (parentStudentDiv) parentStudentDiv.style.display = 'none';
+                                if (editGradeLevelLabel) editGradeLevelLabel.innerHTML = 'Advisory Grade Level (Optional)';
+                                if (editSectionLabel) editSectionLabel.innerHTML = 'Advisory Section (Optional)';
+                                if (classLabel) classLabel.innerHTML = 'Assign to Subject(s) (Optional)';
+                                if (editGradeLevel) editGradeLevel.required = false;
+                                if (editSection) editSection.required = false;
                                 checkboxes.forEach(cb => { cb.onclick = null; });
                                 refreshSubjectCheckboxAvailability('.edit-class-checkbox', currentEditUserId);
                                 const assignedClassIds = Array.isArray(user.assigned_class_ids) ? user.assigned_class_ids.map(id => parseInt(id, 10)) : [];
@@ -1176,28 +1225,28 @@ $page_title = 'Manage Users';
                                 });
                                 parentStudentChecks.forEach(cb => cb.checked = false);
                             } else {
-                                classDiv.style.display = 'none';
-                                parentStudentDiv.style.display = 'none';
-                                editGradeLevelLabel.innerHTML = 'Grade Level <span class="text-danger">*</span>';
-                                editSectionLabel.innerHTML = 'Section <span class="text-danger">*</span>';
+                                if (classDiv) classDiv.style.display = 'none';
+                                if (parentStudentDiv) parentStudentDiv.style.display = 'none';
+                                if (editGradeLevelLabel) editGradeLevelLabel.innerHTML = 'Grade Level <span class="text-danger">*</span>';
+                                if (editSectionLabel) editSectionLabel.innerHTML = 'Section <span class="text-danger">*</span>';
                                 if (editTrackLabel) editTrackLabel.innerHTML = 'Track <span class="text-danger">*</span>';
                                 if (editTrack) editTrack.required = true;
-                                document.getElementById('editGradeLevel').required = true;
-                                document.getElementById('editSection').required = true;
+                                if (editGradeLevel) editGradeLevel.required = true;
+                                if (editSection) editSection.required = true;
                                 checkboxes.forEach(cb => cb.checked = false);
                                 parentStudentChecks.forEach(cb => cb.checked = false);
                             }
                         } else if (role === 'parent') {
-                            gradeLevelDiv.style.display = 'none';
-                            sectionDiv.style.display = 'none';
-                            classDiv.style.display = 'none';
-                            parentStudentDiv.style.display = 'block';
-                            editTrackDiv.style.display = 'none';
+                            if (gradeLevelDiv) gradeLevelDiv.style.display = 'none';
+                            if (sectionDiv) sectionDiv.style.display = 'none';
+                            if (classDiv) classDiv.style.display = 'none';
+                            if (parentStudentDiv) parentStudentDiv.style.display = 'block';
+                            if (editTrackDiv) editTrackDiv.style.display = 'none';
                             if (editTrack) { editTrack.required = false; editTrack.value = ''; }
-                            document.getElementById('editGradeLevel').value = '';
-                            document.getElementById('editSection').value = '';
-                            document.getElementById('editGradeLevel').required = false;
-                            document.getElementById('editSection').required = false;
+                            if (editGradeLevel) editGradeLevel.value = '';
+                            if (editSection) editSection.value = '';
+                            if (editGradeLevel) editGradeLevel.required = false;
+                            if (editSection) editSection.required = false;
                             checkboxes.forEach(cb => cb.checked = false);
                             parentStudentChecks.forEach(cb => cb.checked = false);
                             if (Array.isArray(user.linked_student_ids)) {
@@ -1206,16 +1255,16 @@ $page_title = 'Manage Users';
                                 });
                             }
                         } else {
-                            gradeLevelDiv.style.display = 'none';
-                            sectionDiv.style.display = 'none';
-                            classDiv.style.display = 'none';
-                            parentStudentDiv.style.display = 'none';
-                            editTrackDiv.style.display = 'none';
+                            if (gradeLevelDiv) gradeLevelDiv.style.display = 'none';
+                            if (sectionDiv) sectionDiv.style.display = 'none';
+                            if (classDiv) classDiv.style.display = 'none';
+                            if (parentStudentDiv) parentStudentDiv.style.display = 'none';
+                            if (editTrackDiv) editTrackDiv.style.display = 'none';
                             if (editTrack) { editTrack.required = false; editTrack.value = ''; }
-                            document.getElementById('editGradeLevel').value = '';
-                            document.getElementById('editSection').value = '';
-                            document.getElementById('editGradeLevel').required = false;
-                            document.getElementById('editSection').required = false;
+                            if (editGradeLevel) editGradeLevel.value = '';
+                            if (editSection) editSection.value = '';
+                            if (editGradeLevel) editGradeLevel.required = false;
+                            if (editSection) editSection.required = false;
                             checkboxes.forEach(cb => cb.checked = false);
                             parentStudentChecks.forEach(cb => cb.checked = false);
                         }
@@ -1236,17 +1285,20 @@ $page_title = 'Manage Users';
 
         window.editUser = editUser;
         function editUpdateSections() {
-            const gradeLevel = document.getElementById('editGradeLevel').value;
+            const gradeLevel = document.getElementById('editGradeLevel')?.value || '';
             const sectionSelect = document.getElementById('editSection');
+            if (!sectionSelect) {
+                return;
+            }
             const previousSection = sectionSelect.value;
-            const role = document.getElementById('editRole').value;
+            const role = document.getElementById('editRole')?.value || '';
 
             sectionSelect.innerHTML = '<option value="">Select Section</option>';
 
             if (gradeLevel) {
                 const list = role === 'teacher'
                     ? getSectionsFor(gradeLevel, '')
-                    : getSectionsFor(gradeLevel, document.getElementById('editTrack').value);
+                    : getSectionsFor(gradeLevel, document.getElementById('editTrack')?.value || '');
                 sectionSelect.disabled = !list.length;
                 list.forEach(section => {
                     if (role === 'teacher' && isTakenTeacherAdvisory(gradeLevel, section.value, currentEditUserId)) {
@@ -1272,6 +1324,7 @@ $page_title = 'Manage Users';
         function editUpdateClassAvailabilityWarning() {
             const warning = document.getElementById('editClassAvailabilityWarning');
             const updateBtn = document.getElementById('updateUserBtn');
+            if (!warning) return;
             warning.classList.add('d-none');
             if (updateBtn) updateBtn.disabled = false;
         }
@@ -1398,13 +1451,17 @@ $page_title = 'Manage Users';
         
         function updateUser() {
             const form = document.getElementById('editUserForm');
+            if (!form) {
+                showNotification('Edit form is not available', 'danger');
+                return;
+            }
             const formData = new FormData(form);
             
             // Validate
             const firstName = formData.get('first_name');
             const lastName = formData.get('last_name');
             const sex = (formData.get('sex') || '').toString().trim();
-            const role = document.getElementById('editRole').value;
+            const role = document.getElementById('editRole')?.value || '';
             const gradeLevel = formData.get('grade_level');
             const section = formData.get('section');
             const linkedStudentIds = formData.getAll('linked_student_ids[]');
@@ -1441,7 +1498,8 @@ $page_title = 'Manage Users';
             .then(data => {
                 if (data.success) {
                     showNotification('User updated successfully', 'success');
-                    editUserModal.hide();
+                    const modal = getBootstrapModalInstance('editUserModal');
+                    if (modal) modal.hide();
                     setTimeout(() => location.reload(), 1000);
                 } else {
                     showNotification(data.message || 'Failed to update user', 'danger');
@@ -1696,6 +1754,7 @@ $page_title = 'Manage Users';
         window.handleDelete = handleDelete;
 
         document.addEventListener('DOMContentLoaded', () => {
+            hydrateSectionsCache(serverSections);
             loadSectionsCache();
         });
     </script>

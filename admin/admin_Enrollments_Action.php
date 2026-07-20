@@ -251,7 +251,11 @@ function createStudent(PDO $db): void {
         $track = trim((string)($_POST['track'] ?? ''));
         $lrn = trim((string)($_POST['lrn'] ?? ''));
         $contactNumber = trim((string)($_POST['contact_number'] ?? ''));
-        $address = trim((string)($_POST['address'] ?? ''));
+        $houseStreet = trim((string)($_POST['house_street'] ?? ''));
+        $barangay = trim((string)($_POST['barangay'] ?? ''));
+        $municipality = trim((string)($_POST['municipality'] ?? ''));
+        $province = trim((string)($_POST['province'] ?? ''));
+        $address = implode(', ', array_filter([$houseStreet, $barangay, $municipality, $province]));
         $dateOfBirth = trim((string)($_POST['date_of_birth'] ?? ''));
         $academicYear = currentAcademicYear();
 
@@ -314,7 +318,8 @@ function createStudent(PDO $db): void {
             $db->prepare("UPDATE users SET contact_number = ? WHERE id = ?")->execute([$contactNumber, $userId]);
         }
         if ($address !== '') {
-            $db->prepare("UPDATE users SET address = ? WHERE id = ?")->execute([$address, $userId]);
+            $db->prepare("UPDATE users SET address = ?, house_street = ?, barangay = ?, municipality = ?, province = ? WHERE id = ?")
+                ->execute([$address, $houseStreet ?: null, $barangay ?: null, $municipality ?: null, $province ?: null, $userId]);
         }
         if ($dateOfBirth !== '') {
             $db->prepare("UPDATE users SET date_of_birth = ? WHERE id = ?")->execute([$dateOfBirth, $userId]);

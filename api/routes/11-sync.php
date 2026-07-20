@@ -35,6 +35,7 @@ if ($route === 'sync-attendance' && $method === 'POST') {
     $hasTermColumns = apiAttendanceHasTermColumns($db);
 
     $saved = 0;
+    $savedRecords = [];
     foreach ($records as $rec) {
         $studentId = (int)($rec['student_id'] ?? 0);
         $status = strtolower(trim((string)($rec['status'] ?? '')));
@@ -72,7 +73,10 @@ if ($route === 'sync-attendance' && $method === 'POST') {
             $db->prepare($sql)->execute($params);
         }
         $saved++;
+        $savedRecords[] = ['student_id' => $studentId, 'status' => $status];
     }
+
+    appNotifyAttendanceRecords($db, $classId, $date, $savedRecords, $recordedBy);
 
     apiJson(['ok' => true, 'message' => "Sync complete: $saved records saved", 'saved' => $saved]);
 }

@@ -120,7 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $tokenValid) {
 <body>
     <div class="auth-container">
         <div class="auth-card">
-<div class="auth-header">
+            <div class="auth-header">
                 <div class="auth-logo">
                     <img src="../assets/images/bshs-logo.jpg" alt="Balingasag SHS Logo" class="auth-logo-img">
                 </div>
