@@ -141,8 +141,8 @@ Open `http://localhost:5000`.
 - Set these GitHub repository secrets before using the workflow:
   - `WASMER_TOKEN`
   - `WASMER_OWNER`
-  - `WASMER_APP_NAME` optional, defaults to `bshs-ams`
-  - `APP_PUBLIC_BASE_URL`, for example `https://bshs-ams-yourname.wasmer.app`
+  - `WASMER_APP_NAME`, for example `balingasagshs`; if omitted, the package default is `bshs-ams`
+  - `APP_PUBLIC_BASE_URL`, for example `https://balingasagshs.wasmer.app`
   - `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, and optional `RESEND_FROM_NAME`
 - Configure production secrets in Wasmer for database and API values:
   - `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`
@@ -153,6 +153,7 @@ Open `http://localhost:5000`.
   - `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `RESEND_FROM_NAME` for password reset OTP email
   - SMTP, SMS, or push secrets if those fallback/features are enabled
 - `app.yaml` intentionally contains placeholder owner/public URL values that the GitHub workflow replaces from secrets.
+- Composer runtime platform checks are disabled in `composer.json` because Wasmer's PHP/WASI runtime can report a non-64-bit platform even though the application can still boot and serve normal web requests.
 - Wasmer app instances are stateless; runtime files should use the configured Wasmer volumes for `/app/storage` and `/app/assets/uploads`, while durable school data and PHP sessions should live in TiDB/MySQL.
 - TiDB Cloud commonly uses MySQL port `4000`; import `database/schema.sql` first so `app_sessions` and authentication tables exist before production traffic.
 - Use `DB_SSL_CA` for a CA file path, or `DB_SSL_CA_CONTENT` when the CA PEM is stored directly as a GitHub/Wasmer secret.
