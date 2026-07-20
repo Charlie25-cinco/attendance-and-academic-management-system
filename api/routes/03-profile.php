@@ -68,6 +68,9 @@ if ($route === 'profile' && $method === 'POST') {
                 }
             }
             if ($field === 'email') {
+                if ($value === '' || !filter_var($value, FILTER_VALIDATE_EMAIL)) {
+                    apiJson(['ok' => false, 'message' => 'Invalid email address'], 422);
+                }
                 $existing = $db->prepare("SELECT id FROM users WHERE email = ? AND id <> ? LIMIT 1");
                 $existing->execute([$value, (int)$user['id']]);
                 if ($existing->fetchColumn()) {
@@ -83,6 +86,30 @@ if ($route === 'profile' && $method === 'POST') {
     }
     if (apiHasColumn($db, 'users', 'sex')) {
         $allowedFields[] = 'sex';
+    }
+
+    $currentPassword = (string)($body['current_password'] ?? '');
+    $newPassword = (string)($body['new_password'] ?? '');
+    $confirmPassword = (string)($body['confirm_password'] ?? '');
+    $changingPassword = $currentPassword !== '' || $newPassword !== '' || $confirmPassword !== '';
+
+    if ($changingPassword) {
+        if ($currentPassword === '' || $newPassword === '' || $confirmPassword === '') {
+            apiJson(['ok' => false, 'message' => 'Current password, new password, and confirmation are required'], 422);
+        }
+        if ($newPassword !== $confirmPassword) {
+            apiJson(['ok' => false, 'message' => 'New passwords do not match'], 422);
+        }
+        if (!validateStrongPassword($newPassword, $passwordError)) {
+            apiJson(['ok' => false, 'message' => $passwordError], 422);
+        }
+        $passStmt = $db->prepare("SELECT password FROM users WHERE id = ? LIMIT 1");
+        $passStmt->execute([(int)$user['id']]);
+        $currentHash = (string)($passStmt->fetchColumn() ?: '');
+        if ($currentHash === '' || !password_verify($currentPassword, $currentHash)) {
+            apiJson(['ok' => false, 'message' => 'Current password is incorrect'], 403);
+        }
+        $updates['password'] = password_hash($newPassword, PASSWORD_DEFAULT);
     }
 
     if (empty($updates)) {
@@ -103,6 +130,13 @@ if ($route === 'profile' && $method === 'POST') {
     if (!$executed) {
         apiJson(['ok' => false, 'message' => 'Failed to update profile'], 500);
     }
+
+    foreach (['first_name', 'middle_name', 'last_name', 'email', 'sex'] as $sessionField) {
+        if (array_key_exists($sessionField, $updates)) {
+            $_SESSION[$sessionField] = $updates[$sessionField];
+        }
+    }
+    unset($updates['password']);
 
     apiJson(['ok' => true, 'message' => 'Profile updated successfully', 'updates' => $updates]);
 }

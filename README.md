@@ -65,6 +65,7 @@ Open `http://localhost:5000`.
 - `FIRST_RUN_ADMIN_PASSWORD` controls first admin seeding, and `DEFAULT_NEW_USER_PASSWORD` controls newly created users.
 - The API first-login password-change flow requires the `temp_token` returned by `POST /api/index.php?route=login` when `must_change_password` is true.
 - Web login and remember-me auto-login both force password setup while a user's password still matches `DEFAULT_NEW_USER_PASSWORD`.
+- Shared profile modal updates name, sex, email, and password through the profile API; password fields include visibility toggles and require the current password before changing.
 - Default or first-run passwords must be changed before production.
 
 ## Role Modules

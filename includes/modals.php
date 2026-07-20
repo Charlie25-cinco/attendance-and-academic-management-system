@@ -138,15 +138,30 @@
                     <hr>
                     <div class="mb-3">
                         <label class="form-label">Current Password</label>
-                        <input type="password" class="form-control" id="profileCurrentPassword" name="current_password" placeholder="Enter current password">
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="profileCurrentPassword" name="current_password" placeholder="Enter current password">
+                            <button type="button" class="btn btn-outline-secondary profile-password-toggle" data-target="profileCurrentPassword" aria-label="Show current password">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">New Password</label>
-                        <input type="password" class="form-control" id="profileNewPassword" name="new_password" placeholder="Enter new password">
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="profileNewPassword" name="new_password" placeholder="Enter new password">
+                            <button type="button" class="btn btn-outline-secondary profile-password-toggle" data-target="profileNewPassword" aria-label="Show new password">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="mb-0">
                         <label class="form-label">Confirm New Password</label>
-                        <input type="password" class="form-control" id="profileConfirmPassword" name="confirm_password" placeholder="Re-enter new password">
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="profileConfirmPassword" name="confirm_password" placeholder="Re-enter new password">
+                            <button type="button" class="btn btn-outline-secondary profile-password-toggle" data-target="profileConfirmPassword" aria-label="Show confirmed password">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -164,6 +179,84 @@
     var modals = document.querySelectorAll('.modal');
     for (var i = 0; i < modals.length; i++) {
         document.body.appendChild(modals[i]);
+    }
+
+    function profileApiUrl() {
+        var token = window.APP_CSRF_TOKEN || '';
+        return '../api/index.php?route=profile' + (token ? '&csrf_token=' + encodeURIComponent(token) : '');
+    }
+
+    function setProfileBusy(isBusy) {
+        var btn = document.getElementById('saveProfileBtn');
+        if (!btn) return;
+        btn.disabled = !!isBusy;
+        btn.innerHTML = isBusy ? '<span class="spinner-border spinner-border-sm me-2"></span>Saving...' : 'Save Changes';
+    }
+
+    document.querySelectorAll('.profile-password-toggle').forEach(function (button) {
+        button.addEventListener('click', function () {
+            var input = document.getElementById(button.getAttribute('data-target') || '');
+            if (!input) return;
+            var show = input.type === 'password';
+            input.type = show ? 'text' : 'password';
+            var icon = button.querySelector('i');
+            if (icon) {
+                icon.classList.toggle('bi-eye', !show);
+                icon.classList.toggle('bi-eye-slash', show);
+            }
+            button.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+        });
+    });
+
+    var saveProfileBtn = document.getElementById('saveProfileBtn');
+    if (saveProfileBtn) {
+        saveProfileBtn.addEventListener('click', function () {
+            var form = document.getElementById('profileForm');
+            if (!form) return;
+            var payload = {};
+            new FormData(form).forEach(function (value, key) {
+                payload[key] = String(value || '');
+            });
+            setProfileBusy(true);
+            fetch(profileApiUrl(), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': window.APP_CSRF_TOKEN || ''
+                },
+                body: JSON.stringify(payload)
+            }).then(function (response) {
+                return response.json();
+            }).then(function (data) {
+                if (!data.ok) {
+                    throw new Error(data.message || 'Failed to update profile');
+                }
+                var updates = data.updates || {};
+                if (updates.first_name || updates.middle_name || updates.last_name) {
+                    var nameParts = [updates.first_name, updates.middle_name, updates.last_name].filter(Boolean);
+                    var name = nameParts.join(' ').replace(/\s+/g, ' ').trim();
+                    var headerName = document.getElementById('headerProfileName');
+                    if (headerName && name) headerName.textContent = name;
+                    var profileName = document.querySelector('.header-profile-name');
+                    if (profileName && name) profileName.textContent = name;
+                }
+                ['profileCurrentPassword', 'profileNewPassword', 'profileConfirmPassword'].forEach(function (id) {
+                    var input = document.getElementById(id);
+                    if (input) input.value = '';
+                });
+                if (typeof showNotification === 'function') {
+                    showNotification(data.message || 'Profile updated successfully', 'success');
+                }
+            }).catch(function (error) {
+                if (typeof showNotification === 'function') {
+                    showNotification(error.message || 'Failed to update profile', 'danger');
+                } else {
+                    alert(error.message || 'Failed to update profile');
+                }
+            }).finally(function () {
+                setProfileBusy(false);
+            });
+        });
     }
 })();
 </script>
