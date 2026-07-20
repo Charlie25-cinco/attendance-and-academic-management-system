@@ -94,7 +94,7 @@ For local manual testing, `composer run serve` starts the PHP development server
 - Teacher portal pages should reuse compact heroes, KPI cards, filters, attendance status controls, grade tables, action bars, and chat surfaces from the shared CSS layer.
 - Modal, helper text, empty-state, and note styles must keep readable contrast on light and dark surfaces.
 - Shared settings/profile modals and admin dashboard widgets should use the unified modal, card, chart-panel, list-row, and empty-state styling instead of inline page-only CSS.
-- The public school website should stay in `site/index.php` with styling in `assets/css/Site.css`; `assets/uploads/` must not contain public website copies.
+- The public school website should stay in `site/index.php` with styling in `assets/css/Site.css`, including public-site scoped loading overlay styles; `assets/uploads/` must not contain public website copies.
 - Authentication pages should use the shared `assets/css/auth.css` visual system; keep login, forgot password, reset password, and first-login password setup consistent while preserving CSRF, rate limit, token, and password-guidance behavior.
 - Global page loading and navigation transitions should stay in `assets/js/main.js` with styling in `assets/css/main.css`; keep loader behavior accessible, compact, dark-mode ready, and reduced-motion compatible.
 - Multi-content workspace pages should provide compact in-page navigation so users can jump between major sections without manually scrolling through the whole page.

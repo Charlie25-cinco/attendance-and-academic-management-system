@@ -119,7 +119,7 @@ Open `http://localhost:5000`.
 - Teacher portal pages share compact heroes, KPI cards, filters, attendance status controls, grade tables, action bars, and chat surfaces from the shared CSS layer.
 - Modal, helper text, empty-state, and note styles should preserve readable contrast on light and dark surfaces.
 - Shared settings/profile modals and admin dashboard widgets should use the unified modal, card, chart-panel, list-row, and empty-state styling rather than inline page-only CSS.
-- The public school website lives in `site/index.php` with styling in `assets/css/Site.css`; do not place public website copies inside `assets/uploads/`.
+- The public school website lives in `site/index.php` with styling in `assets/css/Site.css`, including the public-site scoped loading overlay styles; do not place public website copies inside `assets/uploads/`.
 - Authentication pages use the shared `assets/css/auth.css` visual system; keep login, forgot password, reset password, and first-login password setup consistent while preserving CSRF, rate limit, token, and password-guidance behavior.
 - Global page loading and navigation transitions are controlled by `assets/js/main.js` and styled in `assets/css/main.css`; keep loader behavior accessible, compact, dark-mode ready, and reduced-motion compatible.
 - Multi-content workspace pages should provide compact in-page navigation so users can jump between major sections without manually scrolling through the whole page.
