@@ -102,6 +102,7 @@ For local manual testing, `composer run serve` starts the PHP development server
 - The active service worker should stay root-scoped at `sw.js` so it can cover auth, role portals, and the public site.
 - Keep `assets/push-sw.js` only as a compatibility bridge for older browser registrations.
 - Do not change service worker cache paths back to legacy `src/` paths.
+- Teacher attendance offline mode queues submissions in `localStorage` and retries them against `teacher_Action.php?action=submit_attendance` when connectivity returns.
 - Test install/offline behavior on desktop and mobile before production release.
 
 ## Wasmer Deployment

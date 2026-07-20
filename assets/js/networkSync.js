@@ -96,7 +96,7 @@
         queueAttendance: function (classId, date, records, csrfToken) {
             addToQueue({
                 type: 'submit_attendance',
-                url: 'Teacher_Action.php?action=submit_attendance',
+                url: 'teacher_Action.php?action=submit_attendance',
                 csrfToken: csrfToken,
                 payload: {
                     class_id: parseInt(classId, 10),

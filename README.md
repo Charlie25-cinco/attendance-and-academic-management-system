@@ -128,6 +128,7 @@ Open `http://localhost:5000`.
 - The active service worker is root-scoped at `sw.js` so it can cover `/auth/`, `/admin/`, `/teacher/`, `/student/`, `/parent/`, and `/site/`.
 - `assets/push-sw.js` is kept only as a compatibility bridge for older browser registrations.
 - Install prompts are exposed through the shared header install button when the browser supports installation.
+- Teacher attendance submissions can be queued in `localStorage` while offline and retried against `teacher_Action.php?action=submit_attendance` when the browser comes back online.
 - Before production, test install/offline behavior on desktop and mobile browsers.
 
 ## Wasmer Deployment
