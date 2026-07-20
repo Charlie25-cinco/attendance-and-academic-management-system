@@ -5,6 +5,8 @@ package: .
 
 env:
   APP_ENV: production
+  APP_SESSION_DRIVER: database
+  DB_SSL_VERIFY_SERVER_CERT: "1"
   API_ALLOWED_ORIGIN: "https://CHANGE_ME_WASMER_APP_URL"
   APP_PUBLIC_BASE_URL: "https://CHANGE_ME_WASMER_APP_URL"
 

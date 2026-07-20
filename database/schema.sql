@@ -514,6 +514,22 @@ CREATE TABLE IF NOT EXISTS auth_remember_tokens (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =============================================================================
+-- DATABASE-BACKED PHP SESSIONS
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS app_sessions (
+    id VARCHAR(128) PRIMARY KEY,
+    user_id INT NULL,
+    payload MEDIUMBLOB NOT NULL,
+    ip_address VARCHAR(45) NULL,
+    user_agent VARCHAR(255) NULL,
+    expires_at DATETIME NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY idx_app_sessions_user_id (user_id),
+    KEY idx_app_sessions_expires_at (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =============================================================================
 -- PASSWORD RESET TOKENS
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS auth_password_resets (

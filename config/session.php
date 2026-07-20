@@ -61,6 +61,126 @@ if (!defined('APP_SESSION_IDLE_TIMEOUT')) {
     define('APP_SESSION_IDLE_TIMEOUT', 1800);
 }
 
+if (!function_exists('appDatabaseSessionsEnabled')) {
+    function appDatabaseSessionsEnabled(): bool {
+        $driver = strtolower(appEnvValue('APP_SESSION_DRIVER', 'file'));
+        return in_array($driver, ['database', 'db', 'tidb'], true);
+    }
+}
+
+if (!class_exists('AppDatabaseSessionHandler')) {
+class AppDatabaseSessionHandler implements SessionHandlerInterface {
+    private PDO $db;
+
+    public function __construct(PDO $db) {
+        $this->db = $db;
+    }
+
+    public function open(string $path, string $name): bool {
+        return true;
+    }
+
+    public function close(): bool {
+        return true;
+    }
+
+    public function read(string $id): string {
+        try {
+            $stmt = $this->db->prepare("SELECT payload FROM app_sessions WHERE id = ? AND expires_at > NOW() LIMIT 1");
+            $stmt->execute([$id]);
+            $payload = $stmt->fetchColumn();
+            return is_string($payload) ? $payload : '';
+        } catch (Throwable $e) {
+            error_log('Database session read failed: ' . $e->getMessage());
+            return '';
+        }
+    }
+
+    public function write(string $id, string $data): bool {
+        try {
+            $expiresAt = date('Y-m-d H:i:s', time() + (int)ini_get('session.gc_maxlifetime'));
+            $userId = !empty($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null;
+            $ip = substr((string)($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45);
+            $agent = substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255);
+            $stmt = $this->db->prepare(
+                "INSERT INTO app_sessions (id, user_id, payload, ip_address, user_agent, expires_at, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
+                 ON DUPLICATE KEY UPDATE
+                    user_id = VALUES(user_id),
+                    payload = VALUES(payload),
+                    ip_address = VALUES(ip_address),
+                    user_agent = VALUES(user_agent),
+                    expires_at = VALUES(expires_at),
+                    updated_at = NOW()"
+            );
+            return $stmt->execute([$id, $userId, $data, $ip, $agent, $expiresAt]);
+        } catch (Throwable $e) {
+            error_log('Database session write failed: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function destroy(string $id): bool {
+        try {
+            $stmt = $this->db->prepare("DELETE FROM app_sessions WHERE id = ?");
+            return $stmt->execute([$id]);
+        } catch (Throwable $e) {
+            error_log('Database session destroy failed: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function gc(int $max_lifetime): int|false {
+        try {
+            $stmt = $this->db->prepare("DELETE FROM app_sessions WHERE expires_at <= NOW()");
+            $stmt->execute();
+            return $stmt->rowCount();
+        } catch (Throwable $e) {
+            error_log('Database session garbage collection failed: ' . $e->getMessage());
+            return false;
+        }
+    }
+}
+}
+
+if (!function_exists('appEnsureSessionsTable')) {
+    function appEnsureSessionsTable(PDO $db): void {
+        $db->exec(
+            "CREATE TABLE IF NOT EXISTS app_sessions (
+                id VARCHAR(128) PRIMARY KEY,
+                user_id INT NULL,
+                payload MEDIUMBLOB NOT NULL,
+                ip_address VARCHAR(45) NULL,
+                user_agent VARCHAR(255) NULL,
+                expires_at DATETIME NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_app_sessions_user_id (user_id),
+                INDEX idx_app_sessions_expires_at (expires_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+        );
+    }
+}
+
+if (!function_exists('appConfigureSessionStorage')) {
+    function appConfigureSessionStorage(): void {
+        if (!appDatabaseSessionsEnabled() || session_status() === PHP_SESSION_ACTIVE || !class_exists('Database')) {
+            return;
+        }
+        try {
+            $db = (new Database())->getConnection();
+            if (!$db instanceof PDO) {
+                error_log('Database session storage requested but database connection is unavailable; using PHP default sessions.');
+                return;
+            }
+            appEnsureSessionsTable($db);
+            session_set_save_handler(new AppDatabaseSessionHandler($db), true);
+        } catch (Throwable $e) {
+            error_log('Database session storage setup failed: ' . $e->getMessage());
+        }
+    }
+}
+
 if (!function_exists('appExpireCurrentSession')) {
 function appExpireCurrentSession(): void {
     $_SESSION = [];
@@ -79,11 +199,13 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     ini_set('session.use_only_cookies', '1');
     ini_set('session.cookie_httponly', '1');
     ini_set('session.cookie_secure', $secure ? '1' : '0');
+    ini_set('session.gc_maxlifetime', appEnvValue('APP_SESSION_LIFETIME', (string)APP_SESSION_IDLE_TIMEOUT));
 
     if (PHP_VERSION_ID >= 70300) {
         session_set_cookie_params(appSessionCookieParams(true));
     }
 
+    appConfigureSessionStorage();
     session_start();
 }
 

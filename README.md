@@ -60,6 +60,7 @@ Open `http://localhost:5000`.
 - API bearer tokens are signed with `API_AUTH_SECRET`.
 - API sync routes use `API_SYNC_SECRET`.
 - In production, set `APP_ENV=production`, `API_AUTH_SECRET`, `API_SYNC_SECRET`, and a trusted `API_ALLOWED_ORIGIN`.
+- Set `APP_SESSION_DRIVER=database` in stateless hosting such as Wasmer so active PHP sessions are stored in the SQL database instead of local instance files.
 - Create the first admin with `composer run seed:admin`, which runs `database/seed_admin.php`; `database/seed.sql` does not hardcode admin credentials.
 - `FIRST_RUN_ADMIN_PASSWORD` controls first admin seeding, and `DEFAULT_NEW_USER_PASSWORD` controls newly created users.
 - The API first-login password-change flow requires the `temp_token` returned by `POST /api/index.php?route=login` when `must_change_password` is true.
@@ -142,10 +143,15 @@ Open `http://localhost:5000`.
   - `APP_PUBLIC_BASE_URL`, for example `https://bshs-ams-yourname.wasmer.app`
 - Configure production secrets in Wasmer for database and API values:
   - `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`
+  - `DB_SSL_CA` or `DB_SSL_CA_CONTENT` when TiDB Cloud requires TLS CA verification
+  - `DB_SSL_VERIFY_SERVER_CERT` optional, defaults to `1`
+  - `APP_SESSION_DRIVER=database`
   - `API_AUTH_SECRET`, `API_SYNC_SECRET`
   - mail/SMS/push secrets if those features are enabled
 - `app.yaml` intentionally contains placeholder owner/public URL values that the GitHub workflow replaces from secrets.
-- Wasmer app instances are stateless; runtime files should use the configured Wasmer volumes for `/app/storage` and `/app/assets/uploads`, while durable school data should live in MySQL/MariaDB.
+- Wasmer app instances are stateless; runtime files should use the configured Wasmer volumes for `/app/storage` and `/app/assets/uploads`, while durable school data and PHP sessions should live in TiDB/MySQL.
+- TiDB Cloud commonly uses MySQL port `4000`; import `database/schema.sql` first so `app_sessions` and authentication tables exist before production traffic.
+- Use `DB_SSL_CA` for a CA file path, or `DB_SSL_CA_CONTENT` when the CA PEM is stored directly as a GitHub/Wasmer secret.
 
 ## Instructor RBAC Branch
 

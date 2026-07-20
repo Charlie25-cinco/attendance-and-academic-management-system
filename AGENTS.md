@@ -39,6 +39,8 @@ For local manual testing, `composer run serve` starts the PHP development server
 - Production must set `APP_ENV=production`.
 - Production must provide strong `API_AUTH_SECRET` and `API_SYNC_SECRET` values.
 - Production must set `API_ALLOWED_ORIGIN` to a trusted origin.
+- Stateless production hosts such as Wasmer must set `APP_SESSION_DRIVER=database` so PHP sessions are stored in SQL instead of instance-local files.
+- TiDB Cloud deployments may require `DB_SSL_CA` or `DB_SSL_CA_CONTENT`; keep `DB_SSL_VERIFY_SERVER_CERT` enabled unless a trusted deployment explicitly disables it.
 - First admin seeding must use `composer run seed:admin`, which runs `database/seed_admin.php`; do not hardcode admin password hashes in `database/seed.sql`.
 - `FIRST_RUN_ADMIN_PASSWORD` controls first admin creation, and `DEFAULT_NEW_USER_PASSWORD` controls newly created users.
 - API first-login password changes require the temporary token returned by the login endpoint.
@@ -112,5 +114,5 @@ For local manual testing, `composer run serve` starts the PHP development server
 - The workflow must install production Composer dependencies before `wasmer deploy` because `vendor/` is not committed.
 - Do not commit real Wasmer owner names, tokens, database credentials, API secrets, or production URLs unless they are intentionally public.
 - Configure GitHub secrets for `WASMER_TOKEN`, `WASMER_OWNER`, optional `WASMER_APP_NAME`, and `APP_PUBLIC_BASE_URL`.
-- Configure Wasmer app secrets for database credentials, `API_AUTH_SECRET`, `API_SYNC_SECRET`, and optional mail/SMS/push credentials.
-- Treat Wasmer app instances as stateless; use configured volumes for `/app/storage` and `/app/assets/uploads`, and keep durable school records in MySQL/MariaDB.
+- Configure Wasmer app secrets for TiDB/MySQL credentials, optional `DB_SSL_CA` or `DB_SSL_CA_CONTENT`, `APP_SESSION_DRIVER=database`, `API_AUTH_SECRET`, `API_SYNC_SECRET`, and optional mail/SMS/push credentials.
+- Treat Wasmer app instances as stateless; use configured volumes for `/app/storage` and `/app/assets/uploads`, and keep durable school records plus active PHP sessions in TiDB/MySQL.

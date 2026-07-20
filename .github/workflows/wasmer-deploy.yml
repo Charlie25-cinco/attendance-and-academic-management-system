@@ -31,19 +31,82 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import json
           import os
+
+          required = [
+              "WASMER_OWNER",
+              "APP_PUBLIC_BASE_URL",
+              "DB_HOST",
+              "DB_PORT",
+              "DB_NAME",
+              "DB_USER",
+              "DB_PASS",
+              "API_AUTH_SECRET",
+              "API_SYNC_SECRET",
+          ]
+          missing = [key for key in required if not os.environ.get(key)]
+          if missing:
+              raise SystemExit("Missing required GitHub secrets: " + ", ".join(missing))
+
+          app_env = [
+              "DB_HOST",
+              "DB_PORT",
+              "DB_NAME",
+              "DB_USER",
+              "DB_PASS",
+              "DB_SSL_CA",
+              "DB_SSL_CA_CONTENT",
+              "API_AUTH_SECRET",
+              "API_SYNC_SECRET",
+              "SMTP_HOST",
+              "SMTP_PORT",
+              "SMTP_USER",
+              "SMTP_PASS",
+              "SMTP_FROM_EMAIL",
+              "SMTP_FROM_NAME",
+          ]
 
           app_yaml = Path("app.yaml")
           text = app_yaml.read_text(encoding="utf-8")
           text = text.replace("CHANGE_ME_WASMER_OWNER", os.environ["WASMER_OWNER"])
           text = text.replace("bshs-ams", os.environ.get("WASMER_APP_NAME") or "bshs-ams", 1)
           text = text.replace("https://CHANGE_ME_WASMER_APP_URL", os.environ["APP_PUBLIC_BASE_URL"])
+          if os.environ.get("DB_SSL_VERIFY_SERVER_CERT"):
+              text = text.replace(
+                  '  DB_SSL_VERIFY_SERVER_CERT: "1"',
+                  f'  DB_SSL_VERIFY_SERVER_CERT: {json.dumps(os.environ["DB_SSL_VERIFY_SERVER_CERT"])}'
+              )
+          extra_env = []
+          for key in app_env:
+              value = os.environ.get(key)
+              if value:
+                  extra_env.append(f"  {key}: {json.dumps(value)}")
+          if extra_env:
+              marker = f'  APP_PUBLIC_BASE_URL: {json.dumps(os.environ["APP_PUBLIC_BASE_URL"])}'
+              text = text.replace(marker, marker + "\n" + "\n".join(extra_env))
           app_yaml.write_text(text, encoding="utf-8")
           PY
         env:
           WASMER_OWNER: ${{ secrets.WASMER_OWNER }}
           WASMER_APP_NAME: ${{ secrets.WASMER_APP_NAME }}
           APP_PUBLIC_BASE_URL: ${{ secrets.APP_PUBLIC_BASE_URL }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASS: ${{ secrets.DB_PASS }}
+          DB_SSL_CA: ${{ secrets.DB_SSL_CA }}
+          DB_SSL_CA_CONTENT: ${{ secrets.DB_SSL_CA_CONTENT }}
+          DB_SSL_VERIFY_SERVER_CERT: ${{ secrets.DB_SSL_VERIFY_SERVER_CERT }}
+          API_AUTH_SECRET: ${{ secrets.API_AUTH_SECRET }}
+          API_SYNC_SECRET: ${{ secrets.API_SYNC_SECRET }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          SMTP_FROM_EMAIL: ${{ secrets.SMTP_FROM_EMAIL }}
+          SMTP_FROM_NAME: ${{ secrets.SMTP_FROM_NAME }}
 
       - name: Install Wasmer
         shell: bash
