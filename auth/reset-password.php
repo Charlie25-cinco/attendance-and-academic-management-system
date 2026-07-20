@@ -13,9 +13,10 @@ if (empty($_SESSION['csrf_token'])) {
 $db = (new Database())->getConnection();
 $error = '';
 $success = '';
-$token = trim((string)($_GET['token'] ?? $_POST['token'] ?? ''));
-$tokenValid = false;
+$emailInput = trim((string)($_GET['email'] ?? $_POST['email'] ?? ''));
+$otpInput = trim((string)($_POST['otp'] ?? ''));
 $resetUserId = 0;
+$resetTokenRowId = 0;
 
 function resetHasTable($db, $table) {
     static $cache = [];
@@ -30,43 +31,22 @@ function resetHasTable($db, $table) {
     return $cache[$table];
 }
 
-if (!$db) {
-    $error = 'Database connection failed.';
-} elseif (!resetHasTable($db, 'auth_password_resets')) {
-    $error = 'Password reset table is missing. Please run database schema update.';
-} elseif ($token === '' || !preg_match('/^[a-fA-F0-9]{64}$/', $token)) {
-    $error = 'Invalid or missing reset token.';
-} else {
-    try {
-        $tokenHash = hash('sha256', $token);
-        $tokenStmt = $db->prepare("SELECT id, user_id
-                                   FROM auth_password_resets
-                                   WHERE token_hash = ?
-                                     AND used_at IS NULL
-                                     AND expires_at > NOW()
-                                   LIMIT 1");
-        $tokenStmt->execute([$tokenHash]);
-        $tokenRow = $tokenStmt->fetch(PDO::FETCH_ASSOC);
-        if ($tokenRow) {
-            $tokenValid = true;
-            $resetUserId = (int)$tokenRow['user_id'];
-        } else {
-            $error = 'Reset link is invalid or expired.';
-        }
-    } catch (Throwable $e) {
-        error_log('Reset password token check error: ' . $e->getMessage());
-        $error = 'Unable to validate reset token.';
-    }
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $tokenValid) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $sessionToken = (string)($_SESSION['csrf_token'] ?? '');
     $requestToken = trim((string)($_POST['csrf_token'] ?? ''));
     $newPassword = (string)($_POST['new_password'] ?? '');
     $confirmPassword = (string)($_POST['confirm_password'] ?? '');
 
-    if ($sessionToken === '' || $requestToken === '' || !hash_equals($sessionToken, $requestToken)) {
+    if (!$db) {
+        $error = 'Database connection failed.';
+    } elseif (!resetHasTable($db, 'auth_password_resets')) {
+        $error = 'Password reset table is missing. Please run database schema update.';
+    } elseif ($sessionToken === '' || $requestToken === '' || !hash_equals($sessionToken, $requestToken)) {
         $error = 'Invalid request. Please refresh and try again.';
+    } elseif ($emailInput === '' || !filter_var($emailInput, FILTER_VALIDATE_EMAIL)) {
+        $error = 'Please enter a valid email address.';
+    } elseif (!preg_match('/^\d{6}$/', $otpInput)) {
+        $error = 'Please enter the 6-digit reset code.';
     } elseif ($newPassword === '' || $confirmPassword === '') {
         $error = 'Please fill in all fields.';
     } elseif ($newPassword !== $confirmPassword) {
@@ -75,17 +55,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $tokenValid) {
         // Error message populated by shared validator.
     } else {
         try {
+            $tokenHash = hash('sha256', $otpInput);
+            $tokenStmt = $db->prepare("SELECT r.id, r.user_id
+                                       FROM auth_password_resets r
+                                       JOIN users u ON u.id = r.user_id
+                                       WHERE u.email = ?
+                                         AND u.status = 'active'
+                                         AND r.token_hash = ?
+                                         AND r.used_at IS NULL
+                                         AND r.expires_at > NOW()
+                                       ORDER BY r.id DESC
+                                       LIMIT 1");
+            $tokenStmt->execute([$emailInput, $tokenHash]);
+            $tokenRow = $tokenStmt->fetch(PDO::FETCH_ASSOC);
+            if (!$tokenRow) {
+                $error = 'Reset code is invalid or expired.';
+                throw new RuntimeException('Invalid reset OTP.');
+            }
+            $resetUserId = (int)$tokenRow['user_id'];
+            $resetTokenRowId = (int)$tokenRow['id'];
+
             $hashed = password_hash($newPassword, PASSWORD_DEFAULT);
             $db->beginTransaction();
 
             $updUser = $db->prepare("UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?");
             $updUser->execute([$hashed, $resetUserId]);
 
-            $tokenHash = hash('sha256', $token);
             $markToken = $db->prepare("UPDATE auth_password_resets
                                        SET used_at = NOW()
-                                       WHERE token_hash = ? AND used_at IS NULL");
-            $markToken->execute([$tokenHash]);
+                                       WHERE id = ? AND used_at IS NULL");
+            $markToken->execute([$resetTokenRowId]);
 
             if (resetHasTable($db, 'auth_remember_tokens')) {
                 $revokeRemember = $db->prepare("UPDATE auth_remember_tokens
@@ -96,13 +95,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $tokenValid) {
 
             $db->commit();
             $success = 'Password reset successful. You can now login with your new password.';
-            $tokenValid = false;
+            $emailInput = '';
+            $otpInput = '';
         } catch (Throwable $e) {
             if ($db->inTransaction()) $db->rollBack();
-            error_log('Reset password save error: ' . $e->getMessage());
-            $error = 'Unable to reset password. Please try again.';
+            if ($error === '') {
+                error_log('Reset password save error: ' . $e->getMessage());
+                $error = 'Unable to reset password. Please try again.';
+            }
         }
     }
+} elseif (!$db) {
+    $error = 'Database connection failed.';
+} elseif (!resetHasTable($db, 'auth_password_resets')) {
+    $error = 'Password reset table is missing. Please run database schema update.';
 }
 ?>
 <!DOCTYPE html>
@@ -125,7 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $tokenValid) {
                     <img src="../assets/images/bshs-logo.jpg" alt="Balingasag SHS Logo" class="auth-logo-img">
                 </div>
                 <h1 class="auth-title">Reset Password</h1>
-                <p class="auth-subtitle">Set a new password for your account</p>
+                <p class="auth-subtitle">Enter the reset code from your email and set a new password</p>
             </div>
 
             <?php if ($error !== ''): ?>
@@ -145,10 +151,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $tokenValid) {
             </div>
             <?php endif; ?>
 
-            <?php if ($tokenValid): ?>
+            <?php if ($success === ''): ?>
             <form class="auth-form" action="" method="POST">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars((string)$_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8'); ?>">
-                <input type="hidden" name="token" value="<?php echo htmlspecialchars($token, ENT_QUOTES, 'UTF-8'); ?>">
+
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <div class="input-group">
+                        <i class="bi bi-envelope input-icon"></i>
+                        <input type="email" class="form-control" id="email" name="email" placeholder="Enter your registered email" value="<?php echo htmlspecialchars($emailInput, ENT_QUOTES, 'UTF-8'); ?>" autocomplete="email" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="otp">Reset Code</label>
+                    <div class="input-group">
+                        <i class="bi bi-shield-lock input-icon"></i>
+                        <input type="text" class="form-control" id="otp" name="otp" placeholder="Enter 6-digit code" value="<?php echo htmlspecialchars($otpInput, ENT_QUOTES, 'UTF-8'); ?>" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required>
+                    </div>
+                </div>
 
                 <div class="form-group">
                     <label for="new_password">New Password</label>

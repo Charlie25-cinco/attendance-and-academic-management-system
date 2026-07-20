@@ -103,13 +103,73 @@ function smtpConfig(): array {
     ];
 }
 
-function mailerConfigured(): bool {
+function resendConfig(): array {
+    return [
+        'api_key' => appEnvValue('RESEND_API_KEY', ''),
+        'from_email' => appEnvValue('RESEND_FROM_EMAIL', appEnvValue('SMTP_FROM_EMAIL', '')),
+        'from_name' => appEnvValue('RESEND_FROM_NAME', appEnvValue('SMTP_FROM_NAME', 'Balingasag Senior High School'))
+    ];
+}
+
+function resendConfigured(): bool {
+    $cfg = resendConfig();
+    return $cfg['api_key'] !== '' && $cfg['from_email'] !== '';
+}
+
+function smtpConfigured(): bool {
     $cfg = smtpConfig();
     return $cfg['user'] !== '' && $cfg['pass'] !== '';
 }
 
-function mailerSendHtml(string $to, string $subject, string $html, string $fromEmail = '', string $fromName = ''): bool {
-    if (!mailerConfigured()) {
+function mailerConfigured(): bool {
+    return resendConfigured() || smtpConfigured();
+}
+
+function resendSendHtml(string $to, string $subject, string $html, string $fromEmail = '', string $fromName = ''): bool {
+    if (!resendConfigured()) {
+        return false;
+    }
+
+    $cfg = resendConfig();
+    $from = $fromEmail !== '' ? $fromEmail : $cfg['from_email'];
+    $name = $fromName !== '' ? $fromName : $cfg['from_name'];
+    $fromHeader = trim($name) !== '' ? trim($name) . ' <' . $from . '>' : $from;
+
+    $payload = json_encode([
+        'from' => $fromHeader,
+        'to' => [$to],
+        'subject' => $subject,
+        'html' => $html
+    ]);
+    if (!is_string($payload)) {
+        return false;
+    }
+
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'POST',
+            'header' => implode("\r\n", [
+                'Authorization: Bearer ' . $cfg['api_key'],
+                'Content-Type: application/json',
+                'User-Agent: BSHS-AMS/1.0'
+            ]),
+            'content' => $payload,
+            'ignore_errors' => true,
+            'timeout' => 20
+        ]
+    ]);
+
+    $response = @file_get_contents('https://api.resend.com/emails', false, $context);
+    $statusLine = (string)($http_response_header[0] ?? '');
+    if (!preg_match('/\s2\d\d\s/', $statusLine)) {
+        error_log('Resend email failed: ' . $statusLine . ' ' . substr((string)$response, 0, 500));
+        return false;
+    }
+    return true;
+}
+
+function smtpSendHtml(string $to, string $subject, string $html, string $fromEmail = '', string $fromName = ''): bool {
+    if (!smtpConfigured()) {
         return false;
     }
 
@@ -178,6 +238,13 @@ function mailerSendHtml(string $to, string $subject, string $html, string $fromE
     $send('QUIT', 221);
     fclose($fp);
     return $ok;
+}
+
+function mailerSendHtml(string $to, string $subject, string $html, string $fromEmail = '', string $fromName = ''): bool {
+    if (resendConfigured() && resendSendHtml($to, $subject, $html, $fromEmail, $fromName)) {
+        return true;
+    }
+    return smtpSendHtml($to, $subject, $html, $fromEmail, $fromName);
 }
 
 $pushKeysFile = __DIR__ . '/push_keys.php';

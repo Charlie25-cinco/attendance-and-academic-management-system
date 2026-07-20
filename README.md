@@ -141,17 +141,20 @@ Open `http://localhost:5000`.
   - `WASMER_OWNER`
   - `WASMER_APP_NAME` optional, defaults to `bshs-ams`
   - `APP_PUBLIC_BASE_URL`, for example `https://bshs-ams-yourname.wasmer.app`
+  - `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, and optional `RESEND_FROM_NAME`
 - Configure production secrets in Wasmer for database and API values:
   - `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`
   - `DB_SSL_CA` or `DB_SSL_CA_CONTENT` when TiDB Cloud requires TLS CA verification
   - `DB_SSL_VERIFY_SERVER_CERT` optional, defaults to `1`
   - `APP_SESSION_DRIVER=database`
   - `API_AUTH_SECRET`, `API_SYNC_SECRET`
-  - mail/SMS/push secrets if those features are enabled
+  - `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `RESEND_FROM_NAME` for password reset OTP email
+  - SMTP, SMS, or push secrets if those fallback/features are enabled
 - `app.yaml` intentionally contains placeholder owner/public URL values that the GitHub workflow replaces from secrets.
 - Wasmer app instances are stateless; runtime files should use the configured Wasmer volumes for `/app/storage` and `/app/assets/uploads`, while durable school data and PHP sessions should live in TiDB/MySQL.
 - TiDB Cloud commonly uses MySQL port `4000`; import `database/schema.sql` first so `app_sessions` and authentication tables exist before production traffic.
 - Use `DB_SSL_CA` for a CA file path, or `DB_SSL_CA_CONTENT` when the CA PEM is stored directly as a GitHub/Wasmer secret.
+- Password reset uses a 6-digit OTP sent through Resend when configured, with SMTP as fallback; reset codes are hashed in `auth_password_resets.token_hash` and expire after 10 minutes.
 
 ## Instructor RBAC Branch
 

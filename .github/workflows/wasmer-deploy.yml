@@ -44,6 +44,8 @@ jobs:
               "DB_PASS",
               "API_AUTH_SECRET",
               "API_SYNC_SECRET",
+              "RESEND_API_KEY",
+              "RESEND_FROM_EMAIL",
           ]
           missing = [key for key in required if not os.environ.get(key)]
           if missing:
@@ -65,6 +67,9 @@ jobs:
               "SMTP_PASS",
               "SMTP_FROM_EMAIL",
               "SMTP_FROM_NAME",
+              "RESEND_API_KEY",
+              "RESEND_FROM_EMAIL",
+              "RESEND_FROM_NAME",
           ]
 
           app_yaml = Path("app.yaml")
@@ -107,6 +112,9 @@ jobs:
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           SMTP_FROM_EMAIL: ${{ secrets.SMTP_FROM_EMAIL }}
           SMTP_FROM_NAME: ${{ secrets.SMTP_FROM_NAME }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
+          RESEND_FROM_NAME: ${{ secrets.RESEND_FROM_NAME }}
 
       - name: Install Wasmer
         shell: bash

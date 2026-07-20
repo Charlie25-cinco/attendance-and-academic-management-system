@@ -251,20 +251,20 @@ if ($route === 'forgot-password' && $method === 'POST') {
     $userStmt->execute([$email]);
     $userId = (int)($userStmt->fetchColumn() ?: 0);
 
-    $message = 'If the email exists, a reset link has been sent.';
+    $message = 'If the email exists, a reset code has been sent.';
     if ($userId > 0) {
-        $resetToken = bin2hex(random_bytes(32));
-        $tokenHash = hash('sha256', $resetToken);
+        $resetCode = (string)random_int(100000, 999999);
+        $tokenHash = hash('sha256', $resetCode);
         $ip = $_SERVER['REMOTE_ADDR'] ?? '';
 
         $db->prepare("UPDATE auth_password_resets SET used_at = NOW() WHERE user_id = ? AND used_at IS NULL")->execute([$userId]);
 
-        $insertStmt = $db->prepare("INSERT INTO auth_password_resets (user_id, token_hash, expires_at, request_ip, created_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 1 HOUR), ?, NOW())");
+        $insertStmt = $db->prepare("INSERT INTO auth_password_resets (user_id, token_hash, expires_at, request_ip, created_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 10 MINUTE), ?, NOW())");
         $insertStmt->execute([$userId, $tokenHash, $ip]);
 
-        $resetUrl = (function_exists('appPublicWebBaseUrl') ? appPublicWebBaseUrl() : '') . '/auth/reset-password.php?token=' . urlencode($resetToken);
-        $subject = 'Reset your Balingasag SHS password';
-        $html = '<p>We received a request to reset your password.</p><p><a href="' . htmlspecialchars($resetUrl, ENT_QUOTES, 'UTF-8') . '">Click here to reset your password</a></p><p>This link expires in 1 hour.</p>';
+        $resetUrl = (function_exists('appPublicWebBaseUrl') ? appPublicWebBaseUrl() : '') . '/auth/reset-password.php?email=' . urlencode($email);
+        $subject = 'Your Balingasag SHS password reset code';
+        $html = '<p>We received a request to reset your password.</p><p>Your reset code is:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px;">' . htmlspecialchars($resetCode, ENT_QUOTES, 'UTF-8') . '</p><p>Enter this code on the password reset page: <a href="' . htmlspecialchars($resetUrl, ENT_QUOTES, 'UTF-8') . '">Reset password</a></p><p>This code expires in 10 minutes.</p>';
 
         if (!mailerSendHtml($email, $subject, $html)) {
             apiJson(['ok' => false, 'message' => 'Unable to send reset email. Please contact the administrator.'], 500);
@@ -280,18 +280,22 @@ if ($route === 'reset-password' && $method === 'POST') {
         apiJson(['ok' => false, 'message' => 'Database connection failed'], 500);
     }
     $body = apiRequestBody();
-    $token = trim((string)($body['token'] ?? ''));
+    $email = strtolower(trim((string)($body['email'] ?? '')));
+    $otp = trim((string)($body['otp'] ?? ($body['code'] ?? '')));
     $newPassword = (string)($body['new_password'] ?? '');
     $confirmPassword = (string)($body['confirm_password'] ?? '');
 
-    if ($token === '' || $newPassword === '' || $confirmPassword === '') {
-        apiJson(['ok' => false, 'message' => 'Token, new password, and confirm password are required'], 422);
+    if ($email === '' || $otp === '' || $newPassword === '' || $confirmPassword === '') {
+        apiJson(['ok' => false, 'message' => 'Email, reset code, new password, and confirm password are required'], 422);
     }
     if ($newPassword !== $confirmPassword) {
         apiJson(['ok' => false, 'message' => 'Passwords do not match'], 422);
     }
-    if (!preg_match('/^[a-f0-9]{64}$/i', $token)) {
-        apiJson(['ok' => false, 'message' => 'Invalid token format'], 422);
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        apiJson(['ok' => false, 'message' => 'Invalid email address'], 422);
+    }
+    if (!preg_match('/^\d{6}$/', $otp)) {
+        apiJson(['ok' => false, 'message' => 'Invalid reset code format'], 422);
     }
     if (!validateStrongPassword($newPassword, $errorMsg)) {
         apiJson(['ok' => false, 'message' => $errorMsg], 422);
@@ -300,7 +304,7 @@ if ($route === 'reset-password' && $method === 'POST') {
     apiEnsureRateLimitsTable($db);
     apiEnsurePasswordResetsTable($db);
 
-    $identifierHash = hash('sha256', $token . '|' . ($_SERVER['REMOTE_ADDR'] ?? ''));
+    $identifierHash = hash('sha256', $email . '|' . ($_SERVER['REMOTE_ADDR'] ?? ''));
     $maxAttempts = 5;
     $lockSeconds = 900;
 
@@ -324,13 +328,22 @@ if ($route === 'reset-password' && $method === 'POST') {
                     updated_at = NOW()")
         ->execute([$identifierHash, $lockSeconds, $maxAttempts, $lockSeconds]);
 
-    $tokenHash = hash('sha256', $token);
-    $tokenStmt = $db->prepare("SELECT id, user_id FROM auth_password_resets WHERE token_hash = ? AND used_at IS NULL AND expires_at > NOW() LIMIT 1");
-    $tokenStmt->execute([$tokenHash]);
+    $tokenHash = hash('sha256', $otp);
+    $tokenStmt = $db->prepare("SELECT r.id, r.user_id
+                               FROM auth_password_resets r
+                               JOIN users u ON u.id = r.user_id
+                               WHERE u.email = ?
+                                 AND u.status = 'active'
+                                 AND r.token_hash = ?
+                                 AND r.used_at IS NULL
+                                 AND r.expires_at > NOW()
+                               ORDER BY r.id DESC
+                               LIMIT 1");
+    $tokenStmt->execute([$email, $tokenHash]);
     $tokenRow = $tokenStmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$tokenRow) {
-        apiJson(['ok' => false, 'message' => 'Reset token is invalid or expired'], 400);
+        apiJson(['ok' => false, 'message' => 'Reset code is invalid or expired'], 400);
     }
 
     $resetUserId = (int)$tokenRow['user_id'];

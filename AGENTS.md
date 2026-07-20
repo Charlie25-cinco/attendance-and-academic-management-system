@@ -113,6 +113,7 @@ For local manual testing, `composer run serve` starts the PHP development server
 - GitHub deployment should use `.github/workflows/wasmer-deploy.yml`.
 - The workflow must install production Composer dependencies before `wasmer deploy` because `vendor/` is not committed.
 - Do not commit real Wasmer owner names, tokens, database credentials, API secrets, or production URLs unless they are intentionally public.
-- Configure GitHub secrets for `WASMER_TOKEN`, `WASMER_OWNER`, optional `WASMER_APP_NAME`, and `APP_PUBLIC_BASE_URL`.
-- Configure Wasmer app secrets for TiDB/MySQL credentials, optional `DB_SSL_CA` or `DB_SSL_CA_CONTENT`, `APP_SESSION_DRIVER=database`, `API_AUTH_SECRET`, `API_SYNC_SECRET`, and optional mail/SMS/push credentials.
+- Configure GitHub secrets for `WASMER_TOKEN`, `WASMER_OWNER`, optional `WASMER_APP_NAME`, `APP_PUBLIC_BASE_URL`, `RESEND_API_KEY`, and `RESEND_FROM_EMAIL`.
+- Configure Wasmer app secrets for TiDB/MySQL credentials, optional `DB_SSL_CA` or `DB_SSL_CA_CONTENT`, `APP_SESSION_DRIVER=database`, `API_AUTH_SECRET`, `API_SYNC_SECRET`, Resend OTP email secrets, and optional SMTP/SMS/push credentials.
 - Treat Wasmer app instances as stateless; use configured volumes for `/app/storage` and `/app/assets/uploads`, and keep durable school records plus active PHP sessions in TiDB/MySQL.
+- Password reset uses 6-digit OTP codes sent through Resend when configured, with SMTP fallback. Store only hashed reset codes in `auth_password_resets.token_hash`.

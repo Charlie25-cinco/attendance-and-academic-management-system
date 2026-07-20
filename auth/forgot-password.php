@@ -95,12 +95,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $userId = (int)($userStmt->fetchColumn() ?: 0);
 
             // Always return generic message to avoid account enumeration.
-            $success = 'If your email is registered, a reset link has been sent.';
+            $success = 'If your email is registered, a reset code has been sent.';
 
             if ($userId > 0) {
-                $token = bin2hex(random_bytes(32));
-                $tokenHash = hash('sha256', $token);
-                $expiresAt = (string)($db->query("SELECT DATE_ADD(NOW(), INTERVAL 1 HOUR)")->fetchColumn());
+                $otp = (string)random_int(100000, 999999);
+                $tokenHash = hash('sha256', $otp);
+                $expiresAt = (string)($db->query("SELECT DATE_ADD(NOW(), INTERVAL 10 MINUTE)")->fetchColumn());
                 $ip = trim((string)($_SERVER['REMOTE_ADDR'] ?? ''));
 
                 // Invalidate old unused tokens first.
@@ -113,12 +113,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                             VALUES (?, ?, ?, ?, NOW())");
                 $insertStmt->execute([$userId, $tokenHash, $expiresAt, $ip]);
 
-                $resetUrl = appPublicWebBaseUrl() . '/auth/reset-password.php?token=' . urlencode($token);
-                $subject = 'Reset your Balingasag SHS password';
+                $resetUrl = appPublicWebBaseUrl() . '/auth/reset-password.php?email=' . urlencode($emailInput);
+                $subject = 'Your Balingasag SHS password reset code';
                 $html = '
                     <p>We received a request to reset your password.</p>
-                    <p><a href="' . htmlspecialchars($resetUrl, ENT_QUOTES, 'UTF-8') . '">Click here to reset your password</a></p>
-                    <p>This link expires in 1 hour. If you did not request this, you can ignore this email.</p>
+                    <p>Your reset code is:</p>
+                    <p style="font-size: 28px; font-weight: 700; letter-spacing: 6px;">' . htmlspecialchars($otp, ENT_QUOTES, 'UTF-8') . '</p>
+                    <p>Enter this code on the password reset page: <a href="' . htmlspecialchars($resetUrl, ENT_QUOTES, 'UTF-8') . '">Reset password</a></p>
+                    <p>This code expires in 10 minutes. If you did not request this, you can ignore this email.</p>
                 ';
 
                 if (!mailerSendHtml($emailInput, $subject, $html)) {
@@ -160,7 +162,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <img src="../assets/images/bshs-logo.jpg" alt="Balingasag SHS Logo" class="auth-logo-img">
                 </div>
                 <h1 class="auth-title">Forgot Password?</h1>
-                <p class="auth-subtitle">Enter your email to generate a password reset link</p>
+                <p class="auth-subtitle">Enter your email to receive a password reset code</p>
             </div>
 
             <?php if ($error !== ''): ?>
@@ -192,7 +194,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <!-- Submit Button -->
                 <button type="submit" class="auth-btn">
                     <i class="bi bi-send"></i>
-                    Send Reset Link
+                    Send Reset Code
                 </button>
             </form>
 
