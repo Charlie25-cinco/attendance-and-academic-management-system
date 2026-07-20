@@ -117,3 +117,4 @@ For local manual testing, `composer run serve` starts the PHP development server
 - Configure Wasmer app secrets for TiDB/MySQL credentials, optional `DB_SSL_CA` or `DB_SSL_CA_CONTENT`, `APP_SESSION_DRIVER=database`, `API_AUTH_SECRET`, `API_SYNC_SECRET`, Resend OTP email secrets, and optional SMTP/SMS/push credentials.
 - Treat Wasmer app instances as stateless; use configured volumes for `/app/storage` and `/app/assets/uploads`, and keep durable school records plus active PHP sessions in TiDB/MySQL.
 - Password reset uses 6-digit OTP codes sent through Resend when configured, with SMTP fallback. Store only hashed reset codes in `auth_password_resets.token_hash`.
+- Use `database/schema_tidb.sql` for TiDB Cloud production imports because it omits local-only database drop/create/use statements.

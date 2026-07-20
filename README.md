@@ -155,6 +155,7 @@ Open `http://localhost:5000`.
 - TiDB Cloud commonly uses MySQL port `4000`; import `database/schema.sql` first so `app_sessions` and authentication tables exist before production traffic.
 - Use `DB_SSL_CA` for a CA file path, or `DB_SSL_CA_CONTENT` when the CA PEM is stored directly as a GitHub/Wasmer secret.
 - Password reset uses a 6-digit OTP sent through Resend when configured, with SMTP as fallback; reset codes are hashed in `auth_password_resets.token_hash` and expire after 10 minutes.
+- For TiDB Cloud production imports, use `database/schema_tidb.sql`; it omits the local-only `DROP DATABASE`, `CREATE DATABASE`, and `USE school_db` statements from `database/schema.sql`.
 
 ## Instructor RBAC Branch
 
