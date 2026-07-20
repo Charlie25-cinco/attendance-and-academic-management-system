@@ -44,6 +44,7 @@ For local manual testing, `composer run serve` starts the PHP development server
 - First admin seeding must use `composer run seed:admin`, which runs `database/seed_admin.php`; do not hardcode admin password hashes in `database/seed.sql`.
 - `FIRST_RUN_ADMIN_PASSWORD` controls first admin creation, and `DEFAULT_NEW_USER_PASSWORD` controls newly created users.
 - API first-login password changes require the temporary token returned by the login endpoint.
+- Web login and remember-me auto-login must both force password setup while a user's password still matches `DEFAULT_NEW_USER_PASSWORD`.
 - RBAC permission enforcement is centralized from `functions/bootstrap.php`; keep the script-to-permission map in `functions/app-helpers.php` current when adding protected pages or action handlers.
 - Existing AJAX flows may pass CSRF by POST body, query string, or `X-CSRF-Token`; keep `requireCsrfToken()` compatible with all three unless those callers are migrated.
 

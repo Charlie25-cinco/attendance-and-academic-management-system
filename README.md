@@ -64,6 +64,7 @@ Open `http://localhost:5000`.
 - Create the first admin with `composer run seed:admin`, which runs `database/seed_admin.php`; `database/seed.sql` does not hardcode admin credentials.
 - `FIRST_RUN_ADMIN_PASSWORD` controls first admin seeding, and `DEFAULT_NEW_USER_PASSWORD` controls newly created users.
 - The API first-login password-change flow requires the `temp_token` returned by `POST /api/index.php?route=login` when `must_change_password` is true.
+- Web login and remember-me auto-login both force password setup while a user's password still matches `DEFAULT_NEW_USER_PASSWORD`.
 - Default or first-run passwords must be changed before production.
 
 ## Role Modules

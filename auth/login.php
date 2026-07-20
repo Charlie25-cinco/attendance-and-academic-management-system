@@ -220,6 +220,15 @@ if (!$db) {
 if ((!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) && $db) {
     $rememberUser = attemptRememberLogin($db);
     if ($rememberUser) {
+        if (password_verify(getDefaultNewUserPassword(), (string)$rememberUser['password'])) {
+            rememberRevokeByCookie($db, (string)($_COOKIE[REMEMBER_COOKIE_NAME] ?? ''));
+            authClearRememberCookie();
+            $_SESSION['pending_password_change'] = true;
+            $_SESSION['pending_user_id'] = (int)$rememberUser['id'];
+            $_SESSION['pending_reference_code'] = (string)$rememberUser['reference_code'];
+            header("Location: change-password.php");
+            exit();
+        }
         establishLoginSession($db, $rememberUser);
         rememberIssueToken($db, (int)$rememberUser['id']);
         redirectByRole($rememberUser['role']);
