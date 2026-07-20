@@ -51,9 +51,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Please fill in all fields.';
     } elseif ($newPassword !== $confirmPassword) {
         $error = 'Passwords do not match.';
-    } elseif (!validateStrongPassword($newPassword, $error)) {
-        // Error message populated by shared validator.
     } else {
+        $passwordError = '';
+        if (!validateStrongPassword($newPassword, $passwordError)) {
+            $error = $passwordError;
+        }
+    }
+
+    if ($error === '') {
         try {
             $tokenHash = hash('sha256', $otpInput);
             $tokenStmt = $db->prepare("SELECT r.id, r.user_id
