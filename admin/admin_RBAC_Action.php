@@ -41,7 +41,7 @@ if (!$db) {
 
 ensureRbacRolesSeeded($db);
 
-$checkStmt = $db->prepare("SELECT id, is_system FROM rbac_roles WHERE id = ?");
+$checkStmt = $db->prepare("SELECT id, role_key, is_system FROM rbac_roles WHERE id = ?");
 $checkStmt->execute([$roleId]);
 $role = $checkStmt->fetch(PDO::FETCH_ASSOC);
 if (!$role) {
@@ -70,10 +70,16 @@ try {
     $db->commit();
 
     refreshSessionPermissions();
+    recordAdminAuditLog($db, 'rbac.update_permissions', 'role', (int)$roleId, [
+        'role_key' => (string)($role['role_key'] ?? ''),
+        'enabled_permissions' => count($enabledPerms),
+    ]);
 
     echo json_encode(['success' => true, 'message' => 'Permissions updated.']);
 } catch (Throwable $e) {
-    if ($db->inTransaction()) { $db->rollBack(); }
+    if ($db->inTransaction()) {
+        $db->rollBack();
+    }
     error_log('RBAC save error: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Database error.']);

@@ -800,6 +800,7 @@ function permissionForScript(string $scriptName): string {
         'admin_reports.php' => 'reports.view',
         'admin_reports_action.php' => 'reports.view',
         'admin_archives.php' => 'archives.view',
+        'admin_audit_logs.php' => 'settings.view',
         'admin_rbac.php' => 'settings.manage',
         'admin_rbac_action.php' => 'settings.manage',
         'teacher_attendance.php' => 'attendance.view',

@@ -59,6 +59,7 @@ Open `http://localhost:5000`.
 - Web forms use a session CSRF token.
 - API bearer tokens are signed with `API_AUTH_SECRET`.
 - API sync routes use `API_SYNC_SECRET`.
+- Admin Audit Logs show important admin changes from `admin_audit_logs` and recent sign-in attempts from `auth_login_logs`.
 - In production, set `APP_ENV=production`, `API_AUTH_SECRET`, `API_SYNC_SECRET`, and a trusted `API_ALLOWED_ORIGIN`.
 - Set `APP_SESSION_DRIVER=database` in stateless hosting such as Wasmer so active PHP sessions are stored in the SQL database instead of local instance files.
 - Create the first admin with `composer run seed:admin`, which runs `database/seed_admin.php`; `database/seed.sql` does not hardcode admin credentials.
@@ -72,7 +73,7 @@ Open `http://localhost:5000`.
 
 ### Admin
 
-- Users, sections, classes, enrollments, attendance, reports, archives, announcements, grade approvals, SF1 import, and DepEd form exports from Reports.
+- Users, sections, classes, enrollments, attendance, reports, archives, audit logs, announcements, grade approvals, SF1 import, and DepEd form exports from Reports.
 
 ### Teacher
 

@@ -22,6 +22,7 @@ $sidebar_menus = [
         ['id' => 'grade_approvals', 'icon' => 'bi-check2-square', 'label' => 'Grade Approvals', 'link' => 'admin_Grade_Approvals.php'],
         ['id' => 'reports', 'icon' => 'bi-graph-up', 'label' => 'Reports', 'link' => 'admin_Reports.php'],
         ['id' => 'archives', 'icon' => 'bi-archive', 'label' => 'Archived Records', 'link' => 'admin_Archives.php'],
+        ['id' => 'audit_logs', 'icon' => 'bi-shield-check', 'label' => 'Audit Logs', 'link' => 'admin_Audit_Logs.php'],
         ['id' => 'rbac', 'icon' => 'bi-shield-lock', 'label' => 'RBAC Control Panel', 'link' => 'admin_RBAC.php'],
     ],
     'teacher' => [
