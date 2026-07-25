@@ -7,7 +7,7 @@ Attendance and Academic Management System for Balingasag Senior High School.
 - PHP 8.2+
 - MySQL or MariaDB
 - Composer
-- PHP extensions: PDO, mbstring, json, zip, dom
+- PHP extensions: PDO, mbstring, json, zip, dom, curl, openssl
 
 ## Setup
 
@@ -132,6 +132,10 @@ Open `http://localhost:5000`.
 - The active service worker is root-scoped at `sw.js` so it can cover `/auth/`, `/admin/`, `/teacher/`, `/student/`, `/parent/`, and `/site/`.
 - `assets/push-sw.js` is kept only as a compatibility bridge for older browser registrations.
 - Install prompts are exposed through the shared header install button when the browser supports installation.
+- Device/system push notifications use the root service worker, browser Push API subscriptions, and VAPID keys.
+- Users enable or disable device notifications from the shared Settings modal; enabling push requests browser permission and subscribes the current device.
+- Configure `PUSH_VAPID_PUBLIC_KEY`, `PUSH_VAPID_PRIVATE_KEY`, and `PUSH_VAPID_SUBJECT` before expecting installed PWA popup notifications.
+- Web Push sending requires PHP `curl` and `openssl`; failures are written to the PHP error log for deployment troubleshooting.
 - Teacher attendance submissions can be queued in `localStorage` while offline and retried against `teacher_Action.php?action=submit_attendance` when the browser comes back online.
 - Before production, test install/offline behavior on desktop and mobile browsers.
 
@@ -154,7 +158,8 @@ Open `http://localhost:5000`.
   - `DEFAULT_NEW_USER_PASSWORD`, and `FIRST_RUN_ADMIN_PASSWORD` if first-admin seeding will run in that environment
   - `API_AUTH_SECRET`, `API_SYNC_SECRET`
   - `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `RESEND_FROM_NAME` for password reset OTP email
-  - SMTP, SMS, or push secrets if those fallback/features are enabled
+  - `PUSH_VAPID_PUBLIC_KEY`, `PUSH_VAPID_PRIVATE_KEY`, `PUSH_VAPID_SUBJECT` for installed PWA device notifications
+  - SMTP or SMS secrets if those fallback/features are enabled
 - `app.yaml` intentionally contains placeholder owner/public URL values that the GitHub workflow replaces from secrets.
 - Composer runtime platform checks are disabled in `composer.json` because Wasmer's PHP/WASI runtime can report a non-64-bit platform even though the application can still boot and serve normal web requests.
 - Wasmer app instances are stateless; runtime files should use the configured Wasmer volumes for `/app/storage` and `/app/assets/uploads`, while durable school data and PHP sessions should live in TiDB/MySQL.

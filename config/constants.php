@@ -298,7 +298,8 @@ function pushBase64UrlDecode($data) {
     if ($remainder) {
         $data .= str_repeat('=', 4 - $remainder);
     }
-    return base64_decode(strtr($data, '-_', '+/'));
+    $decoded = base64_decode(strtr($data, '-_', '+/'), true);
+    return $decoded === false ? '' : $decoded;
 }
 
 function pushPublicKeyToPem($raw) {
@@ -381,8 +382,19 @@ function pushHkdfExpand($prk, $info, $length) {
 }
 
 function pushEncryptPayload($payload, $p256dh, $auth) {
+    if (
+        !function_exists('openssl_pkey_new') ||
+        !function_exists('openssl_pkey_derive') ||
+        !function_exists('openssl_encrypt')
+    ) {
+        return null;
+    }
+
     $clientPublicRaw = pushBase64UrlDecode($p256dh);
     $authSecret = pushBase64UrlDecode($auth);
+    if ($clientPublicRaw === '' || $authSecret === '') {
+        return null;
+    }
 
     $serverKey = openssl_pkey_new([
         'curve_name' => 'prime256v1',
@@ -396,7 +408,7 @@ function pushEncryptPayload($payload, $p256dh, $auth) {
 
     $clientPem = pushPublicKeyToPem($clientPublicRaw);
     $clientKey = openssl_pkey_get_public($clientPem);
-    if (!$clientKey || !function_exists('openssl_pkey_derive')) {
+    if (!$clientKey) {
         return null;
     }
     $sharedSecret = openssl_pkey_derive($clientKey, $serverKey, 32);
@@ -412,27 +424,31 @@ function pushEncryptPayload($payload, $p256dh, $auth) {
     $cek = pushHkdfExpand($prk2, "Content-Encoding: aes128gcm\0", 16);
     $nonce = pushHkdfExpand($prk2, "Content-Encoding: nonce\0", 12);
 
-    $plaintext = pack('n', 0) . $payload;
+    $plaintext = $payload . "\x02";
     $tag = '';
     $ciphertext = openssl_encrypt($plaintext, 'aes-128-gcm', $cek, OPENSSL_RAW_DATA, $nonce, $tag);
     if ($ciphertext === false) { return null; }
+    $body = $salt . pack('N', 4096) . chr(strlen($serverPublicRaw)) . $serverPublicRaw . $ciphertext . $tag;
 
     return [
-        'ciphertext' => $ciphertext . $tag,
-        'salt' => $salt,
-        'server_public_key' => $serverPublicRaw
+        'body' => $body,
+        'server_public_key' => $serverPublicRaw,
     ];
 }
 
 function pushSendToSubscription($subscription, $payload) {
     if (!pushConfigReady()) {
-        return ['success' => false, 'status' => 0];
+        return ['success' => false, 'status' => 0, 'error' => 'push_not_configured'];
+    }
+    if (!function_exists('curl_init')) {
+        error_log('[push] Web Push send skipped: PHP curl extension is not available.');
+        return ['success' => false, 'status' => 0, 'error' => 'curl_missing'];
     }
     $endpoint = (string)($subscription['endpoint'] ?? '');
     $p256dh = (string)($subscription['p256dh'] ?? '');
     $auth = (string)($subscription['auth'] ?? '');
     if ($endpoint === '' || $p256dh === '' || $auth === '') {
-        return ['success' => false, 'status' => 0];
+        return ['success' => false, 'status' => 0, 'error' => 'invalid_subscription'];
     }
 
     $body = json_encode($payload);
@@ -440,7 +456,8 @@ function pushSendToSubscription($subscription, $payload) {
 
     $enc = pushEncryptPayload($body, $p256dh, $auth);
     if (!$enc) {
-        return ['success' => false, 'status' => 0];
+        error_log('[push] Web Push encryption failed.');
+        return ['success' => false, 'status' => 0, 'error' => 'encryption_failed'];
     }
 
     $endpointParts = parse_url($endpoint);
@@ -450,29 +467,34 @@ function pushSendToSubscription($subscription, $payload) {
     $jwt = pushCreateVapidJwt($aud, PUSH_VAPID_SUBJECT, time() + 12 * 60 * 60, PUSH_VAPID_PRIVATE_KEY);
     $vapidPublicRaw = pushGetVapidPublicKeyRaw(PUSH_VAPID_PRIVATE_KEY);
     if ($jwt === '' || $vapidPublicRaw === '') {
-        return ['success' => false, 'status' => 0];
+        error_log('[push] VAPID signing failed.');
+        return ['success' => false, 'status' => 0, 'error' => 'vapid_failed'];
     }
 
     $headers = [
         'TTL: 300',
         'Content-Encoding: aes128gcm',
         'Content-Type: application/octet-stream',
-        'Encryption: salt=' . pushBase64UrlEncode($enc['salt']),
-        'Crypto-Key: dh=' . pushBase64UrlEncode($enc['server_public_key']) . '; p256ecdsa=' . pushBase64UrlEncode($vapidPublicRaw),
+        'Content-Length: ' . strlen($enc['body']),
         'Authorization: vapid t=' . $jwt . ', k=' . pushBase64UrlEncode($vapidPublicRaw)
     ];
 
     $ch = curl_init($endpoint);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $enc['ciphertext']);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $enc['body']);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_TIMEOUT, 10);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-    curl_exec($ch);
+    $response = curl_exec($ch);
     $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
     curl_close($ch);
-    return ['success' => $status >= 200 && $status < 300, 'status' => $status];
+    $success = $response !== false && $status >= 200 && $status < 300;
+    if (!$success) {
+        error_log('[push] Web Push send failed. Status: ' . $status . ' Error: ' . $curlError);
+    }
+    return ['success' => $success, 'status' => $status, 'error' => $curlError];
 }
 
 function pushSaveSubscription($db, $userId, $subscription, $userAgent = '') {
@@ -519,11 +541,21 @@ function pushFetchSubscriptions($db, array $userIds) {
 function pushSendToUserIds($db, array $userIds, array $payload) {
     if (!pushConfigReady()) { return false; }
     $subs = pushFetchSubscriptions($db, $userIds);
+    $attempted = 0;
+    $sent = 0;
     foreach ($subs as $sub) {
+        $attempted++;
         $result = pushSendToSubscription($sub, $payload);
+        if (!empty($result['success'])) {
+            $sent++;
+        }
         if (in_array((int)($result['status'] ?? 0), [404, 410], true)) {
             pushDeleteSubscription($db, (int)$sub['user_id'], (string)$sub['endpoint']);
         }
+    }
+    if ($attempted > 0 && $sent === 0) {
+        error_log('[push] Web Push had subscriptions but no messages were delivered.');
+        return false;
     }
     return true;
 }

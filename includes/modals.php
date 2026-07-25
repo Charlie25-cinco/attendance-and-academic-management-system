@@ -72,6 +72,7 @@
                         <span>
                             <span class="settings-option-title d-block">Push Notifications</span>
                             <span class="settings-option-desc d-block">Show phone notifications even when the app is closed.</span>
+                            <span class="settings-option-desc d-block" id="pushNotificationStatus"></span>
                         </span>
                     </span>
                     <span class="form-check form-switch m-0">

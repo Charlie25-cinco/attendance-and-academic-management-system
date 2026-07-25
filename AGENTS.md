@@ -107,6 +107,9 @@ For local manual testing, `composer run serve` starts the PHP development server
 - The active service worker should stay root-scoped at `sw.js` so it can cover auth, role portals, and the public site.
 - Keep `assets/push-sw.js` only as a compatibility bridge for older browser registrations.
 - Do not change service worker cache paths back to legacy `src/` paths.
+- Installed PWA device notifications require browser Push API subscription code, saved `push_subscriptions`, root `sw.js` push handling, and configured `PUSH_VAPID_PUBLIC_KEY`, `PUSH_VAPID_PRIVATE_KEY`, and `PUSH_VAPID_SUBJECT`.
+- The shared Settings modal controls browser push subscription; enabling push should request permission and save the current device subscription, while disabling it should remove the browser subscription.
+- Web Push delivery depends on PHP `curl` and `openssl`; keep these Composer platform requirements and log failed push sends for deployment debugging.
 - Teacher attendance offline mode queues submissions in `localStorage` and retries them against `teacher_Action.php?action=submit_attendance` when connectivity returns.
 - Test install/offline behavior on desktop and mobile before production release.
 
@@ -117,7 +120,7 @@ For local manual testing, `composer run serve` starts the PHP development server
 - The workflow must install production Composer dependencies before `wasmer deploy` because `vendor/` is not committed.
 - Do not commit real Wasmer owner names, tokens, database credentials, API secrets, or production URLs unless they are intentionally public.
 - Configure GitHub secrets for `WASMER_TOKEN`, `WASMER_OWNER`, `WASMER_APP_NAME`, `APP_PUBLIC_BASE_URL`, `DEFAULT_NEW_USER_PASSWORD`, optional `FIRST_RUN_ADMIN_PASSWORD`, `RESEND_API_KEY`, and `RESEND_FROM_EMAIL`; use `WASMER_APP_NAME=balingasagshs` and `APP_PUBLIC_BASE_URL=https://balingasagshs.wasmer.app` for the school deployment.
-- Configure Wasmer app secrets for TiDB/MySQL credentials, optional `DB_SSL_CA` or `DB_SSL_CA_CONTENT`, `APP_SESSION_DRIVER=database`, `API_AUTH_SECRET`, `API_SYNC_SECRET`, Resend OTP email secrets, and optional SMTP/SMS/push credentials.
+- Configure Wasmer app secrets for TiDB/MySQL credentials, optional `DB_SSL_CA` or `DB_SSL_CA_CONTENT`, `APP_SESSION_DRIVER=database`, `API_AUTH_SECRET`, `API_SYNC_SECRET`, Resend OTP email secrets, `PUSH_VAPID_PUBLIC_KEY`, `PUSH_VAPID_PRIVATE_KEY`, `PUSH_VAPID_SUBJECT`, and optional SMTP/SMS credentials.
 - Keep Composer `platform-check` disabled for Wasmer unless the runtime is confirmed to provide a 64-bit PHP build.
 - Treat Wasmer app instances as stateless; use configured volumes for `/app/storage` and `/app/assets/uploads`, and keep durable school records plus active PHP sessions in TiDB/MySQL.
 - Password reset uses 6-digit OTP codes sent through Resend when configured, with SMTP fallback. Store only hashed reset codes in `auth_password_resets.token_hash`.

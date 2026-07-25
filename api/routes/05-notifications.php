@@ -279,3 +279,62 @@ if ($route === 'unregister-push-token' && $method === 'POST') {
     $ok = pushDeleteMobileToken($db, (int)$user['id'], $token);
     apiJson(['ok' => $ok, 'message' => $ok ? 'Push token unregistered' : 'Failed to unregister push token']);
 }
+
+if ($route === 'web-push-subscription' && $method === 'POST') {
+    $db = apiDb();
+    $user = apiRequireUser();
+    if (!$db) {
+        apiJson(['ok' => false, 'message' => 'Database connection failed'], 500);
+    }
+    if (!pushConfigReady()) {
+        apiJson(['ok' => false, 'message' => 'Push notifications are not configured'], 503);
+    }
+
+    $body = apiRequestBody();
+    $subscription = $body['subscription'] ?? $body;
+    if (!is_array($subscription)) {
+        apiJson(['ok' => false, 'message' => 'Push subscription is required'], 422);
+    }
+
+    $saved = pushSaveSubscription(
+        $db,
+        (int)$user['id'],
+        $subscription,
+        (string)($_SERVER['HTTP_USER_AGENT'] ?? '')
+    );
+    if ($saved && function_exists('apiEnsureUserSettingsTable')) {
+        apiEnsureUserSettingsTable($db);
+        $stmt = $db->prepare("INSERT INTO user_settings (user_id, push_notifications)
+                              VALUES (?, 1)
+                              ON DUPLICATE KEY UPDATE push_notifications = 1");
+        $stmt->execute([(int)$user['id']]);
+    }
+
+    apiJson([
+        'ok' => $saved,
+        'message' => $saved ? 'Push notifications enabled' : 'Failed to save push subscription',
+    ], $saved ? 200 : 422);
+}
+
+if ($route === 'web-push-subscription' && $method === 'DELETE') {
+    $db = apiDb();
+    $user = apiRequireUser();
+    if (!$db) {
+        apiJson(['ok' => false, 'message' => 'Database connection failed'], 500);
+    }
+
+    $body = apiRequestBody();
+    $endpoint = trim((string)($body['endpoint'] ?? ''));
+    if ($endpoint === '' && isset($body['subscription']) && is_array($body['subscription'])) {
+        $endpoint = trim((string)($body['subscription']['endpoint'] ?? ''));
+    }
+    if ($endpoint === '') {
+        apiJson(['ok' => false, 'message' => 'Push subscription endpoint is required'], 422);
+    }
+
+    $deleted = pushDeleteSubscription($db, (int)$user['id'], $endpoint);
+    apiJson([
+        'ok' => $deleted,
+        'message' => $deleted ? 'Push notifications disabled for this device' : 'Failed to remove push subscription',
+    ]);
+}

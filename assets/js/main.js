@@ -85,6 +85,10 @@ document.addEventListener("DOMContentLoaded", function () {
   // Add slight delay for sidebar navigation to soften page transitions
   initSidebarNavigationDelay();
 
+  // Initialize shared settings and PWA push notification controls
+  initSettingsControls();
+  initPwaPushAutoRegistration();
+
 });
 
 // ============================================
@@ -328,6 +332,236 @@ function showNotification(message, type = "info", title = "") {
 
   host.appendChild(notification);
   window.setTimeout(removeNotification, 5000);
+}
+
+// ============================================
+// SETTINGS AND PWA PUSH NOTIFICATIONS
+// ============================================
+
+function appApiUrl(route) {
+  const url = `/api/index.php?route=${encodeURIComponent(route)}`;
+  const token = window.APP_CSRF_TOKEN || "";
+  return token ? `${url}&csrf_token=${encodeURIComponent(token)}` : url;
+}
+
+function appFetchJson(route, options = {}) {
+  const headers = new Headers(options.headers || {});
+  if (!headers.has("Content-Type") && options.body) {
+    headers.set("Content-Type", "application/json");
+  }
+  if (window.APP_CSRF_TOKEN && !headers.has("X-CSRF-Token")) {
+    headers.set("X-CSRF-Token", window.APP_CSRF_TOKEN);
+  }
+
+  return fetch(appApiUrl(route), Object.assign({}, options, {
+    headers,
+    credentials: "same-origin",
+  })).then((response) => response.json().then((data) => {
+    if (!response.ok || !data.ok) {
+      throw new Error(data.message || "Request failed");
+    }
+    return data;
+  }));
+}
+
+function setSettingsBusy(isBusy) {
+  const btn = document.getElementById("saveSettingsBtn");
+  if (!btn) return;
+  btn.disabled = !!isBusy;
+  btn.innerHTML = isBusy
+    ? '<span class="spinner-border spinner-border-sm me-2"></span>Saving...'
+    : "Save Changes";
+}
+
+function setPushStatus(message, tone = "muted") {
+  const status = document.getElementById("pushNotificationStatus");
+  if (!status) return;
+  status.textContent = message || "";
+  status.className = `settings-option-desc d-block text-${tone}`;
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i += 1) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+function pwaPushSupported() {
+  return "serviceWorker" in navigator
+    && "PushManager" in window
+    && "Notification" in window
+    && !!window.APP_PUSH_PUBLIC_KEY;
+}
+
+function getPwaServiceWorkerRegistration() {
+  if (!("serviceWorker" in navigator)) {
+    return Promise.reject(new Error("Service worker is not supported on this device"));
+  }
+  if (window._swRegistration) {
+    return Promise.resolve(window._swRegistration);
+  }
+  return navigator.serviceWorker.ready;
+}
+
+function updatePwaPushStatus() {
+  const pushSwitch = document.getElementById("pushNotifSwitch");
+  if (!pushSwitch) return;
+
+  if (!pwaPushSupported()) {
+    pushSwitch.disabled = true;
+    setPushStatus("Device notifications need VAPID push keys in the environment.", "muted");
+    return;
+  }
+
+  if (Notification.permission === "denied") {
+    setPushStatus("Notifications are blocked in this browser.", "danger");
+    return;
+  }
+
+  if (Notification.permission === "granted") {
+    getPwaServiceWorkerRegistration()
+      .then((registration) => registration.pushManager.getSubscription())
+      .then((subscription) => {
+        setPushStatus(subscription ? "This device is subscribed." : "Save changes to subscribe this device.", subscription ? "success" : "muted");
+      })
+      .catch(() => setPushStatus("Save changes to subscribe this device.", "muted"));
+    return;
+  }
+
+  setPushStatus("Save changes to allow device notifications.", "muted");
+}
+
+function enablePwaPushNotifications() {
+  if (!pwaPushSupported()) {
+    throw new Error("Device notifications are not configured for this app");
+  }
+
+  return getPwaServiceWorkerRegistration()
+    .then((registration) => {
+      if (Notification.permission === "granted") {
+        return registration;
+      }
+      return Notification.requestPermission().then((permission) => {
+        if (permission !== "granted") {
+          throw new Error("Notification permission was not granted");
+        }
+        return registration;
+      });
+    })
+    .then((registration) => registration.pushManager.getSubscription()
+      .then((existing) => existing || registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(window.APP_PUSH_PUBLIC_KEY),
+      })))
+    .then((subscription) => appFetchJson("web-push-subscription", {
+      method: "POST",
+      body: JSON.stringify({ subscription: subscription.toJSON() }),
+    }));
+}
+
+function disablePwaPushNotifications() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    return Promise.resolve();
+  }
+
+  return getPwaServiceWorkerRegistration()
+    .then((registration) => registration.pushManager.getSubscription())
+    .then((subscription) => {
+      if (!subscription) return null;
+      const endpoint = subscription.endpoint;
+      return subscription.unsubscribe()
+        .catch(() => false)
+        .then(() => appFetchJson("web-push-subscription", {
+          method: "DELETE",
+          body: JSON.stringify({ endpoint }),
+        }).catch(() => null));
+    });
+}
+
+function applyInitialSettingsToControls() {
+  const settings = window.APP_INITIAL_SETTINGS || {};
+  const darkMode = document.getElementById("darkModeSwitch");
+  const emailNotif = document.getElementById("emailNotifSwitch");
+  const pushNotif = document.getElementById("pushNotifSwitch");
+
+  if (darkMode) darkMode.checked = String(settings.dark_mode || "0") === "1";
+  if (emailNotif) emailNotif.checked = String(settings.email_notifications ?? "1") === "1";
+  if (pushNotif) pushNotif.checked = String(settings.push_notifications ?? "1") === "1";
+}
+
+function initSettingsControls() {
+  const saveBtn = document.getElementById("saveSettingsBtn");
+  if (!saveBtn) return;
+
+  applyInitialSettingsToControls();
+  updatePwaPushStatus();
+
+  const darkMode = document.getElementById("darkModeSwitch");
+  if (darkMode) {
+    darkMode.addEventListener("change", function () {
+      document.body.classList.toggle("dark-mode", darkMode.checked);
+    });
+  }
+
+  saveBtn.addEventListener("click", function () {
+    const pushNotif = document.getElementById("pushNotifSwitch");
+    const payload = {
+      dark_mode: document.getElementById("darkModeSwitch")?.checked ? 1 : 0,
+      email_notifications: document.getElementById("emailNotifSwitch")?.checked ? 1 : 0,
+      push_notifications: pushNotif?.checked ? 1 : 0,
+    };
+    const permissionStep = payload.push_notifications && pwaPushSupported() && Notification.permission !== "granted"
+      ? Notification.requestPermission().then((permission) => {
+        if (permission !== "granted") {
+          throw new Error("Notification permission was not granted");
+        }
+        return permission;
+      })
+      : Promise.resolve();
+
+    setSettingsBusy(true);
+    permissionStep
+      .then(() => appFetchJson("settings", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }))
+      .then(() => {
+        if (!payload.push_notifications) {
+          return disablePwaPushNotifications();
+        }
+        return pwaPushSupported() ? enablePwaPushNotifications() : Promise.resolve();
+      })
+      .then(() => {
+        if (typeof showNotification === "function") {
+          showNotification("Settings saved successfully", "success");
+        }
+        updatePwaPushStatus();
+      })
+      .catch((error) => {
+        if (typeof showNotification === "function") {
+          showNotification(error.message || "Failed to save settings", "danger");
+        }
+        updatePwaPushStatus();
+      })
+      .finally(() => setSettingsBusy(false));
+  });
+}
+
+function initPwaPushAutoRegistration() {
+  const settings = window.APP_INITIAL_SETTINGS || {};
+  const pushEnabled = String(settings.push_notifications ?? "1") === "1";
+  if (!pushEnabled || !pwaPushSupported() || Notification.permission !== "granted") {
+    return;
+  }
+
+  enablePwaPushNotifications().catch(() => {
+    updatePwaPushStatus();
+  });
 }
 
 function ensureAppConfirmModal() {
