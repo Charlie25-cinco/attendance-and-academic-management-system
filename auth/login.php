@@ -355,8 +355,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                         <div class="auth-options">
                             <label class="remember-me">
-                                <input type="checkbox" name="remember">
-                                <span>Remember me</span>
+                                <input type="checkbox" name="remember" checked>
+                                <span>Keep me signed in on this device</span>
                             </label>
                             <a href="forgot-password.php" class="forgot-link">Forgot Password?</a>
                         </div>

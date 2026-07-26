@@ -640,7 +640,7 @@ function pwaHeadHtml(): string {
     $baseUrl = function_exists('appPublicWebBaseUrl') ? appPublicWebBaseUrl() : '';
     $baseUrl = rtrim((string)$baseUrl, '/');
     $manifestUrl = $baseUrl !== '' ? $baseUrl . '/assets/manifest.json' : '/assets/manifest.json';
-    $appleTouchIcon = $baseUrl !== '' ? $baseUrl . '/assets/images/icon-192.png' : '/assets/images/icon-192.png';
+    $appleTouchIcon = $baseUrl !== '' ? $baseUrl . '/assets/images/apple-touch-icon.png' : '/assets/images/apple-touch-icon.png';
     $faviconUrl = $baseUrl !== '' ? $baseUrl . '/assets/images/icon-192.png' : '/assets/images/icon-192.png';
     $serviceWorkerUrl = $baseUrl !== '' ? $baseUrl . '/sw.js' : '/sw.js';
     $scopeUrl = $baseUrl !== '' ? $baseUrl . '/' : '/';

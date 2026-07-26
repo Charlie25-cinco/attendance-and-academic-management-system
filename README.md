@@ -62,6 +62,7 @@ Open `http://localhost:5000`.
 - Admin Audit Logs show important admin changes from `admin_audit_logs` and recent sign-in attempts from `auth_login_logs`.
 - In production, set `APP_ENV=production`, `API_AUTH_SECRET`, `API_SYNC_SECRET`, and a trusted `API_ALLOWED_ORIGIN`.
 - Set `APP_SESSION_DRIVER=database` in stateless hosting such as Wasmer so active PHP sessions are stored in the SQL database instead of local instance files.
+- `APP_SESSION_LIFETIME` and `APP_SESSION_IDLE_TIMEOUT` control how long an active web/PWA session can survive after closing and reopening; the example uses 24 hours, while remember-me tokens keep trusted devices signed in longer.
 - Create the first admin with `composer run seed:admin`, which runs `database/seed_admin.php`; `database/seed.sql` does not hardcode admin credentials.
 - `FIRST_RUN_ADMIN_PASSWORD` controls first admin seeding, and `DEFAULT_NEW_USER_PASSWORD` controls newly created users.
 - The API first-login password-change flow requires the `temp_token` returned by `POST /api/index.php?route=login` when `must_change_password` is true.
@@ -131,6 +132,7 @@ Open `http://localhost:5000`.
 - PWA metadata lives in `assets/manifest.json`.
 - The active service worker is root-scoped at `sw.js` so it can cover `/auth/`, `/admin/`, `/teacher/`, `/student/`, `/parent/`, and `/site/`.
 - `assets/push-sw.js` is kept only as a compatibility bridge for older browser registrations.
+- Installed app icons are generated from the school seal with safe padding for normal, maskable, and Apple touch icon use; regenerate them with `php scripts/generate_pwa_icons.php` after replacing `assets/images/bshs-logo.jpg`.
 - Install prompts are exposed through the shared header install button when the browser supports installation.
 - Device/system push notifications use the root service worker, browser Push API subscriptions, and VAPID keys.
 - Users enable or disable device notifications from the shared Settings modal; enabling push requests browser permission and subscribes the current device.
@@ -163,6 +165,7 @@ Open `http://localhost:5000`.
 - `app.yaml` intentionally contains placeholder owner/public URL values that the GitHub workflow replaces from secrets.
 - Composer runtime platform checks are disabled in `composer.json` because Wasmer's PHP/WASI runtime can report a non-64-bit platform even though the application can still boot and serve normal web requests.
 - Wasmer app instances are stateless; runtime files should use the configured Wasmer volumes for `/app/storage` and `/app/assets/uploads`, while durable school data and PHP sessions should live in TiDB/MySQL.
+- For installed PWA use, set `APP_SESSION_DRIVER=database`, `APP_SESSION_LIFETIME=86400`, and `APP_SESSION_IDLE_TIMEOUT=86400`; users can stay signed in longer through the checked-by-default trusted-device option on login.
 - TiDB Cloud commonly uses MySQL port `4000`; import `database/schema.sql` first so `app_sessions` and authentication tables exist before production traffic.
 - Use `DB_SSL_CA` for a CA file path, or `DB_SSL_CA_CONTENT` when the CA PEM is stored directly as a GitHub/Wasmer secret.
 - Password reset uses a 6-digit OTP sent through Resend when configured, with SMTP as fallback; reset codes are hashed in `auth_password_resets.token_hash` and expire after 10 minutes.

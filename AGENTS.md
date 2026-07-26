@@ -40,6 +40,7 @@ For local manual testing, `composer run serve` starts the PHP development server
 - Production must provide strong `API_AUTH_SECRET` and `API_SYNC_SECRET` values.
 - Production must set `API_ALLOWED_ORIGIN` to a trusted origin.
 - Stateless production hosts such as Wasmer must set `APP_SESSION_DRIVER=database` so PHP sessions are stored in SQL instead of instance-local files.
+- Installed PWA login persistence depends on database sessions plus `APP_SESSION_LIFETIME` and `APP_SESSION_IDLE_TIMEOUT`; keep the trusted-device remember option available and checked by default unless the user requests stricter login behavior.
 - TiDB Cloud deployments may require `DB_SSL_CA` or `DB_SSL_CA_CONTENT`; keep `DB_SSL_VERIFY_SERVER_CERT` enabled unless a trusted deployment explicitly disables it.
 - First admin seeding must use `composer run seed:admin`, which runs `database/seed_admin.php`; do not hardcode admin password hashes in `database/seed.sql`.
 - `FIRST_RUN_ADMIN_PASSWORD` controls first admin creation, and `DEFAULT_NEW_USER_PASSWORD` controls newly created users.
@@ -107,6 +108,7 @@ For local manual testing, `composer run serve` starts the PHP development server
 - The active service worker should stay root-scoped at `sw.js` so it can cover auth, role portals, and the public site.
 - Keep `assets/push-sw.js` only as a compatibility bridge for older browser registrations.
 - Do not change service worker cache paths back to legacy `src/` paths.
+- Installed app icons should keep the school seal visible inside safe padding for normal, maskable, and Apple touch icon use; regenerate icon assets with `php scripts/generate_pwa_icons.php` when the source school seal changes.
 - Installed PWA device notifications require browser Push API subscription code, saved `push_subscriptions`, root `sw.js` push handling, and configured `PUSH_VAPID_PUBLIC_KEY`, `PUSH_VAPID_PRIVATE_KEY`, and `PUSH_VAPID_SUBJECT`.
 - The shared Settings modal controls browser push subscription; enabling push should request permission and save the current device subscription, while disabling it should remove the browser subscription.
 - Web Push delivery depends on PHP `curl` and `openssl`; keep these Composer platform requirements and log failed push sends for deployment debugging.
@@ -123,5 +125,6 @@ For local manual testing, `composer run serve` starts the PHP development server
 - Configure Wasmer app secrets for TiDB/MySQL credentials, optional `DB_SSL_CA` or `DB_SSL_CA_CONTENT`, `APP_SESSION_DRIVER=database`, `API_AUTH_SECRET`, `API_SYNC_SECRET`, Resend OTP email secrets, `PUSH_VAPID_PUBLIC_KEY`, `PUSH_VAPID_PRIVATE_KEY`, `PUSH_VAPID_SUBJECT`, and optional SMTP/SMS credentials.
 - Keep Composer `platform-check` disabled for Wasmer unless the runtime is confirmed to provide a 64-bit PHP build.
 - Treat Wasmer app instances as stateless; use configured volumes for `/app/storage` and `/app/assets/uploads`, and keep durable school records plus active PHP sessions in TiDB/MySQL.
+- Production PWA deployments should use database sessions and PWA-friendly session lifetimes, for example `APP_SESSION_LIFETIME=86400` and `APP_SESSION_IDLE_TIMEOUT=86400`.
 - Password reset uses 6-digit OTP codes sent through Resend when configured, with SMTP fallback. Store only hashed reset codes in `auth_password_resets.token_hash`.
 - Use `database/schema_tidb.sql` for TiDB Cloud production imports because it omits local-only database drop/create/use statements.

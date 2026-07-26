@@ -58,7 +58,7 @@ if (!function_exists('appSessionCookieParams')) {
 }
 
 if (!defined('APP_SESSION_IDLE_TIMEOUT')) {
-    define('APP_SESSION_IDLE_TIMEOUT', 1800);
+    define('APP_SESSION_IDLE_TIMEOUT', (int)appEnvValue('APP_SESSION_IDLE_TIMEOUT', '1800'));
 }
 
 if (!function_exists('appDatabaseSessionsEnabled')) {
