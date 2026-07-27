@@ -68,11 +68,7 @@ if ($route === 'login' && $method === 'POST') {
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$user || !password_verify($password, $user['password'])) {
-        $details = [];
-        if ($user) {
-            $details = ['reason' => 'invalid_password', 'user_id' => (int)$user['id']];
-        }
-        apiJson(['ok' => false, 'message' => 'Invalid reference code or password'] + $details, 401);
+        apiJson(['ok' => false, 'message' => 'Invalid reference code or password'], 401);
     }
 
     if (password_verify(getDefaultNewUserPassword(), $user['password'])) {

@@ -49,7 +49,7 @@ Open `http://localhost:5000`.
 - `parent/`, `student/`, `teacher/` - role-specific web modules.
 - `resources/` - legacy/reference DepEd material.
 - `site/` - public site entry point.
-- `storage/` - runtime/generated files; ignored by Git.
+- `storage/` - runtime/generated files and uploaded class materials; ignored by Git.
 - `vendor/` - Composer dependencies; ignored by Git.
 
 ## Authentication And Security

@@ -55,14 +55,7 @@ function downloadStudentMaterial($db, $studentId) {
             return;
         }
 
-        $baseDir = realpath(__DIR__ . '/../../') . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'materials';
-        if ($baseDir === false) {
-            http_response_code(500);
-            echo 'Upload path not found';
-            return;
-        }
-
-        $filePath = $baseDir . DIRECTORY_SEPARATOR . $material['file_name'];
+        $filePath = appMaterialFilePath((string)$material['file_name']);
         if (!is_file($filePath)) {
             http_response_code(404);
             echo 'File not found';

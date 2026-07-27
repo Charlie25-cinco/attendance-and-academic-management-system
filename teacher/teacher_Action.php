@@ -1946,13 +1946,8 @@ function uploadMaterial($db, $teacherId) {
             return;
         }
 
-        $uploadDir = realpath(__DIR__ . '/../../') . DIRECTORY_SEPARATOR . 'Uploads' . DIRECTORY_SEPARATOR . 'Materials';
-        if ($uploadDir === false) {
-            echo json_encode(['success' => false, 'message' => 'Upload path resolution failed']);
-            return;
-        }
-
-        if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true)) {
+        $uploadDir = appMaterialStorageDir(true);
+        if ($uploadDir === '') {
             echo json_encode(['success' => false, 'message' => 'Unable to create upload directory']);
             return;
         }
@@ -2009,8 +2004,7 @@ function downloadMaterial($db, $teacherId) {
             return;
         }
 
-        $baseDir = realpath(__DIR__ . '/../../') . DIRECTORY_SEPARATOR . 'Uploads' . DIRECTORY_SEPARATOR . 'Materials';
-        $filePath = $baseDir . DIRECTORY_SEPARATOR . $material['file_name'];
+        $filePath = appMaterialFilePath((string)$material['file_name']);
 
         if (!is_file($filePath)) {
             http_response_code(404);
@@ -2123,8 +2117,7 @@ function deleteMaterial($db, $teacherId) {
         $deleteStmt = $db->prepare("DELETE FROM materials WHERE id = ? AND uploaded_by = ?");
         $deleteStmt->execute([$materialId, $teacherId]);
 
-        $baseDir = realpath(__DIR__ . '/../../') . DIRECTORY_SEPARATOR . 'Uploads' . DIRECTORY_SEPARATOR . 'Materials';
-        $filePath = $baseDir . DIRECTORY_SEPARATOR . $material['file_name'];
+        $filePath = appMaterialFilePath((string)$material['file_name']);
         if (is_file($filePath)) {
             @unlink($filePath);
         }

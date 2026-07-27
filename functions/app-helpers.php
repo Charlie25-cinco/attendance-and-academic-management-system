@@ -8,6 +8,40 @@ function dbHasTable(PDO $db, string $table): bool {
     return SchemaCache::hasTable($db, $table);
 }
 
+function appMaterialStorageDir(bool $create = false): string {
+    $root = defined('APP_ROOT') ? APP_ROOT : dirname(__DIR__);
+    $dir = $root . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . 'materials';
+    if ($create && !is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
+        return '';
+    }
+    return $dir;
+}
+
+function appMaterialFilePath(string $fileName): string {
+    $safeName = basename(str_replace('\\', '/', $fileName));
+    if ($safeName === '') {
+        return '';
+    }
+
+    $root = defined('APP_ROOT') ? APP_ROOT : dirname(__DIR__);
+    $canonicalPath = appMaterialStorageDir(false) . DIRECTORY_SEPARATOR . $safeName;
+    $legacyRoot = dirname($root);
+    $candidatePaths = [
+        $canonicalPath,
+        $legacyRoot . DIRECTORY_SEPARATOR . 'Uploads' . DIRECTORY_SEPARATOR . 'Materials' . DIRECTORY_SEPARATOR . $safeName,
+        $legacyRoot . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'materials' . DIRECTORY_SEPARATOR . $safeName,
+        $root . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'materials' . DIRECTORY_SEPARATOR . $safeName,
+    ];
+
+    foreach ($candidatePaths as $path) {
+        if (is_file($path)) {
+            return $path;
+        }
+    }
+
+    return $canonicalPath;
+}
+
 function appIsProductionEnv(): bool {
     return strtolower(trim((string)appEnvValue('APP_ENV', ''))) === 'production';
 }
