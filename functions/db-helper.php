@@ -208,6 +208,7 @@ class SimpleXlsxParser {
     private $filePath;
     private $useZipArchive = false;
     private $zipResource = null;
+    private $zipEntries = null;
 
     public function __construct(string $filePath) {
         if (!file_exists($filePath)) {
@@ -216,7 +217,7 @@ class SimpleXlsxParser {
         $this->filePath = $filePath;
         $this->sharedStrings = [];
 
-        if (class_exists('ZipArchive')) {
+        if (class_exists('ZipArchive') && getenv('APP_FORCE_XLSX_FALLBACK') !== '1') {
             $this->zip = new ZipArchive();
             if ($this->zip->open($filePath) === true) {
                 $this->useZipArchive = true;
@@ -228,7 +229,13 @@ class SimpleXlsxParser {
         }
 
         $this->useZipArchive = false;
-        $this->tryProceduralZip();
+        if (getenv('APP_FORCE_XLSX_FALLBACK') !== '1') {
+            $this->tryProceduralZip();
+        }
+        if (!is_resource($this->zipResource)) {
+            $this->zipEntries = $this->readZipEntries($this->filePath);
+            $this->parseSharedStrings($this->zipEntries['xl/sharedStrings.xml'] ?? '');
+        }
     }
 
     private function tryProceduralZip(): void {
@@ -302,6 +309,10 @@ class SimpleXlsxParser {
             if ($content === false) { $content = $this->zip->getFromName(str_replace('/', '\\', $path)); }
             return $content === false ? '' : $content;
         }
+        if (is_array($this->zipEntries)) {
+            $normalizedPath = str_replace('\\', '/', $path);
+            return $this->zipEntries[$normalizedPath] ?? '';
+        }
         if (is_resource($this->zipResource)) {
             zip_close($this->zipResource);
             $this->zipResource = zip_open($this->filePath);
@@ -319,6 +330,134 @@ class SimpleXlsxParser {
             }
         }
         return '';
+    }
+
+    private function readZipEntries(string $filePath): array {
+        $bytes = @file_get_contents($filePath);
+        if ($bytes === false || strlen($bytes) < 22) {
+            return [];
+        }
+
+        $entries = $this->readZipEntriesFromCentralDirectory($bytes);
+        if (!empty($entries)) {
+            return $entries;
+        }
+
+        $entries = [];
+        $offset = 0;
+        $length = strlen($bytes);
+        while ($offset + 30 <= $length) {
+            $signature = substr($bytes, $offset, 4);
+            if ($signature !== "PK\x03\x04") {
+                $offset++;
+                continue;
+            }
+
+            $flags = $this->littleEndian(substr($bytes, $offset + 6, 2));
+            $method = $this->littleEndian(substr($bytes, $offset + 8, 2));
+            $compressedSize = $this->littleEndian(substr($bytes, $offset + 18, 4));
+            $fileNameLength = $this->littleEndian(substr($bytes, $offset + 26, 2));
+            $extraLength = $this->littleEndian(substr($bytes, $offset + 28, 2));
+            $nameStart = $offset + 30;
+            $dataStart = $nameStart + $fileNameLength + $extraLength;
+            if ($nameStart + $fileNameLength > $length || $dataStart > $length) {
+                break;
+            }
+
+            $name = str_replace('\\', '/', substr($bytes, $nameStart, $fileNameLength));
+            if (($flags & 0x08) !== 0 || $compressedSize < 1 || $dataStart + $compressedSize > $length) {
+                $nextOffset = strpos($bytes, "PK\x03\x04", $dataStart);
+                if ($nextOffset === false) {
+                    break;
+                }
+                $offset = $nextOffset;
+                continue;
+            }
+
+            $compressed = substr($bytes, $dataStart, $compressedSize);
+            $content = '';
+            if ($method === 0) {
+                $content = $compressed;
+            } elseif ($method === 8 && function_exists('gzinflate')) {
+                $inflated = @gzinflate($compressed);
+                if ($inflated !== false) {
+                    $content = $inflated;
+                }
+            }
+
+            if ($content !== '') {
+                $entries[$name] = $content;
+            }
+
+            $offset = $dataStart + $compressedSize;
+        }
+
+        return $entries;
+    }
+
+    private function readZipEntriesFromCentralDirectory(string $bytes): array {
+        $length = strlen($bytes);
+        $eocdOffset = strrpos($bytes, "PK\x05\x06");
+        if ($eocdOffset === false || $eocdOffset + 22 > $length) {
+            return [];
+        }
+
+        $entryCount = $this->littleEndian(substr($bytes, $eocdOffset + 10, 2));
+        $centralOffset = $this->littleEndian(substr($bytes, $eocdOffset + 16, 4));
+        if ($entryCount < 1 || $centralOffset < 0 || $centralOffset >= $length) {
+            return [];
+        }
+
+        $entries = [];
+        $offset = $centralOffset;
+        for ($i = 0; $i < $entryCount && $offset + 46 <= $length; $i++) {
+            if (substr($bytes, $offset, 4) !== "PK\x01\x02") {
+                break;
+            }
+
+            $method = $this->littleEndian(substr($bytes, $offset + 10, 2));
+            $compressedSize = $this->littleEndian(substr($bytes, $offset + 20, 4));
+            $fileNameLength = $this->littleEndian(substr($bytes, $offset + 28, 2));
+            $extraLength = $this->littleEndian(substr($bytes, $offset + 30, 2));
+            $commentLength = $this->littleEndian(substr($bytes, $offset + 32, 2));
+            $localOffset = $this->littleEndian(substr($bytes, $offset + 42, 4));
+            $nameStart = $offset + 46;
+            $name = str_replace('\\', '/', substr($bytes, $nameStart, $fileNameLength));
+
+            if ($localOffset + 30 <= $length && substr($bytes, $localOffset, 4) === "PK\x03\x04") {
+                $localNameLength = $this->littleEndian(substr($bytes, $localOffset + 26, 2));
+                $localExtraLength = $this->littleEndian(substr($bytes, $localOffset + 28, 2));
+                $dataStart = $localOffset + 30 + $localNameLength + $localExtraLength;
+                if ($compressedSize > 0 && $dataStart + $compressedSize <= $length) {
+                    $compressed = substr($bytes, $dataStart, $compressedSize);
+                    $content = '';
+                    if ($method === 0) {
+                        $content = $compressed;
+                    } elseif ($method === 8 && function_exists('gzinflate')) {
+                        $inflated = @gzinflate($compressed);
+                        if ($inflated !== false) {
+                            $content = $inflated;
+                        }
+                    }
+                    if ($content !== '') {
+                        $entries[$name] = $content;
+                    }
+                }
+            }
+
+            $offset += 46 + $fileNameLength + $extraLength + $commentLength;
+        }
+
+        return $entries;
+    }
+
+    private function littleEndian(string $bytes): int {
+        $value = 0;
+        $length = strlen($bytes);
+        for ($i = 0; $i < $length; $i++) {
+            $value |= ord($bytes[$i]) << ($i * 8);
+        }
+        return $value;
     }
 
     private function parseSheet(string $sheetFile): array {

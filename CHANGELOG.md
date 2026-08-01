@@ -2,6 +2,14 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.8 — 2026-08-01
+
+### Fixed
+
+- Added a pure-PHP XLSX ZIP reader fallback for SF1 imports when Wasmer PHP does not provide `ZipArchive`.
+- Relaxed SF1 XLSX runtime checks to allow `ZipArchive`, procedural zip, or zlib-based fallback readers.
+- Bumped the Wasmer package version to `0.1.8` for the next immutable deployment.
+
 ## v0.1.7 — 2026-08-01
 
 ### Fixed

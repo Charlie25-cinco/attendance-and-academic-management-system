@@ -50,8 +50,8 @@ if (!in_array($fileExt, ['csv', 'xlsx'], true)) {
     exit();
 }
 if ($isXlsx) {
-    if (!class_exists('ZipArchive')) {
-        echo json_encode(['success' => false, 'message' => 'XLSX import requires the PHP zip extension on the server. Upload CSV instead or enable zip in PHP.']);
+    if (!class_exists('ZipArchive') && !function_exists('zip_open') && !function_exists('gzinflate')) {
+        echo json_encode(['success' => false, 'message' => 'XLSX import requires ZIP support on the server. Upload CSV instead or enable zip/zlib in PHP.']);
         exit();
     }
     if (!class_exists('SimpleXMLElement')) {
@@ -378,6 +378,5 @@ recordAdminAuditLog($db, 'sf1.import', 'student_import', null, [
 ]);
 
 echo json_encode($results);
-
 
 
