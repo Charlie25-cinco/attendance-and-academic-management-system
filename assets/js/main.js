@@ -133,6 +133,7 @@ function initNavigationProgress() {
 function toggleSidebar() {
   const sidebar = document.getElementById("sidebar");
   const toggleIcon = document.getElementById("toggleIcon");
+  if (!sidebar || !toggleIcon) return;
 
   sidebar.classList.toggle("collapsed");
 
@@ -152,6 +153,7 @@ function toggleSidebar() {
 function openMobileSidebar() {
   const sidebar = document.getElementById("sidebar");
   const overlay = document.getElementById("mobileOverlay");
+  if (!sidebar || !overlay) return;
 
   sidebar.classList.add("mobile-open");
   overlay.classList.add("active");
@@ -162,6 +164,7 @@ function openMobileSidebar() {
 function closeMobileSidebar() {
   const sidebar = document.getElementById("sidebar");
   const overlay = document.getElementById("mobileOverlay");
+  if (!sidebar || !overlay) return;
 
   sidebar.classList.remove("mobile-open");
   overlay.classList.remove("active");
@@ -205,7 +208,9 @@ document.addEventListener("DOMContentLoaded", function () {
   initModalAutofocus();
 
   // Initialize shared settings and PWA push notification controls
-  initSettingsControls();
+  if (document.getElementById("settingsForm")) {
+    initSettingsControls();
+  }
   window.setTimeout(initPwaPushAutoRegistration, 1200);
 
 });

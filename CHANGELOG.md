@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.7 — 2026-08-01
+
+### Fixed
+
+- Made app-only JavaScript initialization safe on the public site so the top navigation progress bar can run there too.
+- Bumped the Wasmer package version to `0.1.7` for the next immutable deployment.
+
 ## v0.1.6 — 2026-08-01
 
 ### Changed
