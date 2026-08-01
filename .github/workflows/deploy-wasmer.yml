@@ -1,0 +1,26 @@
+name: Deploy Wasmer
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to Wasmer
+    runs-on: ubuntu-latest
+    env:
+      WASMER_TOKEN: ${{ secrets.WASMER_TOKEN }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Wasmer CLI
+        run: curl https://get.wasmer.io -sSfL | sh
+
+      - name: Deploy app
+        run: ~/.wasmer/bin/wasmer deploy --non-interactive

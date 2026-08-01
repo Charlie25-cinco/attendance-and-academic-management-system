@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.7 — 2026-08-01
+
+### Added
+
+- Added a manual and `main` branch GitHub Actions workflow for deploying the app to Wasmer.
+
 ## v0.1.6 — 2026-08-01
 
 ### Added
