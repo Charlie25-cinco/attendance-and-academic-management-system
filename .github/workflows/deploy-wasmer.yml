@@ -29,7 +29,7 @@ jobs:
           coverage: none
 
       - name: Install Composer dependencies
-        run: composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+        run: composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --ignore-platform-req=php-64bit
 
       - name: Install Wasmer CLI
         run: curl https://get.wasmer.io -sSfL | sh

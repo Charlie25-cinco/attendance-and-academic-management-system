@@ -1,6 +1,6 @@
 [package]
 name = "cincocharlie25/balingasagshs-ams"
-version = "0.1.2"
+version = "0.1.3"
 description = "Balingasag Senior High School Attendance and Academic Management System"
 entrypoint = "server"
 
