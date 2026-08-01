@@ -10,28 +10,49 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'admin') {
 
 header('Content-Type: application/json');
 
+function sf1ImportFail(string $message, int $status = 200): void {
+    http_response_code($status);
+    echo json_encode(['success' => false, 'message' => $message]);
+    exit();
+}
+
+function sf1UploadErrorMessage(int $errorCode): string {
+    return match ($errorCode) {
+        UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'File is larger than the server upload limit. Please upload a file up to 10MB or increase upload_max_filesize/post_max_size.',
+        UPLOAD_ERR_PARTIAL => 'File upload was interrupted. Please try uploading the SF1 file again.',
+        UPLOAD_ERR_NO_FILE => 'No SF1 file was uploaded.',
+        UPLOAD_ERR_NO_TMP_DIR => 'Server upload temporary directory is missing. Please contact the administrator.',
+        UPLOAD_ERR_CANT_WRITE => 'Server could not save the uploaded file. Please contact the administrator.',
+        UPLOAD_ERR_EXTENSION => 'A server extension blocked the upload. Please contact the administrator.',
+        default => 'No file uploaded or upload error.',
+    };
+}
+
+function sf1XlsxRuntimeReady(): bool {
+    return (class_exists('ZipArchive') || function_exists('zip_open')) && function_exists('simplexml_load_string');
+}
+
 // CSRF check
 $csrfToken = trim((string)($_POST['csrf_token'] ?? ''));
 if (!hash_equals((string)($_SESSION['csrf_token'] ?? ''), $csrfToken)) {
-    echo json_encode(['success' => false, 'message' => 'Invalid CSRF token.']);
-    exit();
+    sf1ImportFail('Invalid CSRF token.', 403);
 }
 
 $db = (new Database())->getConnection();
 if (!$db) {
-    echo json_encode(['success' => false, 'message' => 'Database error.']);
-    exit();
+    sf1ImportFail('Database error.', 500);
 }
 ensureStrengthenedShsColumns($db);
 
 $file = $_FILES['sf1_csv'] ?? $_FILES['sf1_file'] ?? null;
-if (!$file || $file['error'] !== UPLOAD_ERR_OK) {
-    echo json_encode(['success' => false, 'message' => 'No file uploaded or upload error.']);
-    exit();
+if (!$file || !isset($file['error'])) {
+    sf1ImportFail('No SF1 file was uploaded.', 400);
+}
+if ((int)$file['error'] !== UPLOAD_ERR_OK) {
+    sf1ImportFail(sf1UploadErrorMessage((int)$file['error']), 400);
 }
 if ($file['size'] > 10 * 1024 * 1024) {
-    echo json_encode(['success' => false, 'message' => 'File too large. Max 10MB.']);
-    exit();
+    sf1ImportFail('File too large. Max 10MB.', 413);
 }
 
 $academicYear = trim((string)($_POST['academic_year'] ?? date('Y') . '-' . (date('Y') + 1)));
@@ -42,8 +63,7 @@ if (!preg_match('/^\d{4}-\d{4}$/', $academicYear)) {
 $fileExt = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 $isXlsx = $fileExt === 'xlsx';
 if (!in_array($fileExt, ['csv', 'xlsx'], true)) {
-    echo json_encode(['success' => false, 'message' => 'Invalid file type. Please upload a CSV or XLSX file.']);
-    exit();
+    sf1ImportFail('Invalid file type. Please upload a CSV or XLSX file.', 422);
 }
 
 $results = ['success' => true, 'created' => 0, 'skipped' => 0, 'errors' => 0, 'rows' => []];
@@ -51,12 +71,14 @@ $importRows = [];
 $headerInfo = [];
 
 if ($isXlsx) {
+    if (!sf1XlsxRuntimeReady()) {
+        sf1ImportFail('XLSX import is unavailable on this server. Enable PHP zip and SimpleXML extensions, or upload the SF1 data as CSV.', 500);
+    }
     try {
         $sf1 = new Sf1Parser($file['tmp_name']);
         $parsed = $sf1->parse();
         if (!empty($parsed['errors'])) {
-            echo json_encode(['success' => false, 'message' => implode(' ', $parsed['errors'])]);
-            exit();
+            sf1ImportFail(implode(' ', $parsed['errors']), 422);
         }
         $headerInfo = $parsed['header'];
         $importRows = $parsed['students'];
@@ -68,14 +90,13 @@ if ($isXlsx) {
             }
         }
     } catch (Throwable $e) {
-        echo json_encode(['success' => false, 'message' => 'Failed to parse XLSX: ' . $e->getMessage()]);
-        exit();
+        error_log('SF1 XLSX parse error: ' . $e->getMessage());
+        sf1ImportFail('Failed to parse XLSX. Please confirm the file uses the official DepEd SF1 .xlsx template and that server XLSX support is enabled.', 422);
     }
 } else {
     $handle = fopen($file['tmp_name'], 'r');
     if (!$handle) {
-        echo json_encode(['success' => false, 'message' => 'Cannot read CSV file.']);
-        exit();
+        sf1ImportFail('Cannot read CSV file.', 422);
     }
     $firstChunk = fread($handle, 3);
     if ($firstChunk !== "\xEF\xBB\xBF") {
@@ -84,8 +105,7 @@ if ($isXlsx) {
     $headers = fgetcsv($handle);
     if (!$headers) {
         fclose($handle);
-        echo json_encode(['success' => false, 'message' => 'Empty CSV file.']);
-        exit();
+        sf1ImportFail('Empty CSV file.', 422);
     }
     $headers = array_map(function($h) { return strtolower(trim(preg_replace('/\s+/', ' ', (string)$h))); }, $headers);
 
@@ -110,8 +130,7 @@ if ($isXlsx) {
     }
     if ($colMap['lrn'] === false || $colMap['last_name'] === false || $colMap['first_name'] === false) {
         fclose($handle);
-        echo json_encode(['success' => false, 'message' => 'Required columns (LRN, Last Name, First Name) not found.']);
-        exit();
+        sf1ImportFail('Required columns (LRN, Last Name, First Name) not found.', 422);
     }
     while (($row = fgetcsv($handle)) !== false) {
         if (count(array_filter($row, function($v) { return trim($v) !== ''; })) === 0) continue;

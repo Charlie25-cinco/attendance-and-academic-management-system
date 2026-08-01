@@ -97,12 +97,22 @@ class Sf1Parser {
     public static function parseBirthdate(string $value): ?string {
         $value = trim($value);
         if ($value === '') return null;
+        if (is_numeric($value)) {
+            $number = (float)$value;
+            if ($number >= 1 && $number <= 60000) {
+                $base = new DateTimeImmutable('1899-12-30');
+                return $base->modify('+' . (int)floor($number) . ' days')->format('Y-m-d');
+            }
+            if (strlen($value) === 10) {
+                $ts = (int)$value;
+                if ($ts > 0) return date('Y-m-d', $ts);
+            }
+        }
         $formats = ['m/d/Y', 'm-d-Y', 'Y-m-d', 'd/m/Y', 'd-m-Y', 'M d, Y', 'F d, Y'];
         foreach ($formats as $fmt) {
             $dt = DateTime::createFromFormat($fmt, $value);
             if ($dt && $dt->format($fmt) === $value) { return $dt->format('Y-m-d'); }
         }
-        if (is_numeric($value) && strlen($value) === 10) { $ts = (int)$value; if ($ts > 0) return date('Y-m-d', $ts); }
         return null;
     }
 

@@ -7,7 +7,7 @@ Attendance and Academic Management System for Balingasag Senior High School.
 - PHP 8.2+
 - MySQL or MariaDB
 - Composer
-- PHP extensions: PDO, mbstring, json, zip, dom
+- PHP extensions: PDO, mbstring, json, zip, dom, SimpleXML
 
 ## Setup
 
@@ -96,6 +96,8 @@ Open `http://localhost:5000`.
 - ECR teacher imports accept `.xlsx` only.
 - SF1, SF2, and ECR user-facing exports should be CSV or XLSX only.
 - SF1 import is handled through Admin Enrollments.
+- Online SF1 `.xlsx` import requires PHP zip and SimpleXML support; if those extensions are unavailable, upload SF1 data as CSV.
+- For online SF1 uploads, set PHP `upload_max_filesize` and `post_max_size` to at least `10M`.
 - Admin SF1 and SF2 exports are available from Admin Reports.
 - Teacher SF2 export is available from Teacher Reports.
 - Teacher ECR preview, upload, import, and export are served by `api/routes/12-ecr.php`; ECR file uploads must be `.xlsx`, and ECR downloads may be `.csv` or `.xlsx`.
