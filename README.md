@@ -31,8 +31,8 @@ Open `http://localhost:5000`.
 ## Useful Commands
 
 - `composer run serve` starts the local PHP development server.
-- `composer run lint` runs PHP CodeSniffer on `functions/`, `config/`, and `api/`.
-- `composer run test` runs PHPUnit.
+- `composer run lint` runs focused PHP CodeSniffer checks using `phpcs.xml`.
+- `composer run test` runs PHPUnit smoke tests from `tests/`.
 - `composer run seed:admin` runs the admin seeder.
 
 ## Project Layout

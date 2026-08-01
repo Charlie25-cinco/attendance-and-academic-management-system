@@ -206,8 +206,6 @@ class SimpleXlsxParser {
     private $sheets = [];
     private $sharedStrings = [];
     private $filePath;
-    private $useZipArchive = false;
-    private $zipResource = null;
 
     public function __construct(string $filePath) {
         if (!file_exists($filePath)) {
@@ -219,7 +217,6 @@ class SimpleXlsxParser {
         if (class_exists('ZipArchive')) {
             $this->zip = new ZipArchive();
             if ($this->zip->open($filePath) === true) {
-                $this->useZipArchive = true;
                 $this->loadSharedStrings();
                 return;
             }
@@ -227,25 +224,7 @@ class SimpleXlsxParser {
             $this->zip = null;
         }
 
-        $this->useZipArchive = false;
-        $this->tryProceduralZip();
-    }
-
-    private function tryProceduralZip(): void {
-        if (!function_exists('zip_open')) { return; }
-        $this->zipResource = zip_open($this->filePath);
-        if (!is_resource($this->zipResource)) { $this->zipResource = null; return; }
-        while ($entry = zip_read($this->zipResource)) {
-            $name = zip_entry_name($entry);
-            if ($name === 'xl/sharedStrings.xml' || $name === 'xl\\sharedStrings.xml') {
-                if (zip_entry_open($this->zipResource, $entry, 'r')) {
-                    $content = zip_entry_read($entry, zip_entry_filesize($entry));
-                    zip_entry_close($entry);
-                    $this->parseSharedStrings($content);
-                    break;
-                }
-            }
-        }
+        throw new Exception('XLSX support requires the PHP ZipArchive extension.');
     }
 
     private function parseSharedStrings(string $content): void {
@@ -265,7 +244,7 @@ class SimpleXlsxParser {
     }
 
     private function loadSharedStrings(): void {
-        if ($this->useZipArchive) {
+        if ($this->zip instanceof ZipArchive) {
             $content = $this->zip->getFromName('xl/sharedStrings.xml');
             if ($content !== false) { $this->parseSharedStrings($content); }
         }
@@ -297,26 +276,10 @@ class SimpleXlsxParser {
     }
 
     private function getFileContent(string $path): string {
-        if ($this->useZipArchive) {
+        if ($this->zip instanceof ZipArchive) {
             $content = $this->zip->getFromName($path);
             if ($content === false) { $content = $this->zip->getFromName(str_replace('/', '\\', $path)); }
             return $content === false ? '' : $content;
-        }
-        if (is_resource($this->zipResource)) {
-            zip_close($this->zipResource);
-            $this->zipResource = zip_open($this->filePath);
-        }
-        if (!is_resource($this->zipResource)) { return ''; }
-        $normalizedPath = str_replace('\\', '/', $path);
-        while (($entry = zip_read($this->zipResource)) !== false) {
-            $name = str_replace('\\', '/', zip_entry_name($entry));
-            if ($name === $normalizedPath) {
-                if (zip_entry_open($this->zipResource, $entry, 'r')) {
-                    $content = zip_entry_read($entry, zip_entry_filesize($entry));
-                    zip_entry_close($entry);
-                    return $content;
-                }
-            }
         }
         return '';
     }
@@ -366,7 +329,6 @@ class SimpleXlsxParser {
     }
 
     public function __destruct() {
-        if ($this->useZipArchive && $this->zip) { @$this->zip->close(); }
-        if (is_resource($this->zipResource)) { @zip_close($this->zipResource); }
+        if ($this->zip instanceof ZipArchive) { @$this->zip->close(); }
     }
 }
