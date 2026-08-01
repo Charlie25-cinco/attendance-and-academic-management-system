@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.10 — 2026-08-01
+
+### Fixed
+
+- Removed the unsupported Wasmer CLI `--name` deploy argument from the GitHub Actions workflow.
+
 ## v0.1.9 — 2026-08-01
 
 ### Fixed
