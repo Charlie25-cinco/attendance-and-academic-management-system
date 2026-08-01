@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.11 — 2026-08-01
+
+### Fixed
+
+- Updated the GitHub Actions Wasmer deploy command to use remote builds for the PHP app package.
+
 ## v0.1.10 — 2026-08-01
 
 ### Fixed

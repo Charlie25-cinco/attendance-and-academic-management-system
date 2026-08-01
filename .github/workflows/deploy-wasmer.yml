@@ -43,4 +43,4 @@ jobs:
         run: |
           CLEAN_WASMER_TOKEN="$(printf '%s' "${WASMER_TOKEN}" | tr -d '\r\n')"
           CLEAN_WASMER_OWNER="$(printf '%s' "${WASMER_OWNER}" | tr -d '\r\n')"
-          WASMER_TOKEN="${CLEAN_WASMER_TOKEN}" ~/.wasmer/bin/wasmer deploy --non-interactive --owner "${CLEAN_WASMER_OWNER}"
+          WASMER_TOKEN="${CLEAN_WASMER_TOKEN}" ~/.wasmer/bin/wasmer deploy --non-interactive --owner "${CLEAN_WASMER_OWNER}" --build-remote
