@@ -21,6 +21,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: pdo_mysql, mbstring, zip, simplexml, dom
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+
       - name: Install Wasmer CLI
         run: curl https://get.wasmer.io -sSfL | sh
 
@@ -43,4 +53,4 @@ jobs:
         run: |
           CLEAN_WASMER_TOKEN="$(printf '%s' "${WASMER_TOKEN}" | tr -d '\r\n')"
           CLEAN_WASMER_OWNER="$(printf '%s' "${WASMER_OWNER}" | tr -d '\r\n')"
-          WASMER_TOKEN="${CLEAN_WASMER_TOKEN}" ~/.wasmer/bin/wasmer deploy --non-interactive --owner "${CLEAN_WASMER_OWNER}" --build-remote
+          WASMER_TOKEN="${CLEAN_WASMER_TOKEN}" ~/.wasmer/bin/wasmer deploy --non-interactive --owner "${CLEAN_WASMER_OWNER}"

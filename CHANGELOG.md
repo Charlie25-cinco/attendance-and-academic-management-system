@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.12 — 2026-08-01
+
+### Added
+
+- Added a `wasmer.toml` package manifest for local Wasmer CLI deployments.
+
+### Changed
+
+- Updated GitHub Actions Wasmer deploys to install production Composer dependencies before deployment instead of using Wasmer remote builds.
+
 ## v0.1.11 — 2026-08-01
 
 ### Fixed

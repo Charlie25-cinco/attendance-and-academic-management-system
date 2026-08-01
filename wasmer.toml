@@ -1,0 +1,17 @@
+[package]
+name = "cincocharlie25/balingasagshs"
+version = "0.1.0"
+description = "Balingasag Senior High School Attendance and Academic Management System"
+entrypoint = "server"
+
+[dependencies]
+"php/php" = "^8.3"
+
+[fs]
+"/app" = "."
+
+[[command]]
+name = "server"
+module = "php/php:php"
+runner = "https://webc.org/runner/wasi"
+args = ["-S", "localhost:8080", "-t", "/app", "/app/router.php"]
