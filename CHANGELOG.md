@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.9 — 2026-08-01
+
+### Fixed
+
+- Updated the Wasmer GitHub Actions deploy workflow to use `WASMER_OWNER` and `WASMER_APP_NAME` repository secrets.
+- Added validation for missing Wasmer owner and app-name secrets before deployment.
+
 ## v0.1.8 — 2026-08-01
 
 ### Fixed
