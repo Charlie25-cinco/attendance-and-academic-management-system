@@ -25,8 +25,12 @@ if (!$db) {
 ensureStrengthenedShsColumns($db);
 
 $file = $_FILES['sf1_csv'] ?? $_FILES['sf1_file'] ?? null;
-if (!$file || $file['error'] !== UPLOAD_ERR_OK) {
-    echo json_encode(['success' => false, 'message' => 'No file uploaded or upload error.']);
+if (!$file) {
+    echo json_encode(['success' => false, 'message' => 'No SF1 file was uploaded.']);
+    exit();
+}
+if ((int)$file['error'] !== UPLOAD_ERR_OK) {
+    echo json_encode(['success' => false, 'message' => sf1UploadErrorMessage((int)$file['error'])]);
     exit();
 }
 if ($file['size'] > 10 * 1024 * 1024) {
@@ -44,6 +48,16 @@ $isXlsx = $fileExt === 'xlsx';
 if (!in_array($fileExt, ['csv', 'xlsx'], true)) {
     echo json_encode(['success' => false, 'message' => 'Invalid file type. Please upload a CSV or XLSX file.']);
     exit();
+}
+if ($isXlsx) {
+    if (!class_exists('ZipArchive')) {
+        echo json_encode(['success' => false, 'message' => 'XLSX import requires the PHP zip extension on the server. Upload CSV instead or enable zip in PHP.']);
+        exit();
+    }
+    if (!class_exists('SimpleXMLElement')) {
+        echo json_encode(['success' => false, 'message' => 'XLSX import requires the PHP SimpleXML extension on the server. Upload CSV instead or enable SimpleXML in PHP.']);
+        exit();
+    }
 }
 
 $results = ['success' => true, 'created' => 0, 'sections_created' => 0, 'skipped' => 0, 'errors' => 0, 'rows' => []];
@@ -68,7 +82,8 @@ if ($isXlsx) {
             }
         }
     } catch (Throwable $e) {
-        echo json_encode(['success' => false, 'message' => 'Failed to parse XLSX: ' . $e->getMessage()]);
+        error_log('SF1 XLSX parse failed: ' . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Failed to parse the XLSX file. Please confirm it uses the official DepEd SF1 template or upload CSV instead.']);
         exit();
     }
 } else {
@@ -130,6 +145,26 @@ if ($isXlsx) {
         ];
     }
     fclose($handle);
+}
+
+function sf1UploadErrorMessage(int $errorCode): string {
+    switch ($errorCode) {
+        case UPLOAD_ERR_INI_SIZE:
+        case UPLOAD_ERR_FORM_SIZE:
+            return 'The SF1 file is larger than the server upload limit. Use a smaller file or increase PHP upload limits.';
+        case UPLOAD_ERR_PARTIAL:
+            return 'The SF1 file was only partially uploaded. Please try again.';
+        case UPLOAD_ERR_NO_FILE:
+            return 'No SF1 file was uploaded.';
+        case UPLOAD_ERR_NO_TMP_DIR:
+            return 'The server upload folder is missing. Please check deployment storage settings.';
+        case UPLOAD_ERR_CANT_WRITE:
+            return 'The server could not save the uploaded SF1 file. Please check deployment storage permissions.';
+        case UPLOAD_ERR_EXTENSION:
+            return 'A PHP extension blocked the SF1 upload.';
+        default:
+            return 'The SF1 upload failed. Please try again.';
+    }
 }
 
 $defaultPassword = getDefaultNewUserPassword();

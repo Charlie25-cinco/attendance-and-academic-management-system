@@ -4,6 +4,8 @@ on:
   workflow_dispatch:
   push:
     branches:
+      - main
+      - instructor
       - instructor-rbac-requirements
 
 jobs:
@@ -24,7 +26,7 @@ jobs:
           coverage: none
 
       - name: Install production dependencies
-        run: composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
+        run: composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader --ignore-platform-req=php-64bit
 
       - name: Configure Wasmer app
         shell: bash

@@ -2137,20 +2137,6 @@ body.page-loader-active {
   overflow-x: hidden;
 }
 
-body:not(.page-ready) .main-content {
-  opacity: 0;
-}
-
-body:not(.page-ready) .auth-shell,
-body:not(.page-ready) .site-shell,
-body:not(.page-ready) .site-main,
-body:not(.page-ready) .auth-page,
-body:not(.page-ready) .app-shell,
-body:not(.page-ready) .page-content {
-  opacity: 0;
-  transform: translateY(10px);
-}
-
 body.page-ready .main-content {
   opacity: 1;
   transition: opacity 0.28s ease;
@@ -2222,6 +2208,7 @@ body.page-ready .page-content {
   border-top-color: var(--ui-primary, #1f4f82);
   border-right-color: var(--ui-accent, #11856f);
   animation: pageLoaderSpin 0.85s linear infinite;
+  will-change: transform;
 }
 
 .page-loader-core {

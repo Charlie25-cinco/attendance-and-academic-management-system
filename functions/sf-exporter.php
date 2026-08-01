@@ -172,6 +172,14 @@ class Sf1Parser {
     public static function parseBirthdate(string $value): ?string {
         $value = trim($value);
         if ($value === '') return null;
+        if (is_numeric($value)) {
+            $number = (float)$value;
+            if ($number > 20000 && $number < 60000) {
+                $base = new DateTime('1899-12-30');
+                $base->modify('+' . (int)$number . ' days');
+                return $base->format('Y-m-d');
+            }
+        }
         $formats = ['m/d/Y', 'm-d-Y', 'Y-m-d', 'd/m/Y', 'd-m-Y', 'M d, Y', 'F d, Y'];
         foreach ($formats as $fmt) {
             $dt = DateTime::createFromFormat($fmt, $value);

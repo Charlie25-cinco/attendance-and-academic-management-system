@@ -11,6 +11,7 @@
         "ext-openssl": "*",
         "ext-zip": "*",
         "ext-json": "*",
+        "ext-simplexml": "*",
         "phpoffice/phpspreadsheet": "^5.8"
     },
     "require-dev": {
@@ -30,7 +31,7 @@
     "scripts": {
         "seed:admin": "php database/seed_admin.php",
         "serve": "php -S localhost:5000 -t . router.php",
-        "lint": "phpcs --standard=PSR2 functions/ config/ api/",
+        "lint": "phpcs --standard=phpcs.xml",
         "test": "phpunit"
     },
     "config": {

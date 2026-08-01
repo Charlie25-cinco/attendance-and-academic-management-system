@@ -414,7 +414,7 @@ $previewCount = count($previewRows);
                 </div>
             </section>
 
-            <div class="content-card mb-4">
+            <div class="content-card mb-4" id="sf1-export">
                 <div class="content-card-body">
                     <form method="GET" action="admin_Reports.php" id="adminReportFilterForm" class="row g-3 align-items-end admin-report-filter-form">
                         <input type="hidden" name="type" value="<?php echo htmlspecialchars($selectedType); ?>">

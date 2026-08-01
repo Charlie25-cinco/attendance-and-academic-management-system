@@ -156,6 +156,9 @@ if (isset($_GET['download_template'])) {
                     <div class="content-card-header">
                     <h5 class="content-card-title">Enrolled Students</h5>
                     <div class="d-flex gap-2">
+                        <a class="btn btn-outline-success btn-sm" href="admin_Reports.php#sf1-export">
+                            <i class="bi bi-download me-1"></i>Export SF1
+                        </a>
                         <button class="btn btn-outline-primary btn-sm" onclick="openImportModal()">
                             <i class="bi bi-file-earmark-spreadsheet me-1"></i>Import SF1
                         </button>

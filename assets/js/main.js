@@ -744,6 +744,8 @@ const PAGE_LOADER_HTML = `
 
 let pageLoaderNode = null;
 let pageLoaderVisible = false;
+let pageLoaderTimer = null;
+let pageLoaderFallbackTimer = null;
 
 function ensurePageLoader() {
   if (pageLoaderNode) return pageLoaderNode;
@@ -763,9 +765,23 @@ function showPageLoader(message = "Loading page", detail = "Please wait a moment
   loader.classList.add("is-visible");
   document.body.classList.add("page-loader-active");
   pageLoaderVisible = true;
+
+  if (pageLoaderFallbackTimer) {
+    window.clearTimeout(pageLoaderFallbackTimer);
+  }
+  pageLoaderFallbackTimer = window.setTimeout(hidePageLoader, 4000);
 }
 
 function hidePageLoader() {
+  if (pageLoaderTimer) {
+    window.clearTimeout(pageLoaderTimer);
+    pageLoaderTimer = null;
+  }
+  if (pageLoaderFallbackTimer) {
+    window.clearTimeout(pageLoaderFallbackTimer);
+    pageLoaderFallbackTimer = null;
+  }
+
   if (!pageLoaderNode) {
     document.body.classList.remove("page-loader-active");
     document.body.classList.add("page-ready");
@@ -777,6 +793,14 @@ function hidePageLoader() {
   document.body.classList.remove("page-loader-active");
   document.body.classList.add("page-ready");
   pageLoaderVisible = false;
+}
+
+function showPageLoaderSoon(message, detail, delay = 180) {
+  if (pageLoaderVisible || pageLoaderTimer) return;
+  pageLoaderTimer = window.setTimeout(() => {
+    pageLoaderTimer = null;
+    showPageLoader(message, detail);
+  }, delay);
 }
 
 function shouldAnimateNavigation(link) {
@@ -803,21 +827,17 @@ function shouldAnimateNavigation(link) {
 
 function initPageTransitions() {
   ensurePageLoader();
-  document.body.classList.add("page-booting");
-  showPageLoader("Loading page", "Preparing your screen...");
+  document.body.classList.add("page-ready");
 
   const finishBoot = function () {
-    window.requestAnimationFrame(() => {
-      document.body.classList.remove("page-booting");
-      hidePageLoader();
-    });
+    hidePageLoader();
   };
 
   window.addEventListener("load", finishBoot, { once: true });
   window.addEventListener("pageshow", finishBoot);
 
   window.addEventListener("beforeunload", function () {
-    showPageLoader("Opening page", "Preparing your screen...");
+    showPageLoaderSoon("Opening page", "Preparing your screen...", 250);
   });
 
   document.addEventListener("click", function (event) {
@@ -827,11 +847,11 @@ function initPageTransitions() {
 
     const href = link.href;
     event.preventDefault();
-    showPageLoader("Opening page", "Preparing your screen...");
+    showPageLoaderSoon("Opening page", "Preparing your screen...", 120);
 
     window.setTimeout(() => {
       window.location.assign(href);
-    }, 140);
+    }, 10);
   });
 
   document.addEventListener("submit", function (event) {
@@ -842,7 +862,7 @@ function initPageTransitions() {
     const method = (form.getAttribute("method") || "get").toLowerCase();
     if (method === "dialog") return;
 
-    showPageLoader("Submitting request", "Saving your changes...");
+    showPageLoaderSoon("Submitting request", "Saving your changes...", 180);
   });
 }
 
