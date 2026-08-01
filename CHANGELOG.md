@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.3 — 2026-08-01
+
+### Removed
+
+- Removed the global full-screen page loader and sidebar navigation delay so pages render and navigate immediately.
+
+### Changed
+
+- Bumped the Wasmer package version to `0.1.3` for the next immutable deployment.
+
 ## v0.1.2 — 2026-08-01
 
 ### Fixed

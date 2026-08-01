@@ -67,9 +67,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  // Initialize page transitions and loader
-  initPageTransitions();
-
   // Initialize tooltips
   initTooltips();
 
@@ -81,9 +78,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Focus the first usable field when modal forms open
   initModalAutofocus();
-
-  // Add slight delay for sidebar navigation to soften page transitions
-  initSidebarNavigationDelay();
 
   // Initialize shared settings and PWA push notification controls
   initSettingsControls();
@@ -697,174 +691,6 @@ function capitalizeFirst(string) {
   return string.charAt(0).toUpperCase() + string.slice(1);
 }
 
-function initSidebarNavigationDelay() {
-  let isNavigating = false;
-  const navDelayMs = 180;
-
-  document.addEventListener("click", function (e) {
-    const link = e.target.closest(".sidebar .nav-link[href]");
-    if (!link || isNavigating) return;
-
-    const href = link.getAttribute("href");
-    if (!href || href.startsWith("#")) return;
-    if (link.target && link.target.toLowerCase() === "_blank") return;
-    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-
-    e.preventDefault();
-    isNavigating = true;
-    link.classList.add("active");
-
-    setTimeout(() => {
-      window.location.assign(href);
-    }, navDelayMs);
-  });
-}
-
-
-// ============================================
-// PAGE LOADER / TRANSITIONS
-// ============================================
-
-const PAGE_LOADER_HTML = `
-  <div class="page-loader-backdrop" id="pageLoader" aria-hidden="true">
-    <div class="page-loader-panel" role="status" aria-live="polite">
-      <div class="page-loader-mark">
-        <span class="page-loader-ring"></span>
-        <span class="page-loader-core">
-          <i class="bi bi-mortarboard-fill"></i>
-        </span>
-      </div>
-      <div class="page-loader-copy">
-        <strong>Preparing your workspace</strong>
-        <small>Loading the school system...</small>
-      </div>
-    </div>
-  </div>
-`;
-
-let pageLoaderNode = null;
-let pageLoaderVisible = false;
-let pageLoaderTimer = null;
-let pageLoaderFallbackTimer = null;
-
-function ensurePageLoader() {
-  if (pageLoaderNode) return pageLoaderNode;
-  document.body.insertAdjacentHTML("beforeend", PAGE_LOADER_HTML);
-  pageLoaderNode = document.getElementById("pageLoader");
-  return pageLoaderNode;
-}
-
-function showPageLoader(message = "Loading page", detail = "Please wait a moment...") {
-  const loader = ensurePageLoader();
-  const title = loader.querySelector("strong");
-  const subtitle = loader.querySelector("small");
-
-  if (title) title.textContent = message;
-  if (subtitle) subtitle.textContent = detail;
-
-  loader.classList.add("is-visible");
-  document.body.classList.add("page-loader-active");
-  pageLoaderVisible = true;
-
-  if (pageLoaderFallbackTimer) {
-    window.clearTimeout(pageLoaderFallbackTimer);
-  }
-  pageLoaderFallbackTimer = window.setTimeout(hidePageLoader, 4000);
-}
-
-function hidePageLoader() {
-  if (pageLoaderTimer) {
-    window.clearTimeout(pageLoaderTimer);
-    pageLoaderTimer = null;
-  }
-  if (pageLoaderFallbackTimer) {
-    window.clearTimeout(pageLoaderFallbackTimer);
-    pageLoaderFallbackTimer = null;
-  }
-
-  if (!pageLoaderNode) {
-    document.body.classList.remove("page-loader-active");
-    document.body.classList.add("page-ready");
-    pageLoaderVisible = false;
-    return;
-  }
-
-  pageLoaderNode.classList.remove("is-visible");
-  document.body.classList.remove("page-loader-active");
-  document.body.classList.add("page-ready");
-  pageLoaderVisible = false;
-}
-
-function showPageLoaderSoon(message, detail, delay = 180) {
-  if (pageLoaderVisible || pageLoaderTimer) return;
-  pageLoaderTimer = window.setTimeout(() => {
-    pageLoaderTimer = null;
-    showPageLoader(message, detail);
-  }, delay);
-}
-
-function shouldAnimateNavigation(link) {
-  if (!link) return false;
-  const href = link.getAttribute("href");
-  if (!href || href.startsWith("#") || href.startsWith("javascript:")) return false;
-  if (link.hasAttribute("download")) return false;
-  if ((link.target || "").toLowerCase() === "_blank") return false;
-  if (link.getAttribute("data-skip-loader") === "true") return false;
-  if (link.closest(".sidebar")) return false;
-
-  try {
-    const targetUrl = new URL(link.href, window.location.href);
-    if (targetUrl.origin !== window.location.origin) return false;
-    if (targetUrl.pathname === window.location.pathname && targetUrl.search === window.location.search && targetUrl.hash !== "") {
-      return false;
-    }
-  } catch (error) {
-    return false;
-  }
-
-  return true;
-}
-
-function initPageTransitions() {
-  ensurePageLoader();
-  document.body.classList.add("page-ready");
-
-  const finishBoot = function () {
-    hidePageLoader();
-  };
-
-  window.addEventListener("load", finishBoot, { once: true });
-  window.addEventListener("pageshow", finishBoot);
-
-  window.addEventListener("beforeunload", function () {
-    showPageLoaderSoon("Opening page", "Preparing your screen...", 250);
-  });
-
-  document.addEventListener("click", function (event) {
-    const link = event.target.closest("a[href]");
-    if (!shouldAnimateNavigation(link)) return;
-    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-
-    const href = link.href;
-    event.preventDefault();
-    showPageLoaderSoon("Opening page", "Preparing your screen...", 120);
-
-    window.setTimeout(() => {
-      window.location.assign(href);
-    }, 10);
-  });
-
-  document.addEventListener("submit", function (event) {
-    const form = event.target;
-    if (!(form instanceof HTMLFormElement)) return;
-    if (form.getAttribute("data-skip-loader") === "true") return;
-
-    const method = (form.getAttribute("method") || "get").toLowerCase();
-    if (method === "dialog") return;
-
-    showPageLoaderSoon("Submitting request", "Saving your changes...", 180);
-  });
-}
 
 
 
