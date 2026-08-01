@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.2 — 2026-08-01
+
+### Fixed
+
+- Prevented GitHub Actions from failing Wasmer deploys when deployment succeeds but Wasmer's post-deploy reachability wait times out.
+- Bumped the Wasmer package version to `0.1.2` for the next immutable deployment.
+
 ## v0.1.1 — 2026-08-01
 
 ### Fixed
