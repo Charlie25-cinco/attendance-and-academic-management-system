@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.4 — 2026-08-01
+
+### Fixed
+
+- Made page content render immediately while delaying navigation loader display for faster-feeling page transitions.
+- Restored a circular animated loading indicator.
+
 ## v0.1.3 — 2026-08-01
 
 ### Fixed

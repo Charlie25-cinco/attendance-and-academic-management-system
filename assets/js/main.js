@@ -467,9 +467,7 @@ function initSidebarNavigationDelay() {
 const PAGE_LOADER_HTML = `
   <div class="page-loader-backdrop" id="pageLoader" aria-hidden="true">
     <div class="page-loader-panel" role="status" aria-live="polite">
-      <div class="page-loader-mark">
-        <span></span><span></span><span></span>
-      </div>
+      <div class="page-loader-spinner" aria-hidden="true"></div>
       <div class="page-loader-copy">
         <strong>Loading page</strong>
         <small>Please wait a moment...</small>
@@ -481,6 +479,7 @@ const PAGE_LOADER_HTML = `
 let pageLoaderNode = null;
 let pageLoaderVisible = false;
 let pageLoaderFallbackTimer = null;
+let pageLoaderShowTimer = null;
 
 function ensurePageLoader() {
   if (pageLoaderNode) return pageLoaderNode;
@@ -490,6 +489,9 @@ function ensurePageLoader() {
 }
 
 function showPageLoader(message = "Loading page", detail = "Please wait a moment...") {
+  window.clearTimeout(pageLoaderShowTimer);
+  pageLoaderShowTimer = null;
+
   const loader = ensurePageLoader();
   const title = loader.querySelector("strong");
   const subtitle = loader.querySelector("small");
@@ -506,6 +508,8 @@ function showPageLoader(message = "Loading page", detail = "Please wait a moment
 }
 
 function hidePageLoader() {
+  window.clearTimeout(pageLoaderShowTimer);
+  pageLoaderShowTimer = null;
   window.clearTimeout(pageLoaderFallbackTimer);
   pageLoaderFallbackTimer = null;
 
@@ -520,6 +524,13 @@ function hidePageLoader() {
   document.body.classList.remove("page-loader-active");
   document.body.classList.add("page-ready");
   pageLoaderVisible = false;
+}
+
+function showPageLoaderSoon(message, detail, delay = 250) {
+  window.clearTimeout(pageLoaderShowTimer);
+  pageLoaderShowTimer = window.setTimeout(() => {
+    showPageLoader(message, detail);
+  }, delay);
 }
 
 function shouldAnimateNavigation(link) {
@@ -546,11 +557,10 @@ function shouldAnimateNavigation(link) {
 
 function initPageTransitions() {
   ensurePageLoader();
-  document.body.classList.add("page-booting");
+  document.body.classList.add("page-ready");
 
   const finishBoot = function () {
     window.requestAnimationFrame(() => {
-      document.body.classList.remove("page-booting");
       hidePageLoader();
     });
   };
@@ -560,7 +570,7 @@ function initPageTransitions() {
   window.addEventListener("pageshow", finishBoot);
 
   window.addEventListener("beforeunload", function () {
-    showPageLoader("Opening page", "Preparing your screen...");
+    showPageLoaderSoon("Opening page", "Preparing your screen...", 250);
   });
 
   document.addEventListener("click", function (event) {
@@ -570,7 +580,7 @@ function initPageTransitions() {
 
     const href = link.href;
     event.preventDefault();
-    showPageLoader("Opening page", "Preparing your screen...");
+    showPageLoaderSoon("Opening page", "Preparing your screen...", 250);
     window.location.assign(href);
   });
 
