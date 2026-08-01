@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.5 — 2026-08-01
+
+### Fixed
+
+- Removed stale public-site loader CSS that hid site content after the full-screen loader JavaScript was removed.
+- Bumped the Wasmer package version to `0.1.5` for the recovery deployment.
+
 ## v0.1.4 — 2026-08-01
 
 ### Added
