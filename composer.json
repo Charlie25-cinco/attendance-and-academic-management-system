@@ -15,17 +15,7 @@
         "phpunit/phpunit": "^11.0",
         "squizlabs/php_codesniffer": "^3.0"
     },
-    "autoload": {
-        "classmap": [
-            "functions/",
-            "config/"
-        ],
-        "files": [
-            "config/constants.php",
-            "config/session.php",
-            "functions/app-helpers.php"
-        ]
-    },
+    "autoload": {},
     "scripts": {
         "seed:admin": "php database/seed_admin.php",
         "serve": "php -S localhost:5000 -t . router.php",

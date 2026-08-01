@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.5 — 2026-08-01
+
+### Fixed
+
+- Fixed Wasmer/Anybuild Composer install failures by removing source-folder autoload scans and loading project files through `functions/bootstrap.php`.
+
 ## v0.1.4 — 2026-08-01
 
 ### Fixed
