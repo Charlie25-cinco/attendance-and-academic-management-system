@@ -1,5 +1,5 @@
 [package]
-name = "cincocharlie25/balingasagshs"
+name = "cincocharlie25/balingasagshs-ams"
 version = "0.1.0"
 description = "Balingasag Senior High School Attendance and Academic Management System"
 entrypoint = "server"

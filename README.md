@@ -107,7 +107,7 @@ Open `http://localhost:5000`.
 ## Wasmer Deployment
 
 - Wasmer Edge deployment is configured by `app.yaml` for owner `cincocharlie25` and app name `balingasagshs`.
-- The Wasmer package/runtime is configured by `wasmer.toml`, which mounts the repository at `/app` and starts PHP with `router.php`.
+- The Wasmer package/runtime is configured by `wasmer.toml` as package `cincocharlie25/balingasagshs-ams`, which mounts the repository at `/app` and starts PHP with `router.php`.
 - Deploy with Wasmer from the repository root so `package: .` publishes the current source package.
 - GitHub Actions can deploy Wasmer through `.github/workflows/deploy-wasmer.yml`; add repository secrets named `WASMER_TOKEN`, `WASMER_OWNER`, and `WASMER_APP_NAME`, then run **Actions → Deploy Wasmer → Run workflow**.
 - Wasmer's canonical app URL may include the owner suffix, such as `https://balingasagshs-cincocharlie25.wasmer.app/`; if `https://balingasagshs.wasmer.app/` returns `unknown_domain`, attach that exact domain/alias to the app in Wasmer.
