@@ -1,6 +1,6 @@
 [package]
 name = "cincocharlie25/balingasagshs-ams"
-version = "0.1.1"
+version = "0.1.2"
 description = "Balingasag Senior High School Attendance and Academic Management System"
 entrypoint = "server"
 
@@ -14,4 +14,6 @@ entrypoint = "server"
 name = "server"
 module = "php/php:php"
 runner = "https://webc.org/runner/wasi"
-args = ["-S", "localhost:8080", "-t", "/app", "/app/router.php"]
+
+[command.annotations.wasi]
+main-args = ["-S", "localhost:8080", "-t", "/app", "/app/router.php"]
