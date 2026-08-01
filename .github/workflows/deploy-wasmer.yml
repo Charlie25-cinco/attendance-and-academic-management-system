@@ -22,5 +22,14 @@ jobs:
       - name: Install Wasmer CLI
         run: curl https://get.wasmer.io -sSfL | sh
 
+      - name: Validate Wasmer token
+        run: |
+          if [ -z "${WASMER_TOKEN}" ]; then
+            echo "WASMER_TOKEN repository secret is missing."
+            exit 1
+          fi
+
       - name: Deploy app
-        run: ~/.wasmer/bin/wasmer deploy --non-interactive
+        run: |
+          CLEAN_WASMER_TOKEN="$(printf '%s' "${WASMER_TOKEN}" | tr -d '\r\n')"
+          WASMER_TOKEN="${CLEAN_WASMER_TOKEN}" ~/.wasmer/bin/wasmer deploy --non-interactive

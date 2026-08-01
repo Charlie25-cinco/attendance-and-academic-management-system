@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.8 — 2026-08-01
+
+### Fixed
+
+- Trimmed newline characters from the Wasmer deploy token in GitHub Actions before invoking the Wasmer CLI.
+- Added an explicit GitHub Actions failure message when `WASMER_TOKEN` is missing.
+
 ## v0.1.7 — 2026-08-01
 
 ### Added
