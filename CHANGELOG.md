@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.3 — 2026-08-01
+
+### Fixed
+
+- Reduced perceived page-load delay by making the global loader non-blocking and removing artificial navigation delays.
+
 ## v0.1.2 — 2026-08-01
 
 ### Changed

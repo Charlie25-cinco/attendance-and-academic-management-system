@@ -442,7 +442,6 @@ function capitalizeFirst(string) {
 
 function initSidebarNavigationDelay() {
   let isNavigating = false;
-  const navDelayMs = 180;
 
   document.addEventListener("click", function (e) {
     const link = e.target.closest(".sidebar .nav-link[href]");
@@ -456,10 +455,7 @@ function initSidebarNavigationDelay() {
     e.preventDefault();
     isNavigating = true;
     link.classList.add("active");
-
-    setTimeout(() => {
-      window.location.assign(href);
-    }, navDelayMs);
+    window.location.assign(href);
   });
 }
 
@@ -484,6 +480,7 @@ const PAGE_LOADER_HTML = `
 
 let pageLoaderNode = null;
 let pageLoaderVisible = false;
+let pageLoaderFallbackTimer = null;
 
 function ensurePageLoader() {
   if (pageLoaderNode) return pageLoaderNode;
@@ -503,9 +500,15 @@ function showPageLoader(message = "Loading page", detail = "Please wait a moment
   loader.classList.add("is-visible");
   document.body.classList.add("page-loader-active");
   pageLoaderVisible = true;
+
+  window.clearTimeout(pageLoaderFallbackTimer);
+  pageLoaderFallbackTimer = window.setTimeout(hidePageLoader, 4000);
 }
 
 function hidePageLoader() {
+  window.clearTimeout(pageLoaderFallbackTimer);
+  pageLoaderFallbackTimer = null;
+
   if (!pageLoaderNode) {
     document.body.classList.remove("page-loader-active");
     document.body.classList.add("page-ready");
@@ -544,7 +547,6 @@ function shouldAnimateNavigation(link) {
 function initPageTransitions() {
   ensurePageLoader();
   document.body.classList.add("page-booting");
-  showPageLoader("Loading page", "Preparing your screen...");
 
   const finishBoot = function () {
     window.requestAnimationFrame(() => {
@@ -553,6 +555,7 @@ function initPageTransitions() {
     });
   };
 
+  finishBoot();
   window.addEventListener("load", finishBoot, { once: true });
   window.addEventListener("pageshow", finishBoot);
 
@@ -568,10 +571,7 @@ function initPageTransitions() {
     const href = link.href;
     event.preventDefault();
     showPageLoader("Opening page", "Preparing your screen...");
-
-    window.setTimeout(() => {
-      window.location.assign(href);
-    }, 140);
+    window.location.assign(href);
   });
 
   document.addEventListener("submit", function (event) {
