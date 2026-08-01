@@ -9,6 +9,8 @@
 
 let appTopProgressTimer = null;
 let appTopProgressHideTimer = null;
+let appTopProgressInterval = null;
+let appTopProgressValue = 0;
 
 function ensureTopProgressBar() {
   let bar = document.getElementById("appTopProgress");
@@ -30,17 +32,38 @@ function showTopProgress() {
     appTopProgressHideTimer = null;
   }
 
+  if (appTopProgressInterval) {
+    window.clearInterval(appTopProgressInterval);
+  }
+
+  appTopProgressValue = 12;
+  bar.style.setProperty("--app-progress", appTopProgressValue + "%");
   bar.classList.remove("is-finishing");
   bar.classList.add("is-visible");
+
+  appTopProgressInterval = window.setInterval(() => {
+    const remaining = 92 - appTopProgressValue;
+    if (remaining <= 0.5) return;
+    appTopProgressValue += Math.max(0.35, remaining * 0.08);
+    bar.style.setProperty("--app-progress", Math.min(appTopProgressValue, 92) + "%");
+  }, 220);
 }
 
 function finishTopProgress() {
   const bar = document.getElementById("appTopProgress");
   if (!bar) return;
 
+  if (appTopProgressInterval) {
+    window.clearInterval(appTopProgressInterval);
+    appTopProgressInterval = null;
+  }
+
+  bar.style.setProperty("--app-progress", "100%");
   bar.classList.add("is-finishing");
   appTopProgressHideTimer = window.setTimeout(() => {
     bar.classList.remove("is-visible", "is-finishing");
+    bar.style.setProperty("--app-progress", "0%");
+    appTopProgressValue = 0;
   }, 240);
 }
 

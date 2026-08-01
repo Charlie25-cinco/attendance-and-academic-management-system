@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.6 — 2026-08-01
+
+### Changed
+
+- Replaced looping top progress animation with one-way controlled progress that advances toward 92% and completes once the next page is ready.
+- Bumped the Wasmer package version to `0.1.6` for the next immutable deployment.
+
 ## v0.1.5 — 2026-08-01
 
 ### Fixed
