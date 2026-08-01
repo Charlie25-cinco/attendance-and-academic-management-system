@@ -2,6 +2,18 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.4 — 2026-08-01
+
+### Added
+
+- Added opt-in request timing logs through `APP_PERF_LOG=1` to identify slow server-rendered pages without logging sensitive data.
+- Added a slim non-blocking top progress bar for navigation and form submissions.
+
+### Changed
+
+- Deferred automatic PWA push re-registration so it does not compete with initial page rendering.
+- Bumped the Wasmer package version to `0.1.4` for the next immutable deployment.
+
 ## v0.1.3 — 2026-08-01
 
 ### Removed

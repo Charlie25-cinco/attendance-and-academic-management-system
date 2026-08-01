@@ -12,6 +12,10 @@ function appIsProductionEnv(): bool {
     return strtolower(trim((string)appEnvValue('APP_ENV', ''))) === 'production';
 }
 
+function appPerfLoggingEnabled(): bool {
+    return appEnvValue('APP_PERF_LOG', appIsProductionEnv() ? '0' : '1') === '1';
+}
+
 function appSecurityValueLooksUnsafe(?string $value, array $blockedValues): bool {
     $value = trim((string)$value);
     if ($value === '') { return true; }

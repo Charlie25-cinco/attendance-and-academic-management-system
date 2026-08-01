@@ -7,6 +7,105 @@
 // SIDEBAR FUNCTIONS
 // ============================================
 
+let appTopProgressTimer = null;
+let appTopProgressHideTimer = null;
+
+function ensureTopProgressBar() {
+  let bar = document.getElementById("appTopProgress");
+  if (bar) return bar;
+
+  bar = document.createElement("div");
+  bar.id = "appTopProgress";
+  bar.className = "app-top-progress";
+  bar.setAttribute("aria-hidden", "true");
+  document.body.appendChild(bar);
+  return bar;
+}
+
+function showTopProgress() {
+  const bar = ensureTopProgressBar();
+
+  if (appTopProgressHideTimer) {
+    window.clearTimeout(appTopProgressHideTimer);
+    appTopProgressHideTimer = null;
+  }
+
+  bar.classList.remove("is-finishing");
+  bar.classList.add("is-visible");
+}
+
+function finishTopProgress() {
+  const bar = document.getElementById("appTopProgress");
+  if (!bar) return;
+
+  bar.classList.add("is-finishing");
+  appTopProgressHideTimer = window.setTimeout(() => {
+    bar.classList.remove("is-visible", "is-finishing");
+  }, 240);
+}
+
+function showTopProgressSoon(delay = 120) {
+  if (appTopProgressTimer) return;
+
+  appTopProgressTimer = window.setTimeout(() => {
+    appTopProgressTimer = null;
+    showTopProgress();
+  }, delay);
+}
+
+function cancelTopProgressSoon() {
+  if (!appTopProgressTimer) return;
+  window.clearTimeout(appTopProgressTimer);
+  appTopProgressTimer = null;
+}
+
+function shouldShowNavigationProgress(link) {
+  if (!link) return false;
+  const href = link.getAttribute("href");
+  if (!href || href.startsWith("#") || href.startsWith("javascript:")) return false;
+  if (link.hasAttribute("download")) return false;
+  if ((link.target || "").toLowerCase() === "_blank") return false;
+  if (link.getAttribute("data-skip-loader") === "true") return false;
+
+  try {
+    const targetUrl = new URL(link.href, window.location.href);
+    if (targetUrl.origin !== window.location.origin) return false;
+    if (targetUrl.pathname === window.location.pathname && targetUrl.search === window.location.search && targetUrl.hash !== "") {
+      return false;
+    }
+  } catch (error) {
+    return false;
+  }
+
+  return true;
+}
+
+function initNavigationProgress() {
+  window.addEventListener("pageshow", function () {
+    cancelTopProgressSoon();
+    finishTopProgress();
+  });
+
+  window.addEventListener("beforeunload", function () {
+    showTopProgressSoon(80);
+  });
+
+  document.addEventListener("click", function (event) {
+    const link = event.target.closest("a[href]");
+    if (!shouldShowNavigationProgress(link)) return;
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    showTopProgressSoon(120);
+  });
+
+  document.addEventListener("submit", function (event) {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement)) return;
+    if (form.getAttribute("data-skip-loader") === "true") return;
+    if ((form.getAttribute("method") || "get").toLowerCase() === "dialog") return;
+    showTopProgressSoon(120);
+  });
+}
+
 // Toggle sidebar collapse (desktop)
 function toggleSidebar() {
   const sidebar = document.getElementById("sidebar");
@@ -76,12 +175,15 @@ document.addEventListener("DOMContentLoaded", function () {
   // Initialize progress circles
   initProgressCircles();
 
+  // Show a slim, non-blocking page progress indicator during navigation
+  initNavigationProgress();
+
   // Focus the first usable field when modal forms open
   initModalAutofocus();
 
   // Initialize shared settings and PWA push notification controls
   initSettingsControls();
-  initPwaPushAutoRegistration();
+  window.setTimeout(initPwaPushAutoRegistration, 1200);
 
 });
 

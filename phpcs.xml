@@ -3,6 +3,7 @@
     <description>Focused deployability checks for changed runtime files.</description>
     <rule ref="Generic.PHP.Syntax"/>
     <file>admin/admin_SF1_Import_Action.php</file>
+    <file>functions/app-helpers.php</file>
     <file>functions/sf-exporter.php</file>
     <file>functions/bootstrap.php</file>
 </ruleset>
