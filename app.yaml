@@ -1,0 +1,12 @@
+---
+kind: wasmer.io/App.v0
+owner: cincocharlie25
+name: balingasagshs
+package: .
+debug: false
+scaling:
+  mode: single_concurrency
+capabilities:
+  instaboot:
+    requests:
+      - path: /

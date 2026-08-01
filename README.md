@@ -104,6 +104,13 @@ Open `http://localhost:5000`.
 - Legacy `.xlsm` ECR workbooks are not accepted as export templates or uploads.
 - The admin portal does not expose ECR template management or academic year settings for the strengthened SHS rollout.
 
+## Wasmer Deployment
+
+- Wasmer Edge deployment is configured by `app.yaml` for owner `cincocharlie25` and app name `balingasagshs`.
+- Deploy with Wasmer from the repository root so `package: .` publishes the current source package.
+- Wasmer's canonical app URL may include the owner suffix, such as `https://balingasagshs-cincocharlie25.wasmer.app/`; if `https://balingasagshs.wasmer.app/` returns `unknown_domain`, attach that exact domain/alias to the app in Wasmer.
+- Production deployments must set strong secrets for `API_AUTH_SECRET` and `API_SYNC_SECRET`, and set `API_ALLOWED_ORIGIN` to the trusted production origin.
+
 ## GitHub Readiness
 
 - `.gitignore` excludes local secrets, Composer dependencies, generated storage, and upload outputs.

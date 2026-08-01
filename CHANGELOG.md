@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.6 — 2026-08-01
+
+### Added
+
+- Added explicit Wasmer Edge app configuration for the `cincocharlie25/balingasagshs` deployment.
+- Enabled Wasmer single-concurrency scaling and homepage InstaBoot warm-up for the PHP app.
+
 ## v0.1.5 — 2026-08-01
 
 ### Fixed
