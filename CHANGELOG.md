@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.13 — 2026-08-01
+
+### Fixed
+
+- Marked GitHub Actions Wasmer deployments as private to match private package publishing requirements.
+
 ## v0.1.12 — 2026-08-01
 
 ### Added
