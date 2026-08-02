@@ -2,6 +2,14 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.22 — 2026-08-02
+
+### Changed
+
+- Added a generated deployment marker to Wasmer deploys so GitHub Actions only reports success when the live site serves the current commit.
+- Changed disabled-app deploy handling to verify the live marker instead of passing a stale deployment as successful.
+- Bumped the Wasmer package version to `0.1.22`.
+
 ## v0.1.21 — 2026-08-02
 
 ### Changed

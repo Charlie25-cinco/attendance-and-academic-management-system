@@ -140,18 +140,48 @@ jobs:
           echo "Deploy target owner: ${WASMER_OWNER}"
           echo "Deploy target app: ${WASMER_APP_NAME}"
           echo "Public URL: ${APP_PUBLIC_BASE_URL}"
+          printf '%s\n' "${GITHUB_SHA}" > deployment-version.txt
+          echo "Expected deployment version: ${GITHUB_SHA}"
+
+          verify_live_marker() {
+            marker_url="${APP_PUBLIC_BASE_URL%/}/deployment-version.txt"
+            echo "Verifying live deployment marker: ${marker_url}"
+
+            for attempt in {1..30}; do
+              live_sha="$(curl -fsSL --max-time 10 "${marker_url}" 2>/dev/null | tr -d '\r\n' || true)"
+              if [ "${live_sha}" = "${GITHUB_SHA}" ]; then
+                echo "Live deployment marker matches current commit: ${GITHUB_SHA}"
+                return 0
+              fi
+
+              if [ -n "${live_sha}" ]; then
+                echo "Attempt ${attempt}/30: live marker is ${live_sha}; waiting for ${GITHUB_SHA}."
+              else
+                echo "Attempt ${attempt}/30: live marker is not reachable yet."
+              fi
+              sleep 10
+            done
+
+            echo "::error::Live deployment marker did not update to ${GITHUB_SHA}. The workflow will not report success for a stale deployment."
+            return 1
+          }
+
           set +e
           wasmer deploy --publish-package --non-interactive 2>&1 | tee wasmer-deploy.log
           status="${PIPESTATUS[0]}"
           set -e
           if [ "$status" -eq 0 ]; then
-            exit 0
+            verify_live_marker
+            exit $?
           fi
           if grep -q "deployed successfully" wasmer-deploy.log && grep -q "App still not reachable after 5 minutes" wasmer-deploy.log; then
             echo "Wasmer deployment succeeded, but the built-in reachability wait timed out. Treating this as success; verify the live URL manually."
-            exit 0
+            verify_live_marker
+            exit $?
           fi
           if grep -q "Cannot modify a disabled app" wasmer-deploy.log; then
             echo "::error::Wasmer refused the deployment because the app backend state is disabled, even though the app may appear Ready in the dashboard. Retry from the Wasmer dashboard, recreate the app if needed, or contact Wasmer support if this backend state persists."
+            verify_live_marker
+            exit $?
           fi
           exit "$status"
