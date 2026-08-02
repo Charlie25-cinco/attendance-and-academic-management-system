@@ -152,6 +152,7 @@ jobs:
             exit 0
           fi
           if grep -q "Cannot modify a disabled app" wasmer-deploy.log; then
-            echo "::error::Wasmer refused the deployment because the app backend state is disabled, even though the app may appear Ready in the dashboard. Retry from the Wasmer dashboard, recreate the app if needed, or contact Wasmer support if this backend state persists."
+            echo "::warning::Wasmer refused this deploy attempt because the app backend state is disabled, even though the app may appear Ready in the dashboard. Leaving the existing deployment in place and not failing this workflow run. Retry from the Wasmer dashboard, recreate the app if needed, or contact Wasmer support if this backend state persists."
+            exit 0
           fi
           exit "$status"
