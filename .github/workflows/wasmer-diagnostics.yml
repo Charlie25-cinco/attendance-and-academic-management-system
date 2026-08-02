@@ -1,0 +1,60 @@
+name: Wasmer Diagnostics
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Wasmer
+        shell: bash
+        run: curl https://get.wasmer.io -sSfL | sh
+
+      - name: Inspect Wasmer app state
+        shell: bash
+        env:
+          WASMER_TOKEN: ${{ secrets.WASMER_TOKEN }}
+          WASMER_OWNER: ${{ secrets.WASMER_OWNER }}
+          WASMER_APP_NAME: ${{ secrets.WASMER_APP_NAME }}
+          APP_PUBLIC_BASE_URL: ${{ secrets.APP_PUBLIC_BASE_URL }}
+        run: |
+          export PATH="$HOME/.wasmer/bin:$PATH"
+
+          required=(WASMER_TOKEN WASMER_OWNER WASMER_APP_NAME APP_PUBLIC_BASE_URL)
+          for key in "${required[@]}"; do
+            if [ -z "${!key}" ]; then
+              echo "::error::${key} repository secret is missing."
+              exit 1
+            fi
+          done
+
+          app_ref="${WASMER_OWNER}/${WASMER_APP_NAME}"
+          public_url="${APP_PUBLIC_BASE_URL%/}"
+
+          echo "Wasmer CLI identity:"
+          wasmer whoami
+
+          echo "Expected app ref: ${app_ref}"
+          echo "Expected public URL: ${public_url}"
+
+          echo "Committed app.yaml target:"
+          grep -E '^(name|owner|package):|APP_PUBLIC_BASE_URL|API_ALLOWED_ORIGIN' app.yaml || true
+
+          echo "Wasmer app info:"
+          wasmer app info "${app_ref}"
+
+          echo "Wasmer app get:"
+          wasmer app get "${app_ref}"
+
+          echo "Live HTTP response:"
+          curl -fsSIL --max-time 20 "${public_url}/" || true
+
+          echo "Live body preview:"
+          curl -fsSL --max-time 20 "${public_url}/" | head -c 2000 || true
