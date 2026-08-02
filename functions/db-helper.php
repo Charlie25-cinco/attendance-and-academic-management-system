@@ -483,6 +483,8 @@ class SimpleXlsxParser {
                 if (isset($cell->v)) { $value = (string)$cell->v; }
                 if ($type === 's' && is_numeric($value)) {
                     $value = $this->sharedStrings[(int)$value] ?? '';
+                } elseif ($type === 'inlineStr' && isset($cell->is->t)) {
+                    $value = (string)$cell->is->t;
                 }
                 $cells[$colIndex] = $value;
             }

@@ -220,6 +220,79 @@ class Sf1Exporter {
         return $spreadsheet;
     }
 
+    public function exportOfficialTemplateXlsx(string $filePath, int $gradeLevel, string $section, ?string $track, string $academicYear, ?string $semester = null): void {
+        $templatePath = APP_ROOT . '/deped/SF1_Senior_High_School.xlsx';
+        if (!is_file($templatePath)) {
+            throw new RuntimeException('Official SF1 template is missing.');
+        }
+
+        if (!class_exists('SimpleXlsxTemplateEditor')) {
+            require_once APP_ROOT . '/functions/simple-xlsx-writer.php';
+        }
+
+        $students = $this->fetchStudents($gradeLevel, $section, $track, $academicYear);
+        $school = $this->schoolSettings;
+        $editor = new SimpleXlsxTemplateEditor($templatePath);
+        $trackLabel = $track === 'techpro' ? 'Technical-Vocational-Livelihood Track' : 'Academic Track';
+
+        $editor->setCell('F3', $school['school_name'] ?? 'Balingasag Senior High School');
+        $editor->setCell('M3', $school['school_id'] ?? '341227');
+        $editor->setCell('U3', $school['district'] ?? 'Balingasag North');
+        $editor->setCell('Z3', $school['division'] ?? 'Misamis Oriental');
+        $editor->setCell('AF3', $school['region'] ?? 'X');
+        $editor->setCell('F5', $semester ?: 'N/A (SSHS - Three-Term)');
+        $editor->setCell('M5', $academicYear);
+        $editor->setCell('W5', 'Grade ' . $gradeLevel);
+        $editor->setCell('AC5', $trackLabel);
+        $editor->setCell('F7', $section);
+        $editor->setCell('M7', $track === 'techpro' ? 'TVL' : '');
+        $editor->clearRange('A', 'AE', 11, 120);
+
+        $row = 11;
+        foreach ($students as $student) {
+            $editor->setCell('A' . $row, (string)($student['lrn'] ?? ''));
+            $editor->setCell('C' . $row, $this->formatSf1LearnerName($student));
+            $editor->setCell('G' . $row, strtoupper(substr((string)($student['sex'] ?? ''), 0, 1)));
+            $editor->setCell('H' . $row, $this->formatSf1Date($student['date_of_birth'] ?? ''));
+            $editor->setCell('J' . $row, $student['age'] ?? '');
+            $editor->setCell('L' . $row, $student['religion'] ?? '');
+            $editor->setCell('M' . $row, $student['house_street'] ?? $this->extractAddressPart($student, 'house'));
+            $editor->setCell('N' . $row, $student['barangay'] ?? $this->extractAddressPart($student, 'barangay'));
+            $editor->setCell('R' . $row, $student['municipality'] ?? $this->extractAddressPart($student, 'municipality'));
+            $editor->setCell('U' . $row, $student['province'] ?? $this->extractAddressPart($student, 'province'));
+            $editor->setCell('W' . $row, $student['father_name'] ?? '');
+            $editor->setCell('X' . $row, $student['mother_name'] ?? '');
+            $editor->setCell('Z' . $row, $student['guardian_name'] ?? '');
+            $editor->setCell('AC' . $row, $student['relationship'] ?? '');
+            $editor->setCell('AD' . $row, $student['contact_number'] ?? '');
+            $editor->setCell('AE' . $row, $student['remarks'] ?? '');
+            $row++;
+        }
+
+        $editor->save($filePath);
+    }
+
+    private function formatSf1LearnerName(array $student): string {
+        $lastName = trim((string)($student['last_name'] ?? ''));
+        $firstName = trim((string)($student['first_name'] ?? ''));
+        $extension = trim((string)($student['name_extension'] ?? ''));
+        $middleName = trim((string)($student['middle_name'] ?? ''));
+        $given = trim(implode(' ', array_filter([$firstName, $extension, $middleName])));
+        return trim($lastName . ($given !== '' ? ', ' . $given : ''));
+    }
+
+    private function formatSf1Date($value): string {
+        $value = trim((string)$value);
+        if ($value === '') {
+            return '';
+        }
+        try {
+            return (new DateTime($value))->format('m/d/Y');
+        } catch (Throwable $e) {
+            return $value;
+        }
+    }
+
     private function writeHeaders($sheet, int $gradeLevel, string $section, ?string $track, string $academicYear, ?string $semester): void {
         $school = $this->schoolSettings;
         $schoolName = $school['school_name'] ?? 'Balingasag Senior High School';

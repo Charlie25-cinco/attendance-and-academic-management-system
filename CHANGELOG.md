@@ -2,6 +2,14 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.15 — 2026-08-02
+
+### Fixed
+
+- Changed SF1 XLSX export to preserve and fill the official DepEd SF1 template format used by SF1 imports.
+- Added fallback XLSX parser support for inline string cells written during template-safe exports.
+- Bumped the Wasmer package version to `0.1.15`.
+
 ## v0.1.14 — 2026-08-02
 
 ### Fixed

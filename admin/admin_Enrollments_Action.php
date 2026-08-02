@@ -539,14 +539,15 @@ function exportSf1(PDO $db): void {
     require_once __DIR__ . '/../vendor/autoload.php';
     require_once __DIR__ . '/../functions/simple-xlsx-writer.php';
 
+    $tempPath = null;
     try {
         $exporter = new Sf1Exporter($db);
-        $spreadsheet = $exporter->exportXlsx($gradeLevel, $section, $track, $academicYear, $semester);
 
         $safeSection = preg_replace('/[^a-zA-Z0-9_-]/', '', $section);
         $filename = "SF1_G{$gradeLevel}_{$safeSection}_{$academicYear}";
 
         if ($format === 'csv') {
+            $spreadsheet = $exporter->exportXlsx($gradeLevel, $section, $track, $academicYear, $semester);
             header('Content-Type: text/csv; charset=utf-8');
             header('Content-Disposition: attachment; filename="' . $filename . '.csv"');
             $out = fopen('php://output', 'w');
@@ -559,7 +560,7 @@ function exportSf1(PDO $db): void {
             if ($tempPath === false) {
                 throw new RuntimeException('Unable to prepare SF1 XLSX download.');
             }
-            SimpleXlsxWriter::save($spreadsheet, $tempPath);
+            $exporter->exportOfficialTemplateXlsx($tempPath, $gradeLevel, $section, $track, $academicYear, $semester);
 
             header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
             header('Content-Disposition: attachment; filename="' . $filename . '.xlsx"');

@@ -151,7 +151,22 @@ class SimpleXlsxWriter
             . '</styleSheet>';
     }
 
-    private static function writeZip(string $filePath, array $entries): void
+    public static function readZipEntries(string $filePath): array
+    {
+        $bytes = file_get_contents($filePath);
+        if ($bytes === false) {
+            throw new RuntimeException('Unable to read XLSX template.');
+        }
+
+        $entries = self::readZipEntriesFromCentralDirectory($bytes);
+        if (!empty($entries)) {
+            return $entries;
+        }
+
+        throw new RuntimeException('Unable to read XLSX template entries.');
+    }
+
+    public static function writeZip(string $filePath, array $entries): void
     {
         $handle = fopen($filePath, 'wb');
         if (!$handle) {
@@ -234,5 +249,186 @@ class SimpleXlsxWriter
     private static function escapeXml(string $value): string
     {
         return htmlspecialchars($value, ENT_QUOTES | ENT_XML1, 'UTF-8');
+    }
+
+    private static function readZipEntriesFromCentralDirectory(string $bytes): array
+    {
+        $length = strlen($bytes);
+        $eocdOffset = strrpos($bytes, "PK\x05\x06");
+        if ($eocdOffset === false || $eocdOffset + 22 > $length) {
+            return [];
+        }
+
+        $entryCount = self::littleEndian(substr($bytes, $eocdOffset + 10, 2));
+        $centralOffset = self::littleEndian(substr($bytes, $eocdOffset + 16, 4));
+        if ($entryCount < 1 || $centralOffset < 0 || $centralOffset >= $length) {
+            return [];
+        }
+
+        $entries = [];
+        $offset = $centralOffset;
+        for ($i = 0; $i < $entryCount && $offset + 46 <= $length; $i++) {
+            if (substr($bytes, $offset, 4) !== "PK\x01\x02") {
+                break;
+            }
+
+            $method = self::littleEndian(substr($bytes, $offset + 10, 2));
+            $compressedSize = self::littleEndian(substr($bytes, $offset + 20, 4));
+            $fileNameLength = self::littleEndian(substr($bytes, $offset + 28, 2));
+            $extraLength = self::littleEndian(substr($bytes, $offset + 30, 2));
+            $commentLength = self::littleEndian(substr($bytes, $offset + 32, 2));
+            $localOffset = self::littleEndian(substr($bytes, $offset + 42, 4));
+            $nameStart = $offset + 46;
+            $name = str_replace('\\', '/', substr($bytes, $nameStart, $fileNameLength));
+
+            if ($localOffset + 30 <= $length && substr($bytes, $localOffset, 4) === "PK\x03\x04") {
+                $localNameLength = self::littleEndian(substr($bytes, $localOffset + 26, 2));
+                $localExtraLength = self::littleEndian(substr($bytes, $localOffset + 28, 2));
+                $dataStart = $localOffset + 30 + $localNameLength + $localExtraLength;
+                if ($compressedSize > 0 && $dataStart + $compressedSize <= $length) {
+                    $compressed = substr($bytes, $dataStart, $compressedSize);
+                    $content = '';
+                    if ($method === 0) {
+                        $content = $compressed;
+                    } elseif ($method === 8 && function_exists('gzinflate')) {
+                        $inflated = @gzinflate($compressed);
+                        if ($inflated !== false) {
+                            $content = $inflated;
+                        }
+                    }
+                    if ($content !== '') {
+                        $entries[$name] = $content;
+                    }
+                }
+            }
+
+            $offset += 46 + $fileNameLength + $extraLength + $commentLength;
+        }
+
+        return $entries;
+    }
+
+    private static function littleEndian(string $bytes): int
+    {
+        $value = 0;
+        $length = strlen($bytes);
+        for ($i = 0; $i < $length; $i++) {
+            $value |= ord($bytes[$i]) << ($i * 8);
+        }
+        return $value;
+    }
+}
+
+class SimpleXlsxTemplateEditor
+{
+    private array $entries;
+    private DOMDocument $sheetDom;
+    private DOMXPath $xpath;
+    private string $sheetPath;
+
+    public function __construct(string $templatePath, string $sheetPath = 'xl/worksheets/sheet1.xml')
+    {
+        $this->entries = SimpleXlsxWriter::readZipEntries($templatePath);
+        $this->sheetPath = $sheetPath;
+        $sheetXml = $this->entries[$sheetPath] ?? '';
+        if ($sheetXml === '') {
+            throw new RuntimeException('XLSX template is missing worksheet XML.');
+        }
+
+        $this->sheetDom = new DOMDocument('1.0', 'UTF-8');
+        $this->sheetDom->preserveWhiteSpace = false;
+        $this->sheetDom->formatOutput = false;
+        if (!$this->sheetDom->loadXML($sheetXml)) {
+            throw new RuntimeException('XLSX template worksheet XML is invalid.');
+        }
+
+        $this->xpath = new DOMXPath($this->sheetDom);
+        $this->xpath->registerNamespace('x', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+    }
+
+    public function setCell(string $coordinate, $value): void
+    {
+        $cell = $this->ensureCell($coordinate);
+        while ($cell->firstChild) {
+            $cell->removeChild($cell->firstChild);
+        }
+
+        if ($value === null || $value === '') {
+            $cell->removeAttribute('t');
+            return;
+        }
+
+        if (is_int($value) || is_float($value)) {
+            $cell->removeAttribute('t');
+            $v = $this->sheetDom->createElement('v');
+            $v->appendChild($this->sheetDom->createTextNode((string)$value));
+            $cell->appendChild($v);
+            return;
+        }
+
+        $cell->setAttribute('t', 'inlineStr');
+        $inline = $this->sheetDom->createElement('is');
+        $text = $this->sheetDom->createElement('t');
+        $stringValue = (string)$value;
+        if (trim($stringValue) !== $stringValue) {
+            $text->setAttribute('xml:space', 'preserve');
+        }
+        $text->appendChild($this->sheetDom->createTextNode($stringValue));
+        $inline->appendChild($text);
+        $cell->appendChild($inline);
+    }
+
+    public function clearRange(string $startColumn, string $endColumn, int $startRow, int $endRow): void
+    {
+        $start = Coordinate::columnIndexFromString($startColumn);
+        $end = Coordinate::columnIndexFromString($endColumn);
+        for ($row = $startRow; $row <= $endRow; $row++) {
+            for ($col = $start; $col <= $end; $col++) {
+                $this->setCell(Coordinate::stringFromColumnIndex($col) . $row, '');
+            }
+        }
+    }
+
+    public function save(string $filePath): void
+    {
+        $this->entries[$this->sheetPath] = $this->sheetDom->saveXML();
+        SimpleXlsxWriter::writeZip($filePath, $this->entries);
+    }
+
+    private function ensureCell(string $coordinate): DOMElement
+    {
+        $rowNumber = (int)preg_replace('/[^0-9]/', '', $coordinate);
+        if ($rowNumber < 1) {
+            throw new InvalidArgumentException('Invalid XLSX cell coordinate.');
+        }
+
+        $row = $this->ensureRow($rowNumber);
+        $cell = $this->xpath->query('x:c[@r="' . $coordinate . '"]', $row)->item(0);
+        if ($cell instanceof DOMElement) {
+            return $cell;
+        }
+
+        $cell = $this->sheetDom->createElementNS('http://schemas.openxmlformats.org/spreadsheetml/2006/main', 'c');
+        $cell->setAttribute('r', $coordinate);
+        $row->appendChild($cell);
+        return $cell;
+    }
+
+    private function ensureRow(int $rowNumber): DOMElement
+    {
+        $row = $this->xpath->query('//x:sheetData/x:row[@r="' . $rowNumber . '"]')->item(0);
+        if ($row instanceof DOMElement) {
+            return $row;
+        }
+
+        $sheetData = $this->xpath->query('//x:sheetData')->item(0);
+        if (!$sheetData instanceof DOMElement) {
+            throw new RuntimeException('XLSX template worksheet is missing sheetData.');
+        }
+
+        $row = $this->sheetDom->createElementNS('http://schemas.openxmlformats.org/spreadsheetml/2006/main', 'row');
+        $row->setAttribute('r', (string)$rowNumber);
+        $sheetData->appendChild($row);
+        return $row;
     }
 }
