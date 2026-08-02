@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.24 — 2026-08-03
+
+### Fixed
+
+- Changed the Wasmer validation workflow to install Composer development dependencies so lint and test commands can find PHPCS and PHPUnit.
+- Bumped the Wasmer package version to `0.1.24`.
+
 ## v0.1.23 — 2026-08-03
 
 ### Changed
