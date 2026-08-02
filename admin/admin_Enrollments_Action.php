@@ -241,6 +241,7 @@ function attachEnrolledClassNames(PDO $db, array &$students): void {
 }
 
 function createStudent(PDO $db): void {
+    $tempPath = null;
     try {
         $firstName = trim((string)($_POST['first_name'] ?? ''));
         $middleName = trim((string)($_POST['middle_name'] ?? ''));
@@ -536,6 +537,7 @@ function exportSf1(PDO $db): void {
     }
 
     require_once __DIR__ . '/../vendor/autoload.php';
+    require_once __DIR__ . '/../functions/simple-xlsx-writer.php';
 
     try {
         $exporter = new Sf1Exporter($db);
@@ -553,14 +555,25 @@ function exportSf1(PDO $db): void {
             }
             fclose($out);
         } else {
+            $tempPath = tempnam(sys_get_temp_dir(), 'sf1-export-');
+            if ($tempPath === false) {
+                throw new RuntimeException('Unable to prepare SF1 XLSX download.');
+            }
+            SimpleXlsxWriter::save($spreadsheet, $tempPath);
+
             header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
             header('Content-Disposition: attachment; filename="' . $filename . '.xlsx"');
             header('Cache-Control: max-age=0');
+            header('Content-Length: ' . filesize($tempPath));
 
-            $writer = \PhpOffice\PhpSpreadsheet\IOFactory::createWriter($spreadsheet, 'Xlsx');
-            $writer->save('php://output');
+            readfile($tempPath);
+            @unlink($tempPath);
+            $tempPath = null;
         }
     } catch (Throwable $e) {
+        if (is_string($tempPath) && $tempPath !== '') {
+            @unlink($tempPath);
+        }
         error_log('SF1 export failed: ' . $e->getMessage());
         if (!headers_sent()) {
             header('Content-Type: application/json');

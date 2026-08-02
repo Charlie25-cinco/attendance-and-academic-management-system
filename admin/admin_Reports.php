@@ -533,8 +533,8 @@ $previewCount = count($previewRows);
                                     </div>
                                 </div>
                                 <div class="d-flex gap-2 mt-3">
-                                    <button class="btn btn-sm btn-outline-success flex-fill" type="button" onclick="exportReportSf1('xlsx')"><i class="bi bi-filetype-xlsx me-1"></i>XLSX</button>
-                                    <button class="btn btn-sm btn-outline-success flex-fill" type="button" onclick="exportReportSf1('csv')"><i class="bi bi-filetype-csv me-1"></i>CSV</button>
+                                    <button class="btn btn-sm btn-outline-success flex-fill" type="button" data-skip-loader="true" onclick="exportReportSf1('xlsx')"><i class="bi bi-filetype-xlsx me-1"></i>XLSX</button>
+                                    <button class="btn btn-sm btn-outline-success flex-fill" type="button" data-skip-loader="true" onclick="exportReportSf1('csv')"><i class="bi bi-filetype-csv me-1"></i>CSV</button>
                                 </div>
                             </div>
                         </div>
@@ -578,8 +578,8 @@ $previewCount = count($previewRows);
                                     </div>
                                 </div>
                                 <div class="d-flex gap-2 mt-3">
-                                    <button class="btn btn-sm btn-outline-success flex-fill" type="button" onclick="exportReportSf2('xlsx')"><i class="bi bi-filetype-xlsx me-1"></i>XLSX</button>
-                                    <button class="btn btn-sm btn-outline-success flex-fill" type="button" onclick="exportReportSf2('csv')"><i class="bi bi-filetype-csv me-1"></i>CSV</button>
+                                    <button class="btn btn-sm btn-outline-success flex-fill" type="button" data-skip-loader="true" onclick="exportReportSf2('xlsx')"><i class="bi bi-filetype-xlsx me-1"></i>XLSX</button>
+                                    <button class="btn btn-sm btn-outline-success flex-fill" type="button" data-skip-loader="true" onclick="exportReportSf2('csv')"><i class="bi bi-filetype-csv me-1"></i>CSV</button>
                                 </div>
                             </div>
                         </div>
@@ -766,6 +766,7 @@ $previewCount = count($previewRows);
                 academic_year: academicYear,
                 format: format
             });
+            window.APP_SUPPRESS_NEXT_UNLOAD_PROGRESS = true;
             window.location.href = 'admin_Enrollments_Action.php?' + params.toString();
         }
 
@@ -781,6 +782,7 @@ $previewCount = count($previewRows);
                 year: year,
                 format: format
             });
+            window.APP_SUPPRESS_NEXT_UNLOAD_PROGRESS = true;
             window.location.href = 'admin_Classes_Action.php?' + params.toString();
         }
 

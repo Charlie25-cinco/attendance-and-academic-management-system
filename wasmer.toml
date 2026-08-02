@@ -1,6 +1,6 @@
 [package]
 name = "bshs-ams"
-version = "0.1.13"
+version = "0.1.14"
 description = "Balingasag Senior High School Attendance and Academic Management System"
 
 [dependencies]

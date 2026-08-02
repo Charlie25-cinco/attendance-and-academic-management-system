@@ -2,6 +2,14 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.14 — 2026-08-02
+
+### Fixed
+
+- Added a Wasmer-safe XLSX writer for SF1 exports so downloads do not fail through ZipStream CRC handling.
+- Prevented SF1 and SF2 download actions from leaving the top navigation progress bar stuck.
+- Bumped the Wasmer package version to `0.1.14`.
+
 ## v0.1.13 — 2026-08-02
 
 ### Removed

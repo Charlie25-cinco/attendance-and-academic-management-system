@@ -30,4 +30,33 @@ final class Sf1ParserTest extends TestCase
         $this->assertNotEmpty($parsed['students']);
         $this->assertNotEmpty($parsed['header']);
     }
+
+    public function testSimpleXlsxWriterCreatesParseableWorkbook(): void
+    {
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('SHSF-1');
+        $sheet->setCellValue('A1', 'School Form 1');
+        $sheet->setCellValueExplicit('B2', '123456789012', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+        $sheet->setCellValue('C2', 'Learner Name');
+
+        $path = tempnam(sys_get_temp_dir(), 'simple-xlsx-test-');
+        $this->assertIsString($path);
+
+        try {
+            SimpleXlsxWriter::save($spreadsheet, $path);
+            putenv('APP_FORCE_XLSX_FALLBACK=1');
+            $parser = new SimpleXlsxParser($path);
+            $rows = $parser->getSheet(0);
+            putenv('APP_FORCE_XLSX_FALLBACK');
+
+            $this->assertSame('School Form 1', $rows[1][0] ?? null);
+            $this->assertSame('123456789012', $rows[2][1] ?? null);
+            $this->assertSame('Learner Name', $rows[2][2] ?? null);
+        } finally {
+            putenv('APP_FORCE_XLSX_FALLBACK');
+            @unlink($path);
+            $spreadsheet->disconnectWorksheets();
+        }
+    }
 }

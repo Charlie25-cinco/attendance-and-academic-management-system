@@ -110,6 +110,10 @@ function initNavigationProgress() {
   });
 
   window.addEventListener("beforeunload", function () {
+    if (window.APP_SUPPRESS_NEXT_UNLOAD_PROGRESS === true) {
+      window.APP_SUPPRESS_NEXT_UNLOAD_PROGRESS = false;
+      return;
+    }
     showTopProgressSoon(80);
   });
 
