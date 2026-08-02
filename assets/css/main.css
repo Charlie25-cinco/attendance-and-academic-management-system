@@ -1844,6 +1844,15 @@ body.dark-mode .material-btn:hover {
    RESPONSIVE — MOBILE (max 767px)
    ============================================ */
 @media (max-width: 767.98px) {
+  .main-content,
+  .page-content,
+  .content-card,
+  .dashboard-card,
+  .modal-content,
+  .dropdown-menu {
+    min-width: 0;
+  }
+
   .header {
     min-height: var(--header-height);
     padding: 10px 12px 10px 0;
@@ -1908,8 +1917,39 @@ body.dark-mode .material-btn:hover {
     padding: 14px;
   }
 
+  .content-card-header,
+  .app-filter-actions,
+  .app-inline-filter,
+  .modal-footer,
+  .app-modal-footer,
+  .btn-group,
+  .btn-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .content-card-header > *,
+  .app-filter-actions > *,
+  .app-inline-filter > *,
+  .modal-footer > *,
+  .app-modal-footer > *,
+  .btn-group > .btn,
+  .btn-toolbar > .btn,
+  .btn-toolbar > .btn-group {
+    width: 100%;
+  }
+
+  .content-card-header .btn,
+  .app-modal-footer .btn,
+  .modal-footer .btn,
+  .page-content > .d-flex .btn {
+    justify-content: center;
+    white-space: normal;
+  }
+
   .content-card-title {
     font-size: 16px;
+    overflow-wrap: anywhere;
   }
 
   .app-meta-grid {
@@ -1941,6 +1981,33 @@ body.dark-mode .material-btn:hover {
 
   .table-container {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+
+  .table-responsive,
+  .responsive-table,
+  .custom-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+
+  .custom-table,
+  .table {
+    min-width: 640px;
+  }
+
+  .custom-table th,
+  .custom-table td,
+  .table th,
+  .table td {
+    white-space: nowrap;
+  }
+
+  .custom-table td,
+  .table td {
+    overflow-wrap: anywhere;
   }
 
   .dashboard-card {
@@ -1979,6 +2046,16 @@ body.dark-mode .material-btn:hover {
     max-width: calc(100vw - 24px);
   }
 
+  .dropdown-item,
+  .header-notification-item,
+  .header-profile-name,
+  .app-modal-subtitle,
+  .app-modal-panel-copy,
+  .form-text,
+  .text-muted {
+    overflow-wrap: anywhere;
+  }
+
   .modal-dialog {
     margin: 0.75rem;
   }
@@ -1998,6 +2075,10 @@ body.dark-mode .material-btn:hover {
    RESPONSIVE — SMALL MOBILE (max 479px)
    ============================================ */
 @media (max-width: 479px) {
+  .header-main {
+    min-width: 0;
+  }
+
   .header-title {
     font-size: 15px;
     max-width: 48vw;
@@ -2019,6 +2100,17 @@ body.dark-mode .material-btn:hover {
   .header-btn {
     width: 34px;
     height: 34px;
+  }
+
+  .header-profile-avatar {
+    width: 30px;
+    height: 30px;
+    font-size: 11px;
+  }
+
+  .custom-table,
+  .table {
+    min-width: 560px;
   }
 }
 

@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.11 — 2026-08-02
+
+### Fixed
+
+- Improved shared mobile responsiveness for page headers, action bars, filters, modal footers, dropdown text, and wide tables.
+- Bumped the Wasmer package version to `0.1.11`.
+
 ## v0.1.10 — 2026-08-02
 
 ### Fixed
