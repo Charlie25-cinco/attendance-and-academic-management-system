@@ -1,8 +1,7 @@
 [package]
 name = "bshs-ams"
-version = "0.1.20"
+version = "0.1.21"
 description = "Balingasag Senior High School Attendance and Academic Management System"
-private = true
 
 [dependencies]
 "php/php" = "=8.3.4"

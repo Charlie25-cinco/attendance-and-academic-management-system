@@ -2,6 +2,14 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.21 — 2026-08-02
+
+### Changed
+
+- Rolled back experimental Wasmer private-package metadata while keeping the earlier package-publishing deploy flow.
+- Updated the disabled-app deploy error message to avoid incorrectly blaming GitHub secrets when Wasmer app info resolves correctly.
+- Bumped the Wasmer package version to `0.1.21`.
+
 ## v0.1.20 — 2026-08-02
 
 ### Changed
