@@ -416,7 +416,7 @@ $previewCount = count($previewRows);
 
             <div class="content-card mb-4" id="sf1-export">
                 <div class="content-card-body">
-                    <form method="GET" action="admin_Reports.php" id="adminReportFilterForm" class="row g-3 align-items-end admin-report-filter-form">
+                    <form method="GET" action="admin_Reports.php" id="adminReportFilterForm" class="row g-3 align-items-end admin-report-filter-form app-responsive-filter-form">
                         <input type="hidden" name="type" value="<?php echo htmlspecialchars($selectedType); ?>">
                         <div class="col-12">
                             <div class="admin-filter-copy">

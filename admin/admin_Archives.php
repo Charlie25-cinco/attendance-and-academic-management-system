@@ -393,7 +393,7 @@ $page_title = 'Archived Records';
                     <h5 class="content-card-title">Archived User Accounts</h5>
                 </div>
                 <div class="content-card-body">
-                    <form method="GET" class="row g-3 mb-4 align-items-end">
+                    <form method="GET" class="row g-3 mb-4 align-items-end app-responsive-filter-form">
                         <div class="col-12 col-lg-6">
                             <label class="form-label mb-1">Search</label>
                             <input type="text" class="form-control" name="archived_user_search" placeholder="Name, reference code, or email..." value="<?php echo htmlspecialchars($archivedUserSearch); ?>">
@@ -479,7 +479,7 @@ $page_title = 'Archived Records';
                     <h5 class="content-card-title">Past Student Records Archive</h5>
                 </div>
                 <div class="content-card-body">
-                    <form method="GET" class="row g-3 mb-4 align-items-end">
+                    <form method="GET" class="row g-3 mb-4 align-items-end app-responsive-filter-form">
                         <div class="col-12 col-lg-4">
                             <label class="form-label mb-1">Search</label>
                             <input type="text" class="form-control" name="student_search" placeholder="Name or reference code..." value="<?php echo htmlspecialchars($studentSearch); ?>">

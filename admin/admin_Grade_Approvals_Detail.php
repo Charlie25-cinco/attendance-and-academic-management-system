@@ -366,7 +366,7 @@ $page_title = 'Grade Approval Details';
         <div class="content-card">
             <div class="content-card-header"><h5 class="content-card-title mb-0"><?php echo $activeTab === 'grades' ? 'Subject Grades' : 'Student Report Card'; ?></h5></div>
             <div class="content-card-body">
-                <form method="GET" class="row g-3 align-items-end mb-3">
+                <form method="GET" class="row g-3 align-items-end mb-3 app-responsive-filter-form">
                     <input type="hidden" name="grade_level" value="<?php echo (int)$gradeLevel; ?>">
                     <input type="hidden" name="section" value="<?php echo htmlspecialchars($section); ?>">
                     <input type="hidden" name="academic_year" value="<?php echo htmlspecialchars($academicYear); ?>">

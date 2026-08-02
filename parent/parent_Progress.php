@@ -606,7 +606,7 @@ if ($db && $parentId > 0 && ($_GET['action'] ?? '') === 'export') {
                     </div>
                 </div>
                 <div class="content-card-body">
-                    <form method="GET" class="row g-3 align-items-end mb-3">
+                    <form method="GET" class="row g-3 align-items-end mb-3 app-responsive-filter-form">
                         <input type="hidden" name="student_id" value="<?php echo (int)$selectedStudentId; ?>">
                         <div class="col-md-4">
                             <label class="form-label">Date From</label>
@@ -716,7 +716,7 @@ if ($db && $parentId > 0 && ($_GET['action'] ?? '') === 'export') {
                     </div>
                 </div>
                 <div class="content-card-body">
-                    <form method="GET" class="row g-3 align-items-end mb-3">
+                    <form method="GET" class="row g-3 align-items-end mb-3 app-responsive-filter-form">
                         <input type="hidden" name="student_id" value="<?php echo (int)$selectedStudentId; ?>">
                         <div class="col-md-4">
                             <label class="form-label">Class</label>

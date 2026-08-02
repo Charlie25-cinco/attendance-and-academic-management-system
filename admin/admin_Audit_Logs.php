@@ -244,7 +244,7 @@ if ($db) {
                     <h5 class="content-card-title">Admin Action Logs</h5>
                 </div>
                 <div class="content-card-body">
-                    <form method="GET" class="row g-3 align-items-end mb-4">
+                    <form method="GET" class="row g-3 align-items-end mb-4 app-responsive-filter-form">
                         <div class="col-12 col-lg-4">
                             <label class="form-label">Search</label>
                             <input type="text" class="form-control" name="search" placeholder="Admin, action, target, details..." value="<?php echo htmlspecialchars($search); ?>">

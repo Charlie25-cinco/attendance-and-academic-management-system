@@ -320,7 +320,7 @@ $page_title = 'Report Card';
                         Submitted report cards are routed to <strong>Admin Grade Approvals</strong> first. Students can view grades only after admin approval.
                     </div>
 
-                    <form method="GET" class="row g-3 align-items-end mb-3">
+                    <form method="GET" class="row g-3 align-items-end mb-3 app-responsive-filter-form">
                         <div class="col-md-4">
                             <label class="form-label">Student</label>
                             <select name="student_id" class="form-select">

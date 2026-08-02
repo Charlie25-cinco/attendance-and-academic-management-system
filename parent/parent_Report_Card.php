@@ -351,7 +351,7 @@ $studentSectionLabel = trim(($studentInfo['grade_level'] !== '' ? 'G' . $student
             <div class="content-card mb-4">
                 <div class="content-card-header"><h5 class="content-card-title">Report Card</h5></div>
                 <div class="content-card-body">
-                    <form method="GET" class="row g-3 align-items-end mb-3 parent-filter-shell">
+                    <form method="GET" class="row g-3 align-items-end mb-3 parent-filter-shell app-responsive-filter-form">
                         <input type="hidden" name="student_id" value="<?php echo (int)$selectedStudentId; ?>">
                         <div class="col-md-3">
                             <label class="form-label"><?php echo $isQuarterSystem ? 'Semester' : 'Period'; ?></label>

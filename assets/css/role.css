@@ -2406,6 +2406,45 @@ body.dark-mode .welcome-role-chip {
   row-gap: 12px;
 }
 
+.app-responsive-filter-form {
+  min-width: 0;
+}
+
+.app-responsive-filter-form > [class*="col-"] {
+  min-width: 0;
+}
+
+.app-responsive-filter-form .form-control,
+.app-responsive-filter-form .form-select {
+  min-width: 0;
+}
+
+.app-responsive-filter-form .btn {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  min-width: 0;
+  white-space: normal;
+}
+
+.app-responsive-filter-form .app-filter-actions-col {
+  min-width: 220px;
+}
+
+.app-responsive-filter-form .app-filter-actions-col .btn {
+  flex: 1 1 96px;
+}
+
+@media (max-width: 991.98px) {
+  .app-responsive-filter-form .app-filter-actions-col {
+    min-width: 0;
+  }
+
+  .app-responsive-filter-form .d-flex.gap-2 {
+    flex-wrap: wrap;
+  }
+}
+
 .content-card .form-label,
 .admin-report-filter-form .form-label,
 .app-modal-panel .form-label {
@@ -2884,6 +2923,7 @@ body.dark-mode .grade-assessment-percent {
   .admin-inline-filter,
   .admin-filter-toolbar,
   .admin-report-filter-form,
+  .app-responsive-filter-form,
   .student-report-filter,
   .student-inline-filter,
   .student-filter-toolbar,
@@ -2896,6 +2936,7 @@ body.dark-mode .grade-assessment-percent {
   .admin-action-strip > *,
   .admin-inline-filter > *,
   .admin-filter-toolbar > *,
+  .app-responsive-filter-form > *,
   .student-filter-toolbar > *,
   .parent-filter-shell > *,
   .teacher-filter-shell > * {
@@ -2906,6 +2947,7 @@ body.dark-mode .grade-assessment-percent {
   .admin-inline-filter .btn,
   .admin-filter-toolbar .btn,
   .admin-report-filter-form .btn,
+  .app-responsive-filter-form .btn,
   .student-report-filter .btn,
   .student-inline-filter .btn,
   .student-filter-toolbar .btn,
@@ -2914,6 +2956,12 @@ body.dark-mode .grade-assessment-percent {
     justify-content: center;
     white-space: normal;
     width: 100%;
+  }
+
+  .app-responsive-filter-form .app-filter-actions-col,
+  .app-responsive-filter-form .d-flex.gap-2 {
+    flex-direction: column;
+    min-width: 0;
   }
 
   .admin-filter-copy,

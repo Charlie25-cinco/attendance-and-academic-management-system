@@ -164,7 +164,7 @@ foreach ($classes as $class) {
         <div class="content-card">
             <div class="content-card-header">
                 <h5 class="content-card-title">Attendance History</h5>
-                <form method="GET" class="row g-2 align-items-end w-100 student-inline-filter">
+                <form method="GET" class="row g-2 align-items-end w-100 student-inline-filter app-responsive-filter-form">
                     <div class="col-md-5 col-lg-4">
                         <label class="form-label small text-muted mb-1">Class</label>
                         <select name="class_id" class="form-select form-select-sm">

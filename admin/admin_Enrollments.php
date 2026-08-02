@@ -105,7 +105,7 @@ if (isset($_GET['download_template'])) {
             <!-- Filters -->
             <div class="content-card mb-4">
                 <div class="content-card-body">
-                    <form id="filterForm" class="row g-2 align-items-end" onsubmit="return loadStudents()" data-skip-loader="true">
+                    <form id="filterForm" class="row g-2 align-items-end app-responsive-filter-form" onsubmit="return loadStudents()" data-skip-loader="true">
                         <div class="col-md-3">
                             <label class="form-label small" for="filterSearch">Search</label>
                             <input type="text" name="search" id="filterSearch" class="form-control form-control-sm" placeholder="Name, LRN, or Code" autocomplete="off">

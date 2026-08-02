@@ -265,7 +265,7 @@ if ($db) {
 
         <div class="content-card mb-4">
             <div class="content-card-body">
-                <form method="GET" action="teacher_Reports.php" id="teacherReportFilterForm" class="row g-3 align-items-end app-filter-panel">
+                <form method="GET" action="teacher_Reports.php" id="teacherReportFilterForm" class="row g-3 align-items-end app-filter-panel app-responsive-filter-form">
                     <input type="hidden" name="type" value="<?php echo htmlspecialchars($selectedType); ?>">
                     <input type="hidden" name="semester" id="semesterHiddenInput" value="<?php echo htmlspecialchars($selectedSemester); ?>">
                     <div class="col-md-2">

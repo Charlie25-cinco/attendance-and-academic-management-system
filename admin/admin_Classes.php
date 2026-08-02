@@ -183,8 +183,8 @@ $page_title = 'Manage Classes';
 
             <div class="content-card mb-4">
                 <div class="content-card-body">
-                    <form method="GET" class="row g-3 align-items-end">
-                        <div class="col-12 col-lg-4">
+                    <form method="GET" class="row g-3 align-items-end app-responsive-filter-form">
+                        <div class="col-12 col-lg-3 col-xl-4">
                             <label for="classSearch" class="form-label">Search</label>
                             <input
                                 type="text"
@@ -236,7 +236,7 @@ $page_title = 'Manage Classes';
                                 <option value="inactive" <?php echo $statusFilter === 'inactive' ? 'selected' : ''; ?>>Inactive</option>
                             </select>
                         </div>
-                        <div class="col-6 col-lg-2 d-flex gap-2">
+                        <div class="col-12 col-lg-3 col-xl-2 d-flex gap-2 app-filter-actions-col">
                             <button type="submit" class="btn btn-primary-custom flex-fill">
                                 <i class="bi bi-funnel me-1"></i>Apply
                             </button>

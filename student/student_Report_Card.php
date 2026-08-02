@@ -282,7 +282,7 @@ $page_title = 'Report Card';
         <div class="content-card mb-4">
             <div class="content-card-header"><h5 class="content-card-title">Report Card</h5></div>
             <div class="content-card-body">
-                <form method="GET" class="row g-3 align-items-end mb-3">
+                <form method="GET" class="row g-3 align-items-end mb-3 app-responsive-filter-form">
                     <div class="col-md-3">
                         <label class="form-label"><?php echo $isQuarterSystem ? 'Semester' : 'Period'; ?></label>
                         <?php if ($isQuarterSystem): ?>
