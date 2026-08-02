@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.17 — 2026-08-02
+
+### Changed
+
+- Removed package publishing from the Wasmer deploy workflow so GitHub Actions deploys the active app target without modifying the package publish record.
+- Bumped the Wasmer package version to `0.1.17`.
+
 ## v0.1.16 — 2026-08-02
 
 ### Changed

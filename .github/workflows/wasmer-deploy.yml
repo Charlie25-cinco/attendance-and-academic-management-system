@@ -141,7 +141,7 @@ jobs:
           echo "Deploy target app: ${WASMER_APP_NAME}"
           echo "Public URL: ${APP_PUBLIC_BASE_URL}"
           set +e
-          wasmer deploy --publish-package --non-interactive 2>&1 | tee wasmer-deploy.log
+          wasmer deploy --non-interactive 2>&1 | tee wasmer-deploy.log
           status="${PIPESTATUS[0]}"
           set -e
           if [ "$status" -eq 0 ]; then
