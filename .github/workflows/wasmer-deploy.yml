@@ -1,4 +1,4 @@
-name: Deploy to Wasmer
+name: Validate Wasmer Deployment
 
 on:
   workflow_dispatch:
@@ -9,7 +9,7 @@ on:
       - instructor-rbac-requirements
 
 jobs:
-  deploy:
+  validate:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -28,13 +28,14 @@ jobs:
       - name: Install production dependencies
         run: composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader --ignore-platform-req=php-64bit
 
-      - name: Configure Wasmer app
+      - name: Validate Wasmer configuration inputs
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
           import json
           import os
+          import re
 
           required = [
               "WASMER_OWNER",
@@ -55,48 +56,32 @@ jobs:
           if missing:
               raise SystemExit("Missing required GitHub secrets: " + ", ".join(missing))
 
-          app_env = [
-              "DB_HOST",
-              "DB_PORT",
-              "DB_NAME",
-              "DB_USER",
-              "DB_PASS",
-              "DB_SSL_CA",
-              "DB_SSL_CA_CONTENT",
-              "DEFAULT_NEW_USER_PASSWORD",
-              "FIRST_RUN_ADMIN_PASSWORD",
-              "API_AUTH_SECRET",
-              "API_SYNC_SECRET",
-              "SMTP_HOST",
-              "SMTP_PORT",
-              "SMTP_USER",
-              "SMTP_PASS",
-              "SMTP_FROM_EMAIL",
-              "SMTP_FROM_NAME",
-              "RESEND_API_KEY",
-              "RESEND_FROM_EMAIL",
-              "RESEND_FROM_NAME",
-          ]
+          if not re.fullmatch(r"[a-z0-9]([-a-z0-9]*[a-z0-9])?", os.environ["WASMER_APP_NAME"]):
+              raise SystemExit("WASMER_APP_NAME must use lowercase letters, numbers, and hyphens only.")
+
+          if not os.environ["APP_PUBLIC_BASE_URL"].startswith("https://"):
+              raise SystemExit("APP_PUBLIC_BASE_URL must be an https:// URL.")
 
           app_yaml = Path("app.yaml")
+          wasmer_toml = Path("wasmer.toml")
+          if not app_yaml.is_file():
+              raise SystemExit("app.yaml is missing.")
+          if not wasmer_toml.is_file():
+              raise SystemExit("wasmer.toml is missing.")
+
           text = app_yaml.read_text(encoding="utf-8")
-          text = text.replace("CHANGE_ME_WASMER_OWNER", os.environ["WASMER_OWNER"])
-          text = text.replace("bshs-ams", os.environ["WASMER_APP_NAME"], 1)
-          text = text.replace("https://CHANGE_ME_WASMER_APP_URL", os.environ["APP_PUBLIC_BASE_URL"])
-          if os.environ.get("DB_SSL_VERIFY_SERVER_CERT"):
-              text = text.replace(
-                  '  DB_SSL_VERIFY_SERVER_CERT: "1"',
-                  f'  DB_SSL_VERIFY_SERVER_CERT: {json.dumps(os.environ["DB_SSL_VERIFY_SERVER_CERT"])}'
-              )
-          extra_env = []
-          for key in app_env:
-              value = os.environ.get(key)
-              if value:
-                  extra_env.append(f"  {key}: {json.dumps(value)}")
-          if extra_env:
-              marker = f'  APP_PUBLIC_BASE_URL: {json.dumps(os.environ["APP_PUBLIC_BASE_URL"])}'
-              text = text.replace(marker, marker + "\n" + "\n".join(extra_env))
-          app_yaml.write_text(text, encoding="utf-8")
+          configured = text.replace("CHANGE_ME_WASMER_OWNER", os.environ["WASMER_OWNER"])
+          configured = configured.replace("bshs-ams", os.environ["WASMER_APP_NAME"], 1)
+          configured = configured.replace("https://CHANGE_ME_WASMER_APP_URL", os.environ["APP_PUBLIC_BASE_URL"])
+
+          marker = f'  APP_PUBLIC_BASE_URL: {json.dumps(os.environ["APP_PUBLIC_BASE_URL"])}'
+          if marker not in configured:
+              raise SystemExit("Configured app.yaml does not contain the expected APP_PUBLIC_BASE_URL.")
+
+          print("Wasmer Git deployment readiness checks passed.")
+          print("Deploy target owner:", os.environ["WASMER_OWNER"])
+          print("Deploy target app:", os.environ["WASMER_APP_NAME"])
+          print("Public URL:", os.environ["APP_PUBLIC_BASE_URL"])
           PY
         env:
           WASMER_OWNER: ${{ secrets.WASMER_OWNER }}
@@ -107,81 +92,14 @@ jobs:
           DB_NAME: ${{ secrets.DB_NAME }}
           DB_USER: ${{ secrets.DB_USER }}
           DB_PASS: ${{ secrets.DB_PASS }}
-          DB_SSL_CA: ${{ secrets.DB_SSL_CA }}
-          DB_SSL_CA_CONTENT: ${{ secrets.DB_SSL_CA_CONTENT }}
-          DB_SSL_VERIFY_SERVER_CERT: ${{ secrets.DB_SSL_VERIFY_SERVER_CERT }}
           DEFAULT_NEW_USER_PASSWORD: ${{ secrets.DEFAULT_NEW_USER_PASSWORD }}
-          FIRST_RUN_ADMIN_PASSWORD: ${{ secrets.FIRST_RUN_ADMIN_PASSWORD }}
           API_AUTH_SECRET: ${{ secrets.API_AUTH_SECRET }}
           API_SYNC_SECRET: ${{ secrets.API_SYNC_SECRET }}
-          SMTP_HOST: ${{ secrets.SMTP_HOST }}
-          SMTP_PORT: ${{ secrets.SMTP_PORT }}
-          SMTP_USER: ${{ secrets.SMTP_USER }}
-          SMTP_PASS: ${{ secrets.SMTP_PASS }}
-          SMTP_FROM_EMAIL: ${{ secrets.SMTP_FROM_EMAIL }}
-          SMTP_FROM_NAME: ${{ secrets.SMTP_FROM_NAME }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
-          RESEND_FROM_NAME: ${{ secrets.RESEND_FROM_NAME }}
 
-      - name: Install Wasmer
-        shell: bash
-        run: curl https://get.wasmer.io -sSfL | sh
+      - name: Lint
+        run: composer run lint
 
-      - name: Deploy
-        shell: bash
-        env:
-          WASMER_TOKEN: ${{ secrets.WASMER_TOKEN }}
-          WASMER_OWNER: ${{ secrets.WASMER_OWNER }}
-          WASMER_APP_NAME: ${{ secrets.WASMER_APP_NAME }}
-          APP_PUBLIC_BASE_URL: ${{ secrets.APP_PUBLIC_BASE_URL }}
-        run: |
-          export PATH="$HOME/.wasmer/bin:$PATH"
-          echo "Deploy target owner: ${WASMER_OWNER}"
-          echo "Deploy target app: ${WASMER_APP_NAME}"
-          echo "Public URL: ${APP_PUBLIC_BASE_URL}"
-          printf '%s\n' "${GITHUB_SHA}" > deployment-version.txt
-          echo "Expected deployment version: ${GITHUB_SHA}"
-
-          verify_live_marker() {
-            marker_url="${APP_PUBLIC_BASE_URL%/}/deployment-version.txt"
-            echo "Verifying live deployment marker: ${marker_url}"
-
-            for attempt in {1..30}; do
-              live_sha="$(curl -fsSL --max-time 10 "${marker_url}" 2>/dev/null | tr -d '\r\n' || true)"
-              if [ "${live_sha}" = "${GITHUB_SHA}" ]; then
-                echo "Live deployment marker matches current commit: ${GITHUB_SHA}"
-                return 0
-              fi
-
-              if [ -n "${live_sha}" ]; then
-                echo "Attempt ${attempt}/30: live marker is ${live_sha}; waiting for ${GITHUB_SHA}."
-              else
-                echo "Attempt ${attempt}/30: live marker is not reachable yet."
-              fi
-              sleep 10
-            done
-
-            echo "::error::Live deployment marker did not update to ${GITHUB_SHA}. The workflow will not report success for a stale deployment."
-            return 1
-          }
-
-          set +e
-          wasmer deploy --publish-package --non-interactive 2>&1 | tee wasmer-deploy.log
-          status="${PIPESTATUS[0]}"
-          set -e
-          if [ "$status" -eq 0 ]; then
-            verify_live_marker
-            exit $?
-          fi
-          if grep -q "deployed successfully" wasmer-deploy.log && grep -q "App still not reachable after 5 minutes" wasmer-deploy.log; then
-            echo "Wasmer deployment succeeded, but the built-in reachability wait timed out. Treating this as success; verify the live URL manually."
-            verify_live_marker
-            exit $?
-          fi
-          if grep -q "Cannot modify a disabled app" wasmer-deploy.log; then
-            echo "::error::Wasmer refused the deployment because the app backend state is disabled, even though the app may appear Ready in the dashboard. Retry from the Wasmer dashboard, recreate the app if needed, or contact Wasmer support if this backend state persists."
-            verify_live_marker
-            exit $?
-          fi
-          exit "$status"
+      - name: Test
+        run: composer run test
