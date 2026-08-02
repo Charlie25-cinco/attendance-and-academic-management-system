@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.20 — 2026-08-02
+
+### Changed
+
+- Added Wasmer deploy diagnostics for CLI identity, generated app/package metadata, app info, and package dry-run output before deployment.
+- Bumped the Wasmer package version to `0.1.20`.
+
 ## v0.1.19 — 2026-08-02
 
 ### Changed

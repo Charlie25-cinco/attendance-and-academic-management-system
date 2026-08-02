@@ -149,6 +149,16 @@ jobs:
           echo "Deploy target owner: ${WASMER_OWNER}"
           echo "Deploy target app: ${WASMER_APP_NAME}"
           echo "Public URL: ${APP_PUBLIC_BASE_URL}"
+          echo "Wasmer CLI identity:"
+          wasmer whoami || true
+          echo "Generated app.yaml target:"
+          grep -E '^(name|owner|package):' app.yaml || true
+          echo "Generated wasmer.toml package metadata:"
+          grep -E '^(name|version|private) =' wasmer.toml || true
+          echo "Wasmer app info before deploy:"
+          wasmer app info "${WASMER_OWNER}/${WASMER_APP_NAME}" || true
+          echo "Wasmer package dry run before deploy:"
+          wasmer publish --dry-run --non-interactive || true
           set +e
           wasmer deploy --non-interactive 2>&1 | tee wasmer-deploy.log
           status="${PIPESTATUS[0]}"
