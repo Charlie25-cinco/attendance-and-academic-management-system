@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.13 — 2026-08-02
+
+### Removed
+
+- Removed the duplicate SF1 export shortcut from Admin Enrollments because SF1 export remains available from Admin Reports.
+- Bumped the Wasmer package version to `0.1.13`.
+
 ## v0.1.12 — 2026-08-02
 
 ### Fixed
