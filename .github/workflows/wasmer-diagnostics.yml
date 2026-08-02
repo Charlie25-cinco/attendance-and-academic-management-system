@@ -50,9 +50,6 @@ jobs:
           echo "Wasmer app info:"
           wasmer app info "${app_ref}"
 
-          echo "Wasmer app get:"
-          wasmer app get "${app_ref}"
-
           echo "Live HTTP response:"
           curl -fsSIL --max-time 20 "${public_url}/" || true
 

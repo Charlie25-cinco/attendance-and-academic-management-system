@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.27 — 2026-08-03
+
+### Fixed
+
+- Removed raw Wasmer app config output from the diagnostics workflow to avoid exposing environment secrets in GitHub Actions logs.
+- Bumped the Wasmer package version to `0.1.27`.
+
 ## v0.1.26 — 2026-08-03
 
 ### Added
