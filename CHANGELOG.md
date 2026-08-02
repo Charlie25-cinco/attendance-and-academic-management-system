@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.19 — 2026-08-02
+
+### Changed
+
+- Marked the Wasmer package as private and made the deploy workflow preserve that setting to match Wasmer's package visibility requirements.
+- Bumped the Wasmer package version to `0.1.19`.
+
 ## v0.1.18 — 2026-08-02
 
 ### Changed

@@ -102,6 +102,8 @@ jobs:
           wasmer_toml = Path("wasmer.toml")
           toml_text = wasmer_toml.read_text(encoding="utf-8")
           toml_text = toml_text.replace('name = "bshs-ams"', f'name = {json.dumps(package_name)}', 1)
+          if "private = true" not in toml_text:
+              toml_text = toml_text.replace("[dependencies]", "private = true\n\n[dependencies]", 1)
           wasmer_toml.write_text(toml_text, encoding="utf-8")
           print(f"Configured Wasmer package: {package_name}")
           PY
