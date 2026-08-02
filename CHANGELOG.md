@@ -2,6 +2,21 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.10 — 2026-08-02
+
+### Fixed
+
+- Added a service-worker update handshake so deployed PWA updates activate and reload once instead of requiring manual hard refreshes across app pages.
+- Bumped the service-worker cache to `bshs-ams-v5` and the Wasmer package version to `0.1.10`.
+
+## v0.1.9 — 2026-08-02
+
+### Changed
+
+- Cached shared header profile, settings, teacher-role, and RBAC permission reads for short intervals to reduce repeated database work during page navigation.
+- Updated the service worker to cache static assets only and always fetch dynamic PHP pages from the network.
+- Bumped the Wasmer package version to `0.1.9` for the next immutable deployment.
+
 ## v0.1.8 — 2026-08-01
 
 ### Fixed

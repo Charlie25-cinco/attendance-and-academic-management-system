@@ -70,5 +70,7 @@ if ($route === 'settings' && $method === 'POST') {
         $stmt->execute([(int)$user['id'], $darkMode ?? 0, $emailNotif ?? 1, $pushNotif ?? 1]);
     }
 
+    unset($_SESSION['app_header_settings']);
+
     apiJson(['ok' => true, 'message' => 'Settings saved successfully']);
 }

@@ -70,6 +70,7 @@ try {
     $db->commit();
 
     refreshSessionPermissions();
+    unset($_SESSION['rbac_permissions_loaded_at'], $_SESSION['rbac_permissions_role']);
     recordAdminAuditLog($db, 'rbac.update_permissions', 'role', (int)$roleId, [
         'role_key' => (string)($role['role_key'] ?? ''),
         'enabled_permissions' => count($enabledPerms),

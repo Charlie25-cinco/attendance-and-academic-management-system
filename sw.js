@@ -1,11 +1,7 @@
 // BSHS AMS root service worker - PWA cache + push notifications
 
-const CACHE_NAME = 'bshs-ams-v3';
+const CACHE_NAME = 'bshs-ams-v5';
 const APP_SHELL_URLS = [
-  '/',
-  '/index.php',
-  '/site/index.php',
-  '/auth/login.php',
   '/assets/manifest.json',
   '/assets/css/main.css',
   '/assets/css/auth.css',
@@ -33,6 +29,12 @@ self.addEventListener('install', function (event) {
       );
     })
   );
+});
+
+self.addEventListener('message', function (event) {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('activate', function (event) {
@@ -85,22 +87,13 @@ self.addEventListener('fetch', function (event) {
     return;
   }
 
-  event.respondWith(
-    fetch(event.request).then(function (response) {
-      cacheResponse(event.request, response);
-      return response;
-    }).catch(function () {
-      return caches.match(event.request).then(function (cached) {
-        if (cached) return cached;
-        if (event.request.mode === 'navigate') {
-          return caches.match('/auth/login.php').then(function (loginPage) {
-            return loginPage || new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
-          });
-        }
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(function () {
         return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
-      });
-    })
-  );
+      })
+    );
+  }
 });
 
 self.addEventListener('push', function (event) {

@@ -136,6 +136,7 @@ if ($route === 'profile' && $method === 'POST') {
             $_SESSION[$sessionField] = $updates[$sessionField];
         }
     }
+    unset($_SESSION['app_header_profile']);
     unset($updates['password']);
 
     apiJson(['ok' => true, 'message' => 'Profile updated successfully', 'updates' => $updates]);

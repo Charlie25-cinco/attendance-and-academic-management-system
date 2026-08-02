@@ -750,15 +750,41 @@ function loadRbacPermissions(PDO $db, string $roleKey): array {
     return $stmt->fetchAll(PDO::FETCH_COLUMN);
 }
 
+function cachedRbacPermissions(PDO $db, string $roleKey): array {
+    $ttl = max(0, (int)appEnvValue('APP_RBAC_CACHE_TTL', '300'));
+    $cachedRole = (string)($_SESSION['rbac_permissions_role'] ?? '');
+    $loadedAt = (int)($_SESSION['rbac_permissions_loaded_at'] ?? 0);
+    $cachedPermissions = $_SESSION['rbac_permissions'] ?? null;
+
+    if (
+        is_array($cachedPermissions)
+        && $cachedRole === $roleKey
+        && $ttl > 0
+        && (time() - $loadedAt) <= $ttl
+    ) {
+        return $cachedPermissions;
+    }
+
+    $permissions = loadRbacPermissions($db, $roleKey);
+    $_SESSION['rbac_permissions'] = $permissions;
+    $_SESSION['rbac_permissions_role'] = $roleKey;
+    $_SESSION['rbac_permissions_loaded_at'] = time();
+
+    return $permissions;
+}
+
 function hasPermission(string $permissionKey): bool {
     if (!isset($_SESSION['role'])) { return false; }
     $perms = $_SESSION['rbac_permissions'] ?? null;
-    if ($perms === null) {
+    $roleKey = (string)$_SESSION['role'];
+    $cachedRole = (string)($_SESSION['rbac_permissions_role'] ?? '');
+    $loadedAt = (int)($_SESSION['rbac_permissions_loaded_at'] ?? 0);
+    $ttl = max(0, (int)appEnvValue('APP_RBAC_CACHE_TTL', '300'));
+    if ($perms === null || $cachedRole !== $roleKey || $ttl <= 0 || (time() - $loadedAt) > $ttl) {
         $dbInstance = new Database();
         $db = $dbInstance->getConnection();
         if (!$db) { return false; }
-        $perms = loadRbacPermissions($db, $_SESSION['role']);
-        $_SESSION['rbac_permissions'] = $perms;
+        $perms = cachedRbacPermissions($db, $roleKey);
     }
     return in_array($permissionKey, $perms, true);
 }
@@ -840,7 +866,7 @@ function enforceScriptPermission(PDO $db): void {
     $script = basename((string)($_SERVER['SCRIPT_NAME'] ?? ''));
     $permission = permissionForScript($script);
     if ($permission === '') { return; }
-    $_SESSION['rbac_permissions'] = loadRbacPermissions($db, (string)$_SESSION['role']);
+    cachedRbacPermissions($db, (string)$_SESSION['role']);
     $isJson = str_ends_with(strtolower($script), '_action.php') || str_contains((string)($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json');
     if (hasPermission($permission)) { return; }
     http_response_code(403);

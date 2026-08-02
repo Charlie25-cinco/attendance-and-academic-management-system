@@ -684,9 +684,32 @@ if ('serviceWorker' in navigator) {
             })
             .catch(function (e) { console.warn('[PWA] SW list:', e); })
             .finally(function () {
+                var refreshingForUpdate = false;
+                navigator.serviceWorker.addEventListener('controllerchange', function () {
+                    if (refreshingForUpdate) { return; }
+                    refreshingForUpdate = true;
+                    window.location.reload();
+                });
+
+                var activateWaitingWorker = function (reg) {
+                    if (reg && reg.waiting) {
+                        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                    }
+                };
+
                 navigator.serviceWorker.register(desiredScript, { scope: desiredScope })
                     .then(function (reg) {
                         window._swRegistration = reg;
+                        activateWaitingWorker(reg);
+                        reg.addEventListener('updatefound', function () {
+                            var worker = reg.installing;
+                            if (!worker) { return; }
+                            worker.addEventListener('statechange', function () {
+                                if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    activateWaitingWorker(reg);
+                                }
+                            });
+                        });
                         if (typeof reg.update === 'function') {
                             reg.update().catch(function (e) { console.warn('[PWA] SW update:', e); });
                         }

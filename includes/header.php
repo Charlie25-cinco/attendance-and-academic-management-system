@@ -89,9 +89,76 @@ if (!function_exists('headerNotificationSourceKey')) {
     }
 }
 
+if (!function_exists('headerCacheRead')) {
+    function headerCacheRead(string $key, int $userId, int $ttl): ?array {
+        if ($ttl <= 0) {
+            return null;
+        }
+        $cached = $_SESSION[$key] ?? null;
+        if (!is_array($cached)) {
+            return null;
+        }
+        if ((int)($cached['user_id'] ?? 0) !== $userId) {
+            return null;
+        }
+        if ((int)($cached['expires_at'] ?? 0) < time()) {
+            return null;
+        }
+        $data = $cached['data'] ?? null;
+        return is_array($data) ? $data : null;
+    }
+}
+
+if (!function_exists('headerCacheWrite')) {
+    function headerCacheWrite(string $key, int $userId, array $data, int $ttl): void {
+        if ($ttl <= 0) {
+            return;
+        }
+        $_SESSION[$key] = [
+            'user_id' => $userId,
+            'expires_at' => time() + $ttl,
+            'data' => $data
+        ];
+    }
+}
+
+if (!function_exists('headerApplyProfileRow')) {
+    function headerApplyProfileRow(array $profileRow, string &$displayFirstName, string &$displayMiddleName, string &$displaySex, string &$displayEmail, string &$displayReference): void {
+        $dbFirstName = trim((string)($profileRow['first_name'] ?? ''));
+        $dbMiddleName = trim((string)($profileRow['middle_name'] ?? ''));
+        $dbLastName = trim((string)($profileRow['last_name'] ?? ''));
+        $dbSex = strtolower(trim((string)($profileRow['sex'] ?? '')));
+        $dbEmail = trim((string)($profileRow['email'] ?? ''));
+        $dbReference = trim((string)($profileRow['reference_code'] ?? ''));
+
+        if ($dbFirstName !== '') {
+            $displayFirstName = $dbFirstName;
+            $_SESSION['first_name'] = $dbFirstName;
+        }
+        $displayMiddleName = $dbMiddleName;
+        $_SESSION['middle_name'] = $dbMiddleName;
+        if ($dbLastName !== '') {
+            $_SESSION['last_name'] = $dbLastName;
+        }
+        if ($dbSex !== '') {
+            $displaySex = $dbSex;
+            $_SESSION['sex'] = $dbSex;
+        }
+        if ($dbEmail !== '') {
+            $displayEmail = $dbEmail;
+            $_SESSION['email'] = $dbEmail;
+        }
+        if ($dbReference !== '') {
+            $displayReference = $dbReference;
+            $_SESSION['reference_code'] = $dbReference;
+        }
+    }
+}
+
 $notificationItems = [];
 $notification_count = 0;
 $sessionUserId = (int)($_SESSION['user_id'] ?? 0);
+$headerCacheTtl = max(0, (int)appEnvValue('APP_HEADER_CACHE_TTL', '60'));
 $headerInitialSettings = [
     'dark_mode' => 0,
     'email_notifications' => 1,
@@ -109,7 +176,11 @@ if (isset($db) && $db instanceof PDO) {
 $sessionRole = $_SESSION['role'] ?? $current_role;
 if ($headerDb && $sessionUserId > 0 && $sessionRole === 'teacher') {
     try {
-        $teacherRoles = getTeacherRoles($headerDb, $sessionUserId);
+        $teacherRoles = headerCacheRead('app_header_teacher_roles', $sessionUserId, $headerCacheTtl);
+        if ($teacherRoles === null) {
+            $teacherRoles = getTeacherRoles($headerDb, $sessionUserId);
+            headerCacheWrite('app_header_teacher_roles', $sessionUserId, $teacherRoles, $headerCacheTtl);
+        }
         $roleLabels = [];
         if (!empty($teacherRoles['sections'])) {
             $roleLabels[] = 'Adviser';
@@ -127,65 +198,56 @@ if ($headerDb && $sessionUserId > 0 && $sessionRole === 'teacher') {
 
 if ($headerDb && $sessionUserId > 0) {
     try {
-        $profileStmt = $headerDb->prepare("SELECT first_name, middle_name, last_name, sex, email, reference_code
-                                           FROM users
-                                           WHERE id = ?
-                                           LIMIT 1");
-        $profileStmt->execute([$sessionUserId]);
-        $profileRow = $profileStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        $profileRow = headerCacheRead('app_header_profile', $sessionUserId, $headerCacheTtl);
+        if ($profileRow === null) {
+            $profileStmt = $headerDb->prepare("SELECT first_name, middle_name, last_name, sex, email, reference_code
+                                               FROM users
+                                               WHERE id = ?
+                                               LIMIT 1");
+            $profileStmt->execute([$sessionUserId]);
+            $profileRow = $profileStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+            headerCacheWrite('app_header_profile', $sessionUserId, $profileRow, $headerCacheTtl);
+        }
         if (!empty($profileRow)) {
-            $dbFirstName = trim((string)($profileRow['first_name'] ?? ''));
-            $dbMiddleName = trim((string)($profileRow['middle_name'] ?? ''));
-            $dbLastName = trim((string)($profileRow['last_name'] ?? ''));
-            $dbSex = strtolower(trim((string)($profileRow['sex'] ?? '')));
-            $dbEmail = trim((string)($profileRow['email'] ?? ''));
-            $dbReference = trim((string)($profileRow['reference_code'] ?? ''));
-
-            if ($dbFirstName !== '') {
-                $displayFirstName = $dbFirstName;
-                $_SESSION['first_name'] = $dbFirstName;
-            }
-            $displayMiddleName = $dbMiddleName;
-            $_SESSION['middle_name'] = $dbMiddleName;
-            if ($dbLastName !== '') {
-                $_SESSION['last_name'] = $dbLastName;
-            }
-            if ($dbSex !== '') {
-                $displaySex = $dbSex;
-                $_SESSION['sex'] = $dbSex;
-            }
-            if ($dbEmail !== '') {
-                $displayEmail = $dbEmail;
-                $_SESSION['email'] = $dbEmail;
-            }
-            if ($dbReference !== '') {
-                $displayReference = $dbReference;
-                $_SESSION['reference_code'] = $dbReference;
-            }
+            headerApplyProfileRow($profileRow, $displayFirstName, $displayMiddleName, $displaySex, $displayEmail, $displayReference);
         }
     } catch (Throwable $e) {
         error_log('Header profile query error: ' . $e->getMessage());
     }
 
     try {
-        $settingsTableExists = dbHasTable($headerDb, 'user_settings');
-        if ($settingsTableExists) {
-            $settingsStmt = $headerDb->prepare("SELECT dark_mode, email_notifications, push_notifications
-                                                FROM user_settings
-                                                WHERE user_id = ?
-                                                LIMIT 1");
-            $settingsStmt->execute([$sessionUserId]);
-            $settingsRow = $settingsStmt->fetch(PDO::FETCH_ASSOC);
-            if ($settingsRow) {
-                $headerHasSavedSettings = true;
-                $headerInitialSettings = [
-                    'dark_mode' => (int)($settingsRow['dark_mode'] ?? 0),
-                    'email_notifications' => (int)($settingsRow['email_notifications'] ?? 1),
-                    'push_notifications' => (int)($settingsRow['push_notifications'] ?? 1)
-                ];
-                $_SESSION['ui_dark_mode'] = $headerInitialSettings['dark_mode'] === 1 ? 1 : 0;
-                setcookie('app_dark_mode', $_SESSION['ui_dark_mode'] ? '1' : '0', appCookieParams(time() + (86400 * 365), false));
+        $settingsCache = headerCacheRead('app_header_settings', $sessionUserId, $headerCacheTtl);
+        if ($settingsCache === null) {
+            $settingsCache = ['has_saved' => false, 'settings' => $headerInitialSettings];
+            if (dbHasTable($headerDb, 'user_settings')) {
+                $settingsStmt = $headerDb->prepare("SELECT dark_mode, email_notifications, push_notifications
+                                                    FROM user_settings
+                                                    WHERE user_id = ?
+                                                    LIMIT 1");
+                $settingsStmt->execute([$sessionUserId]);
+                $settingsRow = $settingsStmt->fetch(PDO::FETCH_ASSOC);
+                if ($settingsRow) {
+                    $settingsCache = [
+                        'has_saved' => true,
+                        'settings' => [
+                            'dark_mode' => (int)($settingsRow['dark_mode'] ?? 0),
+                            'email_notifications' => (int)($settingsRow['email_notifications'] ?? 1),
+                            'push_notifications' => (int)($settingsRow['push_notifications'] ?? 1)
+                        ]
+                    ];
+                }
             }
+            headerCacheWrite('app_header_settings', $sessionUserId, $settingsCache, $headerCacheTtl);
+        }
+        $headerHasSavedSettings = !empty($settingsCache['has_saved']);
+        if (isset($settingsCache['settings']) && is_array($settingsCache['settings'])) {
+            $headerInitialSettings = [
+                'dark_mode' => (int)($settingsCache['settings']['dark_mode'] ?? 0),
+                'email_notifications' => (int)($settingsCache['settings']['email_notifications'] ?? 1),
+                'push_notifications' => (int)($settingsCache['settings']['push_notifications'] ?? 1)
+            ];
+            $_SESSION['ui_dark_mode'] = $headerInitialSettings['dark_mode'] === 1 ? 1 : 0;
+            setcookie('app_dark_mode', $_SESSION['ui_dark_mode'] ? '1' : '0', appCookieParams(time() + (86400 * 365), false));
         }
     } catch (Throwable $e) {
         error_log('Header settings query error: ' . $e->getMessage());
