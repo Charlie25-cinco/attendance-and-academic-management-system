@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.18 — 2026-08-02
+
+### Changed
+
+- Rewrote the Wasmer package name during GitHub Actions deploy to use the active `WASMER_OWNER/WASMER_APP_NAME` target instead of the stale local `bshs-ams` package name.
+- Bumped the Wasmer package version to `0.1.18`.
+
 ## v0.1.17 — 2026-08-02
 
 ### Changed

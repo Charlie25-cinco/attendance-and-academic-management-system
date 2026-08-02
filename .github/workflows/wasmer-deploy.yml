@@ -97,6 +97,13 @@ jobs:
               marker = f'  APP_PUBLIC_BASE_URL: {json.dumps(os.environ["APP_PUBLIC_BASE_URL"])}'
               text = text.replace(marker, marker + "\n" + "\n".join(extra_env))
           app_yaml.write_text(text, encoding="utf-8")
+
+          package_name = f'{os.environ["WASMER_OWNER"]}/{os.environ["WASMER_APP_NAME"]}'
+          wasmer_toml = Path("wasmer.toml")
+          toml_text = wasmer_toml.read_text(encoding="utf-8")
+          toml_text = toml_text.replace('name = "bshs-ams"', f'name = {json.dumps(package_name)}', 1)
+          wasmer_toml.write_text(toml_text, encoding="utf-8")
+          print(f"Configured Wasmer package: {package_name}")
           PY
         env:
           WASMER_OWNER: ${{ secrets.WASMER_OWNER }}
