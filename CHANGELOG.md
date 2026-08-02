@@ -2,6 +2,14 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.16 — 2026-08-02
+
+### Changed
+
+- Required the `WASMER_APP_NAME` GitHub secret during deploy configuration to avoid silently targeting a stale default app.
+- Added non-secret Wasmer deploy target logging and a clearer disabled-app failure message in GitHub Actions.
+- Bumped the Wasmer package version to `0.1.16`.
+
 ## v0.1.15 — 2026-08-02
 
 ### Fixed

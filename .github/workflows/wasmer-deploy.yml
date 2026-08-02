@@ -38,6 +38,7 @@ jobs:
 
           required = [
               "WASMER_OWNER",
+              "WASMER_APP_NAME",
               "APP_PUBLIC_BASE_URL",
               "DB_HOST",
               "DB_PORT",
@@ -80,7 +81,7 @@ jobs:
           app_yaml = Path("app.yaml")
           text = app_yaml.read_text(encoding="utf-8")
           text = text.replace("CHANGE_ME_WASMER_OWNER", os.environ["WASMER_OWNER"])
-          text = text.replace("bshs-ams", os.environ.get("WASMER_APP_NAME") or "bshs-ams", 1)
+          text = text.replace("bshs-ams", os.environ["WASMER_APP_NAME"], 1)
           text = text.replace("https://CHANGE_ME_WASMER_APP_URL", os.environ["APP_PUBLIC_BASE_URL"])
           if os.environ.get("DB_SSL_VERIFY_SERVER_CERT"):
               text = text.replace(
@@ -131,8 +132,14 @@ jobs:
         shell: bash
         env:
           WASMER_TOKEN: ${{ secrets.WASMER_TOKEN }}
+          WASMER_OWNER: ${{ secrets.WASMER_OWNER }}
+          WASMER_APP_NAME: ${{ secrets.WASMER_APP_NAME }}
+          APP_PUBLIC_BASE_URL: ${{ secrets.APP_PUBLIC_BASE_URL }}
         run: |
           export PATH="$HOME/.wasmer/bin:$PATH"
+          echo "Deploy target owner: ${WASMER_OWNER}"
+          echo "Deploy target app: ${WASMER_APP_NAME}"
+          echo "Public URL: ${APP_PUBLIC_BASE_URL}"
           set +e
           wasmer deploy --publish-package --non-interactive 2>&1 | tee wasmer-deploy.log
           status="${PIPESTATUS[0]}"
@@ -143,5 +150,8 @@ jobs:
           if grep -q "deployed successfully" wasmer-deploy.log && grep -q "App still not reachable after 5 minutes" wasmer-deploy.log; then
             echo "Wasmer deployment succeeded, but the built-in reachability wait timed out. Treating this as success; verify the live URL manually."
             exit 0
+          fi
+          if grep -q "Cannot modify a disabled app" wasmer-deploy.log; then
+            echo "::error::Wasmer refused the deployment because the target app is disabled. Update the GitHub WASMER_APP_NAME secret to an active Wasmer app name, or re-enable/recreate the app in Wasmer, then rerun this workflow."
           fi
           exit "$status"
