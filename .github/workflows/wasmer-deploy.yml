@@ -70,13 +70,18 @@ jobs:
               raise SystemExit("wasmer.toml is missing.")
 
           text = app_yaml.read_text(encoding="utf-8")
-          configured = text.replace("CHANGE_ME_WASMER_OWNER", os.environ["WASMER_OWNER"])
-          configured = configured.replace("bshs-ams", os.environ["WASMER_APP_NAME"], 1)
-          configured = configured.replace("https://CHANGE_ME_WASMER_APP_URL", os.environ["APP_PUBLIC_BASE_URL"])
+          expected_lines = [
+              f'name: {os.environ["WASMER_APP_NAME"]}',
+              f'owner: {os.environ["WASMER_OWNER"]}',
+              f'  API_ALLOWED_ORIGIN: {json.dumps(os.environ["APP_PUBLIC_BASE_URL"])}',
+              f'  APP_PUBLIC_BASE_URL: {json.dumps(os.environ["APP_PUBLIC_BASE_URL"])}',
+          ]
+          missing_lines = [line for line in expected_lines if line not in text]
+          if missing_lines:
+              raise SystemExit("Committed app.yaml does not match GitHub secrets: " + ", ".join(missing_lines))
 
-          marker = f'  APP_PUBLIC_BASE_URL: {json.dumps(os.environ["APP_PUBLIC_BASE_URL"])}'
-          if marker not in configured:
-              raise SystemExit("Configured app.yaml does not contain the expected APP_PUBLIC_BASE_URL.")
+          if "CHANGE_ME_WASMER" in text or "CHANGE_ME_WASMER_APP_URL" in text:
+              raise SystemExit("Committed app.yaml still contains Wasmer placeholder values.")
 
           print("Wasmer Git deployment readiness checks passed.")
           print("Deploy target owner:", os.environ["WASMER_OWNER"])

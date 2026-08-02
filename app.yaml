@@ -1,14 +1,14 @@
 kind: wasmer.io/App.v0
-name: bshs-ams
-owner: CHANGE_ME_WASMER_OWNER
+name: balingasagshs
+owner: cincocharlie25
 package: .
 
 env:
   APP_ENV: production
   APP_SESSION_DRIVER: database
   DB_SSL_VERIFY_SERVER_CERT: "1"
-  API_ALLOWED_ORIGIN: "https://CHANGE_ME_WASMER_APP_URL"
-  APP_PUBLIC_BASE_URL: "https://CHANGE_ME_WASMER_APP_URL"
+  API_ALLOWED_ORIGIN: "https://balingasagshs.wasmer.app"
+  APP_PUBLIC_BASE_URL: "https://balingasagshs.wasmer.app"
 
 capabilities:
   instaboot:

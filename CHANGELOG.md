@@ -2,6 +2,14 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.25 — 2026-08-03
+
+### Fixed
+
+- Committed the public Wasmer app target in `app.yaml` so Wasmer Git deployments no longer read placeholder owner or URL values.
+- Changed CI validation to verify committed Wasmer config matches GitHub deployment secrets.
+- Bumped the Wasmer package version to `0.1.25`.
+
 ## v0.1.24 — 2026-08-03
 
 ### Fixed
