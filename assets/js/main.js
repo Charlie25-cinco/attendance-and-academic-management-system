@@ -24,7 +24,32 @@ function ensureTopProgressBar() {
   return bar;
 }
 
-function showTopProgress() {
+function markNavigationStarted() {
+  try {
+    sessionStorage.setItem("app_page_navigating", "true");
+    sessionStorage.setItem("app_nav_time", String(Date.now()));
+  } catch (e) {}
+}
+
+function clearNavigationState() {
+  try {
+    sessionStorage.removeItem("app_page_navigating");
+    sessionStorage.removeItem("app_nav_time");
+  } catch (e) {}
+}
+
+function isNavigationInProgress() {
+  try {
+    const isNav = sessionStorage.getItem("app_page_navigating") === "true";
+    const navTime = parseInt(sessionStorage.getItem("app_nav_time") || "0", 10);
+    if (isNav && (Date.now() - navTime) < 10000) {
+      return true;
+    }
+  } catch (e) {}
+  return false;
+}
+
+function showTopProgress(startValue = 30) {
   const bar = ensureTopProgressBar();
 
   if (appTopProgressHideTimer) {
@@ -41,22 +66,21 @@ function showTopProgress() {
     appTopProgressTimer = null;
   }
 
-  appTopProgressValue = 20;
+  appTopProgressValue = startValue;
   bar.style.setProperty("--app-progress", appTopProgressValue + "%");
   bar.classList.remove("is-finishing");
   bar.classList.add("is-visible");
 
   appTopProgressInterval = window.setInterval(() => {
-    const remaining = 90 - appTopProgressValue;
+    const remaining = 92 - appTopProgressValue;
     if (remaining <= 0.5) return;
-    appTopProgressValue += Math.max(0.4, remaining * 0.1);
-    bar.style.setProperty("--app-progress", Math.min(appTopProgressValue, 90) + "%");
-  }, 160);
+    appTopProgressValue += Math.max(0.4, remaining * 0.12);
+    bar.style.setProperty("--app-progress", Math.min(appTopProgressValue, 92) + "%");
+  }, 140);
 }
 
 function finishTopProgress() {
-  const bar = document.getElementById("appTopProgress");
-  if (!bar) return;
+  const bar = ensureTopProgressBar();
 
   if (appTopProgressInterval) {
     window.clearInterval(appTopProgressInterval);
@@ -73,21 +97,34 @@ function finishTopProgress() {
     appTopProgressHideTimer = null;
   }
 
-  // Smoothly expand progress bar to 100% full before fading out
-  appTopProgressValue = 100;
-  bar.style.setProperty("--app-progress", "100%");
-  bar.classList.add("is-visible");
-  bar.classList.remove("is-finishing");
+  const wasNavigating = isNavigationInProgress();
+  clearNavigationState();
 
-  // Hold 100% state briefly (220ms) so visual completion is clear, then fade out
-  appTopProgressHideTimer = window.setTimeout(() => {
-    bar.classList.add("is-finishing");
-    window.setTimeout(() => {
-      bar.classList.remove("is-visible", "is-finishing");
-      bar.style.setProperty("--app-progress", "0%");
-      appTopProgressValue = 0;
+  // If page was reached via navigation, initialize bar at 75% on new page load so it is visually present
+  if (wasNavigating || appTopProgressValue < 10) {
+    appTopProgressValue = Math.max(appTopProgressValue, 75);
+    bar.style.setProperty("--app-progress", appTopProgressValue + "%");
+    bar.classList.add("is-visible");
+    bar.classList.remove("is-finishing");
+  }
+
+  // Animate width to 100% full after a short tick (30ms) to ensure CSS transition sweeps cleanly across top screen
+  window.setTimeout(() => {
+    appTopProgressValue = 100;
+    bar.style.setProperty("--app-progress", "100%");
+    bar.classList.add("is-visible");
+    bar.classList.remove("is-finishing");
+
+    // Hold 100% full progress for 280ms so completion is visually clear on screen, then fade out
+    appTopProgressHideTimer = window.setTimeout(() => {
+      bar.classList.add("is-finishing");
+      window.setTimeout(() => {
+        bar.classList.remove("is-visible", "is-finishing");
+        bar.style.setProperty("--app-progress", "0%");
+        appTopProgressValue = 0;
+      }, 300);
     }, 280);
-  }, 220);
+  }, 30);
 }
 
 function showTopProgressSoon(delay = 0) {
@@ -122,27 +159,32 @@ function shouldShowNavigationProgress(link) {
 }
 
 function initNavigationProgress() {
-  window.addEventListener("pageshow", function () {
+  const completeHandler = function () {
     finishTopProgress();
-  });
+  };
 
-  window.addEventListener("DOMContentLoaded", function () {
+  if (document.readyState === "complete" || document.readyState === "interactive") {
     finishTopProgress();
-  });
+  } else {
+    document.addEventListener("DOMContentLoaded", completeHandler);
+  }
+  window.addEventListener("pageshow", completeHandler);
 
   window.addEventListener("beforeunload", function () {
     if (window.APP_SUPPRESS_NEXT_UNLOAD_PROGRESS === true) {
       window.APP_SUPPRESS_NEXT_UNLOAD_PROGRESS = false;
       return;
     }
-    showTopProgress();
+    markNavigationStarted();
+    showTopProgress(30);
   });
 
   document.addEventListener("click", function (event) {
     const link = event.target.closest("a[href]");
     if (!shouldShowNavigationProgress(link)) return;
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-    showTopProgress();
+    markNavigationStarted();
+    showTopProgress(30);
   });
 
   document.addEventListener("submit", function (event) {
@@ -150,7 +192,8 @@ function initNavigationProgress() {
     if (!(form instanceof HTMLFormElement)) return;
     if (form.getAttribute("data-skip-loader") === "true") return;
     if ((form.getAttribute("method") || "get").toLowerCase() === "dialog") return;
-    showTopProgress();
+    markNavigationStarted();
+    showTopProgress(30);
   });
 }
 
