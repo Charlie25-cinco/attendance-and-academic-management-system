@@ -40,6 +40,18 @@ final class PerformanceIndexTest extends TestCase
         $this->assertStringContainsString('idx_users_role_status_grade', $content);
     }
 
+    public function testWasmerFullSetupFileIncludesSchemaIndexesAndAdminSeed(): void
+    {
+        $path = __DIR__ . '/../database/wasmer_full_setup.sql';
+        $this->assertFileExists($path);
+
+        $content = file_get_contents($path);
+        $this->assertIsString($content);
+        $this->assertStringContainsString('A341227-1', $content);
+        $this->assertStringContainsString('idx_users_role_status_grade', $content);
+        $this->assertStringContainsString('CREATE TABLE IF NOT EXISTS users', $content);
+    }
+
     public function testSchemaCacheMemoryOperations(): void
     {
         SchemaCache::clearCache();
