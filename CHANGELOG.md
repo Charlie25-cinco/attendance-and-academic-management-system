@@ -2,7 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.31 — 2026-08-04
+
+### Added
+
+- Added `database/performance_indexes.sql` migration script containing composite indexes for `users`, `classes`, `enrollments`, `attendance`, `grades`, `grade_items`, and `grade_scores`.
+- Updated `database/schema_tidb.sql` base schema to include performance composite indexes.
+- Added `PerformanceIndexTest.php` to validate database index definitions and `SchemaCache` memory operations.
+
 ## v0.1.30 — 2026-08-04
+
 
 ### Added
 

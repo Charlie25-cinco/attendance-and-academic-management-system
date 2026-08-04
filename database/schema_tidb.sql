@@ -668,3 +668,15 @@ CREATE TABLE IF NOT EXISTS rbac_role_permissions (
     CONSTRAINT fk_rbac_rp_role FOREIGN KEY (role_id) REFERENCES rbac_roles(id) ON DELETE CASCADE,
     CONSTRAINT fk_rbac_rp_perm FOREIGN KEY (permission_id) REFERENCES rbac_permissions(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =============================================================================
+-- PERFORMANCE COMPOSITE INDEXES (Tuned Data Level)
+-- =============================================================================
+CREATE INDEX IF NOT EXISTS idx_users_role_status_grade ON users (role, status, grade_level, section);
+CREATE INDEX IF NOT EXISTS idx_classes_grade_section_status ON classes (grade_level, section, status, teacher_id);
+CREATE INDEX IF NOT EXISTS idx_enrollments_student_class_ay ON enrollments (student_id, class_id, academic_year, status);
+CREATE INDEX IF NOT EXISTS idx_attendance_student_date_status ON attendance (student_id, date, status);
+CREATE INDEX IF NOT EXISTS idx_grades_student_cs_term_ay ON grades (student_id, class_subject_id, academic_year, term);
+CREATE INDEX IF NOT EXISTS idx_grade_items_cs_term ON grade_items (class_subject_id, term, academic_year);
+CREATE INDEX IF NOT EXISTS idx_grade_scores_item_student ON grade_scores (grade_item_id, student_id);
+
