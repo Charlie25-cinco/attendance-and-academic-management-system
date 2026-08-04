@@ -77,12 +77,13 @@ final class Sf1ParserTest extends TestCase
             $editor->setCell('W5', 'Grade 11');
             $editor->setCell('AC5', 'Academic Track');
             $editor->setCell('F7', 'Amethyst');
-            $editor->setCell('A11', '123456789012');
-            $editor->setCell('C11', 'Dagohoy, Dave Santos');
-            $editor->setCell('G11', 'M');
-            $editor->setCell('H11', '05/08/2008');
-            $editor->setCell('M11', '36');
-            $editor->setCell('N11', 'Mambayaan');
+            $editor->clearRange('A', 'AE', 12, 120);
+            $editor->setCell('A12', '123456789012');
+            $editor->setCell('C12', 'Dagohoy, Dave Santos');
+            $editor->setCell('G12', 'M');
+            $editor->setCell('H12', '05/08/2008');
+            $editor->setCell('M12', '36');
+            $editor->setCell('N12', 'Mambayaan');
             $editor->save($path);
 
             putenv('APP_FORCE_XLSX_FALLBACK=1');
@@ -92,9 +93,10 @@ final class Sf1ParserTest extends TestCase
 
             $this->assertSame(['SHSF-1'], $parser->getSheetNames());
             $this->assertSame('NAME' . "\n" . '(Last Name, First Name, Name Extension, Middle Name)', $rows[9][2] ?? null);
-            $this->assertSame('123456789012', $rows[11][0] ?? null);
-            $this->assertSame('Dagohoy, Dave Santos', $rows[11][2] ?? null);
-            $this->assertSame('Mambayaan', $rows[11][13] ?? null);
+            $this->assertSame('House No./ Street/ Sitio/ Purok', $rows[10][12] ?? null);
+            $this->assertSame('123456789012', $rows[12][0] ?? null);
+            $this->assertSame('Dagohoy, Dave Santos', $rows[12][2] ?? null);
+            $this->assertSame('Mambayaan', $rows[12][13] ?? null);
         } finally {
             putenv('APP_FORCE_XLSX_FALLBACK');
             @unlink($path);

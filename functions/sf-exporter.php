@@ -246,9 +246,9 @@ class Sf1Exporter {
         $editor->setCell('AC5', $trackLabel);
         $editor->setCell('F7', $section);
         $editor->setCell('M7', $track === 'techpro' ? 'TVL' : '');
-        $editor->clearRange('A', 'AE', 11, 120);
+        $editor->clearRange('A', 'AE', 12, 120);
 
-        $row = 11;
+        $row = 12;
         foreach ($students as $student) {
             $editor->setCell('A' . $row, (string)($student['lrn'] ?? ''));
             $editor->setCell('C' . $row, $this->formatSf1LearnerName($student));

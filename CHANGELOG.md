@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.28 — 2026-08-04
+
+### Fixed
+
+- Preserved the official SF1 XLSX subheader row and started exported learner rows at row 12 to match the imported DepEd sample workbook.
+- Bumped the Wasmer package version to `0.1.28`.
+
 ## v0.1.27 — 2026-08-03
 
 ### Fixed
