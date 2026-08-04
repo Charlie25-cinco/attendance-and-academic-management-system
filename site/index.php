@@ -55,6 +55,7 @@ $siteCss = '../assets/css/Site.css';
     <link href="<?php echo $bootstrapCss; ?>" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo $bootstrapIconsCss; ?>">
     <link rel="stylesheet" href="<?php echo $siteCss; ?>">
+<?php echo pwaHeadHtml(); ?>
 </head>
 <body class="site-shell">
     <nav class="site-navbar navbar navbar-expand-lg">
