@@ -9,10 +9,17 @@ Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR fo
 - Added `GradeCalculatorTest.php` to unit-test subject category weighting, DepEd transmutation, SF9 descriptors, grading system term counts, and combined subject calculations.
 - Added `EcrParserTest.php` to validate ECR template resolution, fallback XLSX sheet reading, and term string normalization.
 - Added `GradeApprovalFlowTest.php` to test multi-stage approval statuses (`submitted`, `admin_verified`, `rejected`, `submitted_admin`, `approved`) and grade locking rules.
+- Added `Sf2ExporterTest.php` to test SF2 template resolution and fallback sheet reading.
+- Added favicon, shortcut icon, and PWA logo tab icons to public website (`site/index.php`) and app portals.
 
 ### Fixed
 
 - Made `SshsGradeCalculator::normalizeTerm` case-insensitive for reliable term mapping.
+- Corrected default admin password bcrypt hash in `database/seed_admin.sql`.
+- Updated `database/seed_admin.php` to update password of existing admin accounts rather than skipping them.
+- Updated default database name fallback in `config/db.php` and `.env.example` to `balingasagshs`.
+- Resolved dynamic asset URL resolution in `pwaHeadHtml()` using `appAssetPath()`.
+
 
 ## v0.1.29 — 2026-08-04
 
