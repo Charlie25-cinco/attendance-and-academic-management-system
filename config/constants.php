@@ -642,6 +642,8 @@ function pwaHeadHtml(): string {
     $manifestUrl = $baseUrl !== '' ? $baseUrl . '/assets/manifest.json' : (function_exists('appAssetPath') ? appAssetPath('manifest.json') : '/assets/manifest.json');
     $appleTouchIcon = $baseUrl !== '' ? $baseUrl . '/assets/images/apple-touch-icon.png' : (function_exists('appAssetPath') ? appAssetPath('images/apple-touch-icon.png') : '/assets/images/apple-touch-icon.png');
     $faviconUrl = $baseUrl !== '' ? $baseUrl . '/assets/images/icon-192.png' : (function_exists('appAssetPath') ? appAssetPath('images/icon-192.png') : '/assets/images/icon-192.png');
+    $favicon32Url = $baseUrl !== '' ? $baseUrl . '/assets/images/favicon.png' : (function_exists('appAssetPath') ? appAssetPath('images/favicon.png') : '/assets/images/favicon.png');
+    $favicon16Url = $baseUrl !== '' ? $baseUrl . '/assets/images/favicon-16.png' : (function_exists('appAssetPath') ? appAssetPath('images/favicon-16.png') : '/assets/images/favicon-16.png');
     $logoUrl = $baseUrl !== '' ? $baseUrl . '/assets/images/bshs-logo.jpg' : (function_exists('appAssetPath') ? appAssetPath('images/bshs-logo.jpg') : '/assets/images/bshs-logo.jpg');
     $serviceWorkerUrl = $baseUrl !== '' ? $baseUrl . '/sw.js' : '/sw.js';
     $scopeUrl = $baseUrl !== '' ? $baseUrl . '/' : '/';
@@ -653,7 +655,9 @@ function pwaHeadHtml(): string {
     $html .= '<meta name="apple-mobile-web-app-status-bar-style" content="default">' . "\n";
     $html .= '<meta name="apple-mobile-web-app-title" content="BSHS AMS">' . "\n";
     $html .= '<link rel="apple-touch-icon" href="' . htmlspecialchars($appleTouchIcon, ENT_QUOTES, 'UTF-8') . '">' . "\n";
-    $html .= '<link rel="shortcut icon" href="' . htmlspecialchars($faviconUrl, ENT_QUOTES, 'UTF-8') . '">' . "\n";
+    $html .= '<link rel="shortcut icon" type="image/png" href="' . htmlspecialchars($favicon32Url, ENT_QUOTES, 'UTF-8') . '">' . "\n";
+    $html .= '<link rel="icon" type="image/png" sizes="32x32" href="' . htmlspecialchars($favicon32Url, ENT_QUOTES, 'UTF-8') . '">' . "\n";
+    $html .= '<link rel="icon" type="image/png" sizes="16x16" href="' . htmlspecialchars($favicon16Url, ENT_QUOTES, 'UTF-8') . '">' . "\n";
     $html .= '<link rel="icon" type="image/png" sizes="192x192" href="' . htmlspecialchars($faviconUrl, ENT_QUOTES, 'UTF-8') . '">' . "\n";
     $html .= '<link rel="icon" type="image/jpeg" href="' . htmlspecialchars($logoUrl, ENT_QUOTES, 'UTF-8') . '">' . "\n";
     $html .= '<style id="app-top-progress-critical">'

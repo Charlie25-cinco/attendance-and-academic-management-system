@@ -2,7 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.39 — 2026-08-04
+
+### Added
+
+- Added 32x32 (`favicon.png`) and 16x16 (`favicon-16.png`) browser favicon generation to `scripts/generate_pwa_icons.php`.
+- Added standard 32x32 and 16x16 `<link rel="icon">` tags to `pwaHeadHtml()` in `config/constants.php` for desktop browser web tab icon rendering.
+- Added `wasmer-io/wasmer-deploy-action@v1` deployment step to `.github/workflows/wasmer-deploy.yml` to automatically publish main branch commits to Wasmer Edge (`balingasagshs.wasmer.app`).
+
 ## v0.1.38 — 2026-08-04
+
 
 ### Fixed
 

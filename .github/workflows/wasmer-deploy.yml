@@ -110,3 +110,12 @@ jobs:
 
       - name: Test
         run: composer run test
+
+      - name: Deploy to Wasmer Edge
+        uses: wasmer-io/wasmer-deploy-action@v1
+        if: github.ref == 'refs/heads/main' && env.WASMER_TOKEN != ''
+        with:
+          wasmer_token: ${{ secrets.WASMER_TOKEN }}
+        env:
+          WASMER_TOKEN: ${{ secrets.WASMER_TOKEN }}
+

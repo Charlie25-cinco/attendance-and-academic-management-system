@@ -120,6 +120,8 @@ renderIcon($source, 192, $outputDir . '/icon-192.png');
 renderIcon($source, 512, $outputDir . '/icon-512.png');
 renderIcon($source, 512, $outputDir . '/icon-maskable-512.png', true);
 renderIcon($source, 180, $outputDir . '/apple-touch-icon.png');
+renderIcon($source, 32, $outputDir . '/favicon.png');
+renderIcon($source, 16, $outputDir . '/favicon-16.png');
 
 imagedestroy($source);
-echo "PWA icons generated.\n";
+echo "PWA and browser favicons generated successfully.\n";
