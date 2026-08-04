@@ -26,7 +26,7 @@ class Database {
         $this->host = appEnvValue('DB_HOST', (string)($local['host'] ?? '127.0.0.1'));
         $this->port = (int)appEnvValue('DB_PORT', (string)($local['port'] ?? 3306));
         $this->socket = appEnvValue('DB_SOCKET', (string)($local['socket'] ?? ''));
-        $this->database = appEnvValue('DB_NAME', (string)($local['database'] ?? 'balingasag_shs'));
+        $this->database = appEnvValue('DB_NAME', (string)($local['database'] ?? 'balingasagshs'));
         $this->username = appEnvValue('DB_USER', (string)($local['username'] ?? 'root'));
         $this->password = appEnvValue('DB_PASS', appEnvValue('DB_PASSWORD', (string)($local['password'] ?? '')));
         $this->sslCa = appEnvValue('DB_SSL_CA', appEnvValue('DB_SSL_CA_PATH', (string)($local['ssl_ca'] ?? '')));
