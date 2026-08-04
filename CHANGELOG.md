@@ -2,6 +2,14 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.2.0 — 2026-08-05
+
+### Changed
+
+- Organized 15 core shared classes into PSR-4 namespaced classes under `src/` (`BshsAms\Database`, `BshsAms\Schedule`, `BshsAms\Grade`, `BshsAms\Export`, `BshsAms\Xlsx`).
+- Added `BshsAms\` PSR-4 autoloader mapping in `composer.json`.
+- Maintained backward compatibility for all existing call sites via root-level `class_alias()` definitions in legacy file locations.
+
 ## v0.1.40 — 2026-08-04
 
 ### Fixed
@@ -327,7 +335,3 @@ Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR fo
 - Restored Excel serial birthdate parsing for official SF1 workbooks.
 - Restored focused Composer lint/test verification for deployment-critical files.
 - Enabled the Wasmer deploy workflow for `main` and `instructor`, and bumped the Wasmer package version to `0.1.1`.
-## v0.1.30 - 2026-08-04
-
-- Fixed: Merged RBAC tables into `database/schema_tidb.sql` so hosted MySQL imports only need one schema file.
-- Added: Created `database/seed_admin.sql` for dashboard-only first admin seeding when PHP CLI seeding is unavailable.

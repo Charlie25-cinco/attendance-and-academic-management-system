@@ -19,6 +19,7 @@ Use "Accept or Reject" before moving from Plan to Build, and before making code 
 - Keep the project GitHub-ready by maintaining `.gitignore`, setup docs, and clear validation commands.
 - Treat `deped/` as the source of truth for SF1, SF2, and ECR templates unless the user explicitly replaces a template.
 - Runtime web pages should bootstrap through `functions/bootstrap.php`.
+- New shared classes should be created under `src/` using the `BshsAms\` PSR-4 namespace (`BshsAms\Database`, `BshsAms\Schedule`, `BshsAms\Grade`, `BshsAms\Export`, `BshsAms\Xlsx`). Maintain legacy `class_alias()` definitions when refactoring existing global classes.
 - Instructor-only requirements should be developed on a separate branch, not directly on `main`.
 
 ## Validation

@@ -50,6 +50,7 @@ Open `http://localhost:5000`.
 - `parent/`, `student/`, `teacher/` - role-specific web modules.
 - `resources/` - legacy/reference DepEd material.
 - `site/` - public site entry point.
+- `src/` - PSR-4 namespaced classes (`BshsAms\Database`, `BshsAms\Schedule`, `BshsAms\Grade`, `BshsAms\Export`, `BshsAms\Xlsx`).
 - `storage/` - runtime/generated files; ignored by Git.
 - `vendor/` - Composer dependencies; ignored by Git.
 
