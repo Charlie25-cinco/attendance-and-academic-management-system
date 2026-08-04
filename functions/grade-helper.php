@@ -143,10 +143,16 @@ class SshsGradeCalculator {
     }
 
     public static function normalizeTerm(string $value): string {
-        $v = strtoupper(trim($value));
-        if (in_array($v, ['Term1', 'Term2', 'Term3', 'Q1', 'Q2', 'Q3', 'Q4'], true)) { return $v; }
-        return 'Term1';
+        $upper = strtoupper(trim($value));
+        $map = [
+            'TERM1' => 'Term1', 'TERM 1' => 'Term1', '1ST TERM' => 'Term1',
+            'TERM2' => 'Term2', 'TERM 2' => 'Term2', '2ND TERM' => 'Term2',
+            'TERM3' => 'Term3', 'TERM 3' => 'Term3', '3RD TERM' => 'Term3',
+            'Q1' => 'Q1', 'Q2' => 'Q2', 'Q3' => 'Q3', 'Q4' => 'Q4',
+        ];
+        return $map[$upper] ?? 'Term1';
     }
+
 
     public static function sectionHeaderLabel(string $subjectCategory): string {
         return match ($subjectCategory) {

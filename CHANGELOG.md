@@ -2,6 +2,27 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.30 — 2026-08-04
+
+### Added
+
+- Added `GradeCalculatorTest.php` to unit-test subject category weighting, DepEd transmutation, SF9 descriptors, grading system term counts, and combined subject calculations.
+- Added `EcrParserTest.php` to validate ECR template resolution, fallback XLSX sheet reading, and term string normalization.
+- Added `GradeApprovalFlowTest.php` to test multi-stage approval statuses (`submitted`, `admin_verified`, `rejected`, `submitted_admin`, `approved`) and grade locking rules.
+
+### Fixed
+
+- Made `SshsGradeCalculator::normalizeTerm` case-insensitive for reliable term mapping.
+
+## v0.1.29 — 2026-08-04
+
+
+### Changed
+
+- Updated Wasmer validation and documentation to accept either `DB_PASS` or Wasmer-provided `DB_PASSWORD` for MySQL database connections.
+- Documented the safe migration path from TiDB to Wasmer MySQL while keeping TiDB as a backup.
+- Bumped the Wasmer package version to `0.1.29`.
+
 ## v0.1.28 — 2026-08-04
 
 ### Fixed
@@ -220,3 +241,7 @@ Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR fo
 - Restored Excel serial birthdate parsing for official SF1 workbooks.
 - Restored focused Composer lint/test verification for deployment-critical files.
 - Enabled the Wasmer deploy workflow for `main` and `instructor`, and bumped the Wasmer package version to `0.1.1`.
+## v0.1.30 - 2026-08-04
+
+- Fixed: Merged RBAC tables into `database/schema_tidb.sql` so hosted MySQL imports only need one schema file.
+- Added: Created `database/seed_admin.sql` for dashboard-only first admin seeding when PHP CLI seeding is unavailable.

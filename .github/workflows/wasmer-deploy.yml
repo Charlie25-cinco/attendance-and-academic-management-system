@@ -45,7 +45,6 @@ jobs:
               "DB_PORT",
               "DB_NAME",
               "DB_USER",
-              "DB_PASS",
               "DEFAULT_NEW_USER_PASSWORD",
               "API_AUTH_SECRET",
               "API_SYNC_SECRET",
@@ -53,6 +52,8 @@ jobs:
               "RESEND_FROM_EMAIL",
           ]
           missing = [key for key in required if not os.environ.get(key)]
+          if not os.environ.get("DB_PASS") and not os.environ.get("DB_PASSWORD"):
+              missing.append("DB_PASS or DB_PASSWORD")
           if missing:
               raise SystemExit("Missing required GitHub secrets: " + ", ".join(missing))
 
@@ -97,6 +98,7 @@ jobs:
           DB_NAME: ${{ secrets.DB_NAME }}
           DB_USER: ${{ secrets.DB_USER }}
           DB_PASS: ${{ secrets.DB_PASS }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DEFAULT_NEW_USER_PASSWORD: ${{ secrets.DEFAULT_NEW_USER_PASSWORD }}
           API_AUTH_SECRET: ${{ secrets.API_AUTH_SECRET }}
           API_SYNC_SECRET: ${{ secrets.API_SYNC_SECRET }}
