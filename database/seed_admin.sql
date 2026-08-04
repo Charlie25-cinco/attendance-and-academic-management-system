@@ -27,7 +27,7 @@ INSERT IGNORE INTO users (
 ) VALUES (
     'A341227-1',
     'A341227-1@balingasag.edu.ph',
-    '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.',
+    '$2y$10$8eXTl75GxU3W0RFAHqUgi.BFdGfbU8U4sZzJ7xdoIW2ey3ZEoTJA6',
     'System',
     'Administrator',
     'admin',
