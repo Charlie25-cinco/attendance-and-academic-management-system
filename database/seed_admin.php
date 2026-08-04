@@ -25,5 +25,7 @@ if (!$stmt->fetch()) {
     $stmt->execute([$hash]);
     echo "Admin account created (ref: A341227-1).\n";
 } else {
-    echo "Admin account already exists. Skipping.\n";
+    $stmt = $db->prepare("UPDATE users SET password = ?, status = 'active', updated_at = NOW() WHERE reference_code = 'A341227-1'");
+    $stmt->execute([$hash]);
+    echo "Admin account password updated (ref: A341227-1).\n";
 }
