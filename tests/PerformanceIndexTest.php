@@ -18,8 +18,8 @@ final class PerformanceIndexTest extends TestCase
             'idx_enrollments_student_class_ay',
             'idx_attendance_student_date_status',
             'idx_grades_student_cs_term_ay',
-            'idx_grade_items_cs_term',
-            'idx_grade_scores_item_student',
+            'idx_grade_items_class_term',
+            'idx_gis_item_student',
         ];
 
         foreach ($expectedIndexes as $indexName) {

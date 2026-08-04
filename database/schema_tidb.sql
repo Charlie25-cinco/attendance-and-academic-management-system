@@ -677,6 +677,7 @@ CREATE INDEX IF NOT EXISTS idx_classes_grade_section_status ON classes (grade_le
 CREATE INDEX IF NOT EXISTS idx_enrollments_student_class_ay ON enrollments (student_id, class_id, academic_year, status);
 CREATE INDEX IF NOT EXISTS idx_attendance_student_date_status ON attendance (student_id, date, status);
 CREATE INDEX IF NOT EXISTS idx_grades_student_cs_term_ay ON grades (student_id, class_subject_id, academic_year, term);
-CREATE INDEX IF NOT EXISTS idx_grade_items_cs_term ON grade_items (class_subject_id, term, academic_year);
-CREATE INDEX IF NOT EXISTS idx_grade_scores_item_student ON grade_scores (grade_item_id, student_id);
+CREATE INDEX IF NOT EXISTS idx_grade_items_class_term ON grade_items (class_id, term, academic_year);
+CREATE INDEX IF NOT EXISTS idx_gis_item_student ON grade_item_scores (grade_item_id, student_id);
+
 

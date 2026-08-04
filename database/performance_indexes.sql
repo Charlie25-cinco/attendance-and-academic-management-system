@@ -27,8 +27,8 @@ ALTER TABLE grades ADD INDEX idx_grades_student_cs_term_ay (student_id, class_su
 
 -- GRADE ITEMS TABLE INDEXES
 -- Speeds up teacher gradebook activity loading
-ALTER TABLE grade_items ADD INDEX idx_grade_items_cs_term (class_subject_id, term, academic_year);
+ALTER TABLE grade_items ADD INDEX idx_grade_items_class_term (class_id, term, academic_year);
 
--- GRADE SCORES TABLE INDEXES
+-- GRADE ITEM SCORES TABLE INDEXES
 -- Speeds up student score summaries and parent progress view
-ALTER TABLE grade_scores ADD INDEX idx_grade_scores_item_student (grade_item_id, student_id);
+ALTER TABLE grade_item_scores ADD INDEX idx_gis_item_student (grade_item_id, student_id);
