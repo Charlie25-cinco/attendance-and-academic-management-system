@@ -36,17 +36,22 @@ function showTopProgress() {
     window.clearInterval(appTopProgressInterval);
   }
 
-  appTopProgressValue = 12;
+  if (appTopProgressTimer) {
+    window.clearTimeout(appTopProgressTimer);
+    appTopProgressTimer = null;
+  }
+
+  appTopProgressValue = 20;
   bar.style.setProperty("--app-progress", appTopProgressValue + "%");
   bar.classList.remove("is-finishing");
   bar.classList.add("is-visible");
 
   appTopProgressInterval = window.setInterval(() => {
-    const remaining = 92 - appTopProgressValue;
+    const remaining = 90 - appTopProgressValue;
     if (remaining <= 0.5) return;
-    appTopProgressValue += Math.max(0.35, remaining * 0.08);
-    bar.style.setProperty("--app-progress", Math.min(appTopProgressValue, 92) + "%");
-  }, 220);
+    appTopProgressValue += Math.max(0.4, remaining * 0.1);
+    bar.style.setProperty("--app-progress", Math.min(appTopProgressValue, 90) + "%");
+  }, 160);
 }
 
 function finishTopProgress() {
@@ -58,22 +63,35 @@ function finishTopProgress() {
     appTopProgressInterval = null;
   }
 
+  if (appTopProgressTimer) {
+    window.clearTimeout(appTopProgressTimer);
+    appTopProgressTimer = null;
+  }
+
+  if (appTopProgressHideTimer) {
+    window.clearTimeout(appTopProgressHideTimer);
+    appTopProgressHideTimer = null;
+  }
+
+  // Smoothly expand progress bar to 100% full before fading out
+  appTopProgressValue = 100;
   bar.style.setProperty("--app-progress", "100%");
-  bar.classList.add("is-finishing");
+  bar.classList.add("is-visible");
+  bar.classList.remove("is-finishing");
+
+  // Hold 100% state briefly (220ms) so visual completion is clear, then fade out
   appTopProgressHideTimer = window.setTimeout(() => {
-    bar.classList.remove("is-visible", "is-finishing");
-    bar.style.setProperty("--app-progress", "0%");
-    appTopProgressValue = 0;
-  }, 240);
+    bar.classList.add("is-finishing");
+    window.setTimeout(() => {
+      bar.classList.remove("is-visible", "is-finishing");
+      bar.style.setProperty("--app-progress", "0%");
+      appTopProgressValue = 0;
+    }, 280);
+  }, 220);
 }
 
-function showTopProgressSoon(delay = 120) {
-  if (appTopProgressTimer) return;
-
-  appTopProgressTimer = window.setTimeout(() => {
-    appTopProgressTimer = null;
-    showTopProgress();
-  }, delay);
+function showTopProgressSoon(delay = 0) {
+  showTopProgress();
 }
 
 function cancelTopProgressSoon() {
@@ -105,7 +123,10 @@ function shouldShowNavigationProgress(link) {
 
 function initNavigationProgress() {
   window.addEventListener("pageshow", function () {
-    cancelTopProgressSoon();
+    finishTopProgress();
+  });
+
+  window.addEventListener("DOMContentLoaded", function () {
     finishTopProgress();
   });
 
@@ -114,14 +135,14 @@ function initNavigationProgress() {
       window.APP_SUPPRESS_NEXT_UNLOAD_PROGRESS = false;
       return;
     }
-    showTopProgressSoon(80);
+    showTopProgress();
   });
 
   document.addEventListener("click", function (event) {
     const link = event.target.closest("a[href]");
     if (!shouldShowNavigationProgress(link)) return;
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-    showTopProgressSoon(120);
+    showTopProgress();
   });
 
   document.addEventListener("submit", function (event) {
@@ -129,7 +150,7 @@ function initNavigationProgress() {
     if (!(form instanceof HTMLFormElement)) return;
     if (form.getAttribute("data-skip-loader") === "true") return;
     if ((form.getAttribute("method") || "get").toLowerCase() === "dialog") return;
-    showTopProgressSoon(120);
+    showTopProgress();
   });
 }
 
