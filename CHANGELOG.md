@@ -2,7 +2,14 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.40 — 2026-08-04
+
+### Fixed
+
+- Fixed GitHub Action deployment step in `.github/workflows/wasmer-deploy.yml` by using official Wasmer CLI installation (`curl https://get.wasmer.io -sSfL | sh`) and non-interactive `wasmer deploy`.
+
 ## v0.1.39 — 2026-08-04
+
 
 ### Added
 
