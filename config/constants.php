@@ -657,12 +657,12 @@ function pwaHeadHtml(): string {
     $html .= '<link rel="icon" type="image/png" sizes="192x192" href="' . htmlspecialchars($faviconUrl, ENT_QUOTES, 'UTF-8') . '">' . "\n";
     $html .= '<link rel="icon" type="image/jpeg" href="' . htmlspecialchars($logoUrl, ENT_QUOTES, 'UTF-8') . '">' . "\n";
     $html .= '<style id="app-top-progress-critical">'
-        . '.app-top-progress{--app-progress:0%;position:fixed;top:0;left:0;width:var(--app-progress);height:3px;z-index:100000;pointer-events:none;opacity:0;background:linear-gradient(90deg,#1f4f82,#11856f,#7c3aed);box-shadow:0 0 14px rgba(31,79,130,0.45);transition:width .28s cubic-bezier(0.4,0,0.2,1),opacity .25s ease;}'
+        . '.app-top-progress{--app-progress:0vw;position:fixed;top:0;left:0;width:var(--app-progress,0vw);max-width:100vw;height:3px;z-index:100000;pointer-events:none;opacity:0;background:linear-gradient(90deg,#1f4f82 0%,#11856f 50%,#3b82f6 100%);box-shadow:0 0 16px rgba(31,79,130,0.55);transition:width .32s cubic-bezier(0.4,0,0.2,1),opacity .2s ease;}'
         . '.app-top-progress.is-visible{opacity:1;}'
-        . '.app-top-progress.is-finishing{opacity:0;transition:width .28s cubic-bezier(0.4,0,0.2,1),opacity .28s ease;}'
+        . '.app-top-progress.is-finishing{opacity:0;transition:width .32s cubic-bezier(0.4,0,0.2,1),opacity .28s ease .12s;}'
         . '</style>' . "\n";
     $html .= '<script>'
-        . '(function(){try{if(sessionStorage.getItem("app_page_navigating")==="true"){var b=document.createElement("div");b.id="appTopProgress";b.className="app-top-progress is-visible";b.style.setProperty("--app-progress","75%");(document.head||document.documentElement).appendChild(b);}}catch(e){}})();'
+        . '(function(){try{if(sessionStorage.getItem("app_page_navigating")==="true"){var b=document.createElement("div");b.id="appTopProgress";b.className="app-top-progress is-visible";b.style.setProperty("--app-progress","75vw");b.style.width="75vw";(document.head||document.documentElement).appendChild(b);}}catch(e){}})();'
         . '</script>' . "\n";
 
     $swScript = "

@@ -2224,18 +2224,19 @@ body.dark-mode .dashboard-section-copy {
    Unified UI Refresh
    ============================================ */
 .app-top-progress {
-  --app-progress: 0%;
+  --app-progress: 0vw;
   position: fixed;
   top: 0;
   left: 0;
-  width: var(--app-progress);
+  width: var(--app-progress, 0vw);
+  max-width: 100vw;
   height: 3px;
   z-index: 100000;
   pointer-events: none;
   opacity: 0;
-  background: linear-gradient(90deg, var(--ui-primary, #1f4f82), var(--ui-accent, #11856f), #7c3aed);
-  box-shadow: 0 0 14px rgba(31, 79, 130, 0.45);
-  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+  background: linear-gradient(90deg, #1f4f82 0%, #11856f 50%, #3b82f6 100%);
+  box-shadow: 0 0 16px rgba(31, 79, 130, 0.55), 0 0 8px rgba(59, 130, 246, 0.4);
+  transition: width 0.32s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
 }
 
 .app-top-progress.is-visible {
@@ -2244,7 +2245,7 @@ body.dark-mode .dashboard-section-copy {
 
 .app-top-progress.is-finishing {
   opacity: 0;
-  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
+  transition: width 0.32s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.28s ease 0.12s;
 }
 
 :root {

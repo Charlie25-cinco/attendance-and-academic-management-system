@@ -49,7 +49,7 @@ function isNavigationInProgress() {
   return false;
 }
 
-function showTopProgress(startValue = 30) {
+function showTopProgress(startValue = 35) {
   const bar = ensureTopProgressBar();
 
   if (appTopProgressHideTimer) {
@@ -67,7 +67,8 @@ function showTopProgress(startValue = 30) {
   }
 
   appTopProgressValue = startValue;
-  bar.style.setProperty("--app-progress", appTopProgressValue + "%");
+  bar.style.setProperty("--app-progress", appTopProgressValue + "vw");
+  bar.style.width = appTopProgressValue + "vw";
   bar.classList.remove("is-finishing");
   bar.classList.add("is-visible");
 
@@ -75,7 +76,8 @@ function showTopProgress(startValue = 30) {
     const remaining = 92 - appTopProgressValue;
     if (remaining <= 0.5) return;
     appTopProgressValue += Math.max(0.4, remaining * 0.12);
-    bar.style.setProperty("--app-progress", Math.min(appTopProgressValue, 92) + "%");
+    bar.style.setProperty("--app-progress", Math.min(appTopProgressValue, 92) + "vw");
+    bar.style.width = Math.min(appTopProgressValue, 92) + "vw";
   }, 140);
 }
 
@@ -100,30 +102,33 @@ function finishTopProgress() {
   const wasNavigating = isNavigationInProgress();
   clearNavigationState();
 
-  // If page was reached via navigation, initialize bar at 75% on new page load so it is visually present
+  // If page was reached via navigation, start bar at 75vw on new page load so it is visibly present
   if (wasNavigating || appTopProgressValue < 10) {
     appTopProgressValue = Math.max(appTopProgressValue, 75);
-    bar.style.setProperty("--app-progress", appTopProgressValue + "%");
+    bar.style.setProperty("--app-progress", appTopProgressValue + "vw");
+    bar.style.width = appTopProgressValue + "vw";
     bar.classList.add("is-visible");
     bar.classList.remove("is-finishing");
   }
 
-  // Animate width to 100% full after a short tick (30ms) to ensure CSS transition sweeps cleanly across top screen
+  // Animate width to 100vw (100% viewport width, touching right screen edge)
   window.setTimeout(() => {
     appTopProgressValue = 100;
-    bar.style.setProperty("--app-progress", "100%");
+    bar.style.setProperty("--app-progress", "100vw");
+    bar.style.width = "100vw";
     bar.classList.add("is-visible");
     bar.classList.remove("is-finishing");
 
-    // Hold 100% full progress for 280ms so completion is visually clear on screen, then fade out
+    // Hold at 100vw full width (touching right edge) for 320ms before starting fade out
     appTopProgressHideTimer = window.setTimeout(() => {
       bar.classList.add("is-finishing");
       window.setTimeout(() => {
         bar.classList.remove("is-visible", "is-finishing");
-        bar.style.setProperty("--app-progress", "0%");
+        bar.style.setProperty("--app-progress", "0vw");
+        bar.style.width = "0vw";
         appTopProgressValue = 0;
-      }, 300);
-    }, 280);
+      }, 320);
+    }, 320);
   }, 30);
 }
 
