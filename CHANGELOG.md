@@ -2,7 +2,15 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.1.34 — 2026-08-04
+
+### Fixed
+
+- Made `database/performance_indexes.sql` compatible with MySQL 5.7, 8.0, TiDB, and MariaDB using a universal `AddIndexIfNotExist` stored procedure, eliminating MySQL Error 1064.
+- Added browser migration page to `database/run_performance_indexes.php` allowing admins to execute database index migrations directly from their web browser.
+
 ## v0.1.33 — 2026-08-04
+
 
 ### Fixed
 

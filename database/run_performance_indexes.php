@@ -1,5 +1,5 @@
 <?php
-
+require_once __DIR__ . '/../functions/bootstrap.php';
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../functions/app-helpers.php';
 
@@ -7,7 +7,11 @@ if (php_sapi_name() !== 'cli') {
     appRequireRole('admin');
 }
 
-$db = Database::getInstance();
+$dbObj = new Database();
+$db = $dbObj->getConnection();
+if (!$db instanceof PDO) {
+    die("Database connection failed. Check config/db.php configuration.\n");
+}
 
 $indexesToApply = [
     [
@@ -55,7 +59,10 @@ foreach ($indexesToApply as $def) {
     $cols = implode(', ', $def['columns']);
 
     if (!SchemaCache::hasTable($db, $table)) {
-        $results[] = "[SKIP] Table {$table} does not exist.";
+        $results[] = [
+            'status' => 'skip',
+            'message' => "Table '{$table}' does not exist."
+        ];
         continue;
     }
 
@@ -64,21 +71,74 @@ foreach ($indexesToApply as $def) {
     $exists = (bool)$stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($exists) {
-        $results[] = "[OK] Index {$name} already exists on {$table}.";
+        $results[] = [
+            'status' => 'ok',
+            'message' => "Index '{$name}' already exists on '{$table}'."
+        ];
     } else {
         try {
             $sql = "ALTER TABLE {$table} ADD INDEX {$name} ({$cols})";
             $db->exec($sql);
-            $results[] = "[SUCCESS] Created index {$name} on {$table} ({$cols}).";
+            $results[] = [
+                'status' => 'success',
+                'message' => "Created index '{$name}' on '{$table}' ({$cols})."
+            ];
         } catch (Throwable $e) {
-            $results[] = "[ERROR] Failed creating index {$name} on {$table}: " . $e->getMessage();
+            $results[] = [
+                'status' => 'error',
+                'message' => "Failed creating index '{$name}' on '{$table}': " . $e->getMessage()
+            ];
         }
     }
 }
 
 if (php_sapi_name() === 'cli') {
-    echo implode("\n", $results) . "\n";
-} else {
-    header('Content-Type: text/plain');
-    echo implode("\n", $results) . "\n";
+    foreach ($results as $res) {
+        echo "[" . strtoupper($res['status']) . "] " . $res['message'] . "\n";
+    }
+    exit(0);
 }
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Index Migration - BSHS AMS</title>
+    <link href="<?php echo appAssetPath('vendor/bootstrap/bootstrap.min.css'); ?>" rel="stylesheet">
+    <?php echo pwaHeadHtml(); ?>
+</head>
+<body class="bg-light p-4">
+    <div class="container" style="max-width: 800px;">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">Database Performance Index Migration</h4>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">Optimizing API query execution times and database performance...</p>
+                <div class="list-group">
+                    <?php foreach ($results as $res): ?>
+                        <?php
+                        $badgeClass = match ($res['status']) {
+                            'success' => 'bg-success',
+                            'ok' => 'bg-info',
+                            'skip' => 'bg-warning text-dark',
+                            default => 'bg-danger'
+                        };
+                        ?>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><?php echo htmlspecialchars($res['message'], ENT_QUOTES, 'UTF-8'); ?></span>
+                            <span class="badge <?php echo $badgeClass; ?> rounded-pill">
+                                <?php echo strtoupper($res['status']); ?>
+                            </span>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+                <div class="mt-4">
+                    <a href="../admin/dashboard.php" class="btn btn-outline-primary">Return to Admin Dashboard</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

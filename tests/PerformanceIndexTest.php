@@ -26,7 +26,6 @@ final class PerformanceIndexTest extends TestCase
             $this->assertStringContainsString($indexName, $content);
         }
 
-        $this->assertStringContainsString('DROP INDEX IF EXISTS', $content);
         $this->assertFileExists(__DIR__ . '/../database/run_performance_indexes.php');
     }
 
