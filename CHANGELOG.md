@@ -2,6 +2,17 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.4 — 2026-08-05
+
+### Fixed
+
+- Updated `profileApiUrl()` in `includes/modals.php` to dynamically detect subfolder relative routes (`/admin/`, `/teacher/`, `/student/`, `/parent/`, `/auth/`) for seamless modal profile updates across all portal surfaces.
+- Updated `resetProfilePasswordBtn` click handler in `includes/modals.php` to validate input fields before triggering password updates or fallback password reset redirection.
+
+### Added
+
+- Added `tests/PasswordResetTest.php` validating password strength criteria, 6-digit OTP formatting regex, SHA-256 OTP token hash consistency, and token invalidation queries.
+
 ## v0.3.3 — 2026-08-05
 
 ### Added

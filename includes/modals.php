@@ -184,7 +184,10 @@
 
     function profileApiUrl() {
         var token = window.APP_CSRF_TOKEN || '';
-        return '../api/index.php?route=profile' + (token ? '&csrf_token=' + encodeURIComponent(token) : '');
+        var path = window.location.pathname;
+        var isSubfolder = (path.indexOf('/admin/') !== -1 || path.indexOf('/teacher/') !== -1 || path.indexOf('/student/') !== -1 || path.indexOf('/parent/') !== -1 || path.indexOf('/auth/') !== -1);
+        var apiPath = isSubfolder ? '../api/index.php' : 'api/index.php';
+        return apiPath + '?route=profile' + (token ? '&csrf_token=' + encodeURIComponent(token) : '');
     }
 
     function setProfileBusy(isBusy) {
@@ -257,6 +260,21 @@
             }).finally(function () {
                 setProfileBusy(false);
             });
+        });
+    }
+
+    var resetProfilePasswordBtn = document.getElementById('resetProfilePasswordBtn');
+    if (resetProfilePasswordBtn) {
+        resetProfilePasswordBtn.addEventListener('click', function () {
+            var current = document.getElementById('profileCurrentPassword');
+            var newP = document.getElementById('profileNewPassword');
+            var confirmP = document.getElementById('profileConfirmPassword');
+            if (current && newP && confirmP && (current.value || newP.value || confirmP.value)) {
+                if (saveProfileBtn) saveProfileBtn.click();
+            } else {
+                var isSubfolder = (window.location.pathname.indexOf('/admin/') !== -1 || window.location.pathname.indexOf('/teacher/') !== -1 || window.location.pathname.indexOf('/student/') !== -1 || window.location.pathname.indexOf('/parent/') !== -1);
+                window.location.href = isSubfolder ? '../auth/forgot-password.php' : 'auth/forgot-password.php';
+            }
         });
     }
 })();
