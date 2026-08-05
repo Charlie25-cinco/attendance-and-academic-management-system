@@ -26,6 +26,8 @@ class Sf5Exporter {
     public function getTemplatePath(): string {
         $envPath = trim((string)getenv('SF5_TEMPLATE_PATH'));
         if ($envPath !== '' && is_file($envPath)) return $envPath;
+        $standardDeped = realpath(dirname(__DIR__, 2) . '/deped/SF5_Senior_High_School.xlsx');
+        if ($standardDeped && is_file($standardDeped)) return $standardDeped;
         $default = realpath(dirname(__DIR__, 2) . '/resources/deped_templates/SF 5 Report on Promotion and Learning Progress _ Achievement_0 (1).xlsx');
         return $default ?: '';
     }
@@ -34,7 +36,7 @@ class Sf5Exporter {
         $templatePath = $this->getTemplatePath();
         if ($templatePath === '') return false;
         $spreadsheet = IOFactory::load($templatePath);
-        $ws = $spreadsheet->getSheetByName('School Form 5 (SF5)') ?: $spreadsheet->getActiveSheet();
+        $ws = $spreadsheet->getSheetByName('SHSF-5A') ?: ($spreadsheet->getSheetByName('School Form 5 (SF5)') ?: $spreadsheet->getActiveSheet());
         $teacher = $this->teacherName ?: trim(($this->class['t_first'] ?? '') . ' (' . ($this->class['t_last'] ?? ''));
         $gradeSection = 'Grade ' . ($this->class['grade_level'] ?? '') . ' - ' . ($this->class['section'] ?? '');
         $quarterLabel = SshsGradeCalculator::termLabel($this->term);

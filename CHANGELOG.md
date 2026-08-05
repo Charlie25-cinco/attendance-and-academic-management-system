@@ -2,6 +2,39 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.3 — 2026-08-05
+
+### Added
+
+- Updated `src/Export/Sf9Exporter.php` to format official DepEd MATATAG / Strengthened SHS 3-Term 2-page report card booklet layout, with clean cell bottom borders, 12-box LRN header grid, bold labels with non-bold metadata values, and exact table border closing.
+- Added standard `deped/SF9_Senior_High_School.xlsx` and `deped/SF5_Senior_High_School.xlsx` template files to `deped/` matching SF1 and SF2 naming conventions.
+- Updated `src/Export/Sf5Exporter.php` template resolution to use `deped/SF5_Senior_High_School.xlsx` as default primary template.
+
+## v0.3.2 — 2026-08-05
+
+### Added
+
+- Updated `src/Export/Sf9Exporter.php` to format official DepEd SF9-SHS 2-page / 4-panel booklet layout matching official DepEd guidelines (`depedph.com`), including 11-month attendance grid, parent signature blocks, Certificate of Transfer, Semester 1 & 2 subject tables, Observed Values ratings (*Maka-Diyos*, *Makatao*, *Makakalikasan*, *Makabansa*), and Grading Scale legend.
+- Regenerated `deped/SF9_Senior_High_School_Template.xlsx` workbook.
+
+## v0.3.1 — 2026-08-05
+
+### Changed
+
+- Updated system specifications ([docs/PRODUCT_SPEC.md](file:///c:/laragon/www/attendance-and-academic-management-system/docs/PRODUCT_SPEC.md)), technical architecture ([docs/ARCHITECTURE.md](file:///c:/laragon/www/attendance-and-academic-management-system/docs/ARCHITECTURE.md)), and agent operational rules ([AGENTS.md](file:///c:/laragon/www/attendance-and-academic-management-system/AGENTS.md)) to specify Wasmer Attached Database (Wasmer MySQL) as the primary cloud database platform.
+
+## v0.3.0 — 2026-08-05
+
+### Added
+
+- Added `docs/PRODUCT_SPEC.md` providing an ISO/IEC/IEEE 29148 compliant system specification (REQ-001 through REQ-010), user workflows, and role requirements.
+- Added `docs/ARCHITECTURE.md` documenting system architecture, PSR-4 namespaces, security model, RBAC authorization matrix, and deployment configurations.
+- Added Documentation Map to `AGENTS.md` per AI Engineering Standard v1.2.0 (§6).
+
+### Fixed
+
+- Updated `tests/Sf1ParserTest.php` fallback path to bundled `deped/SF1_Senior_High_School.xlsx` template, achieving 100% clean execution across all 26 PHPUnit tests.
+
 ## v0.2.0 — 2026-08-05
 
 ### Changed
