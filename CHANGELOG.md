@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.13 — 2026-08-06
+
+### Fixed
+
+- Fixed class card spacing so subject titles no longer overlap the floating header icon on Manage Classes and related card views.
+
 ## v0.3.12 — 2026-08-06
 
 ### Fixed

@@ -3232,13 +3232,16 @@ body.dark-mode .parent-chat-placeholder {
 }
 
 .class-card-body {
-  padding: 14px;
+  padding: 36px 14px 14px;
 }
 
 .class-card-title {
   color: var(--ui-text, #172033);
   font-size: 0.98rem;
   font-weight: 850;
+  line-height: 1.25;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .class-card-subtitle,
