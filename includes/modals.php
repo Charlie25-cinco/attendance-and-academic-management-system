@@ -138,6 +138,8 @@
                     </div>
                     <hr>
                     <div id="profileModalAlert" class="alert d-none mb-3"></div>
+                    <div class="settings-group-title mt-2">Password</div>
+                    <p class="small text-muted mb-3">Change your password here when you know your current password. Use account recovery if you forgot it.</p>
                     <div class="mb-3">
                         <label class="form-label">Current Password</label>
                         <div class="input-group">
@@ -179,7 +181,7 @@
                 </form>
             </div>
             <div class="modal-footer app-modal-footer">
-                <button type="button" class="btn btn-warning" id="resetProfilePasswordBtn">Reset Password</button>
+                <button type="button" class="btn btn-outline-warning" id="resetProfilePasswordBtn">Forgot Password?</button>
                 <button type="button" class="btn btn-primary" id="saveProfileBtn">Save Changes</button>
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
             </div>
@@ -379,15 +381,14 @@
     var resetProfilePasswordBtn = document.getElementById('resetProfilePasswordBtn');
     if (resetProfilePasswordBtn) {
         resetProfilePasswordBtn.addEventListener('click', function () {
-            var current = document.getElementById('profileCurrentPassword');
-            var newP = document.getElementById('profileNewPassword');
-            var confirmP = document.getElementById('profileConfirmPassword');
-            if (current && newP && confirmP && (current.value || newP.value || confirmP.value)) {
-                if (saveProfileBtn) saveProfileBtn.click();
-            } else {
-                var isSubfolder = (window.location.pathname.indexOf('/admin/') !== -1 || window.location.pathname.indexOf('/teacher/') !== -1 || window.location.pathname.indexOf('/student/') !== -1 || window.location.pathname.indexOf('/parent/') !== -1);
-                window.location.href = isSubfolder ? '../auth/forgot-password.php' : 'auth/forgot-password.php';
+            var emailInput = document.getElementById('profileEmail');
+            var email = emailInput ? String(emailInput.value || '').trim() : '';
+            var isSubfolder = (window.location.pathname.indexOf('/admin/') !== -1 || window.location.pathname.indexOf('/teacher/') !== -1 || window.location.pathname.indexOf('/student/') !== -1 || window.location.pathname.indexOf('/parent/') !== -1);
+            var recoveryUrl = isSubfolder ? '../auth/forgot-password.php' : 'auth/forgot-password.php';
+            if (email) {
+                recoveryUrl += '?email=' + encodeURIComponent(email);
             }
+            window.location.href = recoveryUrl;
         });
     }
 })();

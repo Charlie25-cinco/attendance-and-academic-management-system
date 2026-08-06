@@ -13,7 +13,7 @@ if (empty($_SESSION['csrf_token'])) {
 
 $error = '';
 $success = '';
-$emailInput = '';
+$emailInput = trim((string)($_GET['email'] ?? ''));
 
 function forgotHasTable($db, $table) {
     static $cache = [];

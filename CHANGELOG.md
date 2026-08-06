@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.8 — 2026-08-06
+
+### Fixed
+
+- Improved the shared Profile password flow by separating in-profile password changes from forgot-password recovery, pre-filling recovery email links, and revoking remember-me tokens after successful profile password updates.
+
 ## v0.3.7 — 2026-08-06
 
 ### Fixed

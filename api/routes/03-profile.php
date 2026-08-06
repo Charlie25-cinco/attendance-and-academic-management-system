@@ -111,6 +111,7 @@ if ($route === 'profile' && $method === 'POST') {
         }
         $updates['password'] = password_hash($newPassword, PASSWORD_DEFAULT);
     }
+    $passwordChanged = array_key_exists('password', $updates);
 
     if (empty($updates)) {
         apiJson(['ok' => false, 'message' => 'No valid fields to update'], 422);
@@ -131,6 +132,11 @@ if ($route === 'profile' && $method === 'POST') {
         apiJson(['ok' => false, 'message' => 'Failed to update profile'], 500);
     }
 
+    if ($passwordChanged && apiHasTable($db, 'auth_remember_tokens')) {
+        $revokeStmt = $db->prepare("UPDATE auth_remember_tokens SET revoked_at = NOW() WHERE user_id = ? AND revoked_at IS NULL");
+        $revokeStmt->execute([(int)$user['id']]);
+    }
+
     foreach (['first_name', 'middle_name', 'last_name', 'email', 'sex'] as $sessionField) {
         if (array_key_exists($sessionField, $updates)) {
             $_SESSION[$sessionField] = $updates[$sessionField];
@@ -139,5 +145,12 @@ if ($route === 'profile' && $method === 'POST') {
     unset($_SESSION['app_header_profile']);
     unset($updates['password']);
 
-    apiJson(['ok' => true, 'message' => 'Profile updated successfully', 'updates' => $updates]);
+    $message = 'Profile updated successfully';
+    if ($passwordChanged && empty($updates)) {
+        $message = 'Password updated successfully';
+    } elseif ($passwordChanged) {
+        $message = 'Profile and password updated successfully';
+    }
+
+    apiJson(['ok' => true, 'message' => $message, 'updates' => $updates]);
 }
