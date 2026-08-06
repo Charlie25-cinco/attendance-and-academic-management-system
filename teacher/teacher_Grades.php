@@ -386,13 +386,16 @@ function describeEcrTemplateCheck(data) {
     const diagnostics = data?.diagnostics || {};
     const uploaded = diagnostics.uploaded || data?.uploaded_template || {};
     const bundled = diagnostics.bundled || {};
+    if (data?.export_fallback_available || diagnostics.zip_available === false) {
+        return 'Official ECR template editing is unavailable on this server, so downloads will use the generated .xlsx ECR format.';
+    }
     const parts = [];
     if (data?.message) parts.push(data.message);
     if (uploaded.exists) {
-        parts.push('Uploaded: ' + (uploaded.message || 'found') + (uploaded.path ? ' [' + uploaded.path + ']' : ''));
+        parts.push('Uploaded: ' + (uploaded.message || 'found'));
     }
     if (bundled.exists) {
-        parts.push('Bundled: ' + (bundled.message || 'found') + (bundled.path ? ' [' + bundled.path + ']' : ''));
+        parts.push('Bundled: ' + (bundled.message || 'found'));
     }
     if (diagnostics.zip_available === false) {
         parts.push('PHP Zip extension is not enabled.');
@@ -453,7 +456,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 warningTextEl.textContent = notice;
             }
             if (warningEl) {
-                warningEl.style.display = hasAnyTemplateFile ? 'block' : 'none';
+                warningEl.style.display = (hasAnyTemplateFile || data?.export_fallback_available) ? 'block' : 'none';
+                warningEl.classList.toggle('alert-warning', !data?.export_fallback_available);
+                warningEl.classList.toggle('alert-info', !!data?.export_fallback_available);
             }
         })
         .catch((err) => {
@@ -462,7 +467,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (warningTextEl) {
                 warningTextEl.textContent = ecrPreviewBtn.title;
             }
-            if (warningEl) warningEl.style.display = 'block';
+            if (warningEl) {
+                warningEl.classList.add('alert-warning');
+                warningEl.classList.remove('alert-info');
+                warningEl.style.display = 'block';
+            }
         });
 });
 

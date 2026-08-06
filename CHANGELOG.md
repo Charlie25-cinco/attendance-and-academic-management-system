@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.15 — 2026-08-06
+
+### Fixed
+
+- Clarified the Grade Entry ECR notice when official template editing is unavailable so users know generated `.xlsx` ECR export remains available.
+
 ## v0.3.14 — 2026-08-06
 
 ### Fixed

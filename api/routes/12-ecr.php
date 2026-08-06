@@ -378,6 +378,7 @@ if ($route === 'ecr-template' && $method === 'GET') {
         'meta' => $meta,
         'template' => $info,
         'diagnostics' => $exporter->getTemplateDiagnostics(),
+        'export_fallback_available' => $info['exists'] && !$info['compatible'],
         'message' => $info['message'],
     ]);
 }
