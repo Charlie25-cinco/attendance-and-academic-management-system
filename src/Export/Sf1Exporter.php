@@ -2,6 +2,7 @@
 
 namespace BshsAms\Export;
 
+use DateTime;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -11,6 +12,7 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use BshsAms\Xlsx\SimpleXlsxTemplateEditor;
 use PDO;
 use RuntimeException;
+use Throwable;
 
 class Sf1Exporter {
     private $db;

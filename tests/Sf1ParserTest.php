@@ -4,6 +4,16 @@ use PHPUnit\Framework\TestCase;
 
 final class Sf1ParserTest extends TestCase
 {
+    public function testSf1ExporterFormatsBirthdateInsideNamespace(): void
+    {
+        $reflection = new ReflectionClass(\BshsAms\Export\Sf1Exporter::class);
+        $exporter = $reflection->newInstanceWithoutConstructor();
+        $method = $reflection->getMethod('formatSf1Date');
+        $method->setAccessible(true);
+
+        $this->assertSame('05/08/2008', $method->invoke($exporter, '2008-05-08'));
+    }
+
     public function testParsesExcelSerialBirthdate(): void
     {
         $this->assertSame('2008-01-15', Sf1Parser::parseBirthdate('39462'));

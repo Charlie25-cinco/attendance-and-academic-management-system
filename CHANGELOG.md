@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.10 — 2026-08-06
+
+### Fixed
+
+- Fixed SF1 XLSX export date handling so namespaced exporter code resolves PHP date classes correctly in production.
+
 ## v0.3.9 — 2026-08-06
 
 ### Fixed
