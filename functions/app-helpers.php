@@ -277,6 +277,49 @@ function ensureStrengthenedShsColumns(PDO $db): void {
     $ready = true;
 }
 
+function ensureReportNotesTables(PDO $db): void {
+    static $ready = false;
+    if ($ready) { return; }
+
+    $tables = [
+        'admin_report_notes' => [
+            'owner' => 'admin_id',
+            'types' => "'attendance','grades','enrollment','teachers','classes'",
+            'index' => 'idx_admin_type_created',
+        ],
+        'teacher_report_notes' => [
+            'owner' => 'teacher_id',
+            'types' => "'general','top_attendance','class_summary','at_risk'",
+            'index' => 'idx_teacher_type_created',
+        ],
+    ];
+
+    foreach ($tables as $table => $definition) {
+        $ownerColumn = $definition['owner'];
+        $reportTypes = $definition['types'];
+        $indexName = $definition['index'];
+        try {
+            $db->exec(
+                "CREATE TABLE IF NOT EXISTS {$table} (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    {$ownerColumn} INT NOT NULL,
+                    report_type ENUM({$reportTypes}) DEFAULT NULL,
+                    title VARCHAR(200) NOT NULL,
+                    content TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    FOREIGN KEY ({$ownerColumn}) REFERENCES users(id) ON DELETE CASCADE,
+                    KEY {$indexName} ({$ownerColumn}, report_type, created_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+            );
+        } catch (Throwable $e) {
+            error_log('Report notes table check failed for ' . $table . ': ' . $e->getMessage());
+        }
+    }
+
+    $ready = true;
+}
+
 function syncStudentEnrollments(PDO $db, int $studentId, int $gradeLevel, string $section, ?string $track = null, ?string $academicYear = null): void {
     ensureStrengthenedShsColumns($db);
     $academicYear = $academicYear ?: currentAcademicYear();

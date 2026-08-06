@@ -21,6 +21,7 @@ if (!$db) {
 
 $teacherId = (int)($_SESSION['user_id'] ?? 0);
 $action = $_GET['action'] ?? '';
+ensureReportNotesTables($db);
 
 function requirePostAndCsrfOrExit() {
     if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {

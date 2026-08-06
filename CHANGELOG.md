@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.19 — 2026-08-06
+
+### Fixed
+
+- Fixed report notes loading on deployed databases by creating missing admin and teacher report notes tables at runtime before notes actions query them.
+
 ## v0.3.18 — 2026-08-06
 
 ### Fixed

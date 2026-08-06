@@ -18,6 +18,7 @@ if (!$db) {
 }
 
 $action = $_GET['action'] ?? '';
+ensureReportNotesTables($db);
 $type = $_GET['type'] ?? '';
 $dateFrom = normalizeDate($_GET['date_from'] ?? '');
 $dateTo = normalizeDate($_GET['date_to'] ?? '');
