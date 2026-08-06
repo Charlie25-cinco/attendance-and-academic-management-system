@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.7 — 2026-08-06
+
+### Fixed
+
+- Fixed production login bootstrap by loading legacy database/helper aliases and shared session/asset helpers before auth pages render.
+
 ## v0.3.6 — 2026-08-06
 
 ### Fixed

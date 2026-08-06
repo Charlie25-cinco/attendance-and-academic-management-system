@@ -9,6 +9,12 @@ if (!defined('APP_REQUEST_STARTED_AT')) {
 }
 
 require_once APP_ROOT . '/vendor/autoload.php';
+require_once APP_ROOT . '/config/db.php';
+require_once APP_ROOT . '/functions/db-helper.php';
+
+if (PHP_SAPI !== 'cli') {
+    require_once APP_ROOT . '/config/session.php';
+}
 
 if (PHP_SAPI !== 'cli') {
     register_shutdown_function(function (): void {
@@ -34,7 +40,6 @@ if (PHP_SAPI !== 'cli') {
 }
 
 if (PHP_SAPI !== 'cli') {
-    require_once APP_ROOT . '/config/session.php';
     if (!empty($_SESSION['logged_in']) && function_exists('enforceScriptPermission')) {
         try {
             $database = new Database();
