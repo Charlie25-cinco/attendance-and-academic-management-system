@@ -47,20 +47,36 @@ function requirePostAndCsrfOrExit() {
     }
 }
 
-if ($action === 'save_note') {
-    handleSaveNote($db, $teacherId);
+function handleReportNotesError(Throwable $e): void {
+    error_log('Teacher report notes action failed: ' . $e->getMessage());
+    if (!headers_sent()) {
+        header('Content-Type: application/json');
+        http_response_code(500);
+    }
+    echo json_encode([
+        'ok' => false,
+        'message' => 'Report notes could not be loaded. Please try again or contact the administrator.'
+    ]);
+    exit();
 }
 
-if ($action === 'list_notes') {
-    handleListNotes($db, $teacherId);
-}
-
-if ($action === 'update_note') {
-    handleUpdateNote($db, $teacherId);
-}
-
-if ($action === 'delete_note') {
-    handleDeleteNote($db, $teacherId);
+if (in_array($action, ['save_note', 'list_notes', 'update_note', 'delete_note'], true)) {
+    try {
+        if ($action === 'save_note') {
+            handleSaveNote($db, $teacherId);
+        }
+        if ($action === 'list_notes') {
+            handleListNotes($db, $teacherId);
+        }
+        if ($action === 'update_note') {
+            handleUpdateNote($db, $teacherId);
+        }
+        if ($action === 'delete_note') {
+            handleDeleteNote($db, $teacherId);
+        }
+    } catch (Throwable $e) {
+        handleReportNotesError($e);
+    }
 }
 
 if ($action !== 'export') {

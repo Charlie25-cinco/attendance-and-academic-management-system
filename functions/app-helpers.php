@@ -284,7 +284,7 @@ function ensureReportNotesTables(PDO $db): void {
     $tables = [
         'admin_report_notes' => [
             'owner' => 'admin_id',
-            'types' => "'attendance','grades','enrollment','teachers','classes'",
+            'types' => "'general','attendance','grades','enrollment','teachers','classes'",
             'index' => 'idx_admin_type_created',
         ],
         'teacher_report_notes' => [
@@ -298,22 +298,37 @@ function ensureReportNotesTables(PDO $db): void {
         $ownerColumn = $definition['owner'];
         $reportTypes = $definition['types'];
         $indexName = $definition['index'];
+        $tableSql = "CREATE TABLE IF NOT EXISTS {$table} (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            {$ownerColumn} INT NOT NULL,
+            report_type ENUM({$reportTypes}) DEFAULT 'general',
+            title VARCHAR(200) NOT NULL,
+            content TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY ({$ownerColumn}) REFERENCES users(id) ON DELETE CASCADE,
+            KEY {$indexName} ({$ownerColumn}, report_type, created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+        $fallbackSql = "CREATE TABLE IF NOT EXISTS {$table} (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            {$ownerColumn} INT NOT NULL,
+            report_type ENUM({$reportTypes}) DEFAULT 'general',
+            title VARCHAR(200) NOT NULL,
+            content TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            KEY {$indexName} ({$ownerColumn}, report_type, created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+
         try {
-            $db->exec(
-                "CREATE TABLE IF NOT EXISTS {$table} (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    {$ownerColumn} INT NOT NULL,
-                    report_type ENUM({$reportTypes}) DEFAULT NULL,
-                    title VARCHAR(200) NOT NULL,
-                    content TEXT NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                    FOREIGN KEY ({$ownerColumn}) REFERENCES users(id) ON DELETE CASCADE,
-                    KEY {$indexName} ({$ownerColumn}, report_type, created_at)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
-            );
+            $db->exec($tableSql);
         } catch (Throwable $e) {
             error_log('Report notes table check failed for ' . $table . ': ' . $e->getMessage());
+            try {
+                $db->exec($fallbackSql);
+            } catch (Throwable $fallbackError) {
+                error_log('Report notes fallback table check failed for ' . $table . ': ' . $fallbackError->getMessage());
+            }
         }
     }
 

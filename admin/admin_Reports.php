@@ -837,6 +837,14 @@ $previewCount = count($previewRows);
 
             let notesCache = [];
 
+            async function readJsonResponse(res, fallbackMessage) {
+                const text = await res.text();
+                try {
+                    return text ? JSON.parse(text) : { ok: false, message: fallbackMessage };
+                } catch (err) {
+                    return { ok: false, message: fallbackMessage };
+                }
+            }
 
             function typeBadge(type) {
                 const label = type ? type.toUpperCase() : 'GENERAL';
@@ -866,9 +874,9 @@ $previewCount = count($previewRows);
 
                 try {
                     const res = await fetch('admin_Reports_Action.php?action=list_notes' + qs);
-                    const data = await res.json();
+                    const data = await readJsonResponse(res, 'Report notes returned an invalid response.');
                     if (!res.ok || !data.ok) {
-                        listWrap.innerHTML = '<div class="text-danger">Failed to load notes.</div>';
+                        listWrap.innerHTML = '<div class="text-danger">' + esc(data.message || 'Failed to load notes.') + '</div>';
                         return;
                     }
 
@@ -904,7 +912,7 @@ $previewCount = count($previewRows);
                         );
                     }).join('');
                 } catch (err) {
-                    listWrap.innerHTML = '<div class="text-danger">Error loading notes.</div>';
+                    listWrap.innerHTML = '<div class="text-danger">' + esc(err.message || 'Error loading notes.') + '</div>';
                 }
             }
 
@@ -928,7 +936,7 @@ $previewCount = count($previewRows);
                         method: 'POST',
                         body: fd
                     });
-                    const data = await res.json();
+                    const data = await readJsonResponse(res, isEdit ? 'Report note update returned an invalid response.' : 'Report note save returned an invalid response.');
                     if (!res.ok || !data.ok) {
                         showNotification((data && data.message) ? data.message : (isEdit ? 'Failed to update note.' : 'Failed to save note.'), 'danger');
                         return;
@@ -972,9 +980,10 @@ $previewCount = count($previewRows);
                         method: 'POST',
                         body: fd
                     });
-                    const data = await res.json();
+                    const data = await readJsonResponse(res, 'Report note delete returned an invalid response.');
                     if (!res.ok || !data.ok) {
                         btn.disabled = false;
+                        showNotification((data && data.message) ? data.message : 'Failed to delete note.', 'danger');
                         return;
                     }
                     await loadNotes();
