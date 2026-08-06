@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.16 — 2026-08-06
+
+### Added
+
+- Added a converted macro-free `deped/ecr_template.xlsx` so ECR export can prefer an `.xlsx` template over the original `.xlsm` workbook.
+
 ## v0.3.15 — 2026-08-06
 
 ### Fixed

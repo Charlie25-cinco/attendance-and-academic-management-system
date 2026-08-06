@@ -12,6 +12,19 @@ final class EcrParserTest extends TestCase
         $this->assertFileExists($templateInfo['path']);
     }
 
+    public function testConvertedEcrXlsxTemplateIsPreferred(): void
+    {
+        $exporter = new EcrExporter();
+        $templateInfo = $exporter->getTemplateInfo();
+
+        $this->assertSame('ecr_template.xlsx', basename((string)$templateInfo['path']));
+        $this->assertTrue($templateInfo['compatible']);
+        $this->assertContains('INPUT DATA', $templateInfo['sheets']);
+        $this->assertContains('TERM 1', $templateInfo['sheets']);
+        $this->assertContains('TERM 2', $templateInfo['sheets']);
+        $this->assertContains('TERM 3', $templateInfo['sheets']);
+    }
+
     public function testEcrParserHandlesNonexistentFile(): void
     {
         $parser = new EcrParser();
