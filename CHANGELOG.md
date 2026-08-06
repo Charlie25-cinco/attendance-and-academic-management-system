@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.14 — 2026-08-06
+
+### Fixed
+
+- Improved ECR XLSX export reliability by falling back to a generated workbook when the official template cannot be edited and by returning template diagnostics to the ECR UI.
+
 ## v0.3.13 — 2026-08-06
 
 ### Fixed

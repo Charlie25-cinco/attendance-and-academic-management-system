@@ -12,6 +12,7 @@ use DOMElement;
 use Exception;
 use RuntimeException;
 use InvalidArgumentException;
+use Throwable;
 
 class EcrExporter {
     private array $header = [];
@@ -274,7 +275,11 @@ class EcrExporter {
         if (!in_array(strtolower(pathinfo($templatePath, PATHINFO_EXTENSION)), ['xlsx', 'xlsm'], true)) {
             return $this->exportToGeneratedXlsx($filePath);
         }
-        return $this->exportToXlsxUsingTemplate($filePath, $templatePath);
+        if (!class_exists('ZipArchive')) {
+            return $this->exportToGeneratedXlsx($filePath);
+        }
+        return $this->exportToXlsxUsingTemplate($filePath, $templatePath)
+            || $this->exportToGeneratedXlsx($filePath);
     }
 
     private function exportToGeneratedXlsx(string $filePath): bool {
@@ -411,8 +416,7 @@ class EcrExporter {
                 $sheet->getColumnDimension($this->columnLetter($col))->setWidth(10);
             }
 
-            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
-            $writer->save($filePath);
+            SimpleXlsxWriter::save($spreadsheet, $filePath);
             $spreadsheet->disconnectWorksheets();
             return is_file($filePath) && filesize($filePath) > 0;
         } catch (Throwable $e) {

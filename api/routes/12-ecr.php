@@ -371,10 +371,14 @@ if ($route === 'ecr-template' && $method === 'GET') {
 
     apiJson([
         'ok' => true,
-        'exists' => $info['exists'],
+        'exists' => $info['exists'] && $info['compatible'],
+        'template_file_exists' => $info['exists'],
+        'compatible' => $info['compatible'],
         'file' => basename($templatePath),
         'meta' => $meta,
         'template' => $info,
+        'diagnostics' => $exporter->getTemplateDiagnostics(),
+        'message' => $info['message'],
     ]);
 }
 
@@ -435,10 +439,12 @@ if ($route === 'ecr-export' && $method === 'GET') {
     @rename($tmp, $outputPath);
     $ok = $format === 'csv' ? $exporter->exportToCsv($outputPath) : $exporter->exportToXlsx($outputPath);
     if (!$ok || !is_file($outputPath)) {
+        $diagnostics = $format === 'xlsx' ? $exporter->getTemplateDiagnostics() : null;
         @unlink($outputPath);
         apiJson([
             'ok' => false,
             'message' => 'Unable to generate ECR file. Check that a compatible .xlsx template is available.',
+            'diagnostics' => $diagnostics,
         ], 500);
     }
 
