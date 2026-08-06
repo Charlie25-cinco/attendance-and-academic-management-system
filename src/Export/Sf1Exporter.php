@@ -15,6 +15,11 @@ use RuntimeException;
 use Throwable;
 
 class Sf1Exporter {
+    private const SF1_MALE_START_ROW = 11;
+    private const SF1_MALE_END_ROW = 50;
+    private const SF1_FEMALE_START_ROW = 52;
+    private const SF1_FEMALE_END_ROW = 91;
+
     private $db;
     private $schoolSettings;
 
@@ -63,30 +68,60 @@ class Sf1Exporter {
         $editor->setCell('AC5', $trackLabel);
         $editor->setCell('F7', $section);
         $editor->setCell('M7', $track === 'techpro' ? 'TVL' : '');
-        $editor->clearRange('A', 'AE', 11, 120);
 
-        $row = 11;
-        foreach ($students as $student) {
-            $editor->setCell('A' . $row, (string)($student['lrn'] ?? ''));
-            $editor->setCell('C' . $row, $this->formatSf1LearnerName($student));
-            $editor->setCell('G' . $row, strtoupper(substr((string)($student['sex'] ?? ''), 0, 1)));
-            $editor->setCell('H' . $row, $this->formatSf1Date($student['date_of_birth'] ?? ''));
-            $editor->setCell('J' . $row, $student['age'] ?? '');
-            $editor->setCell('L' . $row, $student['religion'] ?? '');
-            $editor->setCell('M' . $row, $student['house_street'] ?? $this->extractAddressPart($student, 'house'));
-            $editor->setCell('N' . $row, $student['barangay'] ?? $this->extractAddressPart($student, 'barangay'));
-            $editor->setCell('R' . $row, $student['municipality'] ?? $this->extractAddressPart($student, 'municipality'));
-            $editor->setCell('U' . $row, $student['province'] ?? $this->extractAddressPart($student, 'province'));
-            $editor->setCell('W' . $row, $student['father_name'] ?? '');
-            $editor->setCell('X' . $row, $student['mother_name'] ?? '');
-            $editor->setCell('Z' . $row, $student['guardian_name'] ?? '');
-            $editor->setCell('AC' . $row, $student['relationship'] ?? '');
-            $editor->setCell('AD' . $row, $student['contact_number'] ?? '');
-            $editor->setCell('AE' . $row, $student['remarks'] ?? '');
-            $row++;
-        }
+        $maleStudents = array_values(array_filter($students, fn($student) => strtolower((string)($student['sex'] ?? '')) === 'male'));
+        $femaleStudents = array_values(array_filter($students, fn($student) => strtolower((string)($student['sex'] ?? '')) === 'female'));
+
+        $this->clearOfficialStudentBlock($editor, self::SF1_MALE_START_ROW, self::SF1_MALE_END_ROW);
+        $this->clearOfficialStudentBlock($editor, self::SF1_FEMALE_START_ROW, self::SF1_FEMALE_END_ROW);
+        $this->writeOfficialStudentBlock($editor, $maleStudents, self::SF1_MALE_START_ROW, self::SF1_MALE_END_ROW);
+        $this->writeOfficialStudentBlock($editor, $femaleStudents, self::SF1_FEMALE_START_ROW, self::SF1_FEMALE_END_ROW);
+        $this->writeOfficialCounts($editor, count($maleStudents), count($femaleStudents));
 
         $editor->save($filePath);
+    }
+
+    private function clearOfficialStudentBlock(SimpleXlsxTemplateEditor $editor, int $startRow, int $endRow): void {
+        $editor->clearRange('B', 'AE', $startRow, $endRow);
+    }
+
+    private function writeOfficialStudentBlock(SimpleXlsxTemplateEditor $editor, array $students, int $startRow, int $endRow): void {
+        $row = $startRow;
+        foreach ($students as $student) {
+            if ($row > $endRow) {
+                break;
+            }
+            $this->writeOfficialStudentRow($editor, $row, $student);
+            $row++;
+        }
+    }
+
+    private function writeOfficialStudentRow(SimpleXlsxTemplateEditor $editor, int $row, array $student): void {
+        $editor->setCell('A' . $row, (string)($student['lrn'] ?? ''));
+        $editor->setCell('C' . $row, $this->formatSf1LearnerName($student));
+        $editor->setCell('G' . $row, strtoupper(substr((string)($student['sex'] ?? ''), 0, 1)));
+        $editor->setCell('H' . $row, $this->formatSf1Date($student['date_of_birth'] ?? ''));
+        $editor->setCell('J' . $row, $student['age'] ?? '');
+        $editor->setCell('L' . $row, $student['religion'] ?? '');
+        $editor->setCell('M' . $row, $student['house_street'] ?? $this->extractAddressPart($student, 'house'));
+        $editor->setCell('N' . $row, $student['barangay'] ?? $this->extractAddressPart($student, 'barangay'));
+        $editor->setCell('R' . $row, $student['municipality'] ?? $this->extractAddressPart($student, 'municipality'));
+        $editor->setCell('U' . $row, $student['province'] ?? $this->extractAddressPart($student, 'province'));
+        $editor->setCell('W' . $row, $student['father_name'] ?? '');
+        $editor->setCell('X' . $row, $student['mother_name'] ?? '');
+        $editor->setCell('Z' . $row, $student['guardian_name'] ?? '');
+        $editor->setCell('AC' . $row, $student['relationship'] ?? '');
+        $editor->setCell('AD' . $row, $student['contact_number'] ?? '');
+        $editor->setCell('AE' . $row, $student['remarks'] ?? '');
+    }
+
+    private function writeOfficialCounts(SimpleXlsxTemplateEditor $editor, int $maleCount, int $femaleCount): void {
+        $editor->setCell('U96', $maleCount);
+        $editor->setCell('W96', $maleCount);
+        $editor->setCell('U97', $femaleCount);
+        $editor->setCell('W97', $femaleCount);
+        $editor->setCell('U99', $maleCount + $femaleCount);
+        $editor->setCell('W99', $maleCount + $femaleCount);
     }
 
     private function formatSf1LearnerName(array $student): string {

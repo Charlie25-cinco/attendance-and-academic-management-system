@@ -80,6 +80,31 @@ final class Sf1ParserTest extends TestCase
             'Amethyst',
             'academic',
         ]);
+        $stmt->execute([
+            '210987654321',
+            'Rica',
+            'Santos',
+            'Balacuit',
+            'female',
+            '2008-09-12',
+            '09987654321',
+            '',
+            '42',
+            'Cogon',
+            'Balingasag',
+            'Misamis Oriental',
+            '',
+            '',
+            'Balacuit, Father',
+            'Santos, Mother',
+            '',
+            '',
+            'student',
+            'active',
+            11,
+            'Amethyst',
+            'academic',
+        ]);
         $cacheReflection = new ReflectionClass(\BshsAms\Database\SchemaCache::class);
         $columnsProperty = $cacheReflection->getProperty('columns');
         $columnsProperty->setAccessible(true);
@@ -131,7 +156,21 @@ final class Sf1ParserTest extends TestCase
             $this->assertSame('Dagohoy, Dave Santos', $rows[11][2] ?? null);
             $this->assertSame('M', $rows[11][6] ?? null);
             $this->assertSame('05/08/2008', $rows[11][7] ?? null);
-            $this->assertSame('', $rows[12][0] ?? '');
+            $this->assertSame('2', $rows[12][0] ?? null);
+            $this->assertSame('<=== TOTAL MALE', $rows[51][2] ?? null);
+            $this->assertSame('210987654321', $rows[52][0] ?? null);
+            $this->assertSame('Balacuit, Rica Santos', $rows[52][2] ?? null);
+            $this->assertSame('F', $rows[52][6] ?? null);
+            $this->assertSame('09/12/2008', $rows[52][7] ?? null);
+            $this->assertSame('<=== TOTAL FEMALE', $rows[92][2] ?? null);
+            $this->assertSame('<=== COMBINED', $rows[93][2] ?? null);
+            $this->assertSame('Legend: List and Code of Indicators under REMARKS column', $rows[94][0] ?? null);
+            $this->assertSame('1', $rows[96][20] ?? null);
+            $this->assertSame('1', $rows[96][22] ?? null);
+            $this->assertSame('1', $rows[97][20] ?? null);
+            $this->assertSame('1', $rows[97][22] ?? null);
+            $this->assertSame('2', $rows[99][20] ?? null);
+            $this->assertSame('2', $rows[99][22] ?? null);
         } finally {
             putenv('APP_FORCE_XLSX_FALLBACK');
             \BshsAms\Database\SchemaCache::clearCache();
@@ -223,7 +262,8 @@ final class Sf1ParserTest extends TestCase
             $editor->setCell('W5', 'Grade 11');
             $editor->setCell('AC5', 'Academic Track');
             $editor->setCell('F7', 'Amethyst');
-            $editor->clearRange('A', 'AE', 11, 120);
+            $editor->clearRange('B', 'AE', 11, 50);
+            $editor->clearRange('B', 'AE', 52, 91);
             $editor->setCell('A11', '123456789012');
             $editor->setCell('C11', 'Dagohoy, Dave Santos');
             $editor->setCell('G11', 'M');
@@ -243,6 +283,11 @@ final class Sf1ParserTest extends TestCase
             $this->assertSame('123456789012', $rows[11][0] ?? null);
             $this->assertSame('Dagohoy, Dave Santos', $rows[11][2] ?? null);
             $this->assertSame('Mambayaan', $rows[11][13] ?? null);
+            $this->assertSame('2', $rows[12][0] ?? null);
+            $this->assertSame('<=== TOTAL MALE', $rows[51][2] ?? null);
+            $this->assertSame('1', $rows[52][0] ?? null);
+            $this->assertSame('<=== TOTAL FEMALE', $rows[92][2] ?? null);
+            $this->assertSame('Legend: List and Code of Indicators under REMARKS column', $rows[94][0] ?? null);
         } finally {
             putenv('APP_FORCE_XLSX_FALLBACK');
             @unlink($path);

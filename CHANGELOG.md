@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.12 — 2026-08-06
+
+### Fixed
+
+- Fixed official SF1 XLSX export to keep separate male and female template sections, preserve the bottom legend and summary rows, and populate registered learner counts.
+
 ## v0.3.11 — 2026-08-06
 
 ### Fixed
