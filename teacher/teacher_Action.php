@@ -357,6 +357,9 @@ function teacherAttendanceUpsertRecord($db, $teacherId, $classId, $date, $studen
     }
 
     $upsert->execute(array_merge($params, $updateParams));
+    if (function_exists('pushNotifyAttendanceEvent')) {
+        pushNotifyAttendanceEvent($db, (int)$studentId, (string)$status, (string)$date);
+    }
 }
 
 function getTeacherClassSubjectId($db, $teacherId, $classId) {

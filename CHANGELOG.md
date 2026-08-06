@@ -2,6 +2,17 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.5 — 2026-08-06
+
+### Added
+
+- Added `pushNotifyAttendanceEvent()` and `pushNotifyGradePublication()` helpers to `config/constants.php` to dispatch VAPID Web Push payloads and in-app notifications upon attendance marking and official report card release (`REQ-008`).
+- Added Web Push notification trigger calls to `teacher/teacher_Action.php` (attendance upsert) and `admin/admin_Grade_Approvals_Action.php` (report card approvals).
+- Added `tests/WebPushNotificationTest.php` unit test suite covering Base64Url helper encoding, push subscription creation/deletion, and event notification payload generation.
+- Updated `pushEnsureSubscriptionsTable()` and `pushSaveSubscription()` in `config/constants.php` with SQLite database driver compatibility for testing runtimes.
+- Added live password strength guidance checklist, real-time password match indicator, and inline modal alert container to the shared Profile Settings modal in `includes/modals.php`.
+- Added global `.password-guidance` styling in `assets/css/main.css` supporting light and dark modes across all role portals.
+
 ## v0.3.4 — 2026-08-05
 
 ### Fixed

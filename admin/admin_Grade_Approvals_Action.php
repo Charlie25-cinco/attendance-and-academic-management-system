@@ -232,6 +232,21 @@ if ($action === 'review_report_card') {
         exit();
     }
 
+    if ($status === 'approved') {
+        $rcStmt = $db->prepare("SELECT student_id, academic_year, semester FROM report_card_approvals WHERE id = ?");
+        $rcStmt->execute([$approvalId]);
+        $rcRow = $rcStmt->fetch(PDO::FETCH_ASSOC);
+        if ($rcRow) {
+            $studentId = (int)$rcRow['student_id'];
+            $enStmt = $db->prepare("SELECT class_id FROM enrollments WHERE student_id = ? AND COALESCE(status, 'enrolled') = 'enrolled' LIMIT 1");
+            $enStmt->execute([$studentId]);
+            $classId = (int)($enStmt->fetchColumn() ?: 0);
+            if ($classId > 0 && function_exists('pushNotifyGradePublication')) {
+                pushNotifyGradePublication($db, $classId, (string)($rcRow['semester'] ?? 'Final'), (string)($rcRow['academic_year'] ?? ''));
+            }
+        }
+    }
+
     echo json_encode(['success' => true, 'message' => 'Report card status updated to ' . ucfirst($status)]);
     exit();
 }
@@ -278,6 +293,15 @@ if ($action === 'review_report_card_batch') {
     if ($stmt->rowCount() <= 0) {
         echo json_encode(['success' => false, 'message' => 'No pending report card records found for the selected section']);
         exit();
+    }
+
+    if ($status === 'approved') {
+        $cStmt = $db->prepare("SELECT id FROM classes WHERE grade_level = ? AND (LOWER(TRIM(COALESCE(section, ''))) = LOWER(TRIM(COALESCE(?, ''))) OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(?, ''), '(', 1)))) LIMIT 1");
+        $cStmt->execute([$gradeLevel, $section, $section]);
+        $classId = (int)($cStmt->fetchColumn() ?: 0);
+        if ($classId > 0 && function_exists('pushNotifyGradePublication')) {
+            pushNotifyGradePublication($db, $classId, $semester !== '' ? $semester : 'Final', $academicYear);
+        }
     }
 
     echo json_encode(['success' => true, 'message' => 'Section report cards updated to ' . ucfirst($status)]);

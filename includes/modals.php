@@ -137,6 +137,7 @@
                         <input type="text" class="form-control" value="<?php echo htmlspecialchars($displayReference !== '' ? $displayReference : 'Not available'); ?>" readonly>
                     </div>
                     <hr>
+                    <div id="profileModalAlert" class="alert d-none mb-3"></div>
                     <div class="mb-3">
                         <label class="form-label">Current Password</label>
                         <div class="input-group">
@@ -149,20 +150,31 @@
                     <div class="mb-3">
                         <label class="form-label">New Password</label>
                         <div class="input-group">
-                            <input type="password" class="form-control" id="profileNewPassword" name="new_password" placeholder="Enter new password">
+                            <input type="password" class="form-control" id="profileNewPassword" name="new_password" placeholder="Enter new password" autocomplete="new-password">
                             <button type="button" class="btn btn-outline-secondary profile-password-toggle" data-target="profileNewPassword" aria-label="Show new password">
                                 <i class="bi bi-eye"></i>
                             </button>
+                        </div>
+                        <div class="password-guidance mt-2" data-password-guidance data-target="profileNewPassword">
+                            <p class="password-guidance-title">Recommended password</p>
+                            <ul class="password-guidance-list">
+                                <li data-rule="length">12 to 72 characters</li>
+                                <li data-rule="uppercase">At least one uppercase letter</li>
+                                <li data-rule="lowercase">At least one lowercase letter</li>
+                                <li data-rule="number">At least one number</li>
+                                <li data-rule="special">At least one special character</li>
+                            </ul>
                         </div>
                     </div>
                     <div class="mb-0">
                         <label class="form-label">Confirm New Password</label>
                         <div class="input-group">
-                            <input type="password" class="form-control" id="profileConfirmPassword" name="confirm_password" placeholder="Re-enter new password">
+                            <input type="password" class="form-control" id="profileConfirmPassword" name="confirm_password" placeholder="Re-enter new password" autocomplete="new-password">
                             <button type="button" class="btn btn-outline-secondary profile-password-toggle" data-target="profileConfirmPassword" aria-label="Show confirmed password">
                                 <i class="bi bi-eye"></i>
                             </button>
                         </div>
+                        <div id="profilePasswordMatchIndicator" class="small mt-1 text-muted"></div>
                     </div>
                 </form>
             </div>
@@ -197,6 +209,79 @@
         btn.innerHTML = isBusy ? '<span class="spinner-border spinner-border-sm me-2"></span>Saving...' : 'Save Changes';
     }
 
+    function showProfileModalAlert(message, type) {
+        var alertBox = document.getElementById('profileModalAlert');
+        if (!alertBox) return;
+        if (!message) {
+            alertBox.className = 'alert d-none mb-3';
+            alertBox.textContent = '';
+            return;
+        }
+        alertBox.className = 'alert alert-' + (type || 'danger') + ' mb-3';
+        alertBox.textContent = message;
+    }
+
+    var newPassInput = document.getElementById('profileNewPassword');
+    var confirmPassInput = document.getElementById('profileConfirmPassword');
+    var matchIndicator = document.getElementById('profilePasswordMatchIndicator');
+
+    var passwordRules = {
+        length: function (v) { return v.length >= 12 && v.length <= 72; },
+        uppercase: function (v) { return /[A-Z]/.test(v); },
+        lowercase: function (v) { return /[a-z]/.test(v); },
+        number: function (v) { return /[0-9]/.test(v); },
+        special: function (v) { return /[^A-Za-z0-9\s]/.test(v); }
+    };
+
+    function updateProfilePasswordGuide() {
+        if (!newPassInput) return;
+        var guide = document.querySelector('[data-password-guidance][data-target="profileNewPassword"]');
+        if (!guide) return;
+        var val = newPassInput.value || '';
+        var items = guide.querySelectorAll('[data-rule]');
+        items.forEach(function (item) {
+            var rule = item.getAttribute('data-rule');
+            var passed = passwordRules[rule] ? passwordRules[rule](val) : false;
+            item.classList.toggle('is-valid', passed);
+        });
+    }
+
+    function updateProfilePasswordMatch() {
+        if (!matchIndicator) return;
+        var newV = newPassInput ? newPassInput.value : '';
+        var confirmV = confirmPassInput ? confirmPassInput.value : '';
+        if (!confirmV && !newV) {
+            matchIndicator.textContent = '';
+            matchIndicator.className = 'small mt-1 text-muted';
+            return;
+        }
+        if (confirmV && newV && confirmV === newV) {
+            matchIndicator.textContent = '✓ Passwords match';
+            matchIndicator.className = 'small mt-1 text-success fw-bold';
+        } else if (confirmV) {
+            matchIndicator.textContent = '✗ Passwords do not match';
+            matchIndicator.className = 'small mt-1 text-danger fw-bold';
+        } else {
+            matchIndicator.textContent = '';
+            matchIndicator.className = 'small mt-1 text-muted';
+        }
+    }
+
+    if (newPassInput) {
+        newPassInput.addEventListener('input', function () {
+            updateProfilePasswordGuide();
+            updateProfilePasswordMatch();
+            showProfileModalAlert('', '');
+        });
+        updateProfilePasswordGuide();
+    }
+    if (confirmPassInput) {
+        confirmPassInput.addEventListener('input', function () {
+            updateProfilePasswordMatch();
+            showProfileModalAlert('', '');
+        });
+    }
+
     document.querySelectorAll('.profile-password-toggle').forEach(function (button) {
         button.addEventListener('click', function () {
             var input = document.getElementById(button.getAttribute('data-target') || '');
@@ -217,6 +302,32 @@
         saveProfileBtn.addEventListener('click', function () {
             var form = document.getElementById('profileForm');
             if (!form) return;
+            showProfileModalAlert('', '');
+
+            var currentP = document.getElementById('profileCurrentPassword') ? document.getElementById('profileCurrentPassword').value : '';
+            var newP = newPassInput ? newPassInput.value : '';
+            var confirmP = confirmPassInput ? confirmPassInput.value : '';
+
+            if (newP || confirmP || currentP) {
+                if (!currentP) {
+                    showProfileModalAlert('Please enter your current password to update your password.', 'danger');
+                    return;
+                }
+                if (!newP) {
+                    showProfileModalAlert('Please enter a new password.', 'danger');
+                    return;
+                }
+                if (newP !== confirmP) {
+                    showProfileModalAlert('New password and confirm password do not match.', 'danger');
+                    return;
+                }
+                var allValid = Object.keys(passwordRules).every(function (k) { return passwordRules[k](newP); });
+                if (!allValid) {
+                    showProfileModalAlert('Please meet all password requirements highlighted in the checklist below.', 'danger');
+                    return;
+                }
+            }
+
             var payload = {};
             new FormData(form).forEach(function (value, key) {
                 payload[key] = String(value || '');
@@ -248,14 +359,16 @@
                     var input = document.getElementById(id);
                     if (input) input.value = '';
                 });
+                updateProfilePasswordGuide();
+                updateProfilePasswordMatch();
+                showProfileModalAlert(data.message || 'Profile updated successfully', 'success');
                 if (typeof showNotification === 'function') {
                     showNotification(data.message || 'Profile updated successfully', 'success');
                 }
             }).catch(function (error) {
+                showProfileModalAlert(error.message || 'Failed to update profile', 'danger');
                 if (typeof showNotification === 'function') {
                     showNotification(error.message || 'Failed to update profile', 'danger');
-                } else {
-                    alert(error.message || 'Failed to update profile');
                 }
             }).finally(function () {
                 setProfileBusy(false);

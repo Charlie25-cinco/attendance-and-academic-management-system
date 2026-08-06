@@ -274,6 +274,21 @@ function pushConfigReady() {
 }
 
 function pushEnsureSubscriptionsTable($db) {
+    $driver = '';
+    try { $driver = (string)$db->getAttribute(PDO::ATTR_DRIVER_NAME); } catch (Throwable $e) {}
+    if (strtolower($driver) === 'sqlite') {
+        $db->exec("CREATE TABLE IF NOT EXISTS push_subscriptions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            endpoint TEXT NOT NULL UNIQUE,
+            p256dh TEXT NOT NULL,
+            auth TEXT NOT NULL,
+            user_agent TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )");
+        return;
+    }
     $db->exec("CREATE TABLE IF NOT EXISTS push_subscriptions (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
@@ -505,6 +520,21 @@ function pushSaveSubscription($db, $userId, $subscription, $userAgent = '') {
     $auth = trim((string)($keys['auth'] ?? ''));
     if ($endpoint === '' || $p256dh === '' || $auth === '') { return false; }
     pushEnsureSubscriptionsTable($db);
+
+    $driver = '';
+    try { $driver = (string)$db->getAttribute(PDO::ATTR_DRIVER_NAME); } catch (Throwable $e) {}
+    if (strtolower($driver) === 'sqlite') {
+        $stmt = $db->prepare("INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, user_agent, created_at, updated_at)
+                              VALUES (?, ?, ?, ?, ?, DATETIME('now'), DATETIME('now'))
+                              ON CONFLICT(endpoint) DO UPDATE SET
+                                user_id = excluded.user_id,
+                                p256dh = excluded.p256dh,
+                                auth = excluded.auth,
+                                user_agent = excluded.user_agent,
+                                updated_at = DATETIME('now')");
+        return $stmt->execute([(int)$userId, $endpoint, $p256dh, $auth, substr((string)$userAgent, 0, 255)]);
+    }
+
     $stmt = $db->prepare("INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, user_agent, created_at, updated_at)
                           VALUES (?, ?, ?, ?, ?, NOW(), NOW())
                           ON DUPLICATE KEY UPDATE
@@ -558,6 +588,101 @@ function pushSendToUserIds($db, array $userIds, array $payload) {
         return false;
     }
     return true;
+}
+
+function pushNotifyAttendanceEvent($db, int $studentId, string $status, string $date): bool {
+    if ($studentId <= 0 || !$db) {
+        return false;
+    }
+    $stmt = $db->prepare("SELECT first_name, last_name FROM users WHERE id = ? AND role = 'student'");
+    $stmt->execute([$studentId]);
+    $student = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$student) {
+        return false;
+    }
+    $studentName = trim(($student['first_name'] ?? '') . ' ' . ($student['last_name'] ?? ''));
+    $statusLabel = ucfirst(strtolower(trim($status)));
+    $formattedDate = date('M d, Y', strtotime($date));
+
+    $parentStmt = $db->prepare("SELECT parent_id FROM parent_students WHERE student_id = ?");
+    $parentStmt->execute([$studentId]);
+    $parentIds = array_map('intval', $parentStmt->fetchAll(PDO::FETCH_COLUMN));
+
+    $targetIds = array_values(array_unique(array_merge([$studentId], $parentIds)));
+
+    $payload = [
+        'title' => 'Attendance Update: ' . $statusLabel,
+        'body' => $studentName . ' marked ' . strtolower($statusLabel) . ' for ' . $formattedDate,
+        'icon' => 'assets/icons/icon-192.png',
+        'badge' => 'assets/icons/icon-72.png',
+        'url' => 'student/attendance.php',
+        'data' => [
+            'type' => 'attendance',
+            'student_id' => $studentId,
+            'status' => $status,
+            'date' => $date,
+        ],
+    ];
+
+    $webPushSent = pushSendToUserIds($db, $targetIds, $payload);
+    if (function_exists('pushNotifyUsers')) {
+        pushNotifyUsers($db, $targetIds, $payload['title'], $payload['body'], $payload['data']);
+    }
+    return $webPushSent;
+}
+
+function pushNotifyGradePublication($db, int $classId, string $term = 'Final', string $academicYear = ''): bool {
+    if ($classId <= 0 || !$db) {
+        return false;
+    }
+    $classStmt = $db->prepare("SELECT class_name, grade_level, section FROM classes WHERE id = ?");
+    $classStmt->execute([$classId]);
+    $class = $classStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$class) {
+        return false;
+    }
+    $className = trim(($class['class_name'] ?? '') . ' (' . ($class['grade_level'] ?? '') . '-' . ($class['section'] ?? '') . ')');
+
+    if (function_exists('pushActiveClassRecipientIds')) {
+        $recipients = pushActiveClassRecipientIds($db, $classId);
+    } else {
+        $sStmt = $db->prepare("SELECT DISTINCT student_id FROM enrollments WHERE class_id = ? AND COALESCE(status, 'enrolled') = 'enrolled'");
+        $sStmt->execute([$classId]);
+        $sIds = array_map('intval', $sStmt->fetchAll(PDO::FETCH_COLUMN));
+
+        $pIds = [];
+        if (!empty($sIds)) {
+            $inClause = implode(',', array_fill(0, count($sIds), '?'));
+            $pStmt = $db->prepare("SELECT DISTINCT parent_id FROM parent_students WHERE student_id IN ($inClause)");
+            $pStmt->execute($sIds);
+            $pIds = array_map('intval', $pStmt->fetchAll(PDO::FETCH_COLUMN));
+        }
+        $recipients = array_values(array_unique(array_merge($sIds, $pIds)));
+    }
+
+    if (empty($recipients)) {
+        return false;
+    }
+
+    $payload = [
+        'title' => 'Official Report Cards Released',
+        'body' => 'Report cards for ' . $className . ' are now available.',
+        'icon' => 'assets/icons/icon-192.png',
+        'badge' => 'assets/icons/icon-72.png',
+        'url' => 'student/report_card.php',
+        'data' => [
+            'type' => 'grade_publication',
+            'class_id' => $classId,
+            'term' => $term,
+            'academic_year' => $academicYear,
+        ],
+    ];
+
+    $webPushSent = pushSendToUserIds($db, $recipients, $payload);
+    if (function_exists('pushNotifyUsers')) {
+        pushNotifyUsers($db, $recipients, $payload['title'], $payload['body'], $payload['data']);
+    }
+    return $webPushSent;
 }
 
 function smsInitConfig(): void {
