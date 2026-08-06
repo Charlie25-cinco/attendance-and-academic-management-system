@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.11 — 2026-08-06
+
+### Fixed
+
+- Fixed official SF1 XLSX export row placement so learner records start on row 11 like the DepEd template and imported SF1 workbooks.
+
 ## v0.3.10 — 2026-08-06
 
 ### Fixed
