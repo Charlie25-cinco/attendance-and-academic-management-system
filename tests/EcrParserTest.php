@@ -173,6 +173,15 @@ final class EcrParserTest extends TestCase
             $this->assertContains('TERM 3', $sheetNames);
             $this->assertNotContains('ECR Export', $sheetNames);
             $this->assertSame('Strengthened Senior High School Class Record', $termRows[1][0] ?? null);
+            $this->assertSame('Region X', $termRows[4][6] ?? null);
+            $this->assertSame('Misamis Oriental', $termRows[4][17] ?? null);
+            $this->assertSame('Balingasag Senior High School', $termRows[5][6] ?? null);
+            $this->assertSame('341227', $termRows[5][17] ?? null);
+            $this->assertSame('2026-2027', $termRows[5][25] ?? null);
+            $this->assertSame('Grade 11 - Amethyst', $termRows[7][10] ?? null);
+            $this->assertSame('Test Teacher', $termRows[7][18] ?? null);
+            $this->assertSame('Filipino 1', $termRows[7][25] ?? null);
+            $this->assertSame('Core Subject', $termRows[8][25] ?? null);
             $this->assertSame('Dagohoy, Dave Santos', $termRows[14][1] ?? null);
             $this->assertSame('123456789012', $termRows[14][2] ?? null);
             $this->assertSame('18', $termRows[14][5] ?? null);

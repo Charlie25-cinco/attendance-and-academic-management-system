@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.18 — 2026-08-06
+
+### Fixed
+
+- Fixed ECR official template header mapping so division, school ID, school year, subject, and subject type export into the correct merged cells.
+
 ## v0.3.17 — 2026-08-06
 
 ### Fixed

@@ -520,27 +520,26 @@ class EcrExporter {
         $wwWeight = (float)($this->weights['ww'] ?? 25);
         $ptWeight = (float)($this->weights['pt'] ?? 50);
         $qaWeight = (float)($this->weights['assessment'] ?? 25);
-        $track = trim((string)($this->header['subject_type'] ?? 'Core Subject (All Tracks)'));
-        if ($track === '') { $track = 'Core Subject (All Tracks)'; }
+        $track = trim((string)($this->header['track'] ?? $this->header['track_name'] ?? ''));
+        $subjectType = trim((string)($this->header['subject_type'] ?? 'Core Subject (All Tracks)'));
+        if ($subjectType === '') { $subjectType = 'Core Subject (All Tracks)'; }
         $gradeSection = trim((string)($this->header['grade_section'] ?? ''));
         if ($gradeSection === '') {
             $grade = (string)($this->header['grade_level'] ?? '');
             $section = trim((string)($this->header['section'] ?? ''));
             $gradeSection = $grade !== '' ? ('Grade ' . $grade . ($section !== '' ? (' - ' . $section) : '')) : $section;
         }
-        $isTermMode = $this->gradingSystem === '3_term';
-        $semesterLabel = $isTermMode ? strtoupper(str_replace('Term', 'TERM ', $this->quarter)) : strtoupper($this->semester === 'S2' ? '2ND' : '1ST');
         $headerCells = [
             'G4' => (string)($this->header['region'] ?? ''),
-            'O4' => (string)($this->header['division'] ?? ''),
+            'R4' => (string)($this->header['division'] ?? ''),
             'G5' => (string)($this->header['school'] ?? ''),
-            'X5' => (string)($this->header['school_id'] ?? ''),
-            'AG5' => $this->academicYear,
+            'R5' => (string)($this->header['school_id'] ?? ''),
+            'Z5' => $this->academicYear,
             'K7' => $gradeSection,
             'S7' => (string)($this->header['teacher'] ?? ''),
-            'AE7' => (string)($this->header['subject'] ?? ''),
-            'S8' => $semesterLabel,
-            'AE8' => $track,
+            'Z7' => (string)($this->header['subject'] ?? ''),
+            'S8' => $track,
+            'Z8' => $subjectType,
         ];
         $targetTerm = $this->targetTemplateTerm();
         $targetQuarterDom = $termDoms[$targetTerm] ?? reset($termDoms);
@@ -650,17 +649,27 @@ class EcrExporter {
         $wwWeight = (float)($this->weights['ww'] ?? 25);
         $ptWeight = (float)($this->weights['pt'] ?? 50);
         $qaWeight = (float)($this->weights['assessment'] ?? 25);
-        $track = trim((string)($this->header['subject_type'] ?? 'Core Subject (All Tracks)'));
-        if ($track === '') { $track = 'Core Subject (All Tracks)'; }
+        $track = trim((string)($this->header['track'] ?? $this->header['track_name'] ?? ''));
+        $subjectType = trim((string)($this->header['subject_type'] ?? 'Core Subject (All Tracks)'));
+        if ($subjectType === '') { $subjectType = 'Core Subject (All Tracks)'; }
         $gradeSection = trim((string)($this->header['grade_section'] ?? ''));
         if ($gradeSection === '') {
             $grade = (string)($this->header['grade_level'] ?? '');
             $section = trim((string)($this->header['section'] ?? ''));
             $gradeSection = $grade !== '' ? ('Grade ' . $grade . ($section !== '' ? (' - ' . $section) : '')) : $section;
         }
-        $isTermMode = $this->gradingSystem === '3_term';
-        $semesterLabel = $isTermMode ? strtoupper(str_replace('Term', 'TERM ', $this->quarter)) : strtoupper($this->semester === 'S2' ? '2ND' : '1ST');
-        $headerCells = ['G4' => (string)($this->header['region'] ?? ''), 'O4' => (string)($this->header['division'] ?? ''), 'G5' => (string)($this->header['school'] ?? ''), 'X5' => (string)($this->header['school_id'] ?? ''), 'AG5' => $this->academicYear, 'K7' => $gradeSection, 'S7' => (string)($this->header['teacher'] ?? ''), 'AE7' => (string)($this->header['subject'] ?? ''), 'S8' => $semesterLabel, 'AE8' => $track];
+        $headerCells = [
+            'G4' => (string)($this->header['region'] ?? ''),
+            'R4' => (string)($this->header['division'] ?? ''),
+            'G5' => (string)($this->header['school'] ?? ''),
+            'R5' => (string)($this->header['school_id'] ?? ''),
+            'Z5' => $this->academicYear,
+            'K7' => $gradeSection,
+            'S7' => (string)($this->header['teacher'] ?? ''),
+            'Z7' => (string)($this->header['subject'] ?? ''),
+            'S8' => $track,
+            'Z8' => $subjectType,
+        ];
         $targetTerm = $this->gradingSystem === '3_term' ? (in_array($this->quarter, ['Term1', 'Term2', 'Term3'], true) ? $this->quarter : 'Term1') : (($this->quarter === 'Q2' || $this->quarter === 'Q4') ? 'Term2' : 'Term1');
         $targetQuarterDom = $termDoms[$targetTerm] ?? reset($termDoms);
         foreach ($termDoms as $term => $termDom) {
