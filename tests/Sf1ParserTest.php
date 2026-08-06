@@ -9,6 +9,13 @@ final class Sf1ParserTest extends TestCase
         $this->assertSame('2008-01-15', Sf1Parser::parseBirthdate('39462'));
     }
 
+    public function testSharedBootstrapLoadsSf1ParserAlias(): void
+    {
+        require_once __DIR__ . '/../functions/bootstrap.php';
+
+        $this->assertTrue(class_exists('Sf1Parser'));
+    }
+
     public function testParsesSlashBirthdate(): void
     {
         $this->assertSame('2008-01-15', Sf1Parser::parseBirthdate('01/15/2008'));

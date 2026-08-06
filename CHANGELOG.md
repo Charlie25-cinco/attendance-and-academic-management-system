@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.9 — 2026-08-06
+
+### Fixed
+
+- Fixed SF1 XLSX import runtime loading by registering shared legacy export, grade, and XLSX helper aliases from `functions/bootstrap.php`.
+
 ## v0.3.8 — 2026-08-06
 
 ### Fixed
