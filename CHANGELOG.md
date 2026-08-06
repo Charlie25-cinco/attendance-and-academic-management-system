@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.17 — 2026-08-06
+
+### Fixed
+
+- Fixed ECR `.xlsx` template export to preserve the official workbook sheets and layout instead of falling back to a one-sheet generated workbook when PHP `ZipArchive` is unavailable.
+
 ## v0.3.16 — 2026-08-06
 
 ### Added

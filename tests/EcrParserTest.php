@@ -118,4 +118,67 @@ final class EcrParserTest extends TestCase
             @unlink($path);
         }
     }
+
+    public function testEcrXlsxExportPreservesOfficialTemplateSheets(): void
+    {
+        $exporter = new EcrExporter();
+        $exporter->setHeader([
+            'school' => 'Balingasag Senior High School',
+            'school_id' => '341227',
+            'division' => 'Misamis Oriental',
+            'region' => 'Region X',
+            'grade_level' => 11,
+            'section' => 'Amethyst',
+            'grade_section' => 'Grade 11 - Amethyst',
+            'teacher' => 'Test Teacher',
+            'subject' => 'Filipino 1',
+            'subject_type' => 'Core Subject',
+        ]);
+        $exporter->setStudents([
+            [
+                'id' => 1,
+                'lrn' => '123456789012',
+                'export_key' => 'student:1',
+                'name' => 'Dagohoy, Dave Santos',
+                'sex' => 'male',
+            ],
+        ]);
+        $exporter->setGradeItems([
+            [
+                'export_key' => 'student:1',
+                'item_id' => 10,
+                'component' => 'ww',
+                'total_score' => 20,
+                'scores' => [18],
+            ],
+        ]);
+        $exporter->setAcademicYear('2026-2027');
+        $exporter->setTerm('Term1');
+
+        $path = tempnam(sys_get_temp_dir(), 'ecr-template-export-test-');
+        $this->assertIsString($path);
+
+        try {
+            $this->assertTrue($exporter->exportToXlsx($path));
+
+            putenv('APP_FORCE_XLSX_FALLBACK=1');
+            $parser = new SimpleXlsxParser($path);
+            $sheetNames = $parser->getSheetNames();
+            $termRows = $parser->getSheet((int)array_search('TERM 1', $sheetNames, true));
+            putenv('APP_FORCE_XLSX_FALLBACK');
+
+            $this->assertContains('INPUT DATA', $sheetNames);
+            $this->assertContains('TERM 1', $sheetNames);
+            $this->assertContains('TERM 2', $sheetNames);
+            $this->assertContains('TERM 3', $sheetNames);
+            $this->assertNotContains('ECR Export', $sheetNames);
+            $this->assertSame('Strengthened Senior High School Class Record', $termRows[1][0] ?? null);
+            $this->assertSame('Dagohoy, Dave Santos', $termRows[14][1] ?? null);
+            $this->assertSame('123456789012', $termRows[14][2] ?? null);
+            $this->assertSame('18', $termRows[14][5] ?? null);
+        } finally {
+            putenv('APP_FORCE_XLSX_FALLBACK');
+            @unlink($path);
+        }
+    }
 }

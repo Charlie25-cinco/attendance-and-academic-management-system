@@ -275,6 +275,10 @@ class EcrExporter {
         if (!in_array(strtolower(pathinfo($templatePath, PATHINFO_EXTENSION)), ['xlsx', 'xlsm'], true)) {
             return $this->exportToGeneratedXlsx($filePath);
         }
+        if (strtolower(pathinfo($templatePath, PATHINFO_EXTENSION)) === 'xlsx') {
+            return $this->exportToXlsxUsingTemplateEntries($filePath, $templatePath)
+                || $this->exportToGeneratedXlsx($filePath);
+        }
         if (!class_exists('ZipArchive')) {
             return $this->exportToGeneratedXlsx($filePath);
         }
@@ -447,11 +451,20 @@ class EcrExporter {
     }
 
     private function getWorkbookSheetNames(string $path): array {
-        if ($path === '' || !is_file($path) || !class_exists('ZipArchive')) { return []; }
-        $zip = new ZipArchive();
-        if ($zip->open($path) !== true) { return []; }
-        $workbookXml = $zip->getFromName('xl/workbook.xml');
-        $zip->close();
+        if ($path === '' || !is_file($path)) { return []; }
+        $workbookXml = false;
+        try {
+            $entries = SimpleXlsxWriter::readZipEntries($path);
+            $workbookXml = $entries['xl/workbook.xml'] ?? false;
+        } catch (Throwable $e) {
+            $workbookXml = false;
+        }
+        if ($workbookXml === false && class_exists('ZipArchive')) {
+            $zip = new ZipArchive();
+            if ($zip->open($path) !== true) { return []; }
+            $workbookXml = $zip->getFromName('xl/workbook.xml');
+            $zip->close();
+        }
         if ($workbookXml === false) { return []; }
         $dom = new DOMDocument();
         if (!@$dom->loadXML($workbookXml)) { return []; }
@@ -463,6 +476,158 @@ class EcrExporter {
             if ($name !== '') { $sheets[] = $name; }
         }
         return $sheets;
+    }
+
+    private function exportToXlsxUsingTemplateEntries(string $filePath, string $templatePath): bool {
+        $this->domCellCache = [];
+        try {
+            $entries = SimpleXlsxWriter::readZipEntries($templatePath);
+            $sheetPaths = $this->getSheetPathsByNameFromEntries($entries);
+            $inputPath = $sheetPaths['INPUT DATA'] ?? '';
+            $termSheetPaths = [
+                'Term1' => $sheetPaths['TERM 1'] ?? $sheetPaths['1ST'] ?? '',
+                'Term2' => $sheetPaths['TERM 2'] ?? $sheetPaths['2ND'] ?? '',
+                'Term3' => $sheetPaths['TERM 3'] ?? $sheetPaths['3RD'] ?? '',
+            ];
+            if ($inputPath === '' || $termSheetPaths['Term1'] === '') { return false; }
+            $inputDom = $this->loadSheetDomFromEntries($entries, $inputPath);
+            $termDoms = [];
+            foreach ($termSheetPaths as $term => $path) {
+                if ($path === '') { continue; }
+                $dom = $this->loadSheetDomFromEntries($entries, $path);
+                if ($dom) { $termDoms[$term] = $dom; }
+            }
+            if (!$inputDom || empty($termDoms)) { return false; }
+
+            $this->populateTemplateDoms($inputDom, $termDoms, $termSheetPaths);
+            $entries[$inputPath] = $inputDom->saveXML();
+            foreach ($termDoms as $term => $termDom) {
+                $path = $termSheetPaths[$term] ?? '';
+                if ($path !== '') { $entries[$path] = $termDom->saveXML(); }
+            }
+            $this->setWorkbookActiveSheetInEntries($entries, ['Term1' => 'TERM 1', 'Term2' => 'TERM 2', 'Term3' => 'TERM 3'][$this->targetTemplateTerm()]);
+            SimpleXlsxWriter::writeZip($filePath, $entries);
+            $this->domCellCache = [];
+            return is_file($filePath) && filesize($filePath) > 0;
+        } catch (Throwable $e) {
+            error_log('Template ECR XLSX export failed: ' . $e->getMessage());
+            $this->domCellCache = [];
+            return false;
+        }
+    }
+
+    private function populateTemplateDoms(DOMDocument $inputDom, array $termDoms, array $termSheetPaths): void {
+        $wwWeight = (float)($this->weights['ww'] ?? 25);
+        $ptWeight = (float)($this->weights['pt'] ?? 50);
+        $qaWeight = (float)($this->weights['assessment'] ?? 25);
+        $track = trim((string)($this->header['subject_type'] ?? 'Core Subject (All Tracks)'));
+        if ($track === '') { $track = 'Core Subject (All Tracks)'; }
+        $gradeSection = trim((string)($this->header['grade_section'] ?? ''));
+        if ($gradeSection === '') {
+            $grade = (string)($this->header['grade_level'] ?? '');
+            $section = trim((string)($this->header['section'] ?? ''));
+            $gradeSection = $grade !== '' ? ('Grade ' . $grade . ($section !== '' ? (' - ' . $section) : '')) : $section;
+        }
+        $isTermMode = $this->gradingSystem === '3_term';
+        $semesterLabel = $isTermMode ? strtoupper(str_replace('Term', 'TERM ', $this->quarter)) : strtoupper($this->semester === 'S2' ? '2ND' : '1ST');
+        $headerCells = [
+            'G4' => (string)($this->header['region'] ?? ''),
+            'O4' => (string)($this->header['division'] ?? ''),
+            'G5' => (string)($this->header['school'] ?? ''),
+            'X5' => (string)($this->header['school_id'] ?? ''),
+            'AG5' => $this->academicYear,
+            'K7' => $gradeSection,
+            'S7' => (string)($this->header['teacher'] ?? ''),
+            'AE7' => (string)($this->header['subject'] ?? ''),
+            'S8' => $semesterLabel,
+            'AE8' => $track,
+        ];
+        $targetTerm = $this->targetTemplateTerm();
+        $targetQuarterDom = $termDoms[$targetTerm] ?? reset($termDoms);
+        foreach ($termDoms as $term => $termDom) {
+            if ($term === $targetTerm) { continue; }
+            foreach (array_keys($headerCells) as $cell) { $this->setCellBlank($termDom, $cell); }
+            for ($row = 13; $row <= 213; $row++) {
+                $this->setCellBlank($termDom, 'A' . $row);
+                $this->setCellBlank($termDom, 'B' . $row);
+                $this->setCellBlank($termDom, 'C' . $row);
+                $this->clearScoreCells($termDom, $row);
+            }
+        }
+        $this->setCellString($inputDom, 'A1', 'Input Data Sheet for SHS E-Class Record');
+        foreach ($headerCells as $cell => $value) {
+            $this->setCellString($inputDom, $cell, $value);
+            $this->setCellString($targetQuarterDom, $cell, $value);
+        }
+        $this->setCellString($targetQuarterDom, 'F9', 'WRITTEN WORK (' . rtrim(rtrim(number_format($wwWeight, 2, '.', ''), '0'), '.') . '%)');
+        $this->setCellString($targetQuarterDom, 'S9', 'PERFORMANCE TASKS (' . rtrim(rtrim(number_format($ptWeight, 2, '.', ''), '0'), '.') . '%)');
+        $this->setCellString($targetQuarterDom, 'AF9', 'TERM ASSESSMENT (' . rtrim(rtrim(number_format($qaWeight, 2, '.', ''), '0'), '.') . '%)');
+        $this->setCellNumber($targetQuarterDom, 'R11', round($wwWeight / 100, 4));
+        $this->setCellNumber($targetQuarterDom, 'AE11', round($ptWeight / 100, 4));
+        $this->setCellNumber($targetQuarterDom, 'AI11', round($qaWeight / 100, 4));
+
+        $rowMap = $this->buildStudentRowMap($this->students);
+        for ($row = 13; $row <= 213; $row++) {
+            $this->setCellBlank($inputDom, 'A' . $row);
+            $this->setCellBlank($inputDom, 'B' . $row);
+            $this->setCellBlank($inputDom, 'C' . $row);
+            $this->setCellBlank($targetQuarterDom, 'A' . $row);
+            $this->setCellBlank($targetQuarterDom, 'B' . $row);
+            $this->setCellBlank($targetQuarterDom, 'C' . $row);
+            $this->clearScoreCells($targetQuarterDom, $row);
+        }
+        $this->applyHpsRow($targetQuarterDom, 11, $this->buildComponentHps());
+        $gradesByStudentKey = $this->buildGradesByStudentKey();
+        $lastRowNumber = 0;
+        foreach ($this->students as $student) {
+            $studentKey = $this->studentKey($student);
+            $lrn = (string)($student['lrn'] ?? '');
+            if ($studentKey === '' || !isset($rowMap[$studentKey])) { continue; }
+            $row = (int)$rowMap[$studentKey];
+            $rowNumber = $lastRowNumber + 1;
+            $lastRowNumber = $rowNumber;
+            $studentName = trim((string)($student['name'] ?? ''));
+            if ($studentName === '') { $studentName = trim((string)($student['last_name'] ?? '') . ', ' . (string)($student['first_name'] ?? '')); }
+            if ($studentName === '') { $studentName = $lrn !== '' ? $lrn : $studentKey; }
+
+            $this->setCellNumber($inputDom, 'A' . $row, (float)$rowNumber);
+            $this->setCellString($inputDom, 'B' . $row, $studentName);
+            $this->setCellString($inputDom, 'C' . $row, $lrn);
+            $this->setCellNumber($targetQuarterDom, 'A' . $row, (float)$rowNumber);
+            $this->setCellString($targetQuarterDom, 'B' . $row, $studentName);
+            $this->setCellString($targetQuarterDom, 'C' . $row, $lrn);
+
+            $grades = $gradesByStudentKey[$studentKey] ?? $this->emptyStudentGrades();
+            for ($i = 0; $i < self::MAX_WW; $i++) {
+                $score = $grades['ww_scores'][$i] ?? null;
+                $cell = $this->columnLetter(self::COL_WW_START + $i) . $row;
+                if ($score === null || $score === '') { $this->setCellBlank($targetQuarterDom, $cell); } else { $this->setCellNumber($targetQuarterDom, $cell, (float)$score); }
+            }
+            for ($i = 0; $i < self::MAX_PT; $i++) {
+                $score = $grades['pt_scores'][$i] ?? null;
+                $cell = $this->columnLetter(self::COL_PT_START + $i) . $row;
+                if ($score === null || $score === '') { $this->setCellBlank($targetQuarterDom, $cell); } else { $this->setCellNumber($targetQuarterDom, $cell, (float)$score); }
+            }
+            for ($i = 0; $i < self::MAX_QA; $i++) {
+                $qaScore = $grades['qa_scores'][$i] ?? null;
+                $qaCell = $this->columnLetter(self::COL_QA_START + $i) . $row;
+                if ($qaScore === null || $qaScore === '') { $this->setCellBlank($targetQuarterDom, $qaCell); } else { $this->setCellNumber($targetQuarterDom, $qaCell, (float)$qaScore); }
+            }
+            $initialCell = $this->columnLetter(self::COL_INITIAL) . $row;
+            $quarterCell = $this->columnLetter(self::COL_QUARTERLY) . $row;
+            $initialGrade = $grades['initial_grade'] ?? null;
+            $quarterGrade = $grades['quarterly_grade'] ?? null;
+            if ($initialGrade === null || $initialGrade === '') { $this->setCellBlank($targetQuarterDom, $initialCell); } else { $this->setCellNumber($targetQuarterDom, $initialCell, (float)$initialGrade); }
+            if ($quarterGrade === null || $quarterGrade === '') { $this->setCellBlank($targetQuarterDom, $quarterCell); } else { $this->setCellNumber($targetQuarterDom, $quarterCell, (float)$quarterGrade); }
+        }
+        $this->unhideLearnerRows($targetQuarterDom);
+    }
+
+    private function targetTemplateTerm(): string {
+        if ($this->gradingSystem === '3_term') {
+            return in_array($this->quarter, ['Term1', 'Term2', 'Term3'], true) ? $this->quarter : 'Term1';
+        }
+        return ($this->quarter === 'Q2' || $this->quarter === 'Q4') ? 'Term2' : 'Term1';
     }
 
     private function exportToXlsxUsingTemplate(string $filePath, string $templatePath): bool {
@@ -723,6 +888,18 @@ class EcrExporter {
         return @$dom->loadXML($xml) ? $dom : null;
     }
 
+    private function loadSheetDomFromEntries(array $entries, string $sheetPath): ?DOMDocument {
+        $xml = $entries[$sheetPath] ?? null;
+        if ($xml === null) {
+            $xml = $entries[str_replace('/', '\\', $sheetPath)] ?? null;
+        }
+        if ($xml === null || $xml === '') { return null; }
+        $dom = new DOMDocument();
+        $dom->preserveWhiteSpace = false;
+        $dom->formatOutput = false;
+        return @$dom->loadXML((string)$xml) ? $dom : null;
+    }
+
     private function getSheetPathsByName(ZipArchive $zip): array {
         $workbookXml = $zip->getFromName('xl/workbook.xml');
         $relsXml = $zip->getFromName('xl/_rels/workbook.xml.rels');
@@ -743,6 +920,62 @@ class EcrExporter {
             if ($name !== '' && $rid !== '' && isset($ridToTarget[$rid])) { $result[$name] = $ridToTarget[$rid]; }
         }
         return $result;
+    }
+
+    private function getSheetPathsByNameFromEntries(array $entries): array {
+        $workbookXml = $entries['xl/workbook.xml'] ?? null;
+        $relsXml = $entries['xl/_rels/workbook.xml.rels'] ?? null;
+        if ($workbookXml === null || $relsXml === null) { return []; }
+        $wb = new DOMDocument();
+        $rel = new DOMDocument();
+        if (!@$wb->loadXML((string)$workbookXml) || !@$rel->loadXML((string)$relsXml)) { return []; }
+        $wbXp = new DOMXPath($wb);
+        $wbXp->registerNamespace('x', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+        $wbXp->registerNamespace('r', 'http://schemas.openxmlformats.org/officeDocument/2006/relationships');
+        $relXp = new DOMXPath($rel);
+        $relXp->registerNamespace('x', 'http://schemas.openxmlformats.org/package/2006/relationships');
+        $ridToTarget = [];
+        foreach ($relXp->query('//x:Relationship') as $node) {
+            $id = (string)$node->getAttribute('Id');
+            $target = (string)$node->getAttribute('Target');
+            if ($id !== '' && strpos($target, 'worksheets/') === 0) {
+                $ridToTarget[$id] = 'xl/' . $target;
+            }
+        }
+        $result = [];
+        foreach ($wbXp->query('//x:sheets/x:sheet') as $sheetNode) {
+            $name = (string)$sheetNode->getAttribute('name');
+            $rid = (string)$sheetNode->getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'id');
+            if ($name !== '' && $rid !== '' && isset($ridToTarget[$rid])) {
+                $result[$name] = $ridToTarget[$rid];
+            }
+        }
+        return $result;
+    }
+
+    private function setWorkbookActiveSheetInEntries(array &$entries, string $sheetName): void {
+        $workbookXml = $entries['xl/workbook.xml'] ?? null;
+        if ($workbookXml === null) { return; }
+        $dom = new DOMDocument();
+        if (!@$dom->loadXML((string)$workbookXml)) { return; }
+        $xp = new DOMXPath($dom);
+        $xp->registerNamespace('x', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+        $sheetIndex = null;
+        $idx = 0;
+        foreach ($xp->query('//x:sheets/x:sheet') as $sheetNode) {
+            if (trim((string)$sheetNode->getAttribute('name')) === $sheetName) {
+                $sheetIndex = $idx;
+                break;
+            }
+            $idx++;
+        }
+        if ($sheetIndex === null) { return; }
+        $views = $xp->query('//x:bookViews/x:workbookView');
+        if ($views->length === 0) { return; }
+        $view = $views->item(0);
+        $view->setAttribute('activeTab', (string)$sheetIndex);
+        $view->setAttribute('firstSheet', (string)$sheetIndex);
+        $entries['xl/workbook.xml'] = $dom->saveXML();
     }
 
     private function setCellBlank(DOMDocument $dom, string $ref): void {
