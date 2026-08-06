@@ -41,9 +41,25 @@ if (PHP_SAPI !== 'cli') {
             $db = $database->getConnection();
             if ($db instanceof PDO) {
                 enforceScriptPermission($db);
+            } else {
+                throw new RuntimeException('Database connection unavailable.');
             }
         } catch (Throwable $e) {
             error_log('RBAC enforcement failed: ' . $e->getMessage());
+            $script = basename((string)($_SERVER['SCRIPT_NAME'] ?? ''));
+            $permission = function_exists('permissionForScript') ? permissionForScript($script) : '';
+            if ($permission !== '') {
+                $isJson = str_ends_with(strtolower($script), '_action.php')
+                    || str_contains((string)($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json');
+                http_response_code(403);
+                if ($isJson) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'message' => 'Insufficient permissions.']);
+                } else {
+                    echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Access denied</title></head><body style="font-family:Arial,sans-serif;padding:2rem;"><h1>Access denied</h1><p>You do not have permission to access this page.</p></body></html>';
+                }
+                exit();
+            }
         }
     }
 }

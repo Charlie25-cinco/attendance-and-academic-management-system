@@ -2,6 +2,14 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.6 — 2026-08-06
+
+### Fixed
+
+- Hardened sync endpoints by preventing admin account provisioning through sync, preserving existing user roles during sync updates, and validating attendance `recorded_by` attribution against active admins or assigned teachers.
+- Fixed remember-me login to include password hashes when enforcing first-login default-password changes.
+- Updated protected-page RBAC bootstrap enforcement to fail closed when permission checks cannot be completed.
+
 ## v0.3.5 — 2026-08-06
 
 ### Added

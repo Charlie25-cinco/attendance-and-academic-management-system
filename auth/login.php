@@ -178,7 +178,7 @@ function attemptRememberLogin($db) {
     [$selector, $validator] = explode(':', $cookie, 2);
     if ($selector === '' || $validator === '') return null;
 
-    $stmt = $db->prepare("SELECT rt.id AS token_id, rt.token_hash, u.id, u.reference_code, u.email, u.first_name, u.last_name, u.role
+    $stmt = $db->prepare("SELECT rt.id AS token_id, rt.token_hash, u.id, u.reference_code, u.email, u.password, u.first_name, u.last_name, u.role
                           FROM auth_remember_tokens rt
                           JOIN users u ON u.id = rt.user_id
                           WHERE rt.selector = ?
@@ -205,6 +205,7 @@ function attemptRememberLogin($db) {
         'id' => $row['id'],
         'reference_code' => $row['reference_code'],
         'email' => $row['email'],
+        'password' => $row['password'],
         'first_name' => $row['first_name'],
         'last_name' => $row['last_name'],
         'role' => $row['role']

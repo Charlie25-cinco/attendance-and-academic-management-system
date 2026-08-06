@@ -5,6 +5,25 @@ while ($__appRoot !== dirname($__appRoot) && !is_file($__appRoot . '/functions/b
 }
 require_once $__appRoot . '/functions/bootstrap.php';
 unset($__appRoot);
+
+function syncValidAttendanceRecorder(PDO $db, int $recordedBy, int $classId): bool {
+    if ($recordedBy <= 0 || $classId <= 0) {
+        return false;
+    }
+
+    $stmt = $db->prepare("SELECT id, role FROM users WHERE id = ? AND status = 'active' AND role IN ('admin', 'teacher') LIMIT 1");
+    $stmt->execute([$recordedBy]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$user) {
+        return false;
+    }
+    if ((string)$user['role'] === 'admin') {
+        return true;
+    }
+
+    return apiTeacherOwnsClass($db, $recordedBy, $classId);
+}
+
 if ($route === 'sync-attendance' && $method === 'POST') {
     apiRequireSyncKey();
     $db = apiDb();
@@ -25,6 +44,9 @@ if ($route === 'sync-attendance' && $method === 'POST') {
     $classCheck->execute([$classId]);
     if (!$classCheck->fetchColumn()) {
         apiJson(['ok' => false, 'message' => 'Class not found'], 404);
+    }
+    if (!syncValidAttendanceRecorder($db, $recordedBy, $classId)) {
+        apiJson(['ok' => false, 'message' => 'recorded_by must be an active admin or assigned teacher'], 403);
     }
 
     $students = apiActiveClassStudents($db, $classId);
@@ -106,24 +128,29 @@ if ($route === 'sync-users' && $method === 'POST') {
         if ($referenceCode === '' || $firstName === '' || $lastName === '' || $role === '') {
             continue;
         }
-        if (!in_array($role, ['admin', 'teacher', 'student', 'parent'], true)) {
+        if (!in_array($role, ['teacher', 'student', 'parent'], true)) {
             continue;
         }
         if (!in_array($status, ['active', 'pending', 'inactive'], true)) {
             $status = 'active';
         }
 
-        $existing = $db->prepare("SELECT id FROM users WHERE reference_code = ? LIMIT 1");
+        $existing = $db->prepare("SELECT id, role FROM users WHERE reference_code = ? LIMIT 1");
         $existing->execute([$referenceCode]);
-        $userId = $existing->fetchColumn();
+        $existingUser = $existing->fetch(PDO::FETCH_ASSOC);
+        $userId = (int)($existingUser['id'] ?? 0);
+        $existingRole = strtolower((string)($existingUser['role'] ?? ''));
 
-        if ($userId) {
+        if ($userId > 0) {
+            if ($existingRole === 'admin') {
+                continue;
+            }
             $db->prepare(
                 "UPDATE users
-                 SET first_name = ?, last_name = ?, email = ?, role = ?, status = ?, updated_at = NOW()
+                 SET first_name = ?, last_name = ?, email = ?, status = ?, updated_at = NOW()
                  WHERE id = ?"
             )
-                ->execute([$firstName, $lastName, $email, $role, $status, (int)$userId]);
+                ->execute([$firstName, $lastName, $email, $status, $userId]);
         } else {
             $password = password_hash(getDefaultNewUserPassword(), PASSWORD_DEFAULT);
             $stmt = $db->prepare(
