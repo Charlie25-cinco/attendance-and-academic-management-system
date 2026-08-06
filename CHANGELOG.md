@@ -13,6 +13,10 @@ Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR fo
 - Added live password strength guidance checklist, real-time password match indicator, and inline modal alert container to the shared Profile Settings modal in `includes/modals.php`.
 - Added global `.password-guidance` styling in `assets/css/main.css` supporting light and dark modes across all role portals.
 
+### Fixed
+
+- Removed legacy `classmap` array from `composer.json` to resolve Wasmer Edge Anybuild Docker container build failures.
+
 ## v0.3.4 — 2026-08-05
 
 ### Fixed
