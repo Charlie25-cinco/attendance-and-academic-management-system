@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.28 — 2026-08-07
+
+### Fixed
+
+- Made the Grade 11 subject seed run against the currently selected database and report the inserted strengthened SHS subject count after import.
+
 ## v0.3.27 — 2026-08-07
 
 ### Fixed

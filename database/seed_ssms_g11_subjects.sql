@@ -2,10 +2,18 @@
 -- Strengthened SHS Grade 11 Subject Registry
 -- =============================================================================
 -- Derived from DepEd DO-017 s. 2026, SHAPE Paper Annex A, and DM 12 s. 2026
--- Run after schema.sql. Safe to re-run (uses INSERT IGNORE).
+-- Run after schema.sql against the currently selected database.
+-- Safe to re-run (uses INSERT IGNORE).
 -- =============================================================================
 
-USE school_db;
+SELECT
+    CASE
+        WHEN COUNT(*) = 1 THEN 'subjects table is ready'
+        ELSE 'ERROR: Run database/schema.sql before this seed'
+    END AS seed_prerequisite
+FROM information_schema.tables
+WHERE table_schema = DATABASE()
+AND table_name = 'subjects';
 
 -- =============================================================================
 -- CORE SUBJECTS (Required for ALL Grade 11 learners, both tracks)
@@ -192,3 +200,9 @@ INSERT IGNORE INTO subjects (subject_code, subject_name, subject_category, grade
 -- =============================================================================
 INSERT IGNORE INTO subjects (subject_code, subject_name, subject_category, grade_level, track, term_count, curriculum) VALUES
 ('FIELDEXP',    'Field Experience / Exposure',                                  'field_experience_elective', 11, 'academic', 1, 'strengthened_shs');
+
+SELECT
+    COUNT(*) AS strengthened_g11_subject_count
+FROM subjects
+WHERE grade_level = 11
+AND curriculum = 'strengthened_shs';
