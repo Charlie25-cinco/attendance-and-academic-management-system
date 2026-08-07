@@ -102,6 +102,12 @@ For local manual testing, `composer run serve` starts the PHP development server
 - Parent chat contacts must be the adviser for each linked student's grade level and section.
 - Do not use `class_subjects.teacher_id` to expose subject teachers as parent chat contacts.
 
+## Learning Materials
+
+- New learning-material files must use `BshsAms\Storage\MaterialStorage` and default to `storage/materials`, which maps to Wasmer's durable `/app/storage` volume.
+- Material downloads must remain behind teacher ownership or active student enrollment checks; never expose stored files through a direct public URL.
+- Keep legacy material-directory lookup for existing files unless a migration explicitly moves every stored material and updates its database record.
+
 ## UI System
 
 - Keep shared visual behavior in `assets/css/main.css` and role-specific refinements in `assets/css/role.css`.
@@ -184,6 +190,12 @@ For local manual testing, `composer run serve` starts the PHP development server
 - Teacher chat contacts must come from the teacher's advisory section through `classes.teacher_id`.
 - Parent chat contacts must be the adviser for each linked student's grade level and section.
 - Do not use `class_subjects.teacher_id` to expose subject teachers as parent chat contacts.
+
+## Learning Materials
+
+- New learning-material files must use `BshsAms\Storage\MaterialStorage` and default to `storage/materials`, which maps to Wasmer's durable `/app/storage` volume.
+- Material downloads must remain behind teacher ownership or active student enrollment checks; never expose stored files through a direct public URL.
+- Keep legacy material-directory lookup for existing files unless a migration explicitly moves every stored material and updates its database record.
 
 ## UI System
 

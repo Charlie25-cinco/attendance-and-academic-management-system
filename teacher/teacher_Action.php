@@ -1,4 +1,6 @@
 <?php
+use BshsAms\Storage\MaterialStorage;
+
 $__appRoot = __DIR__;
 while ($__appRoot !== dirname($__appRoot) && !is_file($__appRoot . '/functions/bootstrap.php')) {
     $__appRoot = dirname($__appRoot);
@@ -2057,6 +2059,8 @@ function recallGrades($db, $teacherId) {
 }
 
 function uploadMaterial($db, $teacherId) {
+    $targetPath = null;
+    $materialSaved = false;
     try {
         $title = trim((string)($_POST['title'] ?? ''));
         $classId = (int)($_POST['class_id'] ?? 0);
@@ -2079,7 +2083,14 @@ function uploadMaterial($db, $teacherId) {
 
         $file = $_FILES['material_file'];
         if (!isset($file['error']) || $file['error'] !== UPLOAD_ERR_OK) {
-            echo json_encode(['success' => false, 'message' => 'File upload failed']);
+            $uploadError = (int)($file['error'] ?? UPLOAD_ERR_NO_FILE);
+            $message = match ($uploadError) {
+                UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'The file exceeds the server upload limit',
+                UPLOAD_ERR_PARTIAL => 'The file upload was interrupted. Please try again',
+                UPLOAD_ERR_NO_FILE => 'Please select a file to upload',
+                default => 'File upload failed before it reached storage',
+            };
+            echo json_encode(['success' => false, 'message' => $message]);
             return;
         }
 
@@ -2099,12 +2110,12 @@ function uploadMaterial($db, $teacherId) {
 
         $allowedMimeByExt = [
             'pdf' => ['application/pdf'],
-            'doc' => ['application/msword'],
-            'docx' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
-            'ppt' => ['application/vnd.ms-powerpoint'],
-            'pptx' => ['application/vnd.openxmlformats-officedocument.presentationml.presentation'],
-            'xls' => ['application/vnd.ms-excel'],
-            'xlsx' => ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+            'doc' => ['application/msword', 'application/x-ole-storage', 'application/CDFV2', 'application/octet-stream'],
+            'docx' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/zip', 'application/octet-stream'],
+            'ppt' => ['application/vnd.ms-powerpoint', 'application/x-ole-storage', 'application/CDFV2', 'application/octet-stream'],
+            'pptx' => ['application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/zip', 'application/octet-stream'],
+            'xls' => ['application/vnd.ms-excel', 'application/x-ole-storage', 'application/CDFV2', 'application/octet-stream'],
+            'xlsx' => ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/zip', 'application/octet-stream'],
             'txt' => ['text/plain'],
             'jpg' => ['image/jpeg'],
             'jpeg' => ['image/jpeg'],
@@ -2120,19 +2131,8 @@ function uploadMaterial($db, $teacherId) {
             return;
         }
 
-        $uploadDir = realpath(__DIR__ . '/../../') . DIRECTORY_SEPARATOR . 'Uploads' . DIRECTORY_SEPARATOR . 'Materials';
-        if ($uploadDir === false) {
-            echo json_encode(['success' => false, 'message' => 'Upload path resolution failed']);
-            return;
-        }
-
-        if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true)) {
-            echo json_encode(['success' => false, 'message' => 'Unable to create upload directory']);
-            return;
-        }
-
-        $storedName = uniqid('material_', true) . '.' . $extension;
-        $targetPath = $uploadDir . DIRECTORY_SEPARATOR . $storedName;
+        $storedName = MaterialStorage::createStoredName($extension);
+        $targetPath = MaterialStorage::pathFor($storedName, true);
 
         if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
             echo json_encode(['success' => false, 'message' => 'Unable to move uploaded file']);
@@ -2143,12 +2143,19 @@ function uploadMaterial($db, $teacherId) {
                               VALUES (?, ?, ?, ?, ?, ?, NOW())");
         $stmt->execute([$title, $storedName, $extension, (int)$file['size'], $classSubjectId, $teacherId]);
         $materialId = (int)$db->lastInsertId();
+        $materialSaved = true;
 
         notifyMaterialUploadRecipients($db, $teacherId, $classId, $materialId, $title);
 
         echo json_encode(['success' => true, 'message' => 'Material uploaded successfully']);
     } catch (PDOException $e) {
+        if (!$materialSaved && is_string($targetPath) && is_file($targetPath)) { @unlink($targetPath); }
+        error_log('Material upload database error: ' . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Database error. Please try again.']);
+    } catch (Throwable $e) {
+        if (!$materialSaved && is_string($targetPath) && is_file($targetPath)) { @unlink($targetPath); }
+        error_log('Material upload failed: ' . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Material storage is unavailable. Please contact the administrator.']);
     }
 }
 
@@ -2173,31 +2180,20 @@ function downloadMaterial($db, $teacherId) {
             return;
         }
 
-        $baseDir = realpath(__DIR__ . '/../../') . DIRECTORY_SEPARATOR . 'Uploads' . DIRECTORY_SEPARATOR . 'Materials';
-        $filePath = $baseDir . DIRECTORY_SEPARATOR . $material['file_name'];
-
-        if (!is_file($filePath)) {
+        $filePath = MaterialStorage::locate((string)$material['file_name']);
+        if ($filePath === null) {
             http_response_code(404);
             echo 'File not found';
             return;
         }
-
-        $downloadName = preg_replace('/[^a-zA-Z0-9_\- ]+/', '', $material['title']);
-        if ($downloadName === '') {
-            $downloadName = 'material';
-        }
-        $downloadName .= '.' . strtolower((string)$material['file_type']);
-
-        header('Content-Description: File Transfer');
-        header('Content-Type: application/octet-stream');
-        header('Content-Disposition: attachment; filename="' . $downloadName . '"');
-        header('Content-Length: ' . filesize($filePath));
-        header('Pragma: public');
-        readfile($filePath);
-        exit();
+        MaterialStorage::outputDownload($filePath, (string)$material['title'], (string)$material['file_type']);
     } catch (PDOException $e) {
         http_response_code(500);
         echo 'Database error';
+    } catch (Throwable $e) {
+        error_log('Teacher material download failed: ' . $e->getMessage());
+        http_response_code(500);
+        echo 'Material download failed';
     }
 }
 
@@ -2287,15 +2283,16 @@ function deleteMaterial($db, $teacherId) {
         $deleteStmt = $db->prepare("DELETE FROM materials WHERE id = ? AND uploaded_by = ?");
         $deleteStmt->execute([$materialId, $teacherId]);
 
-        $baseDir = realpath(__DIR__ . '/../../') . DIRECTORY_SEPARATOR . 'Uploads' . DIRECTORY_SEPARATOR . 'Materials';
-        $filePath = $baseDir . DIRECTORY_SEPARATOR . $material['file_name'];
-        if (is_file($filePath)) {
-            @unlink($filePath);
+        if (!MaterialStorage::delete((string)$material['file_name'])) {
+            error_log('Material file could not be deleted: ' . (string)$material['file_name']);
         }
 
         echo json_encode(['success' => true, 'message' => 'Material deleted successfully']);
     } catch (PDOException $e) {
         echo json_encode(['success' => false, 'message' => 'Database error. Please try again.']);
+    } catch (Throwable $e) {
+        error_log('Material deletion failed: ' . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Material file cleanup failed.']);
     }
 }
 

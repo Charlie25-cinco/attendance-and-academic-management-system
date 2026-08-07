@@ -2,6 +2,14 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.43 — 2026-08-08
+
+### Fixed
+
+- Restored teacher learning-material upload and update requests by including the required CSRF token and displaying actionable server errors.
+- Moved new learning-material files to protected durable storage on the Wasmer `/app/storage` volume while retaining lookup for legacy upload paths.
+- Unified authorized teacher/student downloads with safe filenames, correct content types, enrollment checks, and direct-storage access blocking.
+
 ## v0.3.42 — 2026-08-08
 
 ### Fixed

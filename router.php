@@ -11,6 +11,12 @@ if ($uri === '' || $uri === '/') {
     return true;
 }
 
+if (preg_match('#^/(?:storage|assets/uploads/materials)(?:/|$)#i', $uri)) {
+    http_response_code(404);
+    echo 'Not Found';
+    return true;
+}
+
 $publicPath = $publicRoot . $uri;
 if (is_file($publicPath) || (is_dir($publicPath) && is_file($publicPath . '/index.php'))) {
     return false;

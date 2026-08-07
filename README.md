@@ -51,7 +51,7 @@ Open `http://localhost:5000`.
 - `resources/` - legacy/reference DepEd material.
 - `site/` - public site entry point.
 - `src/` - PSR-4 namespaced classes (`BshsAms\Database`, `BshsAms\Schedule`, `BshsAms\Grade`, `BshsAms\Export`, `BshsAms\Xlsx`).
-- `storage/` - runtime/generated files; ignored by Git.
+- `storage/` - protected runtime/generated files, including durable learning materials; ignored by Git.
 - `vendor/` - Composer dependencies; ignored by Git.
 
 ## Authentication And Security
@@ -171,6 +171,7 @@ Open `http://localhost:5000`.
 - `app.yaml` intentionally contains placeholder owner/public URL values that the GitHub workflow replaces from secrets.
 - Composer runtime platform checks are disabled in `composer.json` because Wasmer's PHP/WASI runtime can report a non-64-bit platform even though the application can still boot and serve normal web requests.
 - Wasmer app instances are stateless; runtime files should use the configured Wasmer volumes for `/app/storage` and `/app/assets/uploads`, while durable school data and PHP sessions should live in Wasmer Attached Database.
+- Teacher learning-material uploads are stored under `/app/storage/materials` on Wasmer and downloaded only through authenticated teacher/student handlers. `MATERIAL_STORAGE_PATH` may override this location for a trusted deployment.
 - For installed PWA use, set `APP_SESSION_DRIVER=database`, `APP_SESSION_LIFETIME=86400`, and `APP_SESSION_IDLE_TIMEOUT=86400`; users can stay signed in longer through the checked-by-default trusted-device option on login.
 - Wasmer Attached Database uses hosted MySQL; import `database/schema.sql` first so `app_sessions` and authentication tables exist before production traffic.
 - Use `DB_SSL_CA` for a CA file path, or `DB_SSL_CA_CONTENT` when the CA PEM is stored directly as a GitHub/Wasmer secret.

@@ -1,4 +1,6 @@
 <?php
+use BshsAms\Storage\MaterialStorage;
+
 $__appRoot = __DIR__;
 while ($__appRoot !== dirname($__appRoot) && !is_file($__appRoot . '/functions/bootstrap.php')) {
     $__appRoot = dirname($__appRoot);
@@ -59,42 +61,24 @@ function downloadStudentMaterial($db, $studentId) {
             return;
         }
 
-        $baseDir = realpath(__DIR__ . '/../../') . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'materials';
-        if ($baseDir === false) {
-            http_response_code(500);
-            echo json_encode(['success' => false, 'message' => 'Upload path not found']);
-            return;
-        }
-
-        $filePath = $baseDir . DIRECTORY_SEPARATOR . $material['file_name'];
-        if (!is_file($filePath)) {
+        $filePath = MaterialStorage::locate((string)$material['file_name']);
+        if ($filePath === null) {
             http_response_code(404);
             echo json_encode(['success' => false, 'message' => 'File not found']);
             return;
-        }
-
-        $downloadName = preg_replace('/[^a-zA-Z0-9_\- ]+/', '', (string)$material['title']);
-        if ($downloadName === '') {
-            $downloadName = 'material';
         }
         $extension = strtolower((string)($material['file_type'] ?? ''));
         if ($extension === '') {
             $extension = pathinfo($material['file_name'], PATHINFO_EXTENSION);
         }
-        if ($extension !== '') {
-            $downloadName .= '.' . $extension;
-        }
-
-        header('Content-Description: File Transfer');
-        header('Content-Type: application/octet-stream');
-        header('Content-Disposition: attachment; filename="' . $downloadName . '"');
-        header('Content-Length: ' . filesize($filePath));
-        header('Pragma: public');
-        readfile($filePath);
-        exit();
+        MaterialStorage::outputDownload($filePath, (string)$material['title'], $extension);
     } catch (PDOException $e) {
         http_response_code(500);
         echo json_encode(['success' => false, 'message' => 'Database error']);
+    } catch (Throwable $e) {
+        error_log('Student material download failed: ' . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Material download failed']);
     }
 }
 ?>

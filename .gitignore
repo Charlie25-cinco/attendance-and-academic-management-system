@@ -6,7 +6,7 @@ Thumbs.db
 !.env.example
 *.local.php
 
-storage/
+/storage/
 assets/uploads/ecr/*
 !assets/uploads/ecr/.gitkeep
 tmp_ecr_template/
