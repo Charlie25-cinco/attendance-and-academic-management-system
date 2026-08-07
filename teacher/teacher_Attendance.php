@@ -5,6 +5,9 @@ while ($__appRoot !== dirname($__appRoot) && !is_file($__appRoot . '/functions/b
 }
 require_once $__appRoot . '/functions/bootstrap.php';
 unset($__appRoot);
+if (function_exists('date_default_timezone_set')) {
+    date_default_timezone_set('Asia/Manila');
+}
 if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'teacher') {
     header("Location: ../auth/login.php");
     exit();
@@ -221,6 +224,7 @@ $page_title = 'Attendance';
 const statusCycle=['present','absent','late'];
 let canEditAttendance=<?php echo $canEditSelectedClass ? 'true' : 'false'; ?>;
 let editBlockedReason=<?php echo json_encode($editBlockedReason); ?>;
+const serverToday=<?php echo json_encode(date('Y-m-d')); ?>;
 const csrfToken=(window.APP_CSRF_TOKEN||'').toString();
 const statusTemplate={present:'<i class="bi bi-check-circle"></i> Present',absent:'<i class="bi bi-x-circle"></i> Absent',late:'<i class="bi bi-clock"></i> Late'};
 function updateEditState(){const btn=document.getElementById('submitAttendanceBtn');if(!btn)return;if(canEditAttendance){btn.disabled=false;btn.title='';btn.innerHTML='<i class=\"bi bi-save me-2\"></i>Submit Attendance';}else{btn.disabled=true;btn.title=editBlockedReason||'Attendance is unavailable for this class on the selected date';btn.innerHTML='<i class=\"bi bi-eye me-2\"></i>Attendance Unavailable';}}
@@ -244,6 +248,7 @@ function openQrScanner() {
     const date = document.getElementById('attendanceDate')?.value;
     if (!classId || !date) { showNotification('Please select a class and date first.', 'warning'); return; }
     if (!canEditAttendance) { showNotification(editBlockedReason || 'Cannot edit attendance for this class/date.', 'info'); return; }
+    if (date !== serverToday) { showNotification('QR attendance scanning is available only for today.', 'warning'); return; }
 
     if (!qrScannerLibLoaded) {
         const script = document.createElement('script');
@@ -363,38 +368,46 @@ function stopQrScanner() {
 }
 
 let scannedCodes = new Set();
-function handleQrScan(refCode) {
-    if (scannedCodes.has(refCode)) return;
+async function handleQrScan(decodedText) {
+    const refCode = String(decodedText || '').trim();
+    if (!refCode || scannedCodes.has(refCode)) return;
+    scannedCodes.add(refCode);
 
-    // Find student row with matching reference code
-    const rows = document.querySelectorAll('#attendanceBody tr[data-student-id]');
-    let found = false;
-    rows.forEach(row => {
-        const codeCell = row.children[1]?.textContent?.trim();
-        if (codeCell === refCode) {
-            found = true;
-            const btn = row.querySelector('.teacher-status');
-            if (btn && btn.dataset.status !== 'present') {
-                btn.dataset.status = 'present';
-                btn.className = 'teacher-status present';
-                btn.innerHTML = statusTemplate.present;
-                updateSummaryCounts();
-            }
-            const name = row.querySelector('.student-name')?.textContent || refCode;
-            const result = document.getElementById('qrScanResult');
-            if (result) {
-                result.innerHTML = '<div class="alert alert-success"><i class="bi bi-check-circle-fill me-2"></i><strong>' +
-                    escapeHtml(name) + '</strong> marked as <strong>Present</strong></div>';
-            }
-            row.style.background = '#d1fae5';
-            setTimeout(() => { row.style.background = ''; }, 2000);
-            scannedCodes.add(refCode);
+    const result = document.getElementById('qrScanResult');
+    const classId = document.getElementById('classSelect')?.value || '';
+    const date = document.getElementById('attendanceDate')?.value || '';
+    try {
+        const response = await fetch(withCsrfUrl('teacher_Action.php?action=classify_qr_scan'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+            body: JSON.stringify({ class_id: Number.parseInt(classId, 10), date, reference_code: refCode })
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.message || 'Unable to classify QR attendance');
+
+        const row = document.querySelector(`#attendanceBody tr[data-student-id="${Number(data.student_id)}"]`);
+        if (!row) throw new Error('Student was verified but is not visible in the current class list');
+        const status = data.status === 'late' ? 'late' : 'present';
+        const btn = row.querySelector('.teacher-status');
+        if (btn) {
+            btn.dataset.status = status;
+            btn.className = `teacher-status ${status}`;
+            btn.innerHTML = statusTemplate[status];
+            updateSummaryCounts();
         }
-    });
 
-    if (!found) {
-        const result = document.getElementById('qrScanResult');
-        if (result) result.innerHTML = '<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>Student <strong>' + escapeHtml(refCode) + '</strong> not found in this class list.</div>';
+        const tone = status === 'late' ? 'warning' : 'success';
+        const icon = status === 'late' ? 'bi-clock-fill' : 'bi-check-circle-fill';
+        if (result) {
+            result.innerHTML = `<div class="alert alert-${tone}"><i class="bi ${icon} me-2"></i><strong>${escapeHtml(data.student_name || refCode)}</strong> marked as <strong>${status === 'late' ? 'Late' : 'Present'}</strong> at ${escapeHtml(data.scanned_at || '')}</div>`;
+        }
+        row.style.background = status === 'late' ? '#fef3c7' : '#d1fae5';
+        setTimeout(() => { row.style.background = ''; }, 2000);
+    } catch (error) {
+        scannedCodes.delete(refCode);
+        if (result) {
+            result.innerHTML = '<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>' + escapeHtml(error.message || 'QR scan failed') + '</div>';
+        }
     }
 }
 </script>

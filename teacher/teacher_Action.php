@@ -33,6 +33,7 @@ $action = $_GET['action'] ?? '';
 
 $writeActions = [
     'submit_attendance',
+    'classify_qr_scan',
     'submit_grades',
     'upload_material',
     'update_material',
@@ -65,6 +66,9 @@ switch ($action) {
         break;
     case 'submit_attendance':
         submitAttendance($db, $teacherId);
+        break;
+    case 'classify_qr_scan':
+        classifyQrScan($db, $teacherId);
         break;
     case 'fetch_grades':
         fetchGrades($db, $teacherId);
@@ -441,6 +445,66 @@ function notifyMaterialUploadRecipients($db, $teacherId, $classId, $materialId, 
         ['student' => 'Student_Classes.php', 'parent' => 'Parent_Announcements.php'],
         ['type' => 'material', 'class_id' => (int)$classId, 'material_id' => (int)$materialId]
     );
+}
+
+function classifyQrScan($db, $teacherId) {
+    $payload = json_decode((string)file_get_contents('php://input'), true);
+    if (!is_array($payload)) {
+        echo json_encode(['success' => false, 'message' => 'Invalid QR scan request']);
+        return;
+    }
+
+    $classId = (int)($payload['class_id'] ?? 0);
+    $date = trim((string)($payload['date'] ?? ''));
+    $referenceCode = trim((string)($payload['reference_code'] ?? ''));
+    if ($classId <= 0 || $referenceCode === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+        echo json_encode(['success' => false, 'message' => 'Class, date, and student QR code are required']);
+        return;
+    }
+    if ($date !== date('Y-m-d')) {
+        echo json_encode(['success' => false, 'message' => 'QR attendance scanning is available only for today']);
+        return;
+    }
+    if (!teacherOwnsClass($db, $teacherId, $classId)) {
+        echo json_encode(['success' => false, 'message' => 'You are not assigned to this class']);
+        return;
+    }
+
+    $classStmt = $db->prepare("SELECT schedule FROM classes WHERE id = ? AND status = 'active' LIMIT 1");
+    $classStmt->execute([$classId]);
+    $schedule = trim((string)($classStmt->fetchColumn() ?: ''));
+    $currentMinutes = ((int)date('G') * 60) + (int)date('i');
+    $status = ScheduleParser::attendanceStatusAt($schedule, $date, $currentMinutes, 15);
+    if ($status === null) {
+        echo json_encode(['success' => false, 'message' => 'This class has no valid schedule for today']);
+        return;
+    }
+
+    $studentStmt = $db->prepare("SELECT u.id, u.first_name, u.last_name, u.reference_code
+                                 FROM users u
+                                 JOIN enrollments e ON e.student_id = u.id
+                                 WHERE e.class_id = ?
+                                 AND u.reference_code = ?
+                                 AND u.role = 'student'
+                                 AND u.status IN ('active', 'pending')
+                                 AND COALESCE(e.status, 'enrolled') = 'enrolled'
+                                 ORDER BY e.id DESC
+                                 LIMIT 1");
+    $studentStmt->execute([$classId, $referenceCode]);
+    $student = $studentStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$student) {
+        echo json_encode(['success' => false, 'message' => 'Student was not found in this class']);
+        return;
+    }
+
+    echo json_encode([
+        'success' => true,
+        'status' => $status,
+        'student_id' => (int)$student['id'],
+        'reference_code' => (string)$student['reference_code'],
+        'student_name' => trim((string)$student['first_name'] . ' ' . (string)$student['last_name']),
+        'scanned_at' => date('h:i A'),
+    ]);
 }
 
 function teacherGetDisplayName($db, $teacherId) {

@@ -134,6 +134,44 @@ class ScheduleParser
         return self::toMinutes($matches[1]);
     }
 
+    public static function attendanceStatusAt(
+        string $scheduleText,
+        string $date,
+        int $currentMinutes,
+        int $graceMinutes = 15
+    ): ?string {
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            return null;
+        }
+        $dateObj = DateTime::createFromFormat('Y-m-d', $date);
+        if (!$dateObj) {
+            return null;
+        }
+
+        $day = $dateObj->format('D');
+        $segments = array_values(array_filter(self::parseSegments($scheduleText), function ($segment) use ($day) {
+            return ($segment['day'] ?? '') === $day;
+        }));
+        if (empty($segments)) {
+            return null;
+        }
+
+        usort($segments, function ($a, $b) {
+            return (int)($a['start'] ?? 0) <=> (int)($b['start'] ?? 0);
+        });
+
+        $selected = $segments[count($segments) - 1];
+        foreach ($segments as $segment) {
+            if ($currentMinutes <= (int)($segment['end'] ?? 0)) {
+                $selected = $segment;
+                break;
+            }
+        }
+
+        $lateAt = (int)($selected['start'] ?? 0) + max(0, $graceMinutes);
+        return $currentMinutes >= $lateAt ? 'late' : 'present';
+    }
+
     public static function hasConflict(array $segments1, array $segments2): bool
     {
         foreach ($segments1 as $a) {

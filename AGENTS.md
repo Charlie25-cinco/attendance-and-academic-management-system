@@ -91,6 +91,7 @@ For local manual testing, `composer run serve` starts the PHP development server
 - Teacher-created grade activities must be visible to enrolled students and linked parents before scores are recorded.
 - Grade activity creation and score recording should create saved in-app notifications for student and parent recipients.
 - Attendance recording from teacher web, API, or sync paths should create saved in-app notifications for student and linked parent recipients.
+- Teacher QR attendance classification must remain server-authoritative in `Asia/Manila`; scans at or after the class start plus 15 minutes are late, and QR time classification is limited to the current date.
 
 ## Chat
 
@@ -167,6 +168,7 @@ For local manual testing, `composer run serve` starts the PHP development server
 - Teacher-created grade activities must be visible to enrolled students and linked parents before scores are recorded.
 - Grade activity creation and score recording should create saved in-app notifications for student and parent recipients.
 - Attendance recording from teacher web, API, or sync paths should create saved in-app notifications for student and linked parent recipients.
+- Teacher QR attendance classification must remain server-authoritative in `Asia/Manila`; scans at or after the class start plus 15 minutes are late, and QR time classification is limited to the current date.
 
 ## Chat
 

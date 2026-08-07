@@ -82,6 +82,7 @@ Open `http://localhost:5000`.
 - Dashboard, advisory section, attendance, classes, grades, reports, announcements, archives, adviser-parent chat, and SF2 export from Reports.
 - Created grade activities are visible to enrolled students and linked parents before scores are recorded.
 - Attendance recording creates saved in-app notifications for students and linked parents.
+- Teacher QR attendance scans are classified by `Asia/Manila` server time: scans before the scheduled start plus 15 minutes are present, while scans at or after that boundary are late. QR scanning is available only for today's attendance sheet.
 
 ### Student
 

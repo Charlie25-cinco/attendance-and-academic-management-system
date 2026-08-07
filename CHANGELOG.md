@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.35 — 2026-08-07
+
+### Fixed
+
+- Made teacher QR attendance scans use the `Asia/Manila` server time and class schedule, marking scans at least 15 minutes after the scheduled start as late.
+- Restricted time-based QR attendance scanning to today's attendance sheet and validated teacher ownership plus active class enrollment on the server.
+
 ## v0.3.34 — 2026-08-07
 
 ### Fixed
