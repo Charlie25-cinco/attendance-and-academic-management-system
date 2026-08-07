@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.30 — 2026-08-07
+
+### Fixed
+
+- Made the Admin Announcements Post button functional by initializing its Bootstrap modals only after the shared JavaScript dependencies have loaded.
+
 ## v0.3.29 — 2026-08-07
 
 ### Fixed

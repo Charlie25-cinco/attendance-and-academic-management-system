@@ -25,6 +25,20 @@ final class AnnouncementPostingTest extends TestCase
         $this->assertStringContainsString('ALTER TABLE announcements ADD COLUMN show_on_website', $content);
     }
 
+    public function testAdminAnnouncementModalsInitializeAfterBootstrapLoads(): void
+    {
+        $content = file_get_contents(__DIR__ . '/../admin/admin_Announcements.php');
+        $this->assertIsString($content);
+
+        $this->assertStringContainsString('let createAnnouncementModal = null;', $content);
+        $this->assertStringContainsString('function initializeAnnouncementModals()', $content);
+        $this->assertStringContainsString(
+            "document.addEventListener('DOMContentLoaded', initializeAnnouncementModals);",
+            $content
+        );
+        $this->assertStringNotContainsString('const createAnnouncementModal = new bootstrap.Modal', $content);
+    }
+
     public function testAnnouncementPushFailuresDoNotInvalidateSavedPosts(): void
     {
         $adminContent = file_get_contents(__DIR__ . '/../admin/admin_Announcements_Action.php');

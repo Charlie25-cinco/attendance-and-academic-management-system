@@ -326,11 +326,11 @@ $visibleAnnouncementCount = count($announcements);
     <?php include '../includes/delete_modal.php'; ?>
 
     <script>
-        const createAnnouncementModal = new bootstrap.Modal(document.getElementById('createAnnouncementModal'));
-        const editAnnouncementModal = new bootstrap.Modal(document.getElementById('editAnnouncementModal'));
         const createAnnouncementModalEl = document.getElementById('createAnnouncementModal');
         const editAnnouncementModalEl = document.getElementById('editAnnouncementModal');
         const csrfToken = (window.APP_CSRF_TOKEN || '').toString();
+        let createAnnouncementModal = null;
+        let editAnnouncementModal = null;
 
         function resetCreateAnnouncementModal() {
             const form = document.getElementById('createAnnouncementForm');
@@ -344,13 +344,19 @@ $visibleAnnouncementCount = count($announcements);
             if (idField) idField.value = '';
         }
 
-        if (createAnnouncementModalEl) {
-            createAnnouncementModalEl.addEventListener('show.bs.modal', resetCreateAnnouncementModal);
-            createAnnouncementModalEl.addEventListener('hidden.bs.modal', resetCreateAnnouncementModal);
+        function initializeAnnouncementModals() {
+            if (createAnnouncementModalEl) {
+                createAnnouncementModal = bootstrap.Modal.getOrCreateInstance(createAnnouncementModalEl);
+                createAnnouncementModalEl.addEventListener('show.bs.modal', resetCreateAnnouncementModal);
+                createAnnouncementModalEl.addEventListener('hidden.bs.modal', resetCreateAnnouncementModal);
+            }
+            if (editAnnouncementModalEl) {
+                editAnnouncementModal = bootstrap.Modal.getOrCreateInstance(editAnnouncementModalEl);
+                editAnnouncementModalEl.addEventListener('hidden.bs.modal', resetEditAnnouncementModal);
+            }
         }
-        if (editAnnouncementModalEl) {
-            editAnnouncementModalEl.addEventListener('hidden.bs.modal', resetEditAnnouncementModal);
-        }
+
+        document.addEventListener('DOMContentLoaded', initializeAnnouncementModals);
 
         function createAnnouncement() {
             const form = document.getElementById('createAnnouncementForm');
