@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.29 — 2026-08-07
+
+### Fixed
+
+- Restored admin and teacher announcement posting by supplying teacher CSRF tokens, upgrading legacy website-visibility columns, and preventing optional push failures from invalidating successful posts.
+
 ## v0.3.28 — 2026-08-07
 
 ### Fixed

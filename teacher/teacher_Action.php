@@ -3015,15 +3015,19 @@ function createClassAnnouncement($db, $teacherId) {
                               VALUES (?, ?, ?, ?, 'active', NOW(), NOW())");
         $stmt->execute([$classId, $teacherId, $title, $content]);
 
-        $classLabel = teacherGetClassSubtitle($db, $classId);
-        $recipients = pushActiveClassRecipientIds($db, $classId);
-        if (!empty($recipients)) {
-            $titleText = 'New class announcement: ' . $title;
-            $bodyText = $classLabel . ' · Tap to view details';
-            pushNotifyUsers($db, $recipients, $titleText, $bodyText, [
-                'link' => 'Student_Announcements.php',
-                'class_id' => $classId,
-            ]);
+        try {
+            $classLabel = teacherGetClassSubtitle($db, $classId);
+            $recipients = pushActiveClassRecipientIds($db, $classId);
+            if (!empty($recipients)) {
+                $titleText = 'New class announcement: ' . $title;
+                $bodyText = $classLabel . ' · Tap to view details';
+                pushNotifyUsers($db, $recipients, $titleText, $bodyText, [
+                    'link' => 'Student_Announcements.php',
+                    'class_id' => $classId,
+                ]);
+            }
+        } catch (Throwable $notificationError) {
+            error_log('Class announcement saved, but push delivery failed: ' . $notificationError->getMessage());
         }
 
         echo json_encode(['success' => true, 'message' => 'Class announcement posted successfully']);

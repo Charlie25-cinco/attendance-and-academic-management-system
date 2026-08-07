@@ -29,6 +29,20 @@ function adminAnnouncementsRequireCsrf() {
     }
 }
 
+function adminAnnouncementsEnsureWebsiteColumn(PDO $db): bool {
+    if (dbHasColumn($db, 'announcements', 'show_on_website')) {
+        return true;
+    }
+
+    try {
+        $db->exec("ALTER TABLE announcements ADD COLUMN show_on_website TINYINT NOT NULL DEFAULT 0 AFTER views");
+        return true;
+    } catch (Throwable $e) {
+        error_log('Admin announcements website column update failed: ' . $e->getMessage());
+        return false;
+    }
+}
+
 if (in_array($action, ['create', 'update', 'archive', 'restore', 'delete'], true)) {
     adminAnnouncementsRequireCsrf();
 }
@@ -58,6 +72,11 @@ switch ($action) {
 
 function createAnnouncement($db) {
     try {
+        if (!adminAnnouncementsEnsureWebsiteColumn($db)) {
+            echo json_encode(['success' => false, 'message' => 'Database update required for website announcements.']);
+            return;
+        }
+
         $title = trim($_POST['title'] ?? '');
         $content = trim($_POST['content'] ?? '');
         $category = $_POST['category'] ?? 'general';
@@ -84,17 +103,21 @@ function createAnnouncement($db) {
         $stmt->execute([$title, $content, $category, $postedBy, $showOnWebsite]);
         $announcementId = (int)$db->lastInsertId();
 
-        $recipientsStmt = $db->query("SELECT id
-                                      FROM users
-                                      WHERE role IN ('teacher', 'student', 'parent')
-                                      AND status IN ('active', 'pending')");
-        $recipientIds = array_map('intval', $recipientsStmt->fetchAll(PDO::FETCH_COLUMN));
-        if (!empty($recipientIds)) {
-            $titleText = 'School announcement: ' . $title;
-            $bodyText = ucfirst($category) . ' · Tap to read more';
-            pushNotifyUsers($db, $recipientIds, $titleText, $bodyText, [
-                'link' => 'admin_Announcements.php',
-            ]);
+        try {
+            $recipientsStmt = $db->query("SELECT id
+                                          FROM users
+                                          WHERE role IN ('teacher', 'student', 'parent')
+                                          AND status IN ('active', 'pending')");
+            $recipientIds = array_map('intval', $recipientsStmt->fetchAll(PDO::FETCH_COLUMN));
+            if (!empty($recipientIds)) {
+                $titleText = 'School announcement: ' . $title;
+                $bodyText = ucfirst($category) . ' · Tap to read more';
+                pushNotifyUsers($db, $recipientIds, $titleText, $bodyText, [
+                    'link' => 'admin_Announcements.php',
+                ]);
+            }
+        } catch (Throwable $notificationError) {
+            error_log('Announcement saved, but push delivery failed: ' . $notificationError->getMessage());
         }
 
         recordAdminAuditLog($db, 'announcement.create', 'announcement', $announcementId, [
@@ -111,6 +134,11 @@ function createAnnouncement($db) {
 
 function getAnnouncement($db) {
     try {
+        if (!adminAnnouncementsEnsureWebsiteColumn($db)) {
+            echo json_encode(['success' => false, 'message' => 'Database update required for website announcements.']);
+            return;
+        }
+
         $id = $_GET['id'] ?? '';
         if ($id === '') {
             echo json_encode(['success' => false, 'message' => 'Announcement ID is required']);
@@ -135,6 +163,11 @@ function getAnnouncement($db) {
 
 function updateAnnouncement($db) {
     try {
+        if (!adminAnnouncementsEnsureWebsiteColumn($db)) {
+            echo json_encode(['success' => false, 'message' => 'Database update required for website announcements.']);
+            return;
+        }
+
         $id = $_POST['id'] ?? '';
         $title = trim($_POST['title'] ?? '');
         $content = trim($_POST['content'] ?? '');
