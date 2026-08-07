@@ -91,9 +91,17 @@ final class Sf2ExporterTest extends TestCase
             $this->assertSame('3', $rows[10][7] ?? null);
             $this->assertSame('M', $rows[11][7] ?? null);
             $this->assertSame('Dagohoy, Dave S.', $rows[12][2] ?? null);
-            $this->assertSame('/', $rows[12][7] ?? null);
-            $this->assertSame('A', $rows[12][8] ?? null);
+            $this->assertSame('', $rows[12][7] ?? '');
+            $this->assertSame('X', $rows[12][8] ?? null);
+            $this->assertSame(1, (int)($rows[12][43] ?? -1));
+            $this->assertSame(0, (int)($rows[12][45] ?? -1));
             $this->assertSame('Cruz, Ana R.', $rows[30][2] ?? null);
+            $this->assertSame("\u{2580}", $rows[30][7] ?? null);
+            $this->assertSame('', $rows[30][8] ?? '');
+            $this->assertSame(0, (int)($rows[30][43] ?? -1));
+            $this->assertSame(1, (int)($rows[30][45] ?? -1));
+            $this->assertSame(1, (int)($rows[29][7] ?? -1));
+            $this->assertSame(1, (int)($rows[57][8] ?? -1));
             $this->assertSame('GUIDELINES:', $rows[60][0] ?? null);
         } finally {
             putenv('APP_FORCE_XLSX_FALLBACK');

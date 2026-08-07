@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.42 — 2026-08-08
+
+### Fixed
+
+- Corrected SF2 attendance marks to follow the official form legend: blank for present, `X` for absent, and an upper-half mark for late/tardy while preserving monthly totals.
+
 ## v0.3.41 — 2026-08-08
 
 ### Changed

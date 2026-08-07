@@ -71,6 +71,7 @@ For local manual testing, `composer run serve` starts the PHP development server
 - SF1 import may auto-create missing section records from the template grade level, section, and track; do not auto-create subject classes from SF1.
 - SF2 follows `deped/SF2_Senior_High_School.xlsx`.
 - SF2 XLSX export must write into the official merged header and irregular Mon-Sat day-slot anchors, preserve rows 60-89, and clone the complete template for learner overflow.
+- SF2 attendance marks must follow the form legend: blank for present, `X` for absent, and an upper-half block for late/tardy.
 - ECR follows the three-term Strengthened SHS `.xlsx` template in `deped/ecr_template.xlsx` or `ECR_TEMPLATE_PATH`.
 - SF1, SF2, and ECR imports/exports should only expose CSV and XLSX formats.
 - Keep Admin SF1/SF2 export controls in Admin Reports and Teacher SF2 export controls in Teacher Reports.
@@ -153,6 +154,7 @@ For local manual testing, `composer run serve` starts the PHP development server
 - SF1 import may auto-create missing section records from the template grade level, section, and track; do not auto-create subject classes from SF1.
 - SF2 follows `deped/SF2_Senior_High_School.xlsx`.
 - SF2 XLSX export must write into the official merged header and irregular Mon-Sat day-slot anchors, preserve rows 60-89, and clone the complete template for learner overflow.
+- SF2 attendance marks must follow the form legend: blank for present, `X` for absent, and an upper-half block for late/tardy.
 - ECR follows the three-term Strengthened SHS `.xlsx` template in `deped/ecr_template.xlsx` or `ECR_TEMPLATE_PATH`.
 - SF1, SF2, and ECR imports/exports should only expose CSV and XLSX formats.
 - Keep Admin SF1/SF2 export controls in Admin Reports and Teacher SF2 export controls in Teacher Reports.

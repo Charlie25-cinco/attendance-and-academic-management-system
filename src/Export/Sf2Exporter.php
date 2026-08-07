@@ -233,14 +233,13 @@ class Sf2Exporter {
                 $status = strtolower(trim((string)($this->attendance[$student['id']][$dateStr] ?? '')));
                 $mark = '';
                 if ($status === 'present') {
-                    $mark = '/';
                     $groupTotals[$group]['present_by_day'][$day]++;
                     $groupTotals['combined']['present_by_day'][$day]++;
                 } elseif ($status === 'absent') {
-                    $mark = 'A';
+                    $mark = 'X';
                     $absentCount++;
                 } elseif ($status === 'late' || $status === 'tardy') {
-                    $mark = 'L';
+                    $mark = "\u{2580}";
                     $tardyCount++;
                 }
                 $editor->setCell($col . $row, $mark);
@@ -287,9 +286,9 @@ class Sf2Exporter {
                 $dateStr = sprintf('%04d-%02d-%02d', $this->year, $this->month, $day);
                 $status = strtolower(trim((string)($this->attendance[$student['id']][$dateStr] ?? '')));
                 $mark = '';
-                if ($status === 'present') { $mark = '/'; $groupTotals[$group]['present_by_day'][$day]++; $groupTotals['combined']['present_by_day'][$day]++; }
-                elseif ($status === 'absent') { $mark = 'A'; $absentCount++; }
-                elseif ($status === 'late' || $status === 'tardy') { $mark = 'L'; $tardyCount++; }
+                if ($status === 'present') { $groupTotals[$group]['present_by_day'][$day]++; $groupTotals['combined']['present_by_day'][$day]++; }
+                elseif ($status === 'absent') { $mark = 'X'; $absentCount++; }
+                elseif ($status === 'late' || $status === 'tardy') { $mark = "\u{2580}"; $tardyCount++; }
                 $ws->setCellValue($col . $row, $mark);
             }
             $groupTotals[$group]['absent'] += $absentCount; $groupTotals[$group]['tardy'] += $tardyCount;

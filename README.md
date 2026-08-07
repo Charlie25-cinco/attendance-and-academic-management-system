@@ -192,7 +192,7 @@ Open `http://localhost:5000`.
 - SF1 XLSX import reads the official DepEd layout: LRN from the merged A:B area and learner name in merged columns C:F as `Last Name, First Name, Name Extension, Middle Name`.
 - Student addresses follow SF1 separated columns: house/street, barangay, municipality/city, and province, while retaining the combined `address` value for older views.
 - SF1 import auto-creates missing section records from the template grade level, section, and track, but it does not create subject classes.
-- SF2 uses `deped/SF2_Senior_High_School.xlsx`, fills the official merged school/month fields and Mon-Sat attendance slots, preserves the footer, and adds complete template sheets when learners exceed the male or female rows on one sheet.
+- SF2 uses `deped/SF2_Senior_High_School.xlsx`, fills the official merged school/month fields and Mon-Sat attendance slots, uses blank/X/upper-half marks for present/absent/late, preserves the footer, and adds complete template sheets when learners exceed the male or female rows on one sheet.
 - ECR XLSX export uses a compatible three-term Strengthened SHS template in `deped/`, preferring `deped/ecr_template.xlsx`, `deped/ecr_template.xlsm`, the uploaded TeachPinas SSHS three-term `.xlsm`, or `ECR_TEMPLATE_PATH`.
 - If no compatible template is available, ECR XLSX export falls back to a generated workbook while CSV export remains available.
 - ECR teacher imports accept `.xlsx` only.
