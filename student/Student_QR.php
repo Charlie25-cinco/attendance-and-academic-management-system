@@ -95,7 +95,7 @@ $page_title = 'My QR Code';
     </div>
 
     <script src="<?php echo appAssetPath('vendor/bootstrap/bootstrap.bundle.min.js'); ?>"></script>
-    <script src="../assets/js/main.js"></script>
+    <script src="<?php echo appAssetPath('js/main.js'); ?>"></script>
     <!-- QR Code generator -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script>

@@ -840,7 +840,7 @@ if ($db && $parentId > 0 && ($_GET['action'] ?? '') === 'export') {
 </div>
 <script src="<?php echo appAssetPath('vendor/bootstrap/bootstrap.bundle.min.js'); ?>"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="../assets/js/main.js"></script>
+<script src="<?php echo appAssetPath('js/main.js'); ?>"></script>
 <script>
     (function() {
         const trendRows = <?php echo json_encode($gradeTrendRows, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;

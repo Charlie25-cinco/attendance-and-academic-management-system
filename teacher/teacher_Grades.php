@@ -363,7 +363,7 @@ $page_title = 'Grade Entry';
 </div>
 
 <script src="<?php echo appAssetPath('vendor/bootstrap/bootstrap.bundle.min.js'); ?>"></script>
-<script src="../assets/js/main.js"></script>
+<script src="<?php echo appAssetPath('js/main.js'); ?>"></script>
 <script>
 let gradingWeights = {
     ww_weight: <?php echo json_encode((float)$selectedClassWeights['ww_weight']); ?>,

@@ -52,7 +52,7 @@ final class NotificationDeliveryTest extends TestCase
         $this->assertStringContainsString('focusNotificationTarget();', $javascript);
 
         $this->assertIsString($serviceWorker);
-        $this->assertStringContainsString("const CACHE_NAME = 'bshs-ams-v7';", $serviceWorker);
+        $this->assertStringContainsString("const CACHE_NAME = 'bshs-ams-v8';", $serviceWorker);
         $this->assertStringContainsString('new URL(targetUrl, self.location.origin).href', $serviceWorker);
     }
 

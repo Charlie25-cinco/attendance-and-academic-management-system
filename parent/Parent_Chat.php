@@ -225,7 +225,7 @@ $page_title = 'Messages';
     </div>
 
     <script src="<?php echo appAssetPath('vendor/bootstrap/bootstrap.bundle.min.js'); ?>"></script>
-    <script src="../assets/js/main.js"></script>
+    <script src="<?php echo appAssetPath('js/main.js'); ?>"></script>
     <script>
     const chatActionUrl = 'Parent_Chat_Action.php';
     const selectedTeacherId = <?php echo $selectedTeacherId; ?>;

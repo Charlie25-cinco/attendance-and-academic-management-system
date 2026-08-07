@@ -839,6 +839,7 @@ function initSettingsControls() {
   applyInitialSettingsToControls();
   updatePwaPushStatus();
   document.getElementById("testPushNotificationBtn")?.addEventListener("click", sendTestPushNotification);
+  document.getElementById("settingsModal")?.addEventListener("shown.bs.modal", updatePwaPushStatus);
 
   const darkMode = document.getElementById("darkModeSwitch");
   if (darkMode) {

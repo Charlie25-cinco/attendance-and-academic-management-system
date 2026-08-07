@@ -1,6 +1,6 @@
 // BSHS AMS root service worker - PWA cache + push notifications
 
-const CACHE_NAME = 'bshs-ams-v7';
+const CACHE_NAME = 'bshs-ams-v8';
 const APP_SHELL_URLS = [
   '/assets/manifest.json',
   '/assets/css/main.css',
@@ -71,6 +71,19 @@ self.addEventListener('fetch', function (event) {
 
   var isAsset = url.pathname.indexOf('/assets/') === 0;
   var isStaticAsset = /\.(css|js|png|jpg|jpeg|gif|svg|ico|woff2?|ttf|eot|json)(\?|$)/i.test(url.pathname);
+  var needsFreshAsset = /\.(css|js)$/i.test(url.pathname);
+
+  if (needsFreshAsset) {
+    event.respondWith(
+      fetch(event.request).then(function (response) {
+        cacheResponse(event.request, response);
+        return response;
+      }).catch(function () {
+        return caches.match(event.request);
+      })
+    );
+    return;
+  }
 
   if (isAsset || isStaticAsset) {
     event.respondWith(

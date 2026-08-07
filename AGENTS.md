@@ -130,6 +130,7 @@ For local manual testing, `composer run serve` starts the PHP development server
 - Core user events must use `appDispatchNotification()` so in-app records are saved before browser Web Push and legacy mobile delivery are attempted; push failures must not roll back the primary event.
 - Teacher attendance offline mode queues submissions in `localStorage` and retries them against `teacher_Action.php?action=submit_attendance` when connectivity returns.
 - Test install/offline behavior on desktop and mobile before production release.
+- Portal pages must load shared JavaScript through `appAssetPath()`; keep JavaScript and CSS network-first in `sw.js` with cached offline fallback so installed PWAs do not retain obsolete notification behavior.
 
 ## Wasmer Deployment
 

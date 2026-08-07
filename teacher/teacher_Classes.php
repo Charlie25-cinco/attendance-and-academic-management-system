@@ -512,7 +512,7 @@ $page_title = 'Classes';
 </div>
 
 <script src="<?php echo appAssetPath('vendor/bootstrap/bootstrap.bundle.min.js'); ?>"></script>
-<script src="../assets/js/main.js"></script>
+<script src="<?php echo appAssetPath('js/main.js'); ?>"></script>
 <?php include '../includes/delete_modal.php'; ?>
 <script>
 let pendingDeleteAction = '';

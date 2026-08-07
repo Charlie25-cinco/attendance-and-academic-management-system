@@ -119,7 +119,7 @@ $page_title = 'Archives';
     </div>
 </div>
 <script src="<?php echo appAssetPath('vendor/bootstrap/bootstrap.bundle.min.js'); ?>"></script>
-<script src="../assets/js/main.js"></script>
+<script src="<?php echo appAssetPath('js/main.js'); ?>"></script>
 <script>
 function restoreGradeItem(id) {
     if (!id) return;

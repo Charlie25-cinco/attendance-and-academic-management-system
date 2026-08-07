@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.40 — 2026-08-07
+
+### Fixed
+
+- Replaced unversioned portal JavaScript references and made PWA JavaScript/CSS network-first so installed apps load current notification controls instead of stale cached code.
+- Refreshed server and device push status whenever the Settings modal opens.
+
 ## v0.3.39 — 2026-08-07
 
 ### Fixed

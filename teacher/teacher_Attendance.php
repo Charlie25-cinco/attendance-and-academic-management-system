@@ -219,7 +219,7 @@ $page_title = 'Attendance';
 </div>
 <script src="<?php echo appAssetPath('vendor/bootstrap/bootstrap.bundle.min.js'); ?>"></script>
 <script src="../assets/js/networkSync.js"></script>
-<script src="../assets/js/main.js"></script>
+<script src="<?php echo appAssetPath('js/main.js'); ?>"></script>
 <script>
 const statusCycle=['present','absent','late'];
 let canEditAttendance=<?php echo $canEditSelectedClass ? 'true' : 'false'; ?>;
