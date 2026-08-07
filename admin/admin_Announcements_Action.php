@@ -111,10 +111,22 @@ function createAnnouncement($db) {
             $recipientIds = array_map('intval', $recipientsStmt->fetchAll(PDO::FETCH_COLUMN));
             if (!empty($recipientIds)) {
                 $titleText = 'School announcement: ' . $title;
-                $bodyText = ucfirst($category) . ' · Tap to read more';
-                pushNotifyUsers($db, $recipientIds, $titleText, $bodyText, [
-                    'link' => 'admin_Announcements.php',
-                ]);
+                $bodyText = ucfirst($category) . ' - Tap to read more';
+                appDispatchNotification(
+                    $db,
+                    $recipientIds,
+                    'school_announcement_' . $announcementId,
+                    $titleText,
+                    $bodyText,
+                    'bi-megaphone',
+                    $category === 'urgent' ? 'danger' : 'warning',
+                    [
+                        'teacher' => 'teacher_Announcements.php',
+                        'student' => 'Student_Announcements.php',
+                        'parent' => 'Parent_Announcements.php',
+                    ],
+                    ['type' => 'school_announcement', 'announcement_id' => $announcementId]
+                );
             }
         } catch (Throwable $notificationError) {
             error_log('Announcement saved, but push delivery failed: ' . $notificationError->getMessage());

@@ -1,6 +1,6 @@
 // BSHS AMS root service worker - PWA cache + push notifications
 
-const CACHE_NAME = 'bshs-ams-v5';
+const CACHE_NAME = 'bshs-ams-v6';
 const APP_SHELL_URLS = [
   '/assets/manifest.json',
   '/assets/css/main.css',
@@ -110,7 +110,7 @@ self.addEventListener('push', function (event) {
     icon: data.icon || '/assets/images/icon-192.png',
     badge: data.badge || '/assets/images/icon-192.png',
     vibrate: [200, 100, 200],
-    data: { url: data.url || '/auth/login.php' }
+    data: { url: data.url || (data.data && data.data.url) || '/auth/login.php' }
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
@@ -121,17 +121,18 @@ self.addEventListener('notificationclick', function (event) {
   var targetUrl = (event.notification && event.notification.data && event.notification.data.url)
     ? event.notification.data.url
     : '/auth/login.php';
+  var resolvedUrl = new URL(targetUrl, self.location.origin).href;
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
       for (var i = 0; i < clientList.length; i++) {
         var client = clientList[i];
-        if (client.url === targetUrl && 'focus' in client) {
+        if (client.url === resolvedUrl && 'focus' in client) {
           return client.focus();
         }
       }
       if (clients.openWindow) {
-        return clients.openWindow(targetUrl);
+        return clients.openWindow(resolvedUrl);
       }
     })
   );

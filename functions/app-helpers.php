@@ -402,9 +402,31 @@ function getTeacherRoles(PDO $db, int $teacherId): array {
 }
 
 function appEnsureUserNotificationsTable(PDO $db): void {
-    static $ready = false;
-    if ($ready) { return; }
+    static $readyConnections = [];
+    $connectionId = spl_object_id($db);
+    if (isset($readyConnections[$connectionId])) { return; }
     try {
+        $driver = strtolower((string)$db->getAttribute(PDO::ATTR_DRIVER_NAME));
+        if ($driver === 'sqlite') {
+            $db->exec("CREATE TABLE IF NOT EXISTS user_notifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                source_key TEXT NOT NULL,
+                title TEXT NOT NULL,
+                subtitle TEXT DEFAULT '',
+                icon TEXT DEFAULT 'bi-bell',
+                color TEXT DEFAULT 'primary',
+                link TEXT DEFAULT '',
+                event_at DATETIME NOT NULL,
+                is_read INTEGER DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (user_id, source_key)
+            )");
+            $db->exec("CREATE INDEX IF NOT EXISTS idx_user_read_event ON user_notifications (user_id, is_read, event_at)");
+            $readyConnections[$connectionId] = true;
+            return;
+        }
         $db->exec("CREATE TABLE IF NOT EXISTS user_notifications (
             id INT AUTO_INCREMENT PRIMARY KEY,
             user_id INT NOT NULL,
@@ -424,7 +446,7 @@ function appEnsureUserNotificationsTable(PDO $db): void {
     } catch (Throwable $e) {
         error_log('User notifications table check failed: ' . $e->getMessage());
     }
-    $ready = true;
+    $readyConnections[$connectionId] = true;
 }
 
 function appNotifyUsers(PDO $db, array $userIds, string $sourceKey, string $title, string $subtitle, string $icon = 'bi-bell', string $color = 'primary', string $link = '', ?string $eventAt = null): void {
@@ -435,12 +457,23 @@ function appNotifyUsers(PDO $db, array $userIds, string $sourceKey, string $titl
     appEnsureUserNotificationsTable($db);
     $eventAt = $eventAt ?: date('Y-m-d H:i:s');
     try {
-        $stmt = $db->prepare("INSERT INTO user_notifications
-            (user_id, source_key, title, subtitle, icon, color, link, event_at, is_read)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
-            ON DUPLICATE KEY UPDATE title = VALUES(title), subtitle = VALUES(subtitle),
-            icon = VALUES(icon), color = VALUES(color), link = VALUES(link),
-            event_at = VALUES(event_at), is_read = 0, updated_at = NOW()");
+        $driver = strtolower((string)$db->getAttribute(PDO::ATTR_DRIVER_NAME));
+        if ($driver === 'sqlite') {
+            $stmt = $db->prepare("INSERT INTO user_notifications
+                (user_id, source_key, title, subtitle, icon, color, link, event_at, is_read)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
+                ON CONFLICT(user_id, source_key) DO UPDATE SET
+                title = excluded.title, subtitle = excluded.subtitle, icon = excluded.icon,
+                color = excluded.color, link = excluded.link, event_at = excluded.event_at,
+                is_read = 0, updated_at = DATETIME('now')");
+        } else {
+            $stmt = $db->prepare("INSERT INTO user_notifications
+                (user_id, source_key, title, subtitle, icon, color, link, event_at, is_read)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
+                ON DUPLICATE KEY UPDATE title = VALUES(title), subtitle = VALUES(subtitle),
+                icon = VALUES(icon), color = VALUES(color), link = VALUES(link),
+                event_at = VALUES(event_at), is_read = 0, updated_at = NOW()");
+        }
         foreach ($userIds as $userId) {
             $stmt->execute([
                 $userId,
@@ -455,6 +488,74 @@ function appNotifyUsers(PDO $db, array $userIds, string $sourceKey, string $titl
         }
     } catch (Throwable $e) {
         error_log('User notification insert failed: ' . $e->getMessage());
+    }
+}
+
+function appDispatchNotification(
+    PDO $db,
+    array $userIds,
+    string $sourceKey,
+    string $title,
+    string $subtitle,
+    string $icon = 'bi-bell',
+    string $color = 'primary',
+    array $linksByRole = [],
+    array $data = [],
+    ?string $eventAt = null
+): void {
+    $userIds = array_values(array_unique(array_filter(array_map('intval', $userIds), function ($id) {
+        return $id > 0;
+    })));
+    if (empty($userIds)) {
+        return;
+    }
+
+    try {
+        $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+        $stmt = $db->prepare("SELECT id, role FROM users WHERE id IN ($placeholders)");
+        $stmt->execute($userIds);
+        $idsByRole = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $role = strtolower(trim((string)($row['role'] ?? '')));
+            if ($role !== '') {
+                $idsByRole[$role][] = (int)$row['id'];
+            }
+        }
+
+        foreach ($idsByRole as $role => $roleUserIds) {
+            $link = trim((string)($linksByRole[$role] ?? $linksByRole['default'] ?? ''));
+            appNotifyUsers($db, $roleUserIds, $sourceKey, $title, $subtitle, $icon, $color, $link, $eventAt);
+
+            $targetUrl = '/auth/login.php';
+            if ($link !== '') {
+                $targetUrl = str_starts_with($link, '/') ? $link : '/' . $role . '/' . $link;
+            }
+            $payload = [
+                'title' => $title,
+                'body' => $subtitle,
+                'icon' => '/assets/images/icon-192.png',
+                'badge' => '/assets/images/icon-192.png',
+                'url' => $targetUrl,
+                'data' => array_merge($data, [
+                    'source_key' => $sourceKey,
+                    'url' => $targetUrl,
+                    'link' => $targetUrl,
+                ]),
+            ];
+
+            try {
+                if (function_exists('pushSendToUserIds')) {
+                    pushSendToUserIds($db, $roleUserIds, $payload);
+                }
+                if (function_exists('pushNotifyUsers')) {
+                    pushNotifyUsers($db, $roleUserIds, $title, $subtitle, $payload['data']);
+                }
+            } catch (Throwable $e) {
+                error_log('[notification] Push delivery failed for source ' . $sourceKey . ': ' . $e->getMessage());
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('[notification] Dispatch failed for source ' . $sourceKey . ': ' . $e->getMessage());
     }
 }
 
@@ -520,7 +621,7 @@ function appNotifyGradeActivityCreated(PDO $db, int $classId, int $gradeItemId, 
     $classLabel = appClassSubtitle($db, $classId);
     $subtitle = $classLabel . ' | ' . strtoupper($component) . ' | Total: ' . (string)$totalScore;
     foreach ($studentIds as $studentId) {
-        appNotifyUsers(
+        appDispatchNotification(
             $db,
             [(int)$studentId],
             'grade_item_created_' . $gradeItemId . '_' . (int)$studentId,
@@ -528,9 +629,10 @@ function appNotifyGradeActivityCreated(PDO $db, int $classId, int $gradeItemId, 
             $subtitle,
             'bi-clipboard-check',
             'primary',
-            'Student_Classes.php'
+            ['student' => 'Student_Classes.php'],
+            ['type' => 'grade_activity', 'class_id' => $classId, 'grade_item_id' => $gradeItemId]
         );
-        appNotifyUsers(
+        appDispatchNotification(
             $db,
             $recipients['parents_by_student'][(int)$studentId] ?? [],
             'grade_item_created_' . $gradeItemId . '_' . (int)$studentId,
@@ -538,7 +640,8 @@ function appNotifyGradeActivityCreated(PDO $db, int $classId, int $gradeItemId, 
             $subtitle,
             'bi-clipboard-check',
             'primary',
-            'Parent_Progress.php'
+            ['parent' => 'Parent_Progress.php'],
+            ['type' => 'grade_activity', 'class_id' => $classId, 'grade_item_id' => $gradeItemId]
         );
     }
 }
@@ -568,7 +671,7 @@ function appNotifyAttendanceRecords(PDO $db, int $classId, string $date, array $
         if ($studentId <= 0 || !in_array($status, ['present', 'late', 'absent'], true)) { continue; }
         $studentName = $names[$studentId] ?? 'Student';
         $subtitle = $studentName . ' marked ' . ucfirst($status) . ' on ' . $date . ' in ' . $classLabel;
-        appNotifyUsers(
+        appDispatchNotification(
             $db,
             [$studentId],
             'attendance_' . $classId . '_' . $date . '_' . $studentId,
@@ -576,9 +679,10 @@ function appNotifyAttendanceRecords(PDO $db, int $classId, string $date, array $
             $subtitle,
             'bi-calendar-check',
             'info',
-            'Student_Attendance.php'
+            ['student' => 'Student_Attendance.php'],
+            ['type' => 'attendance', 'class_id' => $classId, 'student_id' => $studentId, 'date' => $date, 'status' => $status]
         );
-        appNotifyUsers(
+        appDispatchNotification(
             $db,
             $recipients['parents_by_student'][$studentId] ?? [],
             'attendance_' . $classId . '_' . $date . '_' . $studentId,
@@ -586,7 +690,8 @@ function appNotifyAttendanceRecords(PDO $db, int $classId, string $date, array $
             $subtitle,
             'bi-calendar-check',
             'info',
-            'Parent_Progress.php'
+            ['parent' => 'Parent_Progress.php'],
+            ['type' => 'attendance', 'class_id' => $classId, 'student_id' => $studentId, 'date' => $date, 'status' => $status]
         );
     }
 }

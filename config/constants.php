@@ -610,25 +610,18 @@ function pushNotifyAttendanceEvent($db, int $studentId, string $status, string $
 
     $targetIds = array_values(array_unique(array_merge([$studentId], $parentIds)));
 
-    $payload = [
-        'title' => 'Attendance Update: ' . $statusLabel,
-        'body' => $studentName . ' marked ' . strtolower($statusLabel) . ' for ' . $formattedDate,
-        'icon' => 'assets/icons/icon-192.png',
-        'badge' => 'assets/icons/icon-72.png',
-        'url' => 'student/attendance.php',
-        'data' => [
-            'type' => 'attendance',
-            'student_id' => $studentId,
-            'status' => $status,
-            'date' => $date,
-        ],
-    ];
-
-    $webPushSent = pushSendToUserIds($db, $targetIds, $payload);
-    if (function_exists('pushNotifyUsers')) {
-        pushNotifyUsers($db, $targetIds, $payload['title'], $payload['body'], $payload['data']);
-    }
-    return $webPushSent;
+    appDispatchNotification(
+        $db,
+        $targetIds,
+        'attendance_direct_' . $date . '_' . $studentId,
+        'Attendance Update: ' . $statusLabel,
+        $studentName . ' marked ' . strtolower($statusLabel) . ' for ' . $formattedDate,
+        'bi-calendar-check',
+        'info',
+        ['student' => 'Student_Attendance.php', 'parent' => 'Parent_Progress.php'],
+        ['type' => 'attendance', 'student_id' => $studentId, 'status' => $status, 'date' => $date]
+    );
+    return true;
 }
 
 function pushNotifyGradePublication($db, int $classId, string $term = 'Final', string $academicYear = ''): bool {
@@ -664,25 +657,18 @@ function pushNotifyGradePublication($db, int $classId, string $term = 'Final', s
         return false;
     }
 
-    $payload = [
-        'title' => 'Official Report Cards Released',
-        'body' => 'Report cards for ' . $className . ' are now available.',
-        'icon' => 'assets/icons/icon-192.png',
-        'badge' => 'assets/icons/icon-72.png',
-        'url' => 'student/report_card.php',
-        'data' => [
-            'type' => 'grade_publication',
-            'class_id' => $classId,
-            'term' => $term,
-            'academic_year' => $academicYear,
-        ],
-    ];
-
-    $webPushSent = pushSendToUserIds($db, $recipients, $payload);
-    if (function_exists('pushNotifyUsers')) {
-        pushNotifyUsers($db, $recipients, $payload['title'], $payload['body'], $payload['data']);
-    }
-    return $webPushSent;
+    appDispatchNotification(
+        $db,
+        $recipients,
+        'report_card_release_' . $classId . '_' . $term . '_' . $academicYear,
+        'Official Report Cards Released',
+        'Report cards for ' . $className . ' are now available.',
+        'bi-file-earmark-check',
+        'success',
+        ['student' => 'Student_Report_Card.php', 'parent' => 'Parent_Report_Card.php'],
+        ['type' => 'grade_publication', 'class_id' => $classId, 'term' => $term, 'academic_year' => $academicYear]
+    );
+    return true;
 }
 
 function smsInitConfig(): void {

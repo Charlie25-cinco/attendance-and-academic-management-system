@@ -51,4 +51,14 @@ final class AnnouncementPostingTest extends TestCase
         $this->assertStringContainsString('catch (Throwable $notificationError)', $teacherContent);
         $this->assertStringContainsString('Class announcement saved, but push delivery failed:', $teacherContent);
     }
+
+    public function testAnnouncementsUseSharedInAppAndPushDispatcher(): void
+    {
+        $adminContent = file_get_contents(__DIR__ . '/../admin/admin_Announcements_Action.php');
+        $teacherContent = file_get_contents(__DIR__ . '/../teacher/teacher_Action.php');
+
+        $this->assertStringContainsString('appDispatchNotification(', $adminContent);
+        $this->assertStringContainsString("'school_announcement_' . \$announcementId", $adminContent);
+        $this->assertStringContainsString("'class_announcement_' . \$announcementId", $teacherContent);
+    }
 }

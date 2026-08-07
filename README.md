@@ -139,6 +139,8 @@ Open `http://localhost:5000`.
 - Users enable or disable device notifications from the shared Settings modal; enabling push requests browser permission and subscribes the current device.
 - Configure `PUSH_VAPID_PUBLIC_KEY`, `PUSH_VAPID_PRIVATE_KEY`, and `PUSH_VAPID_SUBJECT` before expecting installed PWA popup notifications.
 - Web Push sending requires PHP `curl` and `openssl`; failures are written to the PHP error log for deployment troubleshooting.
+- School and class announcements, attendance, materials, grade activities and scores, and report-card releases are always saved as in-app notifications before push delivery is attempted.
+- A subscribed device can receive Web Push while the installed PWA is closed when notification permission is granted, the device is online, and the operating system permits background notifications. Saved in-app notifications remain available on the next app open even when push delivery is unavailable.
 - Teacher attendance submissions can be queued in `localStorage` while offline and retried against `teacher_Action.php?action=submit_attendance` when the browser comes back online.
 - Teacher QR attendance scanning requires HTTPS and browser camera permission. Camera access is permitted only on `teacher/teacher_Attendance.php`; other application pages keep camera access disabled.
 - Before production, test install/offline behavior on desktop and mobile browsers.

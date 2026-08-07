@@ -2,6 +2,14 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.34 — 2026-08-07
+
+### Fixed
+
+- Unified school and class announcements, attendance, materials, grade activity and score events, and report-card releases across saved in-app, browser Web Push, and legacy mobile notifications.
+- Added working read, read-all, delete, and delete-all actions for header notifications with per-user authorization.
+- Corrected PWA notification icons and role-specific click destinations, including delivery while the installed PWA is closed when Web Push is configured and enabled.
+
 ## v0.3.33 — 2026-08-07
 
 ### Fixed

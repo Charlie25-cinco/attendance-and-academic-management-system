@@ -284,6 +284,7 @@ document.addEventListener("DOMContentLoaded", function () {
   if (document.getElementById("settingsForm")) {
     initSettingsControls();
   }
+  initHeaderNotificationActions();
   window.setTimeout(initPwaPushAutoRegistration, 1200);
 
 });
@@ -559,6 +560,66 @@ function appFetchJson(route, options = {}) {
     }
     return data;
   }));
+}
+
+function updateNotificationState(action, id = 0) {
+  return appFetchJson("notification-action", {
+    method: "POST",
+    body: JSON.stringify({ action, id }),
+  });
+}
+
+function initHeaderNotificationActions() {
+  document.querySelectorAll(".header-notification-item[data-notification-id]").forEach((item) => {
+    item.addEventListener("click", (event) => {
+      const id = Number.parseInt(item.dataset.notificationId || "0", 10);
+      const href = item.getAttribute("href") || "";
+      if (id <= 0) return;
+      event.preventDefault();
+      updateNotificationState("read", id)
+        .catch((error) => console.warn("Unable to mark notification as read:", error))
+        .finally(() => {
+          if (href && href !== "#") window.location.href = href;
+          else window.location.reload();
+        });
+    });
+  });
+
+  document.querySelectorAll(".delete-notification-btn[data-notification-id]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const id = Number.parseInt(button.dataset.notificationId || "0", 10);
+      if (id <= 0) return;
+      button.disabled = true;
+      updateNotificationState("delete", id)
+        .then(() => window.location.reload())
+        .catch((error) => {
+          button.disabled = false;
+          showNotification(error.message || "Unable to delete notification", "danger");
+        });
+    });
+  });
+
+  const readAll = document.getElementById("markAllNotificationsRead");
+  if (readAll) {
+    readAll.addEventListener("click", (event) => {
+      event.preventDefault();
+      updateNotificationState("read_all")
+        .then(() => window.location.reload())
+        .catch((error) => showNotification(error.message || "Unable to update notifications", "danger"));
+    });
+  }
+
+  const deleteAll = document.getElementById("deleteAllNotifications");
+  if (deleteAll) {
+    deleteAll.addEventListener("click", (event) => {
+      event.preventDefault();
+      updateNotificationState("delete_all")
+        .then(() => window.location.reload())
+        .catch((error) => showNotification(error.message || "Unable to delete notifications", "danger"));
+    });
+  }
 }
 
 function setSettingsBusy(isBusy) {

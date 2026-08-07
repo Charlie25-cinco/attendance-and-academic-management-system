@@ -124,6 +124,7 @@ For local manual testing, `composer run serve` starts the PHP development server
 - Installed PWA device notifications require browser Push API subscription code, saved `push_subscriptions`, root `sw.js` push handling, and configured `PUSH_VAPID_PUBLIC_KEY`, `PUSH_VAPID_PRIVATE_KEY`, and `PUSH_VAPID_SUBJECT`.
 - The shared Settings modal controls browser push subscription; enabling push should request permission and save the current device subscription, while disabling it should remove the browser subscription.
 - Web Push delivery depends on PHP `curl` and `openssl`; keep these Composer platform requirements and log failed push sends for deployment debugging.
+- Core user events must use `appDispatchNotification()` so in-app records are saved before browser Web Push and legacy mobile delivery are attempted; push failures must not roll back the primary event.
 - Teacher attendance offline mode queues submissions in `localStorage` and retries them against `teacher_Action.php?action=submit_attendance` when connectivity returns.
 - Test install/offline behavior on desktop and mobile before production release.
 
@@ -199,6 +200,7 @@ For local manual testing, `composer run serve` starts the PHP development server
 - Installed PWA device notifications require browser Push API subscription code, saved `push_subscriptions`, root `sw.js` push handling, and configured `PUSH_VAPID_PUBLIC_KEY`, `PUSH_VAPID_PRIVATE_KEY`, and `PUSH_VAPID_SUBJECT`.
 - The shared Settings modal controls browser push subscription; enabling push should request permission and save the current device subscription, while disabling it should remove the browser subscription.
 - Web Push delivery depends on PHP `curl` and `openssl`; keep these Composer platform requirements and log failed push sends for deployment debugging.
+- Core user events must use `appDispatchNotification()` so in-app records are saved before browser Web Push and legacy mobile delivery are attempted; push failures must not roll back the primary event.
 - Teacher attendance offline mode queues submissions in `localStorage` and retries them against `teacher_Action.php?action=submit_attendance` when connectivity returns.
 - Test install/offline behavior on desktop and mobile before production release.
 

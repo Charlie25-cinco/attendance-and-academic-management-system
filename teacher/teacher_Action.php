@@ -357,9 +357,6 @@ function teacherAttendanceUpsertRecord($db, $teacherId, $classId, $date, $studen
     }
 
     $upsert->execute(array_merge($params, $updateParams));
-    if (function_exists('pushNotifyAttendanceEvent')) {
-        pushNotifyAttendanceEvent($db, (int)$studentId, (string)$status, (string)$date);
-    }
 }
 
 function getTeacherClassSubjectId($db, $teacherId, $classId) {
@@ -378,10 +375,6 @@ function teacherNotificationsTableExists($db) {
 }
 
 function notifyMaterialUploadRecipients($db, $teacherId, $classId, $materialId, $materialTitle) {
-    if (!teacherNotificationsTableExists($db)) {
-        return;
-    }
-
     $classStmt = $db->prepare("SELECT class_name, grade_level, section FROM classes WHERE id = ? LIMIT 1");
     $classStmt->execute([(int)$classId]);
     $classRow = $classStmt->fetch(PDO::FETCH_ASSOC) ?: [];
@@ -436,29 +429,18 @@ function notifyMaterialUploadRecipients($db, $teacherId, $classId, $materialId, 
 
     $title = "New learning material: " . trim((string)$materialTitle);
     $subtitle = $classSubtitle . " - Uploaded by " . $teacherName;
-    $eventAt = date('Y-m-d H:i:s');
     $sourceKey = 'material_upload_' . (int)$materialId;
-
-    $upsertStmt = $db->prepare("INSERT INTO user_notifications
-                                (user_id, source_key, title, subtitle, icon, color, link, event_at, is_read)
-                                VALUES (?, ?, ?, ?, 'bi-file-earmark-arrow-up', 'success', ?, ?, 0)
-                                ON DUPLICATE KEY UPDATE
-                                  title = VALUES(title),
-                                  subtitle = VALUES(subtitle),
-                                  icon = VALUES(icon),
-                                  color = VALUES(color),
-                                  link = VALUES(link),
-                                  event_at = VALUES(event_at),
-                                  is_read = 0,
-                                  updated_at = NOW()");
-
-    foreach ($recipientIds as $userId) {
-        $roleStmt = $db->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
-        $roleStmt->execute([(int)$userId]);
-        $role = strtolower(trim((string)$roleStmt->fetchColumn()));
-        $link = ($role === 'parent') ? 'Parent_Announcements.php' : 'Student_Classes.php';
-        $upsertStmt->execute([(int)$userId, $sourceKey, $title, $subtitle, $link, $eventAt]);
-    }
+    appDispatchNotification(
+        $db,
+        $recipientIds,
+        $sourceKey,
+        $title,
+        $subtitle,
+        'bi-file-earmark-arrow-up',
+        'success',
+        ['student' => 'Student_Classes.php', 'parent' => 'Parent_Announcements.php'],
+        ['type' => 'material', 'class_id' => (int)$classId, 'material_id' => (int)$materialId]
+    );
 }
 
 function teacherGetDisplayName($db, $teacherId) {
@@ -484,9 +466,7 @@ function teacherGetClassSubtitle($db, $classId) {
 }
 
 function notifyAttendanceParents($db, $teacherId, $classId, $date, array $records) {
-    if (!teacherNotificationsTableExists($db)) {
-        return;
-    }
+    appEnsureUserNotificationsTable($db);
 
     $hasTimeIn = teacherAttendanceSupportsColumn($db, 'time_in');
     $recordLookup = [];
@@ -552,18 +532,6 @@ function notifyAttendanceParents($db, $teacherId, $classId, $date, array $record
     $classSubtitle = teacherGetClassSubtitle($db, $classId);
     $eventAt = date('Y-m-d H:i:s');
 
-    $upsertStmt = $db->prepare("INSERT INTO user_notifications
-                                (user_id, source_key, title, subtitle, icon, color, link, event_at, is_read)
-                                VALUES (?, ?, ?, ?, 'bi-calendar-check', 'info', ?, ?, 0)
-                                ON DUPLICATE KEY UPDATE
-                                  title = VALUES(title),
-                                  subtitle = VALUES(subtitle),
-                                  icon = VALUES(icon),
-                                  color = VALUES(color),
-                                  link = VALUES(link),
-                                  event_at = VALUES(event_at),
-                                  is_read = 0,
-                                  updated_at = NOW()");
     $cleanupStmt = $db->prepare("DELETE FROM user_notifications
                                  WHERE user_id = ?
                                  AND title = 'Attendance recorded'
@@ -590,14 +558,18 @@ function notifyAttendanceParents($db, $teacherId, $classId, $date, array $record
                 continue;
             }
             $cleanupStmt->execute([$recipientId, $cleanupPattern]);
-            $link = ((int)$recipientId === (int)$studentId) ? 'Student_Attendance.php' : 'Parent_Progress.php';
-            $upsertStmt->execute([$recipientId, $sourceKey, $title, $subtitle, $link, $eventAt]);
-            pushSendToUserIds($db, [$recipientId], [
-                'title' => $title,
-                'body' => $subtitle,
-                'url' => $link,
-                'icon' => '/assets/images/bshs-logo.jpg'
-            ]);
+            appDispatchNotification(
+                $db,
+                [$recipientId],
+                $sourceKey,
+                $title,
+                $subtitle,
+                'bi-calendar-check',
+                'info',
+                ['student' => 'Student_Attendance.php', 'parent' => 'Parent_Progress.php'],
+                ['type' => 'attendance', 'class_id' => (int)$classId, 'student_id' => $studentId, 'date' => $date, 'status' => $status],
+                $eventAt
+            );
 
             $isParent = isset($parentLookup[$studentId]) && in_array($recipientId, $parentLookup[$studentId], true);
             if ($isParent) {
@@ -622,10 +594,6 @@ function smsSendAttendanceAlert(PDO $db, int $parentId, string $studentName, str
 }
 
 function notifyGradeSubmissionParents($db, $teacherId, $classId, $classSubjectId, $term, $academicYear, array $records, $semester = null) {
-    if (!teacherNotificationsTableExists($db)) {
-        return;
-    }
-
     $studentIds = array_values(array_unique(array_map(function ($record) {
         return (int)($record['student_id'] ?? 0);
     }, $records)));
@@ -671,19 +639,6 @@ function notifyGradeSubmissionParents($db, $teacherId, $classId, $classSubjectId
     $classSubtitle = teacherGetClassSubtitle($db, $classId);
     $eventAt = date('Y-m-d H:i:s');
 
-    $upsertStmt = $db->prepare("INSERT INTO user_notifications
-                                (user_id, source_key, title, subtitle, icon, color, link, event_at, is_read)
-                                VALUES (?, ?, ?, ?, 'bi-clipboard-data', 'info', ?, ?, 0)
-                                ON DUPLICATE KEY UPDATE
-                                  title = VALUES(title),
-                                  subtitle = VALUES(subtitle),
-                                  icon = VALUES(icon),
-                                  color = VALUES(color),
-                                  link = VALUES(link),
-                                  event_at = VALUES(event_at),
-                                  is_read = 0,
-                                  updated_at = NOW()");
-
     foreach ($records as $record) {
         $studentId = (int)($record['student_id'] ?? 0);
         if ($studentId <= 0) {
@@ -700,23 +655,23 @@ function notifyGradeSubmissionParents($db, $teacherId, $classId, $classSubjectId
             if ($recipientId <= 0 || $recipientId === (int)$teacherId) {
                 continue;
             }
-            $link = ((int)$recipientId === (int)$studentId) ? 'Student_Report_Card.php' : 'Parent_Progress.php';
-            $upsertStmt->execute([$recipientId, $sourceKey, $title, $subtitle, $link, $eventAt]);
-            pushSendToUserIds($db, [$recipientId], [
-                'title' => $title,
-                'body' => $subtitle,
-                'url' => $link,
-                'icon' => '/assets/images/bshs-logo.jpg'
-            ]);
+            appDispatchNotification(
+                $db,
+                [$recipientId],
+                $sourceKey,
+                $title,
+                $subtitle,
+                'bi-clipboard-data',
+                'info',
+                ['student' => 'Student_Report_Card.php', 'parent' => 'Parent_Progress.php'],
+                ['type' => 'grade_submission', 'class_id' => (int)$classId, 'student_id' => $studentId],
+                $eventAt
+            );
         }
     }
 }
 
 function notifyGradeItemScoreParents($db, $teacherId, array $item, array $scoreRows) {
-    if (!teacherNotificationsTableExists($db)) {
-        return;
-    }
-
     $studentIds = array_values(array_unique(array_map(function ($row) {
         return (int)($row['student_id'] ?? 0);
     }, $scoreRows)));
@@ -767,19 +722,6 @@ function notifyGradeItemScoreParents($db, $teacherId, array $item, array $scoreR
     $title = 'Score recorded: ' . trim((string)($item['title'] ?? 'Activity'));
     $totalScore = (string)($item['total_score'] ?? '');
 
-    $upsertStmt = $db->prepare("INSERT INTO user_notifications
-                                (user_id, source_key, title, subtitle, icon, color, link, event_at, is_read)
-                                VALUES (?, ?, ?, ?, 'bi-clipboard-check', 'info', ?, ?, 0)
-                                ON DUPLICATE KEY UPDATE
-                                  title = VALUES(title),
-                                  subtitle = VALUES(subtitle),
-                                  icon = VALUES(icon),
-                                  color = VALUES(color),
-                                  link = VALUES(link),
-                                  event_at = VALUES(event_at),
-                                  is_read = 0,
-                                  updated_at = NOW()");
-
     foreach ($scoreRows as $row) {
         $studentId = (int)($row['student_id'] ?? 0);
         $score = $row['score'] ?? null;
@@ -795,14 +737,18 @@ function notifyGradeItemScoreParents($db, $teacherId, array $item, array $scoreR
             if ($recipientId <= 0 || $recipientId === (int)$teacherId) {
                 continue;
             }
-            $link = ((int)$recipientId === (int)$studentId) ? 'Student_Report_Card.php' : 'Parent_Progress.php';
-            $upsertStmt->execute([$recipientId, $sourceKey, $title, $subtitle, $link, $eventAt]);
-            pushSendToUserIds($db, [$recipientId], [
-                'title' => $title,
-                'body' => $subtitle,
-                'url' => $link,
-                'icon' => '/assets/images/bshs-logo.jpg'
-            ]);
+            appDispatchNotification(
+                $db,
+                [$recipientId],
+                $sourceKey,
+                $title,
+                $subtitle,
+                'bi-clipboard-check',
+                'info',
+                ['student' => 'Student_Report_Card.php', 'parent' => 'Parent_Progress.php'],
+                ['type' => 'grade_score', 'grade_item_id' => (int)($item['id'] ?? 0), 'student_id' => $studentId],
+                $eventAt
+            );
         }
     }
 }
@@ -950,10 +896,6 @@ function fetchGradeItemVerificationLookup($db, $gradeItemId) {
 }
 
 function notifyGradeItemVerificationParents($db, $teacherId, array $item, array $student) {
-    if (!teacherNotificationsTableExists($db)) {
-        return;
-    }
-
     $teacherName = teacherGetDisplayName($db, $teacherId);
 
     $studentName = trim((string)$student['first_name'] . ' ' . (string)$student['last_name']);
@@ -979,25 +921,21 @@ function notifyGradeItemVerificationParents($db, $teacherId, array $item, array 
     $subtitle = $studentName . ' was verified by ' . $teacherName . ' in ' . $classSubtitle;
     $eventAt = date('Y-m-d H:i:s');
 
-    $upsertStmt = $db->prepare("INSERT INTO user_notifications
-                                (user_id, source_key, title, subtitle, icon, color, link, event_at, is_read)
-                                VALUES (?, ?, ?, ?, 'bi-qr-code-scan', 'info', 'Parent_Progress.php', ?, 0)
-                                ON DUPLICATE KEY UPDATE
-                                  title = VALUES(title),
-                                  subtitle = VALUES(subtitle),
-                                  icon = VALUES(icon),
-                                  color = VALUES(color),
-                                  link = VALUES(link),
-                                  event_at = VALUES(event_at),
-                                  is_read = 0,
-                                  updated_at = NOW()");
-
-    foreach ($parentIds as $parentId) {
-        if ($parentId <= 0 || $parentId === (int)$teacherId) {
-            continue;
-        }
-        $upsertStmt->execute([$parentId, $sourceKey, $title, $subtitle, $eventAt]);
-    }
+    $parentIds = array_values(array_filter($parentIds, function ($parentId) use ($teacherId) {
+        return $parentId > 0 && $parentId !== (int)$teacherId;
+    }));
+    appDispatchNotification(
+        $db,
+        $parentIds,
+        $sourceKey,
+        $title,
+        $subtitle,
+        'bi-qr-code-scan',
+        'info',
+        ['parent' => 'Parent_Progress.php'],
+        ['type' => 'grade_verification', 'grade_item_id' => (int)$item['id'], 'student_id' => (int)$student['id']],
+        $eventAt
+    );
 }
 
 function ensureReportCardApprovalsTable($db) {
@@ -1426,18 +1364,6 @@ function submitAttendance($db, $teacherId) {
         $db->commit();
 
         notifyAttendanceParents($db, $teacherId, $classId, $date, $records);
-
-        $classLabel = teacherGetClassSubtitle($db, $classId);
-        $recipients = pushActiveClassRecipientIds($db, $classId);
-        if (!empty($recipients)) {
-            $title = 'Attendance recorded for ' . $classLabel;
-            $body = date('M d, Y', strtotime($date)) . ' - ' . count($records) . ' students';
-            pushNotifyUsers($db, $recipients, $title, $body, [
-                'link' => 'Student_Attendance.php',
-                'class_id' => $classId,
-                'date' => $date,
-            ]);
-        }
 
         [, $summary] = buildStudentAttendancePayload($db, $classId, $date);
         echo json_encode(['success' => true, 'message' => 'Attendance submitted successfully', 'summary' => $summary]);
@@ -2155,16 +2081,6 @@ function uploadMaterial($db, $teacherId) {
         $materialId = (int)$db->lastInsertId();
 
         notifyMaterialUploadRecipients($db, $teacherId, $classId, $materialId, $title);
-        $classLabel = teacherGetClassSubtitle($db, $classId);
-        $recipients = pushActiveClassRecipientIds($db, $classId);
-        if (!empty($recipients)) {
-            $titleText = 'New material: ' . $title;
-            $bodyText = $classLabel . ' · Tap to download';
-            pushNotifyUsers($db, $recipients, $titleText, $bodyText, [
-                'link' => 'Student_Classes.php',
-                'class_id' => $classId,
-            ]);
-        }
 
         echo json_encode(['success' => true, 'message' => 'Material uploaded successfully']);
     } catch (PDOException $e) {
@@ -2484,17 +2400,6 @@ function createGradeItem($db, $teacherId) {
         $gradeItemId = (int)$db->lastInsertId();
         appNotifyGradeActivityCreated($db, $classId, $gradeItemId, $title, $component, round($totalScore, 2));
 
-        $classLabel = teacherGetClassSubtitle($db, $classId);
-        $recipients = pushActiveClassRecipientIds($db, $classId);
-        if (!empty($recipients)) {
-            $titleText = 'New grade activity: ' . $title;
-            $bodyText = $classLabel . ' · ' . strtoupper($component) . ' · Tap to view';
-            pushNotifyUsers($db, $recipients, $titleText, $bodyText, [
-                'link' => 'Student_Classes.php',
-                'class_id' => $classId,
-            ]);
-        }
-
         echo json_encode(['success' => true, 'message' => 'Grade activity created successfully']);
     } catch (PDOException $e) {
         echo json_encode(['success' => false, 'message' => 'Database error. Please try again.']);
@@ -2706,11 +2611,18 @@ function finishGradeItem($db, $teacherId) {
         $recipients = pushActiveClassRecipientIds($db, $classId);
         if (!empty($recipients)) {
             $titleText = 'Grades posted: ' . $scoredCount . ' score(s) recorded';
-            $bodyText = $classLabel . ' · ' . date('M d, Y') . ' · Tap to view scores';
-            pushNotifyUsers($db, $recipients, $titleText, $bodyText, [
-                'link' => 'Student_Classes.php',
-                'class_id' => $classId,
-            ]);
+            $bodyText = $classLabel . ' - ' . date('M d, Y') . ' - Tap to view scores';
+            appDispatchNotification(
+                $db,
+                $recipients,
+                'grade_item_finished_' . $gradeItemId,
+                $titleText,
+                $bodyText,
+                'bi-clipboard-check',
+                'success',
+                ['student' => 'Student_Classes.php', 'parent' => 'Parent_Progress.php'],
+                ['type' => 'grade_activity_finished', 'class_id' => $classId, 'grade_item_id' => $gradeItemId]
+            );
         }
 
         echo json_encode(['success' => true, 'message' => 'Grade activity finished and moved to archive']);
@@ -3014,17 +2926,25 @@ function createClassAnnouncement($db, $teacherId) {
         $stmt = $db->prepare("INSERT INTO class_announcements (class_id, posted_by, title, content, status, created_at, updated_at)
                               VALUES (?, ?, ?, ?, 'active', NOW(), NOW())");
         $stmt->execute([$classId, $teacherId, $title, $content]);
+        $announcementId = (int)$db->lastInsertId();
 
         try {
             $classLabel = teacherGetClassSubtitle($db, $classId);
             $recipients = pushActiveClassRecipientIds($db, $classId);
             if (!empty($recipients)) {
                 $titleText = 'New class announcement: ' . $title;
-                $bodyText = $classLabel . ' · Tap to view details';
-                pushNotifyUsers($db, $recipients, $titleText, $bodyText, [
-                    'link' => 'Student_Announcements.php',
-                    'class_id' => $classId,
-                ]);
+                $bodyText = $classLabel . ' - Tap to view details';
+                appDispatchNotification(
+                    $db,
+                    $recipients,
+                    'class_announcement_' . $announcementId,
+                    $titleText,
+                    $bodyText,
+                    'bi-journal-text',
+                    'success',
+                    ['student' => 'Student_Announcements.php', 'parent' => 'Parent_Announcements.php'],
+                    ['type' => 'class_announcement', 'announcement_id' => $announcementId, 'class_id' => $classId]
+                );
             }
         } catch (Throwable $notificationError) {
             error_log('Class announcement saved, but push delivery failed: ' . $notificationError->getMessage());

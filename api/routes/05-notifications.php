@@ -5,6 +5,47 @@ while ($__appRoot !== dirname($__appRoot) && !is_file($__appRoot . '/functions/b
 }
 require_once $__appRoot . '/functions/bootstrap.php';
 unset($__appRoot);
+
+if ($route === 'notification-action' && $method === 'POST') {
+    $db = apiDb();
+    $user = apiRequireUser();
+    if (!$db) {
+        apiJson(['ok' => false, 'message' => 'Database connection failed'], 500);
+    }
+
+    $sessionCsrf = (string)($_SESSION['csrf_token'] ?? '');
+    if ($sessionCsrf !== '') {
+        $requestCsrf = trim((string)($_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_GET['csrf_token'] ?? ''));
+        if ($requestCsrf === '' || !hash_equals($sessionCsrf, $requestCsrf)) {
+            apiJson(['ok' => false, 'message' => 'Invalid CSRF token'], 403);
+        }
+    }
+
+    appEnsureUserNotificationsTable($db);
+    $body = apiRequestBody();
+    $action = strtolower(trim((string)($body['action'] ?? '')));
+    $notificationId = (int)($body['id'] ?? 0);
+    $userId = (int)$user['id'];
+
+    if ($action === 'read' && $notificationId > 0) {
+        $stmt = $db->prepare('UPDATE user_notifications SET is_read = 1 WHERE id = ? AND user_id = ?');
+        $stmt->execute([$notificationId, $userId]);
+    } elseif ($action === 'read_all') {
+        $stmt = $db->prepare('UPDATE user_notifications SET is_read = 1 WHERE user_id = ?');
+        $stmt->execute([$userId]);
+    } elseif ($action === 'delete' && $notificationId > 0) {
+        $stmt = $db->prepare('DELETE FROM user_notifications WHERE id = ? AND user_id = ?');
+        $stmt->execute([$notificationId, $userId]);
+    } elseif ($action === 'delete_all') {
+        $stmt = $db->prepare('DELETE FROM user_notifications WHERE user_id = ?');
+        $stmt->execute([$userId]);
+    } else {
+        apiJson(['ok' => false, 'message' => 'Invalid notification action'], 422);
+    }
+
+    apiJson(['ok' => true, 'message' => 'Notification state updated']);
+}
+
 if ($route === 'notifications' && $method === 'GET') {
     $db = apiDb();
     $user = apiRequireUser();
@@ -13,6 +54,43 @@ if ($route === 'notifications' && $method === 'GET') {
     }
     $role = (string)($user['role'] ?? '');
     $userId = (int)$user['id'];
+
+    appEnsureUserNotificationsTable($db);
+    try {
+        $savedStmt = $db->prepare("SELECT id, title, subtitle, icon, color, link, event_at, is_read
+                                   FROM user_notifications
+                                   WHERE user_id = ?
+                                   ORDER BY is_read ASC, event_at DESC, id DESC
+                                   LIMIT 50");
+        $savedStmt->execute([$userId]);
+        $savedItems = [];
+        $unreadCount = 0;
+        foreach ($savedStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $isRead = (int)($row['is_read'] ?? 0);
+            if ($isRead === 0) {
+                $unreadCount++;
+            }
+            $savedItems[] = [
+                'id' => (int)$row['id'],
+                'icon' => (string)$row['icon'],
+                'color' => (string)$row['color'],
+                'title' => (string)$row['title'],
+                'subtitle' => (string)$row['subtitle'],
+                'event_at' => (string)$row['event_at'],
+                'time' => apiNotificationTimeAgo((string)$row['event_at']),
+                'link' => (string)$row['link'],
+                'is_read' => $isRead,
+            ];
+        }
+        apiJson([
+            'ok' => true,
+            'notifications' => $savedItems,
+            'count' => count($savedItems),
+            'unread_count' => $unreadCount,
+        ]);
+    } catch (Throwable $e) {
+        error_log('[notification] Saved notification fetch failed: ' . $e->getMessage());
+    }
 
     $notificationItems = [];
 
