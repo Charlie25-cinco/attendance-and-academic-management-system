@@ -295,19 +295,64 @@ function showQrModal() {
 
     modal.addEventListener('shown.bs.modal', function startScanner() {
         modal.removeEventListener('shown.bs.modal', startScanner);
-        if (typeof Html5Qrcode === 'undefined') { showNotification('QR scanner not loaded.', 'danger'); return; }
-        qrScannerInstance = new Html5Qrcode('qr-reader');
-        qrScannerInstance.start(
-            { facingMode: 'environment' },
-            { fps: 10, qrbox: { width: 250, height: 250 } },
-            (decodedText) => handleQrScan(decodedText),
-            () => {}
-        ).catch(err => {
-            document.getElementById('qrScanResult').innerHTML = '<div class="alert alert-warning">Camera error: ' + err + '</div>';
-        });
+        startQrCamera();
     });
 
     modal.addEventListener('hide.bs.modal', function() { stopQrScanner(); }, { once: true });
+}
+
+function qrCameraErrorMessage(error) {
+    const message = String(error || '');
+    if (!window.isSecureContext) {
+        return 'Camera scanning requires a secure HTTPS connection.';
+    }
+    if (/NotAllowedError|Permission denied/i.test(message)) {
+        return 'Camera access is blocked. Allow camera access for this site in your browser settings, then select Retry Camera.';
+    }
+    if (/NotFoundError|Requested device not found|OverconstrainedError/i.test(message)) {
+        return 'No compatible camera was found. Connect or enable a camera, then try again.';
+    }
+    if (/NotReadableError|Could not start video source|TrackStartError/i.test(message)) {
+        return 'The camera is being used by another application. Close it there, then try again.';
+    }
+    return 'The camera could not start. Check browser camera permissions and try again.';
+}
+
+function renderQrCameraError(error) {
+    const result = document.getElementById('qrScanResult');
+    if (!result) return;
+    result.innerHTML = '<div class="alert alert-warning mb-2"><i class="bi bi-camera-video-off me-2"></i>' +
+        escapeHtml(qrCameraErrorMessage(error)) + '</div>' +
+        '<button class="btn btn-outline-primary btn-sm" type="button" onclick="startQrCamera()">' +
+        '<i class="bi bi-arrow-clockwise me-1"></i>Retry Camera</button>';
+}
+
+function startQrCamera() {
+    const result = document.getElementById('qrScanResult');
+    if (result) result.innerHTML = '';
+    if (!window.isSecureContext) {
+        renderQrCameraError('InsecureContextError');
+        return;
+    }
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+        renderQrCameraError('NotSupportedError');
+        return;
+    }
+    if (typeof Html5Qrcode === 'undefined') {
+        renderQrCameraError('ScannerLibraryUnavailable');
+        return;
+    }
+
+    qrScannerInstance = new Html5Qrcode('qr-reader');
+    qrScannerInstance.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText) => handleQrScan(decodedText),
+        () => {}
+    ).catch(error => {
+        qrScannerInstance = null;
+        renderQrCameraError(error);
+    });
 }
 
 function stopQrScanner() {

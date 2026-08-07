@@ -140,6 +140,7 @@ Open `http://localhost:5000`.
 - Configure `PUSH_VAPID_PUBLIC_KEY`, `PUSH_VAPID_PRIVATE_KEY`, and `PUSH_VAPID_SUBJECT` before expecting installed PWA popup notifications.
 - Web Push sending requires PHP `curl` and `openssl`; failures are written to the PHP error log for deployment troubleshooting.
 - Teacher attendance submissions can be queued in `localStorage` while offline and retried against `teacher_Action.php?action=submit_attendance` when the browser comes back online.
+- Teacher QR attendance scanning requires HTTPS and browser camera permission. Camera access is permitted only on `teacher/teacher_Attendance.php`; other application pages keep camera access disabled.
 - Before production, test install/offline behavior on desktop and mobile browsers.
 
 ## Wasmer Deployment

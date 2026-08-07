@@ -151,11 +151,13 @@ if (!empty($_SESSION['logged_in'])) {
 }
 
 if (!headers_sent()) {
+    $scriptName = strtolower(basename((string)($_SERVER['SCRIPT_NAME'] ?? '')));
+    $cameraDirective = $scriptName === 'teacher_attendance.php' ? 'camera=(self)' : 'camera=()';
     header("Content-Security-Policy: frame-ancestors 'self'");
     header('X-Frame-Options: SAMEORIGIN');
     header('X-Content-Type-Options: nosniff');
     header('Referrer-Policy: strict-origin-when-cross-origin');
-    header('Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()');
+    header('Permissions-Policy: ' . $cameraDirective . ', microphone=(), geolocation=(), payment=()');
     header('Vary: Sec-Fetch-Dest');
     if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
         header('Strict-Transport-Security: max-age=31536000; includeSubDomains');

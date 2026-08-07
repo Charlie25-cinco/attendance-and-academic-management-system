@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.33 — 2026-08-07
+
+### Fixed
+
+- Enabled browser camera access only on Teacher Attendance and added actionable QR scanner permission errors with a retry control.
+
 ## v0.3.32 — 2026-08-07
 
 ### Fixed
