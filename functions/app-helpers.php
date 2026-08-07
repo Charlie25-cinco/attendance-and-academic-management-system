@@ -849,9 +849,7 @@ function ensureRbacRolesSeeded(PDO $db): void {
     if ($done) { return; }
     ensureRbacTables($db);
     try {
-        $roleCount = (int)$db->query("SELECT COUNT(*) FROM rbac_roles")->fetchColumn();
-        $mappingCount = (int)$db->query("SELECT COUNT(*) FROM rbac_role_permissions")->fetchColumn();
-        if ($roleCount > 0 && $mappingCount > 0) { $done = true; return; }
+        $db->query("SELECT COUNT(*) FROM rbac_roles")->fetchColumn();
     } catch (Throwable $e) { return; }
 
     $roles = [

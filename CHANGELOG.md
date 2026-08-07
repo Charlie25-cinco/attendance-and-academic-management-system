@@ -6,7 +6,8 @@ Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR fo
 
 ### Fixed
 
-- Granted the Parent role default `messages.view` and `messages.send` permissions so the visible Parent Messages page and send action no longer open Access denied on freshly seeded RBAC databases.
+- Granted the Parent role default `messages.view` and `messages.send` permissions, and ensured existing RBAC databases receive missing built-in defaults without overwriting disabled custom mappings.
+- Improved Parent dashboard readability by keeping the selected child reference visible on active buttons and giving long profile names a wider, stable header area.
 
 ## v0.3.46 — 2026-08-08
 
