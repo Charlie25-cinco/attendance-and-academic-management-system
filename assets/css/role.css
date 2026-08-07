@@ -2499,6 +2499,65 @@ body.dark-mode .welcome-role-chip {
   transform: none;
 }
 
+.material-upload-panel {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--ui-border-soft, #e8edf3);
+  background: #f8fafc;
+}
+
+.material-upload-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(240px, 1.35fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.material-upload-grid > div,
+.material-upload-file {
+  min-width: 0;
+}
+
+.material-file-status {
+  min-height: 20px;
+  margin-top: 6px;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.material-upload-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+body.dark-mode .material-upload-panel {
+  border-bottom-color: var(--dm-border);
+  background: #111827;
+}
+
+@media (max-width: 991.98px) {
+  .material-upload-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 575.98px) {
+  .material-upload-panel {
+    padding: 16px;
+  }
+
+  .material-upload-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .material-upload-actions .btn {
+    width: 100%;
+  }
+}
+
 .pagination .page-link {
   border-color: var(--ui-border-soft, #e8edf3);
   color: var(--ui-primary, #1f4f82);

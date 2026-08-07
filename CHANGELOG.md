@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.44 — 2026-08-08
+
+### Fixed
+
+- Replaced the modal learning-material picker with a responsive inline upload panel to avoid installed mobile PWA crashes when returning from the system file picker.
+- Added metadata-only file type and size validation with accessible selected-file feedback before upload.
+
 ## v0.3.43 — 2026-08-08
 
 ### Fixed

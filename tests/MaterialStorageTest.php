@@ -84,7 +84,7 @@ final class MaterialStorageTest extends TestCase
         $uploadProtection = file_get_contents(__DIR__ . '/../assets/uploads/.htaccess');
 
         $this->assertIsString($teacherPage);
-        $uploadStart = strpos($teacherPage, 'function uploadMaterial()');
+        $uploadStart = strpos($teacherPage, 'function uploadMaterial(event)');
         $uploadEnd = strpos($teacherPage, 'function openEditMaterialModal', $uploadStart ?: 0);
         $updateStart = strpos($teacherPage, 'function updateMaterial()');
         $updateEnd = strpos($teacherPage, 'function deleteMaterial', $updateStart ?: 0);
@@ -95,6 +95,13 @@ final class MaterialStorageTest extends TestCase
         $this->assertStringContainsString('appendCsrfToFormData(fd)', substr($teacherPage, $uploadStart, $uploadEnd - $uploadStart));
         $this->assertStringContainsString('appendCsrfToFormData(fd)', substr($teacherPage, $updateStart, $updateEnd - $updateStart));
         $this->assertStringContainsString('fetchMaterialJson', $teacherPage);
+        $this->assertStringContainsString('id="materialUploadPanel"', $teacherPage);
+        $this->assertStringContainsString('id="materialFileStatus" role="status" aria-live="polite"', $teacherPage);
+        $this->assertStringContainsString("materialFileInput.addEventListener('change',validateMaterialFile)", $teacherPage);
+        $this->assertStringContainsString('file.size>10*1024*1024', $teacherPage);
+        $this->assertStringNotContainsString('id="uploadMaterialModal"', $teacherPage);
+        $this->assertStringNotContainsString('FileReader', $teacherPage);
+        $this->assertStringNotContainsString('createObjectURL', $teacherPage);
 
         $this->assertIsString($router);
         $this->assertStringContainsString('(?:storage|assets/uploads/materials)', $router);
