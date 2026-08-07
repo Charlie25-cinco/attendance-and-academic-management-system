@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.27 — 2026-08-07
+
+### Fixed
+
+- Fixed official ECR XLSX exports to use the real template score columns, fill activity highest possible scores, and write calculated totals, weighted scores, transmuted grades, and letter grades.
+
 ## v0.3.26 — 2026-08-07
 
 ### Added

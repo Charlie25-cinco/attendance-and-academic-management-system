@@ -27,24 +27,26 @@ class EcrExporter {
     private array $studentGradesCache = [];
     private array $domCellCache = [];
 
-    private const MAX_WW = 10;
-    private const MAX_PT = 10;
+    private const MAX_WW = 5;
+    private const MAX_PT = 3;
     private const MAX_QA = 3;
 
     private const COL_WW_START = 5;
-    private const COL_WW_TOTAL = 15;
-    private const COL_WW_PS = 16;
-    private const COL_WW_WS = 17;
-    private const COL_PT_START = 18;
-    private const COL_PT_TOTAL = 28;
-    private const COL_PT_PS = 29;
-    private const COL_PT_WS = 30;
-    private const COL_QA_START = 31;
-    private const COL_QA_PS = 34;
-    private const COL_QA_WS = 35;
-    private const COL_INITIAL = 36;
-    private const COL_QUARTERLY = 37;
-    private const TOTAL_COLS = 38;
+    private const COL_WW_TOTAL = 10;
+    private const COL_WW_PS = 11;
+    private const COL_WW_WS = 12;
+    private const COL_PT_START = 13;
+    private const COL_PT_TOTAL = 16;
+    private const COL_PT_PS = 17;
+    private const COL_PT_WS = 18;
+    private const COL_QA_START = 19;
+    private const COL_QA_TOTAL = 22;
+    private const COL_QA_PS = 23;
+    private const COL_QA_WS = 24;
+    private const COL_INITIAL = 25;
+    private const COL_QUARTERLY = 26;
+    private const COL_LETTER = 27;
+    private const TOTAL_COLS = 28;
 
     public function __construct() {}
 
@@ -141,17 +143,26 @@ class EcrExporter {
         $row = array_fill(0, $n, ''); $row[0] = "LEARNERS' NAMES"; $row[5] = 'GRADE & SECTION:'; $row[10] = $this->header['grade_level'] ?? ''; $row[16] = 'TEACHER:'; $row[18] = $this->header['teacher'] ?? ''; $row[28] = 'SUBJECT:'; $row[30] = $this->header['subject'] ?? ''; fputcsv($handle, $row);
         $row = array_fill(0, $n, ''); $row[16] = 'SEMESTER:'; $row[18] = $this->gradingSystem === '3_term' ? strtoupper(str_replace('Term', 'TERM ', $this->quarter)) : strtoupper($this->semester === 'S1' ? '1ST' : '2ND'); $row[28] = 'TRACK:'; $row[30] = $this->header['subject_type'] ?? 'Core Subject (All Tracks)'; fputcsv($handle, $row);
         fputcsv($handle, array_fill(0, $n, ''));
-        $row = array_fill(0, $n, ''); $row[0] = "LEARNERS' NAMES"; $row[5] = "WRITTEN WORK ({$wwWeight}%)"; $row[18] = "PERFORMANCE TASKS ({$ptWeight}%)"; $row[31] = "QUARTERLY ASSESSMENT ({$qaWeight}%)"; $row[34] = 'Initial'; $row[35] = 'Quarterly'; fputcsv($handle, $row);
+        $row = array_fill(0, $n, ''); $row[0] = "LEARNERS' NAMES"; $row[self::COL_WW_START] = "WRITTEN WORK ({$wwWeight}%)"; $row[self::COL_PT_START] = "PERFORMANCE TASKS ({$ptWeight}%)"; $row[self::COL_QA_START] = "TERM ASSESSMENT ({$qaWeight}%)"; $row[self::COL_INITIAL] = 'Initial'; $row[self::COL_QUARTERLY] = 'Transmuted'; $row[self::COL_LETTER] = 'Letter'; fputcsv($handle, $row);
         $row = array_fill(0, $n, '');
         for ($i = 0; $i < self::MAX_WW; $i++) $row[self::COL_WW_START + $i] = (string)($i + 1);
         $row[self::COL_WW_TOTAL] = 'Total'; $row[self::COL_WW_PS] = 'PS'; $row[self::COL_WW_WS] = 'WS';
         for ($i = 0; $i < self::MAX_PT; $i++) $row[self::COL_PT_START + $i] = (string)($i + 1);
         $row[self::COL_PT_TOTAL] = 'Total'; $row[self::COL_PT_PS] = 'PS'; $row[self::COL_PT_WS] = 'WS';
         for ($i = 0; $i < self::MAX_QA; $i++) $row[self::COL_QA_START + $i] = (string)($i + 1);
+        $row[self::COL_QA_TOTAL] = 'Total';
         $row[self::COL_QA_PS] = 'PS'; $row[self::COL_QA_WS] = 'WS';
-        $row[34] = 'Grade'; $row[35] = 'Grade';
+        $row[self::COL_INITIAL] = 'Grade'; $row[self::COL_QUARTERLY] = 'Grade'; $row[self::COL_LETTER] = 'Grade';
         fputcsv($handle, $row);
-        $row = array_fill(0, $n, ''); $row[0] = 'HIGHEST POSSIBLE SCORE'; $row[self::COL_WW_PS] = '100'; $row[self::COL_WW_WS] = (string)($wwWeight / 100); $row[self::COL_PT_PS] = '100'; $row[self::COL_PT_WS] = (string)($ptWeight / 100); $row[self::COL_QA_PS] = '100'; $row[self::COL_QA_WS] = (string)($qaWeight / 100); fputcsv($handle, $row);
+        $hps = $this->buildComponentHps();
+        $row = array_fill(0, $n, ''); $row[0] = 'HIGHEST POSSIBLE SCORE';
+        for ($i = 0; $i < self::MAX_WW; $i++) { $row[self::COL_WW_START + $i] = isset($hps['ww'][$i]) ? (string)$hps['ww'][$i] : ''; }
+        for ($i = 0; $i < self::MAX_PT; $i++) { $row[self::COL_PT_START + $i] = isset($hps['pt'][$i]) ? (string)$hps['pt'][$i] : ''; }
+        for ($i = 0; $i < self::MAX_QA; $i++) { $row[self::COL_QA_START + $i] = isset($hps['qa'][$i]) ? (string)$hps['qa'][$i] : ''; }
+        $row[self::COL_WW_TOTAL] = (string)array_sum(array_filter($hps['ww'], 'is_numeric')); $row[self::COL_WW_PS] = '100';
+        $row[self::COL_PT_TOTAL] = (string)array_sum(array_filter($hps['pt'], 'is_numeric')); $row[self::COL_PT_PS] = '100';
+        $row[self::COL_QA_TOTAL] = (string)array_sum(array_filter($hps['qa'], 'is_numeric')); $row[self::COL_QA_PS] = '100';
+        fputcsv($handle, $row);
         $row = array_fill(0, $n, ''); $row[0] = 'MALE'; fputcsv($handle, $row);
         $studentIndex = 0;
         foreach ($this->students as $student) {
@@ -168,10 +179,12 @@ class EcrExporter {
             $row[self::COL_PT_PS] = $studentGrades['pt_ps'] !== null ? (string)$studentGrades['pt_ps'] : '';
             $row[self::COL_PT_WS] = $studentGrades['pt_ws'] !== null ? (string)$studentGrades['pt_ws'] : '';
             for ($i = 0; $i < self::MAX_QA; $i++) $row[self::COL_QA_START + $i] = $studentGrades['qa_scores'][$i] !== null ? (string)$studentGrades['qa_scores'][$i] : '';
+            $row[self::COL_QA_TOTAL] = $studentGrades['qa_total'] !== null ? (string)$studentGrades['qa_total'] : '';
             $row[self::COL_QA_PS] = $studentGrades['qa_ps'] !== null ? (string)$studentGrades['qa_ps'] : '';
             $row[self::COL_QA_WS] = $studentGrades['qa_ws'] !== null ? (string)$studentGrades['qa_ws'] : '';
             $row[self::COL_INITIAL] = $studentGrades['initial_grade'] !== null ? (string)$studentGrades['initial_grade'] : '';
             $row[self::COL_QUARTERLY] = $studentGrades['quarterly_grade'] !== null ? (string)$studentGrades['quarterly_grade'] : '';
+            $row[self::COL_LETTER] = $this->letterGrade($studentGrades['quarterly_grade'] ?? null);
             fputcsv($handle, $row);
         }
         return fclose($handle);
@@ -239,6 +252,7 @@ class EcrExporter {
             }
             if (!empty($qaScores)) {
                 $qaTotal = array_sum($qaScores); $qaHps = $qaHps > 0 ? $qaHps : count($qaScores) * 50;
+                $result['qa_total'] = $qaTotal;
                 $qaPs = round(($qaTotal / $qaHps) * 100, 2);
                 $result['qa_ps'] = $qaPs; $result['qa_ws'] = round($qaPs * $qaWeight / 100, 2);
             }
@@ -256,7 +270,7 @@ class EcrExporter {
     }
 
     private function emptyStudentGrades(): array {
-        return ['ww_scores' => array_fill(0, self::MAX_WW, null), 'pt_scores' => array_fill(0, self::MAX_PT, null), 'qa_scores' => array_fill(0, self::MAX_QA, null), 'ww_total' => null, 'pt_total' => null, 'ww_ps' => null, 'pt_ps' => null, 'qa_ps' => null, 'ww_ws' => null, 'pt_ws' => null, 'qa_ws' => null, 'initial_grade' => null, 'quarterly_grade' => null];
+        return ['ww_scores' => array_fill(0, self::MAX_WW, null), 'pt_scores' => array_fill(0, self::MAX_PT, null), 'qa_scores' => array_fill(0, self::MAX_QA, null), 'ww_total' => null, 'pt_total' => null, 'qa_total' => null, 'ww_ps' => null, 'pt_ps' => null, 'qa_ps' => null, 'ww_ws' => null, 'pt_ws' => null, 'qa_ws' => null, 'initial_grade' => null, 'quarterly_grade' => null];
     }
 
     private function transmuteQuarterlyGrade($initial): ?float {
@@ -267,6 +281,16 @@ class EcrExporter {
         $result = null;
         foreach ($table as $row) { if ($initial >= (float)$row[0]) { $result = (float)$row[1]; } else { break; } }
         return $result;
+    }
+
+    private function letterGrade($quarterlyGrade): string {
+        if ($quarterlyGrade === null || $quarterlyGrade === '') { return ''; }
+        $grade = (float)$quarterlyGrade;
+        if ($grade >= 90) { return 'A'; }
+        if ($grade >= 85) { return 'B'; }
+        if ($grade >= 80) { return 'C'; }
+        if ($grade >= 75) { return 'D'; }
+        return 'F';
     }
 
     public function exportToXlsx(string $filePath): bool {
@@ -345,10 +369,12 @@ class EcrExporter {
             for ($i = 0; $i < self::MAX_QA; $i++) {
                 $sheet->setCellValue($this->columnLetter(self::COL_QA_START + $i) . $headerRow, 'TA ' . ($i + 1));
             }
+            $sheet->setCellValue($this->columnLetter(self::COL_QA_TOTAL) . $headerRow, 'TA Total');
             $sheet->setCellValue($this->columnLetter(self::COL_QA_PS) . $headerRow, 'TA PS');
             $sheet->setCellValue($this->columnLetter(self::COL_QA_WS) . $headerRow, 'TA WS');
             $sheet->setCellValue($this->columnLetter(self::COL_INITIAL) . $headerRow, 'Initial Grade');
             $sheet->setCellValue($this->columnLetter(self::COL_QUARTERLY) . $headerRow, 'Quarterly Grade');
+            $sheet->setCellValue($this->columnLetter(self::COL_LETTER) . $headerRow, 'Letter Grade');
 
             $hpsRow = $headerRow + 1;
             $sheet->setCellValue('A' . $hpsRow, 'HPS');
@@ -365,9 +391,12 @@ class EcrExporter {
                 $value = $hps['qa'][$i] ?? null;
                 if ($value !== null) { $sheet->setCellValue($this->columnLetter(self::COL_QA_START + $i) . $hpsRow, $value); }
             }
-            $sheet->setCellValue($this->columnLetter(self::COL_WW_WS) . $hpsRow, $wwWeight . '%');
-            $sheet->setCellValue($this->columnLetter(self::COL_PT_WS) . $hpsRow, $ptWeight . '%');
-            $sheet->setCellValue($this->columnLetter(self::COL_QA_WS) . $hpsRow, $qaWeight . '%');
+            $sheet->setCellValue($this->columnLetter(self::COL_WW_TOTAL) . $hpsRow, array_sum(array_filter($hps['ww'], 'is_numeric')));
+            $sheet->setCellValue($this->columnLetter(self::COL_WW_PS) . $hpsRow, 100);
+            $sheet->setCellValue($this->columnLetter(self::COL_PT_TOTAL) . $hpsRow, array_sum(array_filter($hps['pt'], 'is_numeric')));
+            $sheet->setCellValue($this->columnLetter(self::COL_PT_PS) . $hpsRow, 100);
+            $sheet->setCellValue($this->columnLetter(self::COL_QA_TOTAL) . $hpsRow, array_sum(array_filter($hps['qa'], 'is_numeric')));
+            $sheet->setCellValue($this->columnLetter(self::COL_QA_PS) . $hpsRow, 100);
 
             $dataRow = $hpsRow + 1;
             $counter = 1;
@@ -397,6 +426,7 @@ class EcrExporter {
                     self::COL_PT_TOTAL => 'pt_total',
                     self::COL_PT_PS => 'pt_ps',
                     self::COL_PT_WS => 'pt_ws',
+                    self::COL_QA_TOTAL => 'qa_total',
                     self::COL_QA_PS => 'qa_ps',
                     self::COL_QA_WS => 'qa_ws',
                     self::COL_INITIAL => 'initial_grade',
@@ -405,6 +435,10 @@ class EcrExporter {
                     if (($grades[$key] ?? null) !== null) {
                         $sheet->setCellValue($this->columnLetter($col) . $dataRow, $grades[$key]);
                     }
+                }
+                $letter = $this->letterGrade($grades['quarterly_grade'] ?? null);
+                if ($letter !== '') {
+                    $sheet->setCellValue($this->columnLetter(self::COL_LETTER) . $dataRow, $letter);
                 }
                 $dataRow++;
             }
@@ -559,11 +593,8 @@ class EcrExporter {
             $this->setCellString($targetQuarterDom, $cell, $value);
         }
         $this->setCellString($targetQuarterDom, 'F9', 'WRITTEN WORK (' . rtrim(rtrim(number_format($wwWeight, 2, '.', ''), '0'), '.') . '%)');
-        $this->setCellString($targetQuarterDom, 'S9', 'PERFORMANCE TASKS (' . rtrim(rtrim(number_format($ptWeight, 2, '.', ''), '0'), '.') . '%)');
-        $this->setCellString($targetQuarterDom, 'AF9', 'TERM ASSESSMENT (' . rtrim(rtrim(number_format($qaWeight, 2, '.', ''), '0'), '.') . '%)');
-        $this->setCellNumber($targetQuarterDom, 'R11', round($wwWeight / 100, 4));
-        $this->setCellNumber($targetQuarterDom, 'AE11', round($ptWeight / 100, 4));
-        $this->setCellNumber($targetQuarterDom, 'AI11', round($qaWeight / 100, 4));
+        $this->setCellString($targetQuarterDom, 'N9', 'PERFORMANCE TASKS (' . rtrim(rtrim(number_format($ptWeight, 2, '.', ''), '0'), '.') . '%)');
+        $this->setCellString($targetQuarterDom, 'T9', 'TERM ASSESSMENT (' . rtrim(rtrim(number_format($qaWeight, 2, '.', ''), '0'), '.') . '%)');
 
         $rowMap = $this->buildStudentRowMap($this->students);
         for ($row = 13; $row <= 213; $row++) {
@@ -612,12 +643,7 @@ class EcrExporter {
                 $qaCell = $this->columnLetter(self::COL_QA_START + $i) . $row;
                 if ($qaScore === null || $qaScore === '') { $this->setCellBlank($targetQuarterDom, $qaCell); } else { $this->setCellNumber($targetQuarterDom, $qaCell, (float)$qaScore); }
             }
-            $initialCell = $this->columnLetter(self::COL_INITIAL) . $row;
-            $quarterCell = $this->columnLetter(self::COL_QUARTERLY) . $row;
-            $initialGrade = $grades['initial_grade'] ?? null;
-            $quarterGrade = $grades['quarterly_grade'] ?? null;
-            if ($initialGrade === null || $initialGrade === '') { $this->setCellBlank($targetQuarterDom, $initialCell); } else { $this->setCellNumber($targetQuarterDom, $initialCell, (float)$initialGrade); }
-            if ($quarterGrade === null || $quarterGrade === '') { $this->setCellBlank($targetQuarterDom, $quarterCell); } else { $this->setCellNumber($targetQuarterDom, $quarterCell, (float)$quarterGrade); }
+            $this->writeGradeSummaryCells($targetQuarterDom, $row, $grades);
         }
         $this->unhideLearnerRows($targetQuarterDom);
     }
@@ -683,11 +709,8 @@ class EcrExporter {
         $this->setCellString($inputDom, 'A1', 'Input Data Sheet for SHS E-Class Record');
         foreach ($headerCells as $cell => $value) { $this->setCellString($inputDom, $cell, $value); $this->setCellString($targetQuarterDom, $cell, $value); }
         $this->setCellString($targetQuarterDom, 'F9', 'WRITTEN WORK (' . rtrim(rtrim(number_format($wwWeight, 2, '.', ''), '0'), '.') . '%)');
-        $this->setCellString($targetQuarterDom, 'S9', 'PERFORMANCE TASKS (' . rtrim(rtrim(number_format($ptWeight, 2, '.', ''), '0'), '.') . '%)');
-        $this->setCellString($targetQuarterDom, 'AF9', 'TERM ASSESSMENT (' . rtrim(rtrim(number_format($qaWeight, 2, '.', ''), '0'), '.') . '%)');
-        $this->setCellNumber($targetQuarterDom, 'R11', round($wwWeight / 100, 4));
-        $this->setCellNumber($targetQuarterDom, 'AE11', round($ptWeight / 100, 4));
-        $this->setCellNumber($targetQuarterDom, 'AI11', round($qaWeight / 100, 4));
+        $this->setCellString($targetQuarterDom, 'N9', 'PERFORMANCE TASKS (' . rtrim(rtrim(number_format($ptWeight, 2, '.', ''), '0'), '.') . '%)');
+        $this->setCellString($targetQuarterDom, 'T9', 'TERM ASSESSMENT (' . rtrim(rtrim(number_format($qaWeight, 2, '.', ''), '0'), '.') . '%)');
 
         $rowMap = $this->buildStudentRowMap($this->students);
         for ($row = 13; $row <= 213; $row++) {
@@ -733,12 +756,7 @@ class EcrExporter {
                 $qaCell = $this->columnLetter(self::COL_QA_START + $i) . $row;
                 if ($qaScore === null || $qaScore === '') { $this->setCellBlank($targetQuarterDom, $qaCell); } else { $this->setCellNumber($targetQuarterDom, $qaCell, (float)$qaScore); }
             }
-            $initialCell = $this->columnLetter(self::COL_INITIAL) . $row;
-            $quarterCell = $this->columnLetter(self::COL_QUARTERLY) . $row;
-            $initialGrade = $grades['initial_grade'] ?? null;
-            $quarterGrade = $grades['quarterly_grade'] ?? null;
-            if ($initialGrade === null || $initialGrade === '') { $this->setCellBlank($targetQuarterDom, $initialCell); } else { $this->setCellNumber($targetQuarterDom, $initialCell, (float)$initialGrade); }
-            if ($quarterGrade === null || $quarterGrade === '') { $this->setCellBlank($targetQuarterDom, $quarterCell); } else { $this->setCellNumber($targetQuarterDom, $quarterCell, (float)$quarterGrade); }
+            $this->writeGradeSummaryCells($targetQuarterDom, $row, $grades);
         }
 
         $zip->addFromString($inputPath, $inputDom->saveXML());
@@ -839,20 +857,59 @@ class EcrExporter {
     }
 
     private function applyHpsRow(DOMDocument $dom, int $row, array $hps): void {
+        $wwTotal = 0.0;
         for ($i = 0; $i < self::MAX_WW; $i++) {
             $cell = $this->columnLetter(self::COL_WW_START + $i) . $row;
             $value = $hps['ww'][$i] ?? null;
-            if ($value === null) { $this->setCellBlank($dom, $cell); } else { $this->setCellNumber($dom, $cell, (float)$value); }
+            if ($value === null) { $this->setCellBlank($dom, $cell); } else { $wwTotal += (float)$value; $this->setCellNumber($dom, $cell, (float)$value); }
         }
+        $this->setCellNumber($dom, $this->columnLetter(self::COL_WW_TOTAL) . $row, $wwTotal);
+        $this->setCellNumber($dom, $this->columnLetter(self::COL_WW_PS) . $row, 100);
+
+        $ptTotal = 0.0;
         for ($i = 0; $i < self::MAX_PT; $i++) {
             $cell = $this->columnLetter(self::COL_PT_START + $i) . $row;
             $value = $hps['pt'][$i] ?? null;
-            if ($value === null) { $this->setCellBlank($dom, $cell); } else { $this->setCellNumber($dom, $cell, (float)$value); }
+            if ($value === null) { $this->setCellBlank($dom, $cell); } else { $ptTotal += (float)$value; $this->setCellNumber($dom, $cell, (float)$value); }
         }
+        $this->setCellNumber($dom, $this->columnLetter(self::COL_PT_TOTAL) . $row, $ptTotal);
+        $this->setCellNumber($dom, $this->columnLetter(self::COL_PT_PS) . $row, 100);
+
+        $qaTotal = 0.0;
         for ($i = 0; $i < self::MAX_QA; $i++) {
             $qaCell = $this->columnLetter(self::COL_QA_START + $i) . $row;
             $qaValue = $hps['qa'][$i] ?? null;
-            if ($qaValue === null) { $this->setCellBlank($dom, $qaCell); } else { $this->setCellNumber($dom, $qaCell, (float)$qaValue); }
+            if ($qaValue === null) { $this->setCellBlank($dom, $qaCell); } else { $qaTotal += (float)$qaValue; $this->setCellNumber($dom, $qaCell, (float)$qaValue); }
+        }
+        $this->setCellNumber($dom, $this->columnLetter(self::COL_QA_TOTAL) . $row, $qaTotal);
+        $this->setCellNumber($dom, $this->columnLetter(self::COL_QA_PS) . $row, 100);
+    }
+
+    private function writeGradeSummaryCells(DOMDocument $dom, int $row, array $grades): void {
+        $cells = [
+            self::COL_WW_TOTAL => 'ww_total',
+            self::COL_WW_PS => 'ww_ps',
+            self::COL_WW_WS => 'ww_ws',
+            self::COL_PT_TOTAL => 'pt_total',
+            self::COL_PT_PS => 'pt_ps',
+            self::COL_PT_WS => 'pt_ws',
+            self::COL_QA_TOTAL => 'qa_total',
+            self::COL_QA_PS => 'qa_ps',
+            self::COL_QA_WS => 'qa_ws',
+            self::COL_INITIAL => 'initial_grade',
+            self::COL_QUARTERLY => 'quarterly_grade',
+        ];
+        foreach ($cells as $column => $key) {
+            $cell = $this->columnLetter($column) . $row;
+            $value = $grades[$key] ?? null;
+            if ($value === null || $value === '') { $this->setCellBlank($dom, $cell); } else { $this->setCellNumber($dom, $cell, (float)$value); }
+        }
+        $letter = $this->letterGrade($grades['quarterly_grade'] ?? null);
+        $letterCell = $this->columnLetter(self::COL_LETTER) . $row;
+        if ($letter === '') {
+            $this->setCellBlank($dom, $letterCell);
+        } else {
+            $this->setCellString($dom, $letterCell, $letter);
         }
     }
 
@@ -888,6 +945,9 @@ class EcrExporter {
         for ($i = 0; $i < self::MAX_WW; $i++) $this->setCellBlank($dom, $this->columnLetter(self::COL_WW_START + $i) . $row);
         for ($i = 0; $i < self::MAX_PT; $i++) $this->setCellBlank($dom, $this->columnLetter(self::COL_PT_START + $i) . $row);
         for ($i = 0; $i < self::MAX_QA; $i++) $this->setCellBlank($dom, $this->columnLetter(self::COL_QA_START + $i) . $row);
+        foreach ([self::COL_WW_TOTAL, self::COL_WW_PS, self::COL_WW_WS, self::COL_PT_TOTAL, self::COL_PT_PS, self::COL_PT_WS, self::COL_QA_TOTAL, self::COL_QA_PS, self::COL_QA_WS, self::COL_INITIAL, self::COL_QUARTERLY, self::COL_LETTER] as $column) {
+            $this->setCellBlank($dom, $this->columnLetter($column) . $row);
+        }
     }
 
     private function loadSheetDom(ZipArchive $zip, string $sheetPath): ?DOMDocument {

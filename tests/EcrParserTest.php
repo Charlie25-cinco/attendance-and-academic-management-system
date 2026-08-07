@@ -91,6 +91,20 @@ final class EcrParserTest extends TestCase
                 'total_score' => 20,
                 'scores' => [18],
             ],
+            [
+                'export_key' => 'student:1',
+                'item_id' => 11,
+                'component' => 'pt',
+                'total_score' => 30,
+                'scores' => [27],
+            ],
+            [
+                'export_key' => 'student:1',
+                'item_id' => 12,
+                'component' => 'assessment',
+                'total_score' => 50,
+                'scores' => [45],
+            ],
         ]);
         $exporter->setAcademicYear('2026-2027');
         $exporter->setTerm('Term1');
@@ -151,6 +165,20 @@ final class EcrParserTest extends TestCase
                 'total_score' => 20,
                 'scores' => [18],
             ],
+            [
+                'export_key' => 'student:1',
+                'item_id' => 11,
+                'component' => 'pt',
+                'total_score' => 30,
+                'scores' => [27],
+            ],
+            [
+                'export_key' => 'student:1',
+                'item_id' => 12,
+                'component' => 'assessment',
+                'total_score' => 50,
+                'scores' => [45],
+            ],
         ]);
         $exporter->setAcademicYear('2026-2027');
         $exporter->setTerm('Term1');
@@ -182,9 +210,30 @@ final class EcrParserTest extends TestCase
             $this->assertSame('Test Teacher', $termRows[7][18] ?? null);
             $this->assertSame('Filipino 1', $termRows[7][25] ?? null);
             $this->assertSame('Core Subject', $termRows[8][25] ?? null);
+            $this->assertSame('20', $termRows[11][5] ?? null);
+            $this->assertSame('20', $termRows[11][10] ?? null);
+            $this->assertSame('100', $termRows[11][11] ?? null);
+            $this->assertSame('30', $termRows[11][13] ?? null);
+            $this->assertSame('30', $termRows[11][16] ?? null);
+            $this->assertSame('50', $termRows[11][19] ?? null);
+            $this->assertSame('50', $termRows[11][22] ?? null);
             $this->assertSame('Dagohoy, Dave Santos', $termRows[14][1] ?? null);
             $this->assertSame('123456789012', $termRows[14][2] ?? null);
             $this->assertSame('18', $termRows[14][5] ?? null);
+            $this->assertSame('18', $termRows[14][10] ?? null);
+            $this->assertSame('90', $termRows[14][11] ?? null);
+            $this->assertSame('22.5', $termRows[14][12] ?? null);
+            $this->assertSame('27', $termRows[14][13] ?? null);
+            $this->assertSame('27', $termRows[14][16] ?? null);
+            $this->assertSame('90', $termRows[14][17] ?? null);
+            $this->assertSame('45', $termRows[14][18] ?? null);
+            $this->assertSame('45', $termRows[14][19] ?? null);
+            $this->assertSame('45', $termRows[14][22] ?? null);
+            $this->assertSame('90', $termRows[14][23] ?? null);
+            $this->assertSame('22.5', $termRows[14][24] ?? null);
+            $this->assertSame('90', $termRows[14][25] ?? null);
+            $this->assertSame('93', $termRows[14][26] ?? null);
+            $this->assertSame('A', $termRows[14][27] ?? null);
         } finally {
             putenv('APP_FORCE_XLSX_FALLBACK');
             @unlink($path);
