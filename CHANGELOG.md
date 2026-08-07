@@ -2,6 +2,18 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.32 — 2026-08-07
+
+### Fixed
+
+- Corrected student portal filename casing so dashboard, attendance, classes, report card, announcements, QR code, and action routes resolve on Wasmer's case-sensitive filesystem.
+
+## v0.3.31 — 2026-08-07
+
+### Fixed
+
+- Corrected parent portal filename casing so Progress, Report Card, Announcements, Messages, and dashboard routes resolve on Wasmer's case-sensitive filesystem.
+
 ## v0.3.30 — 2026-08-07
 
 ### Fixed

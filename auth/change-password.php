@@ -40,7 +40,7 @@ function redirectByRole($role) {
         case 'admin': header("Location: ../admin/admin.php"); break;
         case 'teacher': header("Location: ../teacher/teacher.php"); break;
         case 'student': header("Location: ../student/Student.php"); break;
-        case 'parent': header("Location: ../parent/parent.php"); break;
+        case 'parent': header("Location: ../parent/Parent.php"); break;
         default: header("Location: ../index.php"); break;
     }
     exit();

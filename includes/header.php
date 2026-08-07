@@ -56,7 +56,7 @@ if ($displayInitials === '') {
 $rolePages = [
     'admin' => ['dashboard' => 'admin.php', 'attendance' => 'admin_Attendance.php', 'announcements' => 'admin_Announcements.php'],
     'teacher' => ['dashboard' => 'teacher.php', 'attendance' => 'teacher_Attendance.php', 'announcements' => 'teacher_Announcements.php', 'classes' => 'teacher_Classes.php'],
-    'student' => ['dashboard' => 'Student.php', 'attendance' => 'Student_Attendance.php', 'announcements' => 'Student_Announcements.php', 'classes' => 'student_Classes.php'],
+    'student' => ['dashboard' => 'Student.php', 'attendance' => 'Student_Attendance.php', 'announcements' => 'Student_Announcements.php', 'classes' => 'Student_Classes.php'],
     'parent' => ['dashboard' => 'Parent.php', 'attendance' => 'Parent_Progress.php', 'announcements' => 'Parent_Announcements.php'],
 ];
 $currentPages = $rolePages[$current_role] ?? $rolePages['admin'];
