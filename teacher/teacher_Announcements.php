@@ -14,7 +14,7 @@ $db = (new Database())->getConnection();
 $announcements = [];
 
 if ($db) {
-    $stmt = $db->query("SELECT a.title, a.content, a.category, a.created_at, a.views,
+    $stmt = $db->query("SELECT a.id, a.title, a.content, a.category, a.created_at, a.views,
                         CONCAT(u.first_name, ' ', u.last_name) AS posted_by_name
                         FROM announcements a
                         LEFT JOIN users u ON u.id = a.posted_by
@@ -108,6 +108,7 @@ $page_title = 'Announcements';
                     <div id="announcementList">
                     <?php foreach ($announcements as $a): ?>
                         <div class="announcement-card <?php echo htmlspecialchars($a['category']); ?> mb-3"
+                             id="notification-school-<?php echo (int)$a['id']; ?>"
                              data-category="<?php echo htmlspecialchars($a['category']); ?>"
                              data-title="<?php echo htmlspecialchars($a['title']); ?>"
                              data-content="<?php echo htmlspecialchars($a['content']); ?>">

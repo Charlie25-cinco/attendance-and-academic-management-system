@@ -63,7 +63,7 @@ class Sf2Exporter {
     }
 
     private function computeSchoolDays(): array {
-        $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $this->month, $this->year);
+        $daysInMonth = (int)date('t', mktime(0, 0, 0, $this->month, 1, $this->year));
         $schoolDays = [];
         for ($d = 1; $d <= $daysInMonth; $d++) {
             $ts = mktime(0, 0, 0, $this->month, $d, $this->year);

@@ -281,10 +281,11 @@ document.addEventListener("DOMContentLoaded", function () {
   initModalAutofocus();
 
   // Initialize shared settings and PWA push notification controls
-  if (document.getElementById("settingsForm")) {
+  if (document.getElementById("saveSettingsBtn")) {
     initSettingsControls();
   }
   initHeaderNotificationActions();
+  focusNotificationTarget();
   window.setTimeout(initPwaPushAutoRegistration, 1200);
 
 });
@@ -569,6 +570,51 @@ function updateNotificationState(action, id = 0) {
   });
 }
 
+function setHeaderNotificationCount(count) {
+  const bell = document.querySelector('[aria-label="View notifications"]');
+  if (!bell) return;
+  let badge = document.getElementById("headerNotificationBadge");
+  const unread = Math.max(0, Number.parseInt(count || "0", 10) || 0);
+  if (unread === 0) {
+    if (badge) badge.remove();
+    return;
+  }
+  if (!badge) {
+    badge = document.createElement("span");
+    badge.id = "headerNotificationBadge";
+    badge.className = "notification-badge";
+    bell.appendChild(badge);
+  }
+  badge.textContent = String(unread);
+}
+
+function focusNotificationTarget() {
+  if (!window.location.hash.startsWith("#notification-")) return;
+  const target = document.getElementById(window.location.hash.slice(1));
+  if (!target) return;
+
+  ["announcementSearch"].forEach((id) => {
+    const input = document.getElementById(id);
+    if (input) input.value = "";
+  });
+  ["announcementSourceFilter", "announcementCategoryFilter"].forEach((id) => {
+    const select = document.getElementById(id);
+    if (select) select.value = "all";
+  });
+  target.style.display = "";
+  const wrapper = target.closest(".col-md-6");
+  if (wrapper) wrapper.style.display = "";
+  target.classList.add("notification-target-highlight");
+  target.setAttribute("tabindex", "-1");
+  window.setTimeout(() => {
+    target.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      block: "center",
+    });
+    target.focus({ preventScroll: true });
+  }, 120);
+}
+
 function initHeaderNotificationActions() {
   document.querySelectorAll(".header-notification-item[data-notification-id]").forEach((item) => {
     item.addEventListener("click", (event) => {
@@ -577,11 +623,12 @@ function initHeaderNotificationActions() {
       if (id <= 0) return;
       event.preventDefault();
       updateNotificationState("read", id)
-        .catch((error) => console.warn("Unable to mark notification as read:", error))
-        .finally(() => {
+        .then((data) => {
+          setHeaderNotificationCount(data.unread_count);
           if (href && href !== "#") window.location.href = href;
           else window.location.reload();
-        });
+        })
+        .catch((error) => showNotification(error.message || "Unable to open notification", "danger"));
     });
   });
 
@@ -593,7 +640,10 @@ function initHeaderNotificationActions() {
       if (id <= 0) return;
       button.disabled = true;
       updateNotificationState("delete", id)
-        .then(() => window.location.reload())
+        .then((data) => {
+          setHeaderNotificationCount(data.unread_count);
+          button.closest("[data-notification-row]")?.remove();
+        })
         .catch((error) => {
           button.disabled = false;
           showNotification(error.message || "Unable to delete notification", "danger");
@@ -606,7 +656,12 @@ function initHeaderNotificationActions() {
     readAll.addEventListener("click", (event) => {
       event.preventDefault();
       updateNotificationState("read_all")
-        .then(() => window.location.reload())
+        .then((data) => {
+          setHeaderNotificationCount(data.unread_count);
+          document.querySelectorAll(".header-notification-item").forEach((item) => {
+            item.closest(".dropdown-item")?.classList.add("opacity-75");
+          });
+        })
         .catch((error) => showNotification(error.message || "Unable to update notifications", "danger"));
     });
   }
@@ -616,7 +671,10 @@ function initHeaderNotificationActions() {
     deleteAll.addEventListener("click", (event) => {
       event.preventDefault();
       updateNotificationState("delete_all")
-        .then(() => window.location.reload())
+        .then((data) => {
+          setHeaderNotificationCount(data.unread_count);
+          document.querySelectorAll("[data-notification-row]").forEach((row) => row.remove());
+        })
         .catch((error) => showNotification(error.message || "Unable to delete notifications", "danger"));
     });
   }
@@ -668,30 +726,52 @@ function getPwaServiceWorkerRegistration() {
 
 function updatePwaPushStatus() {
   const pushSwitch = document.getElementById("pushNotifSwitch");
+  const testButton = document.getElementById("testPushNotificationBtn");
   if (!pushSwitch) return;
+  if (testButton) testButton.disabled = true;
 
-  if (!pwaPushSupported()) {
-    pushSwitch.disabled = true;
-    setPushStatus("Device notifications need VAPID push keys in the environment.", "muted");
-    return;
-  }
+  appFetchJson("web-push-status")
+    .then((serverStatus) => {
+      if (!serverStatus.configured || !window.APP_PUSH_PUBLIC_KEY) {
+        pushSwitch.disabled = true;
+        setPushStatus("Server push keys are not configured.", "danger");
+        return;
+      }
+      if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+        pushSwitch.disabled = true;
+        setPushStatus("Device notifications are not supported by this browser.", "muted");
+        return;
+      }
+      pushSwitch.disabled = false;
 
-  if (Notification.permission === "denied") {
-    setPushStatus("Notifications are blocked in this browser.", "danger");
-    return;
-  }
+      if (Notification.permission === "denied") {
+        setPushStatus("Notifications are blocked in this browser.", "danger");
+        return;
+      }
 
-  if (Notification.permission === "granted") {
-    getPwaServiceWorkerRegistration()
-      .then((registration) => registration.pushManager.getSubscription())
-      .then((subscription) => {
-        setPushStatus(subscription ? "This device is subscribed." : "Save changes to subscribe this device.", subscription ? "success" : "muted");
-      })
-      .catch(() => setPushStatus("Save changes to subscribe this device.", "muted"));
-    return;
-  }
+      if (Notification.permission === "granted") {
+        return getPwaServiceWorkerRegistration()
+          .then((registration) => registration.pushManager.getSubscription())
+          .then((subscription) => {
+            const ready = !!subscription && Number(serverStatus.subscription_count || 0) > 0;
+            setPushStatus(ready ? "This device is ready for notifications." : "Save changes to subscribe this device.", ready ? "success" : "muted");
+            if (testButton) testButton.disabled = !ready;
+          });
+      }
 
-  setPushStatus("Save changes to allow device notifications.", "muted");
+      setPushStatus("Save changes to allow device notifications.", "muted");
+    })
+    .catch((error) => setPushStatus(error.message || "Unable to check push status.", "danger"));
+}
+
+function sendTestPushNotification() {
+  const button = document.getElementById("testPushNotificationBtn");
+  if (!button) return;
+  button.disabled = true;
+  appFetchJson("web-push-test", { method: "POST", body: JSON.stringify({}) })
+    .then((data) => showNotification(data.message || "Test notification sent", "success"))
+    .catch((error) => showNotification(error.message || "Unable to send test notification", "danger"))
+    .finally(() => updatePwaPushStatus());
 }
 
 function enablePwaPushNotifications() {
@@ -758,6 +838,7 @@ function initSettingsControls() {
 
   applyInitialSettingsToControls();
   updatePwaPushStatus();
+  document.getElementById("testPushNotificationBtn")?.addEventListener("click", sendTestPushNotification);
 
   const darkMode = document.getElementById("darkModeSwitch");
   if (darkMode) {

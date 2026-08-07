@@ -70,6 +70,47 @@ final class WebPushNotificationTest extends TestCase
         $this->assertFalse(str_contains($encoded, '='));
     }
 
+    public function testMaintainedWebPushSenderAndKeyGeneratorAreConfigured(): void
+    {
+        $constants = file_get_contents(__DIR__ . '/../config/constants.php');
+        $script = file_get_contents(__DIR__ . '/../scripts/generate_vapid_keys.php');
+
+        $this->assertIsString($constants);
+        $this->assertStringContainsString('Minishlink\\WebPush\\WebPush', $constants);
+        $this->assertStringContainsString("['TTL' => 86400]", $constants);
+        $this->assertIsString($script);
+        $this->assertStringContainsString('VAPID::createVapidKeys()', $script);
+        $this->assertStringContainsString("'config' => \$configPath", $script);
+        $this->assertStringContainsString('VAPID::validate([', $script);
+    }
+
+    public function testVapidGeneratorWorksWithLaragonOpenSslConfiguration(): void
+    {
+        $scriptPath = realpath(__DIR__ . '/../scripts/generate_vapid_keys.php');
+        $this->assertNotFalse($scriptPath);
+        $command = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($scriptPath);
+        $output = [];
+        $exitCode = 1;
+        exec($command, $output, $exitCode);
+
+        $this->assertSame(0, $exitCode, implode(PHP_EOL, $output));
+        $values = [];
+        foreach ($output as $line) {
+            if (str_contains($line, '=')) {
+                [$name, $value] = explode('=', $line, 2);
+                $values[$name] = $value;
+            }
+        }
+        $this->assertMatchesRegularExpression('/^[A-Za-z0-9_-]{87}$/', $values['PUSH_VAPID_PUBLIC_KEY'] ?? '');
+        $this->assertMatchesRegularExpression('/^[A-Za-z0-9_-]{43}$/', $values['PUSH_VAPID_PRIVATE_KEY'] ?? '');
+        $validated = \Minishlink\WebPush\VAPID::validate([
+            'subject' => $values['PUSH_VAPID_SUBJECT'] ?? '',
+            'publicKey' => $values['PUSH_VAPID_PUBLIC_KEY'] ?? '',
+            'privateKey' => $values['PUSH_VAPID_PRIVATE_KEY'] ?? '',
+        ]);
+        $this->assertSame('https://balingasagshs.wasmer.app', $validated['subject']);
+    }
+
     public function testPushSubscriptionSaveFetchDelete(): void
     {
         $userId = 101;

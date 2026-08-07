@@ -1,6 +1,6 @@
 // BSHS AMS root service worker - PWA cache + push notifications
 
-const CACHE_NAME = 'bshs-ams-v6';
+const CACHE_NAME = 'bshs-ams-v7';
 const APP_SHELL_URLS = [
   '/assets/manifest.json',
   '/assets/css/main.css',

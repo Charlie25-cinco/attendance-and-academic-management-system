@@ -53,7 +53,7 @@ if ($db && $parentId > 0) {
 
         if (!empty($classIds)) {
             $ph = implode(',', array_fill(0, count($classIds), '?'));
-            $classAnnStmt = $db->prepare("SELECT ca.title, ca.content, ca.created_at, c.class_name,
+            $classAnnStmt = $db->prepare("SELECT ca.id AS notification_id, ca.title, ca.content, ca.created_at, c.class_name,
                                           'class' AS source, 'class' AS category
                                           FROM class_announcements ca
                                           JOIN classes c ON c.id = ca.class_id
@@ -64,13 +64,14 @@ if ($db && $parentId > 0) {
             $announcements = $classAnnStmt->fetchAll(PDO::FETCH_ASSOC);
         }
 
-        $schoolAnn = $db->query("SELECT title, content, created_at, category, 'school' AS source
+        $schoolAnn = $db->query("SELECT id AS notification_id, title, content, created_at, category, 'school' AS source
                                  FROM announcements
                                  WHERE status = 'active'
                                  ORDER BY created_at DESC
                                  LIMIT 20")->fetchAll(PDO::FETCH_ASSOC);
         foreach ($schoolAnn as $sa) {
             $announcements[] = [
+                'notification_id' => $sa['notification_id'],
                 'title' => $sa['title'],
                 'content' => $sa['content'],
                 'created_at' => $sa['created_at'],
@@ -193,6 +194,7 @@ $selectedStudentRef = trim((string)($selectedStudent['reference_code'] ?? ''));
                             ?>
                             <div class="col-md-6">
                                 <div class="announcement-card info"
+                                     id="notification-<?php echo htmlspecialchars($source); ?>-<?php echo (int)$a['notification_id']; ?>"
                                      data-source="<?php echo htmlspecialchars($source); ?>"
                                      data-category="<?php echo htmlspecialchars($filterCategory); ?>"
                                      data-title="<?php echo htmlspecialchars($a['title']); ?>"

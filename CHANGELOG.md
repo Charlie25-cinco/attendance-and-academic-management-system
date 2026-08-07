@@ -2,6 +2,26 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.38 — 2026-08-07
+
+### Fixed
+
+- Made VAPID key generation use Laragon's explicit OpenSSL configuration when PHP cannot discover it during startup, while validating generated keys before display.
+
+## v0.3.37 — 2026-08-07
+
+### Fixed
+
+- Removed the optional PHP Calendar-extension dependency from teacher SF2 XLSX exports so month calculations work on Wasmer, including leap years.
+
+## v0.3.36 — 2026-08-07
+
+### Fixed
+
+- Replaced the custom Web Push sender with standards-compatible VAPID delivery and extended notification retention to 24 hours.
+- Added server readiness, device subscription, and test-send feedback to Settings for closed-PWA notification troubleshooting.
+- Made notification clicks update unread badges immediately and open the exact linked announcement with a visible focus highlight.
+
 ## v0.3.35 — 2026-08-07
 
 ### Fixed

@@ -43,7 +43,7 @@ if ($db && $studentId > 0) {
             $params[] = $selectedClassId;
         }
 
-        $classAnnStmt = $db->prepare("SELECT ca.title, ca.content, ca.created_at,
+        $classAnnStmt = $db->prepare("SELECT ca.id AS notification_id, ca.title, ca.content, ca.created_at,
                                       c.class_name, c.grade_level, c.section, 'class' AS source, 'info' AS category
                                       FROM class_announcements ca
                                       JOIN classes c ON c.id = ca.class_id
@@ -54,13 +54,14 @@ if ($db && $studentId > 0) {
         $announcements = $classAnnouncements;
     }
 
-    $schoolStmt = $db->query("SELECT title, content, category, created_at, 'school' AS source
+    $schoolStmt = $db->query("SELECT id AS notification_id, title, content, category, created_at, 'school' AS source
                               FROM announcements
                               WHERE status = 'active'
                               ORDER BY created_at DESC");
     $schoolAnnouncements = $schoolStmt->fetchAll(PDO::FETCH_ASSOC);
     foreach ($schoolAnnouncements as $sa) {
         $announcements[] = [
+            'notification_id' => $sa['notification_id'],
             'title' => $sa['title'],
             'content' => $sa['content'],
             'created_at' => $sa['created_at'],
@@ -172,6 +173,7 @@ foreach ($classes as $class) {
                             $filterCategory = $source === 'class' ? 'class' : $normalizedCategory;
                         ?>
                         <div class="announcement-card <?php echo htmlspecialchars($normalizedCategory); ?> mb-3"
+                             id="notification-<?php echo htmlspecialchars($source); ?>-<?php echo (int)$a['notification_id']; ?>"
                              data-source="<?php echo htmlspecialchars($source); ?>"
                              data-category="<?php echo htmlspecialchars($filterCategory); ?>"
                              data-title="<?php echo htmlspecialchars($a['title']); ?>"

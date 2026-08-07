@@ -255,7 +255,7 @@ if ($headerDb && $sessionUserId > 0) {
 
     try {
         if (dbHasTable($headerDb, 'user_notifications')) {
-            $notifStmt = $headerDb->prepare("SELECT id, title, subtitle, icon, color, link, event_at, is_read
+            $notifStmt = $headerDb->prepare("SELECT id, source_key, title, subtitle, icon, color, link, event_at, is_read
                                              FROM user_notifications
                                              WHERE user_id = ?
                                              ORDER BY is_read ASC, event_at DESC, id DESC
@@ -263,6 +263,11 @@ if ($headerDb && $sessionUserId > 0) {
             $notifStmt->execute([$sessionUserId]);
             foreach ($notifStmt->fetchAll(PDO::FETCH_ASSOC) as $item) {
                 $item['time'] = headerTimeAgo($item['event_at'] ?? '');
+                $item['link'] = appNotificationTargetUrl(
+                    (string)($_SESSION['role'] ?? ''),
+                    (string)($item['link'] ?? ''),
+                    (string)($item['source_key'] ?? '')
+                );
                 $notificationItems[] = $item;
                 if ((int)($item['is_read'] ?? 0) === 0) {
                     $notification_count++;
@@ -425,7 +430,7 @@ try {
         <button class="header-btn position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="View notifications">
             <i class="bi bi-bell"></i>
             <?php if ($notification_count > 0): ?>
-            <span class="notification-badge"><?php echo $notification_count; ?></span>
+            <span class="notification-badge" id="headerNotificationBadge"><?php echo $notification_count; ?></span>
             <?php endif; ?>
         </button>
         <ul class="dropdown-menu dropdown-menu-end header-dropdown-menu header-notification-menu">
@@ -441,7 +446,7 @@ try {
                 <li><div class="dropdown-item text-muted py-2">No new notifications</div></li>
             <?php else: ?>
                 <?php foreach ($notificationItems as $item): ?>
-                    <li>
+                    <li data-notification-row="<?php echo (int)($item['id'] ?? 0); ?>">
                         <div class="dropdown-item d-flex align-items-start py-2 <?php echo ((int)($item['is_read'] ?? 0) === 1) ? 'opacity-75' : ''; ?>">
                             <a class="header-notification-item d-flex align-items-start text-decoration-none text-reset flex-grow-1" href="<?php echo htmlspecialchars((string)$item['link']); ?>" data-notification-id="<?php echo (int)($item['id'] ?? 0); ?>">
                                 <div class="bg-<?php echo htmlspecialchars((string)$item['color']); ?> bg-opacity-10 rounded-circle p-2 me-3">

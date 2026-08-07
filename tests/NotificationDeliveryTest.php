@@ -14,7 +14,7 @@ final class NotificationDeliveryTest extends TestCase
         appDispatchNotification(
             $db,
             [1, 2],
-            'announcement_42',
+            'school_announcement_42',
             'School announcement: Test',
             'General - Tap to read more',
             'bi-megaphone',
@@ -27,8 +27,8 @@ final class NotificationDeliveryTest extends TestCase
             ->fetchAll(PDO::FETCH_ASSOC);
 
         $this->assertCount(2, $rows);
-        $this->assertSame('Student_Announcements.php', $rows[0]['link']);
-        $this->assertSame('Parent_Announcements.php', $rows[1]['link']);
+        $this->assertSame('/student/Student_Announcements.php#notification-school-42', $rows[0]['link']);
+        $this->assertSame('/parent/Parent_Announcements.php#notification-school-42', $rows[1]['link']);
         $this->assertSame(0, (int)$rows[0]['is_read']);
     }
 
@@ -42,13 +42,32 @@ final class NotificationDeliveryTest extends TestCase
         $this->assertStringContainsString('WHERE id = ? AND user_id = ?', $api);
         $this->assertStringContainsString("\$action === 'read_all'", $api);
         $this->assertStringContainsString("\$action === 'delete_all'", $api);
+        $this->assertStringContainsString("'unread_count' => (int)\$countStmt->fetchColumn()", $api);
+        $this->assertStringContainsString("\$route === 'web-push-test'", $api);
 
         $this->assertIsString($javascript);
         $this->assertStringContainsString('initHeaderNotificationActions();', $javascript);
         $this->assertStringContainsString('updateNotificationState("delete_all")', $javascript);
+        $this->assertStringContainsString('setHeaderNotificationCount(data.unread_count)', $javascript);
+        $this->assertStringContainsString('focusNotificationTarget();', $javascript);
 
         $this->assertIsString($serviceWorker);
-        $this->assertStringContainsString("const CACHE_NAME = 'bshs-ams-v6';", $serviceWorker);
+        $this->assertStringContainsString("const CACHE_NAME = 'bshs-ams-v7';", $serviceWorker);
         $this->assertStringContainsString('new URL(targetUrl, self.location.origin).href', $serviceWorker);
+    }
+
+    public function testAnnouncementPagesExposeExactNotificationTargets(): void
+    {
+        foreach (['admin/admin_Announcements.php', 'teacher/teacher_Announcements.php'] as $file) {
+            $content = file_get_contents(__DIR__ . '/../' . $file);
+            $this->assertIsString($content);
+            $this->assertStringContainsString('notification-school-', $content);
+        }
+        foreach (['student/Student_Announcements.php', 'parent/Parent_Announcements.php'] as $file) {
+            $content = file_get_contents(__DIR__ . '/../' . $file);
+            $this->assertIsString($content);
+            $this->assertStringContainsString('notification_id', $content);
+            $this->assertStringContainsString('notification-<?php echo htmlspecialchars($source); ?>-', $content);
+        }
     }
 }

@@ -491,6 +491,39 @@ function appNotifyUsers(PDO $db, array $userIds, string $sourceKey, string $titl
     }
 }
 
+function appNotificationTargetUrl(string $role, string $link = '', string $sourceKey = ''): string {
+    $role = strtolower(trim($role));
+    $roleLandingPages = [
+        'admin' => '/admin/admin.php',
+        'teacher' => '/teacher/teacher.php',
+        'student' => '/student/Student.php',
+        'parent' => '/parent/Parent.php',
+    ];
+    $announcementPages = [
+        'admin' => 'admin/admin_Announcements.php',
+        'teacher' => 'teacher/teacher_Announcements.php',
+        'student' => 'student/Student_Announcements.php',
+        'parent' => 'parent/Parent_Announcements.php',
+    ];
+    if (preg_match('/^school_announcement_(\d+)$/', $sourceKey, $matches) && isset($announcementPages[$role])) {
+        return '/' . $announcementPages[$role] . '#notification-school-' . $matches[1];
+    }
+    if (preg_match('/^class_announcement_(\d+)$/', $sourceKey, $matches)) {
+        if (in_array($role, ['student', 'parent'], true)) {
+            return '/' . $announcementPages[$role] . '#notification-class-' . $matches[1];
+        }
+        if ($role === 'teacher') {
+            return '/teacher/teacher_Announcements.php#notification-class-' . $matches[1];
+        }
+    }
+
+    $link = trim($link);
+    if ($link === '' || preg_match('#^https?://#i', $link)) {
+        return $roleLandingPages[$role] ?? '/auth/login.php';
+    }
+    return str_starts_with($link, '/') ? $link : '/' . $role . '/' . ltrim($link, '/');
+}
+
 function appDispatchNotification(
     PDO $db,
     array $userIds,
@@ -524,12 +557,8 @@ function appDispatchNotification(
 
         foreach ($idsByRole as $role => $roleUserIds) {
             $link = trim((string)($linksByRole[$role] ?? $linksByRole['default'] ?? ''));
-            appNotifyUsers($db, $roleUserIds, $sourceKey, $title, $subtitle, $icon, $color, $link, $eventAt);
-
-            $targetUrl = '/auth/login.php';
-            if ($link !== '') {
-                $targetUrl = str_starts_with($link, '/') ? $link : '/' . $role . '/' . $link;
-            }
+            $targetUrl = appNotificationTargetUrl($role, $link, $sourceKey);
+            appNotifyUsers($db, $roleUserIds, $sourceKey, $title, $subtitle, $icon, $color, $targetUrl, $eventAt);
             $payload = [
                 'title' => $title,
                 'body' => $subtitle,

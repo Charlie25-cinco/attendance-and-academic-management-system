@@ -43,7 +43,59 @@ if ($route === 'notification-action' && $method === 'POST') {
         apiJson(['ok' => false, 'message' => 'Invalid notification action'], 422);
     }
 
-    apiJson(['ok' => true, 'message' => 'Notification state updated']);
+    $countStmt = $db->prepare('SELECT COUNT(*) FROM user_notifications WHERE user_id = ? AND is_read = 0');
+    $countStmt->execute([$userId]);
+    apiJson([
+        'ok' => true,
+        'message' => 'Notification state updated',
+        'unread_count' => (int)$countStmt->fetchColumn(),
+    ]);
+}
+
+if ($route === 'web-push-status' && $method === 'GET') {
+    $db = apiDb();
+    $user = apiRequireUser();
+    if (!$db) {
+        apiJson(['ok' => false, 'message' => 'Database connection failed'], 500);
+    }
+    $subscriptions = pushFetchSubscriptions($db, [(int)$user['id']]);
+    apiJson([
+        'ok' => true,
+        'configured' => pushConfigReady(),
+        'subscription_count' => count($subscriptions),
+    ]);
+}
+
+if ($route === 'web-push-test' && $method === 'POST') {
+    $db = apiDb();
+    $user = apiRequireUser();
+    if (!$db) {
+        apiJson(['ok' => false, 'message' => 'Database connection failed'], 500);
+    }
+    $sessionCsrf = (string)($_SESSION['csrf_token'] ?? '');
+    $requestCsrf = trim((string)($_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_GET['csrf_token'] ?? ''));
+    if ($sessionCsrf !== '' && ($requestCsrf === '' || !hash_equals($sessionCsrf, $requestCsrf))) {
+        apiJson(['ok' => false, 'message' => 'Invalid CSRF token'], 403);
+    }
+    if (!pushConfigReady()) {
+        apiJson(['ok' => false, 'message' => 'Server push keys are not configured'], 503);
+    }
+    if (count(pushFetchSubscriptions($db, [(int)$user['id']])) === 0) {
+        apiJson(['ok' => false, 'message' => 'This account has no subscribed device'], 422);
+    }
+    $role = (string)($user['role'] ?? '');
+    $sent = pushSendToUserIds($db, [(int)$user['id']], [
+        'title' => 'Test notification',
+        'body' => 'Device notifications are working for this account.',
+        'icon' => '/assets/images/icon-192.png',
+        'badge' => '/assets/images/icon-192.png',
+        'url' => appNotificationTargetUrl($role),
+        'data' => ['type' => 'push_test', 'url' => appNotificationTargetUrl($role)],
+    ]);
+    apiJson([
+        'ok' => $sent,
+        'message' => $sent ? 'Test notification sent' : 'The push service rejected the test notification',
+    ], $sent ? 200 : 502);
 }
 
 if ($route === 'notifications' && $method === 'GET') {
@@ -57,7 +109,7 @@ if ($route === 'notifications' && $method === 'GET') {
 
     appEnsureUserNotificationsTable($db);
     try {
-        $savedStmt = $db->prepare("SELECT id, title, subtitle, icon, color, link, event_at, is_read
+        $savedStmt = $db->prepare("SELECT id, source_key, title, subtitle, icon, color, link, event_at, is_read
                                    FROM user_notifications
                                    WHERE user_id = ?
                                    ORDER BY is_read ASC, event_at DESC, id DESC
@@ -78,7 +130,7 @@ if ($route === 'notifications' && $method === 'GET') {
                 'subtitle' => (string)$row['subtitle'],
                 'event_at' => (string)$row['event_at'],
                 'time' => apiNotificationTimeAgo((string)$row['event_at']),
-                'link' => (string)$row['link'],
+                'link' => appNotificationTargetUrl($role, (string)$row['link'], (string)$row['source_key']),
                 'is_read' => $isRead,
             ];
         }

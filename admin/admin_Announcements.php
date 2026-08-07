@@ -144,7 +144,8 @@ $visibleAnnouncementCount = count($announcements);
                     <?php endif; ?>
 
                     <?php foreach ($announcements as $announcement): ?>
-                        <div class="announcement-card <?php echo htmlspecialchars($announcement['category']); ?> mb-3">
+                        <div class="announcement-card <?php echo htmlspecialchars($announcement['category']); ?> mb-3"
+                             id="notification-school-<?php echo (int)$announcement['id']; ?>">
                             <div class="d-flex justify-content-between align-items-start">
                                 <div class="flex-grow-1">
                                     <div class="announcement-header">

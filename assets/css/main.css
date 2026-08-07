@@ -3062,3 +3062,18 @@ body.dark-mode .password-guidance-title {
 body.dark-mode .password-guidance-list li {
   color: var(--ui-muted-readable, #94a3b8);
 }
+
+.notification-target-highlight {
+  outline: 3px solid rgba(37, 99, 235, 0.45);
+  outline-offset: 4px;
+  animation: notification-target-pulse 1.5s ease-out 2;
+}
+
+@keyframes notification-target-pulse {
+  0%, 100% { outline-color: rgba(37, 99, 235, 0.2); }
+  50% { outline-color: rgba(37, 99, 235, 0.75); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notification-target-highlight { animation: none; }
+}

@@ -64,7 +64,7 @@ $stuStmt->execute([$classId, $sf2AcademicYear]);
 $students = $stuStmt->fetchAll(PDO::FETCH_ASSOC);
 
 $startDate = sprintf('%04d-%02d-01', $year, $month);
-$daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+$daysInMonth = (int)date('t', mktime(0, 0, 0, $month, 1, $year));
 $endDate = sprintf('%04d-%02d-%02d', $year, $month, $daysInMonth);
 
 $attStmt = $db->prepare("SELECT student_id, date, status FROM attendance WHERE class_id = ? AND date BETWEEN ? AND ? ORDER BY date");

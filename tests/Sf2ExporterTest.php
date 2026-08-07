@@ -85,4 +85,24 @@ final class Sf2ExporterTest extends TestCase
             @unlink($path);
         }
     }
+
+    public function testSchoolDaysDoNotRequireCalendarExtension(): void
+    {
+        $exporter = new Sf2Exporter();
+        $exporter->setMonth(2);
+        $exporter->setYear(2028);
+
+        $method = new ReflectionMethod($exporter, 'computeSchoolDays');
+        $schoolDays = $method->invoke($exporter);
+
+        $this->assertContains(29, $schoolDays, 'Leap-year February 29 should be exported when it is a weekday.');
+        $this->assertCount(21, $schoolDays);
+
+        $endpoint = file_get_contents(__DIR__ . '/../teacher/teacher_SF2_Export.php');
+        $exporterSource = file_get_contents(__DIR__ . '/../src/Export/Sf2Exporter.php');
+        $this->assertIsString($endpoint);
+        $this->assertIsString($exporterSource);
+        $this->assertStringNotContainsString('cal_days_in_month', $endpoint);
+        $this->assertStringNotContainsString('cal_days_in_month', $exporterSource);
+    }
 }

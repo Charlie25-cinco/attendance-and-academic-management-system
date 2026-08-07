@@ -455,10 +455,6 @@ function pushSendToSubscription($subscription, $payload) {
     if (!pushConfigReady()) {
         return ['success' => false, 'status' => 0, 'error' => 'push_not_configured'];
     }
-    if (!function_exists('curl_init')) {
-        error_log('[push] Web Push send skipped: PHP curl extension is not available.');
-        return ['success' => false, 'status' => 0, 'error' => 'curl_missing'];
-    }
     $endpoint = (string)($subscription['endpoint'] ?? '');
     $p256dh = (string)($subscription['p256dh'] ?? '');
     $auth = (string)($subscription['auth'] ?? '');
@@ -466,50 +462,42 @@ function pushSendToSubscription($subscription, $payload) {
         return ['success' => false, 'status' => 0, 'error' => 'invalid_subscription'];
     }
 
-    $body = json_encode($payload);
-    if ($body === false) { $body = '{}'; }
-
-    $enc = pushEncryptPayload($body, $p256dh, $auth);
-    if (!$enc) {
-        error_log('[push] Web Push encryption failed.');
-        return ['success' => false, 'status' => 0, 'error' => 'encryption_failed'];
+    try {
+        $webPush = new \Minishlink\WebPush\WebPush([
+            'VAPID' => [
+                'subject' => PUSH_VAPID_SUBJECT,
+                'publicKey' => PUSH_VAPID_PUBLIC_KEY,
+                'privateKey' => PUSH_VAPID_PRIVATE_KEY,
+            ],
+        ], ['TTL' => 86400]);
+        $webPush->setReuseVAPIDHeaders(true);
+        $webSubscription = \Minishlink\WebPush\Subscription::create([
+            'endpoint' => $endpoint,
+            'publicKey' => $p256dh,
+            'authToken' => $auth,
+            'contentEncoding' => 'aes128gcm',
+        ]);
+        $body = json_encode($payload, JSON_UNESCAPED_SLASHES);
+        $report = $webPush->sendOneNotification(
+            $webSubscription,
+            $body === false ? '{}' : $body,
+            ['TTL' => 86400]
+        );
+        $response = $report->getResponse();
+        $status = $response ? $response->getStatusCode() : 0;
+        if (!$report->isSuccess()) {
+            error_log('[push] Web Push send failed. Status: ' . $status . ' Reason: ' . $report->getReason());
+        }
+        return [
+            'success' => $report->isSuccess(),
+            'status' => $status,
+            'error' => $report->isSuccess() ? '' : $report->getReason(),
+            'expired' => $report->isSubscriptionExpired(),
+        ];
+    } catch (Throwable $e) {
+        error_log('[push] Web Push exception: ' . $e->getMessage());
+        return ['success' => false, 'status' => 0, 'error' => $e->getMessage()];
     }
-
-    $endpointParts = parse_url($endpoint);
-    $aud = ($endpointParts && isset($endpointParts['scheme'], $endpointParts['host']))
-        ? $endpointParts['scheme'] . '://' . $endpointParts['host']
-        : '';
-    $jwt = pushCreateVapidJwt($aud, PUSH_VAPID_SUBJECT, time() + 12 * 60 * 60, PUSH_VAPID_PRIVATE_KEY);
-    $vapidPublicRaw = pushGetVapidPublicKeyRaw(PUSH_VAPID_PRIVATE_KEY);
-    if ($jwt === '' || $vapidPublicRaw === '') {
-        error_log('[push] VAPID signing failed.');
-        return ['success' => false, 'status' => 0, 'error' => 'vapid_failed'];
-    }
-
-    $headers = [
-        'TTL: 300',
-        'Content-Encoding: aes128gcm',
-        'Content-Type: application/octet-stream',
-        'Content-Length: ' . strlen($enc['body']),
-        'Authorization: vapid t=' . $jwt . ', k=' . pushBase64UrlEncode($vapidPublicRaw)
-    ];
-
-    $ch = curl_init($endpoint);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $enc['body']);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-    $response = curl_exec($ch);
-    $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlError = curl_error($ch);
-    curl_close($ch);
-    $success = $response !== false && $status >= 200 && $status < 300;
-    if (!$success) {
-        error_log('[push] Web Push send failed. Status: ' . $status . ' Error: ' . $curlError);
-    }
-    return ['success' => $success, 'status' => $status, 'error' => $curlError];
 }
 
 function pushSaveSubscription($db, $userId, $subscription, $userAgent = '') {
@@ -579,11 +567,14 @@ function pushSendToUserIds($db, array $userIds, array $payload) {
         if (!empty($result['success'])) {
             $sent++;
         }
-        if (in_array((int)($result['status'] ?? 0), [404, 410], true)) {
+        if (!empty($result['expired']) || in_array((int)($result['status'] ?? 0), [404, 410], true)) {
             pushDeleteSubscription($db, (int)$sub['user_id'], (string)$sub['endpoint']);
         }
     }
-    if ($attempted > 0 && $sent === 0) {
+    if ($attempted === 0) {
+        return false;
+    }
+    if ($sent === 0) {
         error_log('[push] Web Push had subscriptions but no messages were delivered.');
         return false;
     }
