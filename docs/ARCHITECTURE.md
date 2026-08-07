@@ -49,7 +49,7 @@ BSHS AMS follows a modular, layered PHP Web and PWA architecture. Core domain bu
               └────────────────────────┼──────────────────────────┘
                                        ▼
                          ┌─────────────────────────────────────────┐
-                         │ Wasmer Attached DB / MySQL / TiDB Cloud │
+                         │ Wasmer Attached Database / Hosted MySQL │
                          └─────────────────────────────────────────┘
 ```
 
@@ -60,7 +60,7 @@ BSHS AMS follows a modular, layered PHP Web and PWA architecture. Core domain bu
 The application source code lives under the `BshsAms\` namespace in `src/`:
 
 ### 2.1 Database Component (`BshsAms\Database`)
-- **`Database.php`**: Singleton/PDO connection manager with support for standard MySQL, MariaDB, and TiDB Cloud SSL certificates (`DB_SSL_CA` or `DB_SSL_CA_CONTENT`).
+- **`Database.php`**: Singleton/PDO connection manager with support for standard MySQL/MariaDB and hosted MySQL SSL certificates (`DB_SSL_CA` or `DB_SSL_CA_CONTENT`).
 - **`SchemaCache.php`**: Static cache of database table schema metadata (`dbHasTable`, `dbHasColumn`) to reduce redundant `INFORMATION_SCHEMA` queries.
 - **`SessionHandler.php`**: Custom `SessionHandlerInterface` implementation for database-backed session storage (`APP_SESSION_DRIVER=database`), providing stateless session persistence across container instances.
 
@@ -113,6 +113,6 @@ Functions in `functions/app-helpers.php` enforce CSRF tokens on state-changing r
 
 ### 4.2 Wasmer Edge Cloud Environment
 - **Configuration:** `wasmer.toml` (package definition) and `app.yaml` (runtime configuration).
-- **Database:** Wasmer Attached Database / Wasmer MySQL (`database/schema_tidb.sql`).
+- **Database:** Wasmer Attached Database / hosted MySQL (`database/schema.sql`).
 - **PHP Config:** Custom settings in `config/wasmer/php.ini`.
 - **CI/CD Pipeline:** GitHub Actions workflow in `.github/workflows/wasmer-deploy.yml`.

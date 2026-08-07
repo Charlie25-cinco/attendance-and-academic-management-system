@@ -64,7 +64,7 @@ Open `http://localhost:5000`.
 - In production, set `APP_ENV=production`, `API_AUTH_SECRET`, `API_SYNC_SECRET`, and a trusted `API_ALLOWED_ORIGIN`.
 - Set `APP_SESSION_DRIVER=database` in stateless hosting such as Wasmer so active PHP sessions are stored in the SQL database instead of local instance files.
 - `APP_SESSION_LIFETIME` and `APP_SESSION_IDLE_TIMEOUT` control how long an active web/PWA session can survive after closing and reopening; the example uses 24 hours, while remember-me tokens keep trusted devices signed in longer.
-- Create the first admin with `composer run seed:admin`, which runs `database/seed_admin.php`; hosted database dashboards can alternatively import `database/seed_admin.sql` after `database/schema_tidb.sql`.
+- Create the first admin with `composer run seed:admin`, which runs `database/seed_admin.php`; the Wasmer database dashboard can alternatively import `database/seed_admin.sql` after `database/schema.sql`.
 - `FIRST_RUN_ADMIN_PASSWORD` controls PHP-based first admin seeding, and `DEFAULT_NEW_USER_PASSWORD` controls newly created users.
 - The API first-login password-change flow requires the `temp_token` returned by `POST /api/index.php?route=login` when `must_change_password` is true.
 - Web login and remember-me auto-login both force password setup while a user's password still matches `DEFAULT_NEW_USER_PASSWORD`.
@@ -155,7 +155,7 @@ Open `http://localhost:5000`.
   - `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, and optional `RESEND_FROM_NAME`
 - Configure production secrets in Wasmer for database and API values:
   - `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS` or `DB_PASSWORD`
-  - `DB_SSL_CA` or `DB_SSL_CA_CONTENT` when TiDB Cloud requires TLS CA verification
+  - `DB_SSL_CA` or `DB_SSL_CA_CONTENT` only when the hosted MySQL provider requires TLS CA verification
   - `DB_SSL_VERIFY_SERVER_CERT` optional, defaults to `1`
   - `APP_SESSION_DRIVER=database`
   - `DEFAULT_NEW_USER_PASSWORD`, and `FIRST_RUN_ADMIN_PASSWORD` if first-admin seeding will run in that environment
@@ -165,18 +165,17 @@ Open `http://localhost:5000`.
   - SMTP or SMS secrets if those fallback/features are enabled
 - `app.yaml` intentionally contains placeholder owner/public URL values that the GitHub workflow replaces from secrets.
 - Composer runtime platform checks are disabled in `composer.json` because Wasmer's PHP/WASI runtime can report a non-64-bit platform even though the application can still boot and serve normal web requests.
-- Wasmer app instances are stateless; runtime files should use the configured Wasmer volumes for `/app/storage` and `/app/assets/uploads`, while durable school data and PHP sessions should live in TiDB/MySQL or Wasmer's attached MySQL database.
+- Wasmer app instances are stateless; runtime files should use the configured Wasmer volumes for `/app/storage` and `/app/assets/uploads`, while durable school data and PHP sessions should live in Wasmer Attached Database.
 - For installed PWA use, set `APP_SESSION_DRIVER=database`, `APP_SESSION_LIFETIME=86400`, and `APP_SESSION_IDLE_TIMEOUT=86400`; users can stay signed in longer through the checked-by-default trusted-device option on login.
-- TiDB Cloud commonly uses MySQL port `4000`; import `database/schema.sql` first so `app_sessions` and authentication tables exist before production traffic.
+- Wasmer Attached Database uses hosted MySQL; import `database/schema.sql` first so `app_sessions` and authentication tables exist before production traffic.
 - Use `DB_SSL_CA` for a CA file path, or `DB_SSL_CA_CONTENT` when the CA PEM is stored directly as a GitHub/Wasmer secret.
 - Password reset uses a 6-digit OTP sent through Resend when configured, with SMTP as fallback; reset codes are hashed in `auth_password_resets.token_hash` and expire after 10 minutes.
-- For TiDB Cloud or Wasmer MySQL production imports, use `database/schema_tidb.sql`; it omits the local-only `DROP DATABASE`, `CREATE DATABASE`, and `USE school_db` statements from `database/schema.sql`.
-- To migrate from TiDB to Wasmer MySQL, export the TiDB data first, import `database/schema_tidb.sql` into the Wasmer database, import the data dump, then update Wasmer app environment variables to the Wasmer database values. Keep the TiDB database as backup until all login, SF1, SF2, attendance, and grading flows are verified.
+- For both Laragon and Wasmer Attached Database imports, use `database/schema.sql`. It is hosted-MySQL-compatible and does not include local-only `DROP DATABASE`, `CREATE DATABASE`, or `USE school_db` statements.
+- If migrating existing hosted data into Wasmer Attached Database, import `database/schema.sql` first, import the data dump, then update Wasmer app environment variables to the Wasmer database values. Keep the previous database as backup until all login, SF1, SF2, attendance, and grading flows are verified.
 
-## Instructor RBAC Branch
+## RBAC
 
-- The `instructor-rbac-requirements` branch contains the instructor-specific RBAC requirement work and should stay separate from `main`.
-- RBAC tables are defined in `database/rbac_migration.sql` and default permissions are in `database/rbac_seed.sql`.
+- RBAC tables and default permissions are included in `database/schema.sql`.
 - Runtime helpers also auto-create and seed RBAC tables when the RBAC control panel or protected pages are loaded.
 - Permission checks are enforced through `functions/bootstrap.php` using the current script-to-permission map in `functions/app-helpers.php`.
 - The Admin RBAC Control Panel is available from the admin sidebar.

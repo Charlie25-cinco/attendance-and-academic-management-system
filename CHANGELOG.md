@@ -2,6 +2,17 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.24 — 2026-08-07
+
+### Changed
+
+- Consolidated database setup into a single hosted-compatible `database/schema.sql` for local Laragon and Wasmer Attached Database imports.
+- Updated database setup documentation and schema tests to point at the single canonical schema file.
+
+### Removed
+
+- Removed redundant RBAC migration/seed SQL files, the older all-in-one Wasmer setup SQL, the extra hosted schema SQL, and the standalone performance index SQL/runner.
+
 ## v0.3.23 — 2026-08-07
 
 ### Fixed

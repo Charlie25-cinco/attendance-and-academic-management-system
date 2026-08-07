@@ -2,7 +2,7 @@
 -- Balingasag Senior High School - Attendance and Academic Management System
 -- FIRST ADMIN ACCOUNT SEED
 -- =============================================================================
--- Import after database/schema_tidb.sql.
+-- Import after database/schema.sql.
 --
 -- Temporary admin login:
 --   Reference Code: A341227-1

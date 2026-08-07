@@ -71,5 +71,5 @@ The system serves four primary user roles:
 ## 4. Environment & Deployment Constraints
 
 - **PHP Version:** PHP 8.2+ with `pdo_mysql`, `mbstring`, `json`, `zip`, `dom`, `curl`, `openssl`.
-- **Database:** Wasmer Attached Database (Wasmer MySQL), MySQL 8.0+, MariaDB 10.5+, or TiDB Cloud Serverless.
+- **Database:** Wasmer Attached Database for production, with local MySQL/MariaDB for development.
 - **Runtimes:** Local development via PHP CLI dev server (`composer run serve`), production stateless container runtime via Wasmer Edge (`wasmer.toml`, `app.yaml`).

@@ -52,8 +52,8 @@ For local manual testing, `composer run serve` starts the PHP development server
 - Production must set `API_ALLOWED_ORIGIN` to a trusted origin.
 - Stateless production hosts such as Wasmer must set `APP_SESSION_DRIVER=database` so PHP sessions are stored in SQL instead of instance-local files.
 - Installed PWA login persistence depends on database sessions plus `APP_SESSION_LIFETIME` and `APP_SESSION_IDLE_TIMEOUT`; keep the trusted-device remember option available and checked by default unless the user requests stricter login behavior.
-- TiDB Cloud deployments may require `DB_SSL_CA` or `DB_SSL_CA_CONTENT`; keep `DB_SSL_VERIFY_SERVER_CERT` enabled unless a trusted deployment explicitly disables it.
-- First admin seeding should use `composer run seed:admin`, which runs `database/seed_admin.php`; hosted database dashboards may import `database/seed_admin.sql` after `database/schema_tidb.sql` when CLI seeding is unavailable. Do not hardcode admin password hashes in `database/seed.sql`.
+- Hosted MySQL deployments may require `DB_SSL_CA` or `DB_SSL_CA_CONTENT`; keep `DB_SSL_VERIFY_SERVER_CERT` enabled unless a trusted deployment explicitly disables it.
+- First admin seeding should use `composer run seed:admin`, which runs `database/seed_admin.php`; hosted database dashboards may import `database/seed_admin.sql` after `database/schema.sql` when CLI seeding is unavailable. Do not hardcode admin password hashes in `database/seed.sql`.
 - `FIRST_RUN_ADMIN_PASSWORD` controls first admin creation, and `DEFAULT_NEW_USER_PASSWORD` controls newly created users.
 - API first-login password changes require the temporary token returned by the login endpoint.
 - Web login and remember-me auto-login must both force password setup while a user's password still matches `DEFAULT_NEW_USER_PASSWORD`.
@@ -208,9 +208,9 @@ For local manual testing, `composer run serve` starts the PHP development server
 - The workflow must install production Composer dependencies before `wasmer deploy` because `vendor/` is not committed.
 - Do not commit real Wasmer owner names, tokens, database credentials, API secrets, or production URLs unless they are intentionally public.
 - Configure GitHub secrets for `WASMER_TOKEN`, `WASMER_OWNER`, `WASMER_APP_NAME`, `APP_PUBLIC_BASE_URL`, `DEFAULT_NEW_USER_PASSWORD`, optional `FIRST_RUN_ADMIN_PASSWORD`, `RESEND_API_KEY`, and `RESEND_FROM_EMAIL`; use `WASMER_APP_NAME=balingasagshs` and `APP_PUBLIC_BASE_URL=https://balingasagshs.wasmer.app` for the school deployment.
-- Configure Wasmer app secrets for TiDB/MySQL credentials (`DB_PASS` or Wasmer-provided `DB_PASSWORD` are both supported), optional `DB_SSL_CA` or `DB_SSL_CA_CONTENT`, `APP_SESSION_DRIVER=database`, `API_AUTH_SECRET`, `API_SYNC_SECRET`, Resend OTP email secrets, `PUSH_VAPID_PUBLIC_KEY`, `PUSH_VAPID_PRIVATE_KEY`, `PUSH_VAPID_SUBJECT`, and optional SMTP/SMS credentials.
+- Configure Wasmer app secrets for Wasmer Attached Database credentials (`DB_PASS` or Wasmer-provided `DB_PASSWORD` are both supported), optional `DB_SSL_CA` or `DB_SSL_CA_CONTENT`, `APP_SESSION_DRIVER=database`, `API_AUTH_SECRET`, `API_SYNC_SECRET`, Resend OTP email secrets, `PUSH_VAPID_PUBLIC_KEY`, `PUSH_VAPID_PRIVATE_KEY`, `PUSH_VAPID_SUBJECT`, and optional SMTP/SMS credentials.
 - Keep Composer `platform-check` disabled for Wasmer unless the runtime is confirmed to provide a 64-bit PHP build.
-- Treat Wasmer app instances as stateless; use configured volumes for `/app/storage` and `/app/assets/uploads`, and keep durable school records plus active PHP sessions in Wasmer Attached Database (Wasmer MySQL) or TiDB.
+- Treat Wasmer app instances as stateless; use configured volumes for `/app/storage` and `/app/assets/uploads`, and keep durable school records plus active PHP sessions in Wasmer Attached Database.
 - Production PWA deployments should use database sessions and PWA-friendly session lifetimes, for example `APP_SESSION_LIFETIME=86400` and `APP_SESSION_IDLE_TIMEOUT=86400`.
 - Password reset uses 6-digit OTP codes sent through Resend when configured, with SMTP fallback. Store only hashed reset codes in `auth_password_resets.token_hash`.
-- Use `database/schema_tidb.sql` for Wasmer Attached Database (Wasmer MySQL) or TiDB Cloud production imports because it omits local-only database drop/create/use statements.
+- Use `database/schema.sql` for both local and Wasmer Attached Database imports; it omits local-only database drop/create/use statements and is hosted-MySQL-compatible.

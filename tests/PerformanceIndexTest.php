@@ -4,50 +4,28 @@ use PHPUnit\Framework\TestCase;
 
 final class PerformanceIndexTest extends TestCase
 {
-    public function testPerformanceIndexesMigrationFileExists(): void
+    public function testCanonicalSchemaIncludesPerformanceIndexes(): void
     {
-        $path = __DIR__ . '/../database/performance_indexes.sql';
-        $this->assertFileExists($path);
-
-        $content = file_get_contents($path);
-        $this->assertIsString($content);
-
-        $expectedIndexes = [
-            'idx_users_role_status_grade',
-            'idx_classes_grade_section_status',
-            'idx_enrollments_student_class_ay',
-            'idx_attendance_student_date_status',
-            'idx_grades_student_cs_term_ay',
-            'idx_grade_items_class_term',
-            'idx_gis_item_student',
-        ];
-
-        foreach ($expectedIndexes as $indexName) {
-            $this->assertStringContainsString($indexName, $content);
-        }
-
-        $this->assertFileExists(__DIR__ . '/../database/run_performance_indexes.php');
-    }
-
-    public function testSchemaTidbIncludesPerformanceIndexes(): void
-    {
-        $path = __DIR__ . '/../database/schema_tidb.sql';
+        $path = __DIR__ . '/../database/schema.sql';
         $this->assertFileExists($path);
 
         $content = file_get_contents($path);
         $this->assertIsString($content);
         $this->assertStringContainsString('PERFORMANCE COMPOSITE INDEXES', $content);
         $this->assertStringContainsString('idx_users_role_status_grade', $content);
+        $this->assertStringNotContainsString('CREATE INDEX IF NOT EXISTS', $content);
     }
 
-    public function testWasmerFullSetupFileIncludesSchemaIndexesAndAdminSeed(): void
+    public function testProductionSchemaIncludesCoreHostedSetup(): void
     {
-        $path = __DIR__ . '/../database/wasmer_full_setup.sql';
+        $path = __DIR__ . '/../database/schema.sql';
         $this->assertFileExists($path);
 
         $content = file_get_contents($path);
         $this->assertIsString($content);
-        $this->assertStringContainsString('A341227-1', $content);
+        $this->assertStringContainsString('CREATE TABLE IF NOT EXISTS app_sessions', $content);
+        $this->assertStringContainsString('CREATE TABLE IF NOT EXISTS rbac_roles', $content);
+        $this->assertStringContainsString('CREATE TABLE IF NOT EXISTS rbac_permissions', $content);
         $this->assertStringContainsString('idx_users_role_status_grade', $content);
         $this->assertStringContainsString('CREATE TABLE IF NOT EXISTS users', $content);
     }
