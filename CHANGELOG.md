@@ -2,6 +2,14 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.50 — 2026-08-08
+
+### Fixed
+
+- Fixed invisible welcome text on the Parent dashboard across all CSS cascade layers by switching base `.welcome-title` and `.welcome-meta` colors in `main.css` to readable theme variables and enforcing `!important` text colors on `#dashboardGreeting` and role hero headings in `role.css`.
+- Added database user name lookup fallback in `Parent.php` when session first name is empty so greetings never display blank or unformatted names.
+- Added versioned stylesheet queries (`?v=...`) to `Parent.php` and bumped Service Worker cache to `bshs-ams-v11` for immediate client cache invalidation.
+
 ## v0.3.49 — 2026-08-08
 
 ### Fixed

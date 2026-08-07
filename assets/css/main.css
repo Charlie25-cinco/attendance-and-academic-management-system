@@ -779,9 +779,26 @@ body.dark-mode .dashboard-card {
 body.dark-mode .dashboard-card .card-title {
   color: var(--dm-text-muted);
 }
+.card-icon.orange {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--warning-color);
+}
 
-body.dark-mode .dashboard-card .card-value {
-  color: var(--dm-text);
+.card-icon.red {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger-color);
+}
+
+.card-title {
+  font-size: 14px;
+  color: #6b7280;
+  margin-bottom: 5px;
+}
+
+.card-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--dark-bg);
 }
 
 .welcome-hero {
@@ -827,11 +844,11 @@ body.dark-mode .dashboard-card .card-value {
   font-size: 28px;
   font-weight: 700;
   margin: 0 0 4px;
-  color: #fff;
+  color: var(--ui-text, #172033);
 }
 
 .welcome-meta {
-  color: rgba(255, 255, 255, 0.88);
+  color: var(--ui-muted, #667085);
   font-size: 14px;
 }
 
@@ -842,7 +859,7 @@ body.dark-mode .dashboard-card .card-value {
 }
 
 .welcome-term {
-  color: rgba(255, 255, 255, 0.82);
+  color: var(--ui-muted, #667085);
   font-size: 13px;
   margin-top: 3px;
 }
@@ -866,28 +883,6 @@ body.dark-mode .dashboard-card .card-value {
 .card-icon.green {
   background: rgba(16, 185, 129, 0.1);
   color: var(--accent-color);
-}
-
-.card-icon.orange {
-  background: rgba(245, 158, 11, 0.1);
-  color: var(--warning-color);
-}
-
-.card-icon.red {
-  background: rgba(239, 68, 68, 0.1);
-  color: var(--danger-color);
-}
-
-.card-title {
-  font-size: 14px;
-  color: #6b7280;
-  margin-bottom: 5px;
-}
-
-.card-value {
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--dark-bg);
 }
 
 /* Content Card */

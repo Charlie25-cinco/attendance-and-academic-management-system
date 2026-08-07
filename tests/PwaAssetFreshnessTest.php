@@ -24,7 +24,7 @@ final class PwaAssetFreshnessTest extends TestCase
         $serviceWorker = file_get_contents(__DIR__ . '/../sw.js');
 
         $this->assertIsString($serviceWorker);
-        $this->assertStringContainsString("const CACHE_NAME = 'bshs-ams-v10';", $serviceWorker);
+        $this->assertStringContainsString("const CACHE_NAME = 'bshs-ams-v11';", $serviceWorker);
         $this->assertStringContainsString('var needsFreshAsset = /\\.(css|js)$/i.test(url.pathname);', $serviceWorker);
         $this->assertStringContainsString('if (needsFreshAsset) {', $serviceWorker);
         $networkFirst = strpos($serviceWorker, 'if (needsFreshAsset) {');

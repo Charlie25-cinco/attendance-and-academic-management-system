@@ -17,7 +17,26 @@ $current_role = 'parent';
 $current_page = 'dashboard';
 $page_title = 'Parent Dashboard';
 
-$parentName = trim(($_SESSION['first_name'] ?? 'Parent') . ' ' . ($_SESSION['last_name'] ?? ''));
+$parentName = trim((string)($_SESSION['first_name'] ?? '') . ' ' . (string)($_SESSION['last_name'] ?? ''));
+if ($parentName === '' && $db && $parentId > 0) {
+    try {
+        $parentUserStmt = $db->prepare("SELECT first_name, last_name FROM users WHERE id = ? LIMIT 1");
+        $parentUserStmt->execute([$parentId]);
+        $pRow = $parentUserStmt->fetch(PDO::FETCH_ASSOC);
+        if ($pRow) {
+            if (!empty($pRow['first_name'])) {
+                $_SESSION['first_name'] = $pRow['first_name'];
+            }
+            if (!empty($pRow['last_name'])) {
+                $_SESSION['last_name'] = $pRow['last_name'];
+            }
+            $parentName = trim((string)($pRow['first_name'] ?? '') . ' ' . (string)($pRow['last_name'] ?? ''));
+        }
+    } catch (Throwable $e) {}
+}
+if ($parentName === '') {
+    $parentName = 'Parent';
+}
 $parentRef = $_SESSION['reference_code'] ?? '';
 
 $children = [];
@@ -134,7 +153,7 @@ if ($db && $parentId > 0) {
                                    GROUP_CONCAT(DISTINCT CONCAT(t.first_name, ' ', t.last_name) SEPARATOR ', ') AS teacher_names
                                    FROM enrollments e
                                    JOIN classes c ON c.id = e.class_id
-                                   LEFT JOIN class_subjects cs ON cs.class_id = c.id
+                                   LEFT JOIN class_subjects cs ON cs.id = c.id
                                    LEFT JOIN users t ON t.id = cs.teacher_id
                                    WHERE e.student_id = ? AND e.status = 'enrolled' AND c.status = 'active'
                                    GROUP BY c.id
@@ -297,8 +316,8 @@ $nextClassLabel = !empty($todaySchedule)
     <title><?php echo htmlspecialchars($page_title, ENT_QUOTES, 'UTF-8'); ?> - Balingasag Senior High School</title>
     <link href="<?php echo appAssetPath('vendor/bootstrap/bootstrap.min.css'); ?>" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo appAssetPath('vendor/bootstrap-icons/bootstrap-icons.css'); ?>">
-    <link rel="stylesheet" href="../assets/css/main.css">
-    <link rel="stylesheet" href="../assets/css/role.css">
+    <link rel="stylesheet" href="../assets/css/main.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/main.css') ?: '2'; ?>">
+    <link rel="stylesheet" href="../assets/css/role.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/role.css') ?: '2'; ?>">
 <?php echo pwaHeadHtml(); ?>
 </head>
 <body>
@@ -390,93 +409,91 @@ $nextClassLabel = !empty($todaySchedule)
                                             </div>
                                             <div class="grade-breakdown">
                                                 <div class="grade-item"><div class="grade-item-value"><?php echo $g['quiz_avg'] !== null ? round($g['quiz_avg'], 2) : 'N/A'; ?></div><div class="grade-item-label">Written Work</div></div>
-                                                <div class="grade-item"><div class="grade-item-value"><?php echo $g['exam_avg'] !== null ? round($g['exam_avg'], 2) : 'N/A'; ?></div><div class="grade-item-label">Assessment</div></div>
-                                                <div class="grade-item"><div class="grade-item-value"><?php echo $g['activity_avg'] !== null ? round($g['activity_avg'], 2) : 'N/A'; ?></div><div class="grade-item-label">Performance Task</div></div>
+                                                <div class="grade-item"><div class="grade-item-value"><?php echo $g['activity_avg'] !== null ? round($g['activity_avg'], 2) : 'N/A'; ?></div><div class="grade-item-label">Performance Tasks</div></div>
+                                                <div class="grade-item"><div class="grade-item-value"><?php echo $g['exam_avg'] !== null ? round($g['exam_avg'], 2) : 'N/A'; ?></div><div class="grade-item-label">Quarterly Assessment</div></div>
                                             </div>
                                         </div>
                                     <?php endforeach; ?>
                                 <?php endif; ?>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-12">
-                        <div class="content-card">
-                            <div class="content-card-header"><h5 class="content-card-title">Today's Class Schedule</h5></div>
-                            <div class="content-card-body">
-                                <div class="table-container dashboard-table-wrap">
-                                    <table class="custom-table">
-                                        <thead><tr><th>Time</th><th>Subject</th><th>Status</th></tr></thead>
-                                        <tbody>
-                                        <?php if (empty($todaySchedule)): ?>
-                                            <tr><td colspan="3" class="text-center text-muted py-3">No classes scheduled today.</td></tr>
-                                        <?php else: ?>
-                                            <?php foreach ($todaySchedule as $slot): ?>
-                                                <?php
-                                                $badgeClass = 'status-pending';
-                                                $label = ucfirst($slot['status']);
-                                                if ($slot['status'] === 'present') { $badgeClass = 'status-active'; }
-                                                if ($slot['status'] === 'absent') { $badgeClass = 'status-inactive'; }
-                                                if ($slot['status'] === 'late') { $badgeClass = 'status-pending'; }
-                                                ?>
-                                                <tr>
-                                                    <td><?php echo htmlspecialchars($slot['time']); ?></td>
-                                                    <td><strong><?php echo htmlspecialchars($slot['subject']); ?></strong></td>
-                                                    <td><span class="status-badge <?php echo $badgeClass; ?>"><?php echo htmlspecialchars($label); ?></span></td>
-                                                </tr>
-                                            <?php endforeach; ?>
-                                        <?php endif; ?>
-                                        </tbody>
-                                    </table>
-                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="row g-4 mb-3">
-                    <div class="col-12 col-xl-6">
+                <div class="row g-4 mt-2">
+                    <div class="col-lg-6">
                         <div class="content-card">
-                            <div class="content-card-header">
-                                <h5 class="content-card-title">School Announcements</h5>
-                                <a href="Parent_Announcements.php" class="btn btn-sm btn-primary-custom">View All</a>
-                            </div>
+                            <div class="content-card-header"><h5 class="content-card-title">Today's Schedule</h5></div>
                             <div class="content-card-body">
-                                <?php if (empty($announcements)): ?>
-                                    <div class="text-center text-muted py-3">No announcements available.</div>
+                                <?php if (empty($todaySchedule)): ?>
+                                    <div class="text-center text-muted py-3">No classes scheduled for today.</div>
                                 <?php else: ?>
-                                    <?php foreach ($announcements as $a): ?>
-                                        <div class="announcement-card info mb-3">
-                                            <div class="announcement-header">
-                                                <h6 class="announcement-title"><?php echo htmlspecialchars($a['title']); ?></h6>
-                                                <span class="announcement-badge info"><?php echo htmlspecialchars($a['class_name']); ?></span>
+                                    <div class="table-responsive">
+                                        <table class="table table-hover align-middle mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Time</th>
+                                                    <th>Class</th>
+                                                    <th>Teacher</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php foreach ($todaySchedule as $s): ?>
+                                                    <tr>
+                                                        <td><strong><?php echo htmlspecialchars($s['time']); ?></strong></td>
+                                                        <td><?php echo htmlspecialchars($s['subject']); ?></td>
+                                                        <td><?php echo htmlspecialchars($s['teacher']); ?></td>
+                                                        <td>
+                                                            <span class="badge bg-<?php echo $s['status'] === 'present' ? 'success' : ($s['status'] === 'late' ? 'warning' : ($s['status'] === 'absent' ? 'danger' : 'secondary')); ?>">
+                                                                <?php echo ucfirst($s['status']); ?>
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="content-card">
+                            <div class="content-card-header"><h5 class="content-card-title">Class Updates</h5></div>
+                            <div class="content-card-body">
+                                <?php if (empty($classAnnouncements)): ?>
+                                    <div class="text-center text-muted py-3">No class announcements yet.</div>
+                                <?php else: ?>
+                                    <?php foreach ($classAnnouncements as $ca): ?>
+                                        <div class="announcement-item mb-3 pb-3 border-bottom">
+                                            <div class="d-flex justify-content-between">
+                                                <h6 class="mb-1 fw-bold"><?php echo htmlspecialchars($ca['title']); ?></h6>
+                                                <small class="text-muted"><?php echo htmlspecialchars($ca['class_name']); ?></small>
                                             </div>
-                                            <p class="announcement-content"><?php echo htmlspecialchars($a['content']); ?></p>
-                                            <div class="announcement-meta"><span><i class="bi bi-clock"></i> <?php echo date('M d, Y h:i A', strtotime($a['created_at'])); ?></span></div>
+                                            <p class="text-muted small mb-1"><?php echo nl2br(htmlspecialchars($ca['content'])); ?></p>
+                                            <small class="text-muted"><?php echo date('M d, Y', strtotime($ca['created_at'])); ?></small>
                                         </div>
                                     <?php endforeach; ?>
                                 <?php endif; ?>
                             </div>
                         </div>
                     </div>
-                    <div class="col-12 col-xl-6">
+                </div>
+
+                <div class="row g-4 mt-2">
+                    <div class="col-12">
                         <div class="content-card">
-                            <div class="content-card-header">
-                                <h5 class="content-card-title">Class Announcements</h5>
-                                <a href="Parent_Announcements.php" class="btn btn-sm btn-primary-custom">View All</a>
-                            </div>
+                            <div class="content-card-header"><h5 class="content-card-title">School Announcements</h5></div>
                             <div class="content-card-body">
-                                <?php if (empty($classAnnouncements)): ?>
-                                    <div class="text-center text-muted py-3">No class announcements available.</div>
+                                <?php if (empty($announcements)): ?>
+                                    <div class="text-center text-muted py-3">No school announcements yet.</div>
                                 <?php else: ?>
-                                    <?php foreach ($classAnnouncements as $a): ?>
-                                        <div class="announcement-card info mb-3">
-                                            <div class="announcement-header">
-                                                <h6 class="announcement-title"><?php echo htmlspecialchars($a['title']); ?></h6>
-                                                <span class="announcement-badge info"><?php echo htmlspecialchars($a['class_name']); ?></span>
-                                            </div>
-                                            <p class="announcement-content"><?php echo htmlspecialchars($a['content']); ?></p>
-                                            <div class="announcement-meta"><span><i class="bi bi-clock"></i> <?php echo date('M d, Y h:i A', strtotime($a['created_at'])); ?></span></div>
+                                    <?php foreach ($announcements as $a): ?>
+                                        <div class="announcement-item mb-3 pb-3 border-bottom">
+                                            <h6 class="mb-1 fw-bold"><?php echo htmlspecialchars($a['title']); ?></h6>
+                                            <p class="text-muted small mb-1"><?php echo nl2br(htmlspecialchars($a['content'])); ?></p>
+                                            <small class="text-muted"><?php echo date('M d, Y', strtotime($a['created_at'])); ?></small>
                                         </div>
                                     <?php endforeach; ?>
                                 <?php endif; ?>
@@ -504,7 +521,7 @@ $nextClassLabel = !empty($todaySchedule)
             }
             const greetingEl = document.getElementById('dashboardGreeting');
             if (greetingEl) {
-                const userName = "<?php echo addslashes(htmlspecialchars($parentName)); ?>";
+                const userName = <?php echo json_encode($parentName, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
                 greetingEl.innerText = greeting + ", " + userName + "!";
             }
         });
