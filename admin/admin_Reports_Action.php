@@ -1,10 +1,19 @@
 <?php
 require_once __DIR__ . '/../functions/bootstrap.php';
 // Admin Reports Action Handler
-if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'admin') {
-    http_response_code(403);
-    echo 'Unauthorized access';
+
+function adminReportsJsonExit(array $payload, int $statusCode = 200): void {
+    header('Content-Type: application/json');
+    http_response_code($statusCode);
+    echo json_encode($payload);
     exit();
+}
+
+if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'admin') {
+    adminReportsJsonExit([
+        'ok' => false,
+        'message' => 'Your session expired or you are not signed in as an admin. Please log in again.'
+    ], 403);
 }
 
 
@@ -12,9 +21,10 @@ $database = new Database();
 $db = $database->getConnection();
 
 if (!$db) {
-    http_response_code(500);
-    echo 'Database connection failed';
-    exit();
+    adminReportsJsonExit([
+        'ok' => false,
+        'message' => 'Database connection failed while loading report notes.'
+    ], 500);
 }
 
 $action = $_GET['action'] ?? '';

@@ -2,6 +2,18 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.22 — 2026-08-07
+
+### Fixed
+
+- Fixed report notes session and database failures to return JSON so the reports UI can show a clear message instead of an invalid-response error.
+
+## v0.3.21 — 2026-08-07
+
+### Added
+
+- Added Teacher Attendance page SF2 export buttons for XLSX and CSV using the selected class and attendance date month.
+
 ## v0.3.20 — 2026-08-06
 
 ### Fixed

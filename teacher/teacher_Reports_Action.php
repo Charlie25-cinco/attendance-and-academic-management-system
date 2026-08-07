@@ -5,18 +5,28 @@ while ($__appRoot !== dirname($__appRoot) && !is_file($__appRoot . '/functions/b
 }
 require_once $__appRoot . '/functions/bootstrap.php';
 unset($__appRoot);
-if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'teacher') {
-    http_response_code(403);
-    echo 'Unauthorized access';
+
+function teacherReportsJsonExit(array $payload, int $statusCode = 200): void {
+    header('Content-Type: application/json');
+    http_response_code($statusCode);
+    echo json_encode($payload);
     exit();
+}
+
+if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'teacher') {
+    teacherReportsJsonExit([
+        'ok' => false,
+        'message' => 'Your session expired or you are not signed in as a teacher. Please log in again.'
+    ], 403);
 }
 
 require_once __DIR__ . '/teacher_Reports_Helper.php';
 $db = (new Database())->getConnection();
 if (!$db) {
-    http_response_code(500);
-    echo 'Database connection failed';
-    exit();
+    teacherReportsJsonExit([
+        'ok' => false,
+        'message' => 'Database connection failed while loading report notes.'
+    ], 500);
 }
 
 $teacherId = (int)($_SESSION['user_id'] ?? 0);
