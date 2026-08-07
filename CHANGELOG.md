@@ -2,6 +2,18 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.26 — 2026-08-07
+
+### Added
+
+- Added `database/reset_database.sql` for safely clearing all application tables before reimporting the canonical schema for demo resets.
+
+## v0.3.25 — 2026-08-07
+
+### Fixed
+
+- Fixed fresh Wasmer database imports by replacing an invalid `grade_items` performance index that referenced nonexistent `term` and `academic_year` columns.
+
 ## v0.3.24 — 2026-08-07
 
 ### Changed

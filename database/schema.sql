@@ -677,7 +677,7 @@ CREATE INDEX idx_classes_grade_section_status ON classes (grade_level, section, 
 CREATE INDEX idx_enrollments_student_class_ay ON enrollments (student_id, class_id, academic_year, status);
 CREATE INDEX idx_attendance_student_date_status ON attendance (student_id, date, status);
 CREATE INDEX idx_grades_student_cs_term_ay ON grades (student_id, class_subject_id, academic_year, term);
-CREATE INDEX idx_grade_items_class_term ON grade_items (class_id, term, academic_year);
+CREATE INDEX idx_grade_items_class_teacher_date_status ON grade_items (class_id, teacher_id, activity_date, status);
 CREATE INDEX idx_gis_item_student ON grade_item_scores (grade_item_id, student_id);
 
 
