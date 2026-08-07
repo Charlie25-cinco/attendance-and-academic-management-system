@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.47 — 2026-08-08
+
+### Fixed
+
+- Granted the Parent role default `messages.view` and `messages.send` permissions so the visible Parent Messages page and send action no longer open Access denied on freshly seeded RBAC databases.
+
 ## v0.3.46 — 2026-08-08
 
 ### Fixed

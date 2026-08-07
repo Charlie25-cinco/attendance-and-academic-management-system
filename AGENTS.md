@@ -98,6 +98,7 @@ For local manual testing, `composer run serve` starts the PHP development server
 ## Chat
 
 - Chat is adviser-parent only.
+- Parent role defaults must include `messages.view` and `messages.send` because the Parent portal exposes the Messages page.
 - Teacher chat contacts must come from the teacher's advisory section through `classes.teacher_id`.
 - Parent chat contacts must be the adviser for each linked student's grade level and section.
 - Do not use `class_subjects.teacher_id` to expose subject teachers as parent chat contacts.
@@ -188,6 +189,7 @@ For local manual testing, `composer run serve` starts the PHP development server
 ## Chat
 
 - Chat is adviser-parent only.
+- Parent role defaults must include `messages.view` and `messages.send` because the Parent portal exposes the Messages page.
 - Teacher chat contacts must come from the teacher's advisory section through `classes.teacher_id`.
 - Parent chat contacts must be the adviser for each linked student's grade level and section.
 - Do not use `class_subjects.teacher_id` to expose subject teachers as parent chat contacts.

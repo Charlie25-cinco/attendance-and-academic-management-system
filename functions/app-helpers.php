@@ -905,7 +905,10 @@ function ensureRbacRolesSeeded(PDO $db): void {
         'archives.view',
     ];
     $studentPerms = ['attendance.view', 'grades.view', 'classes.view', 'announcements.view'];
-    $parentPerms = ['attendance.view', 'grades.view', 'reports.view', 'announcements.view'];
+    $parentPerms = [
+        'attendance.view', 'grades.view', 'reports.view', 'announcements.view',
+        'messages.view', 'messages.send',
+    ];
 
     $roleMap = [
         'admin' => null,
