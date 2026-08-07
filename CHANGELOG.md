@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.49 — 2026-08-08
+
+### Fixed
+
+- Bumped root Service Worker cache key to `bshs-ams-v10` so installed PWA clients immediately purge obsolete asset caches and fetch updated stylesheets.
+
 ## v0.3.48 — 2026-08-08
 
 ### Fixed
