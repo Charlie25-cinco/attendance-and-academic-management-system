@@ -2207,10 +2207,18 @@ body.dark-mode .material-btn:hover {
 .portal-chip {
   border-radius: var(--radius-full);
   padding: 10px 16px;
+  min-height: 44px;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .portal-switcher .btn-primary-custom small {
   color: rgba(255, 255, 255, 0.88);
+}
+
+.portal-chip-reference {
+  font-weight: 800;
+  opacity: 0.92;
 }
 
 body.dark-mode .dashboard-section-title {
@@ -2514,6 +2522,22 @@ body::before {
   border-color: var(--ui-primary-hover);
   color: #fff;
   transform: none;
+}
+
+.portal-switcher .portal-chip.btn-primary-custom .portal-chip-reference {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.portal-switcher .portal-chip {
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.header-profile-btn {
+  max-width: min(380px, 30vw);
 }
 
 .btn-outline-primary {

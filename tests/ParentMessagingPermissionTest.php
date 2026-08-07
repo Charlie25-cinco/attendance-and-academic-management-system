@@ -42,10 +42,15 @@ final class ParentMessagingPermissionTest extends TestCase
     {
         $css = file_get_contents(__DIR__ . '/../assets/css/main.css');
         $this->assertIsString($css);
+        $markup = file_get_contents(__DIR__ . '/../parent/Parent.php');
+        $this->assertIsString($markup);
 
         $this->assertStringContainsString('.portal-switcher .btn-primary-custom small', $css);
         $this->assertMatchesRegularExpression('/\.portal-switcher\s+\.btn-primary-custom\s+small\s*\{[^}]*color:\s*rgba\(255,\s*255,\s*255,\s*0\.88\)/s', $css);
+        $this->assertStringContainsString('class="portal-chip-reference ms-1"', $markup);
+        $this->assertMatchesRegularExpression('/\.portal-switcher\s+\.portal-chip\.btn-primary-custom\s+\.portal-chip-reference\s*\{[^}]*color:\s*rgba\(255,\s*255,\s*255,\s*0\.92\)\s*!important/s', $css);
         $this->assertStringContainsString('max-width: min(360px, 28vw);', $css);
+        $this->assertStringContainsString('max-width: min(380px, 30vw);', $css);
         $this->assertStringContainsString('.header-profile-meta', $css);
         $this->assertStringContainsString('min-width: 0;', $css);
     }

@@ -349,7 +349,7 @@ $nextClassLabel = !empty($todaySchedule)
                                 <a href="?student_id=<?php echo (int)$child['id']; ?>" class="btn portal-chip <?php echo ((int)$child['id'] === $selectedStudentId) ? 'btn-primary-custom' : 'btn-outline-secondary'; ?>">
                                     <?php echo htmlspecialchars($child['first_name'] . ' ' . $child['last_name']); ?>
                                     <?php if (!empty($child['reference_code'])): ?>
-                                        <small class="ms-1">(<?php echo htmlspecialchars((string)$child['reference_code']); ?>)</small>
+                                        <small class="portal-chip-reference ms-1">(<?php echo htmlspecialchars((string)$child['reference_code']); ?>)</small>
                                     <?php endif; ?>
                                 </a>
                             <?php endforeach; ?>
