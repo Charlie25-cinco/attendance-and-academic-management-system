@@ -213,6 +213,7 @@ For local manual testing, `composer run serve` starts the PHP development server
 - Wasmer Edge config should stay in `app.yaml`, package config in `wasmer.toml`, and PHP settings in `config/wasmer/php.ini`.
 - GitHub deployment should use `.github/workflows/wasmer-deploy.yml`.
 - The workflow must install production Composer dependencies before `wasmer deploy` because `vendor/` is not committed.
+- Keep bounded retries around only the external `wasmer deploy` command so transient registry timeouts do not rerun or conceal validation, lint, and test failures.
 - Do not commit real Wasmer owner names, tokens, database credentials, API secrets, or production URLs unless they are intentionally public.
 - Configure GitHub secrets for `WASMER_TOKEN`, `WASMER_OWNER`, `WASMER_APP_NAME`, `APP_PUBLIC_BASE_URL`, `DEFAULT_NEW_USER_PASSWORD`, optional `FIRST_RUN_ADMIN_PASSWORD`, `RESEND_API_KEY`, and `RESEND_FROM_EMAIL`; use `WASMER_APP_NAME=balingasagshs` and `APP_PUBLIC_BASE_URL=https://balingasagshs.wasmer.app` for the school deployment.
 - Configure Wasmer app secrets for Wasmer Attached Database credentials (`DB_PASS` or Wasmer-provided `DB_PASSWORD` are both supported), optional `DB_SSL_CA` or `DB_SSL_CA_CONTENT`, `APP_SESSION_DRIVER=database`, `API_AUTH_SECRET`, `API_SYNC_SECRET`, Resend OTP email secrets, `PUSH_VAPID_PUBLIC_KEY`, `PUSH_VAPID_PRIVATE_KEY`, `PUSH_VAPID_SUBJECT`, and optional SMTP/SMS credentials.

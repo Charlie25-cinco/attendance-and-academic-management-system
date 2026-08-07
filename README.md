@@ -149,7 +149,7 @@ Open `http://localhost:5000`.
 ## Wasmer Deployment
 
 - Wasmer Edge config lives in `app.yaml`, package config lives in `wasmer.toml`, and PHP settings live in `config/wasmer/php.ini`.
-- GitHub deployment is configured in `.github/workflows/wasmer-deploy.yml`; it installs production Composer dependencies before running `wasmer deploy --publish-package --non-interactive`.
+- GitHub deployment is configured in `.github/workflows/wasmer-deploy.yml`; it installs production Composer dependencies before running `wasmer deploy --non-interactive`. Only the external deploy operation retries transient Wasmer registry failures, up to four attempts with bounded backoff.
 - Set these GitHub repository secrets before using the workflow:
   - `WASMER_TOKEN`
   - `WASMER_OWNER`

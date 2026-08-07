@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.39 — 2026-08-07
+
+### Fixed
+
+- Added bounded retries and a workflow timeout for transient Wasmer registry failures during GitHub deployment without retrying project validation failures.
+
 ## v0.3.38 — 2026-08-07
 
 ### Fixed
