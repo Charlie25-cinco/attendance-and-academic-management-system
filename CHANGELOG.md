@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.46 — 2026-08-08
+
+### Fixed
+
+- Changed the primary Chromium/PWA learning-material picker to start in Documents instead of reopening a stalled Windows Downloads folder.
+- Added clipboard file paste while retaining drag-and-drop and the standard input fallback for browsers without the File System Access API.
+
 ## v0.3.45 — 2026-08-08
 
 ### Fixed
