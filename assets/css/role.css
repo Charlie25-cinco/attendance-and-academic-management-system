@@ -2166,16 +2166,22 @@ body.dark-mode .parent-chat-bubble.received {
 }
 
 .admin-hero .welcome-title,
-.admin-hero h4,
-.teacher-hero-copy h4,
-.teacher-hero-copy h5,
-.student-hero h4,
-.parent-hero h4 {
+.teacher-hero .welcome-title,
+.student-hero .welcome-title,
+.parent-hero .welcome-title,
+.admin-hero h1, .admin-hero h2, .admin-hero h3, .admin-hero h4, .admin-hero h5,
+.teacher-hero-copy h1, .teacher-hero-copy h2, .teacher-hero-copy h3, .teacher-hero-copy h4, .teacher-hero-copy h5,
+.student-hero h1, .student-hero h2, .student-hero h3, .student-hero h4, .student-hero h5,
+.parent-hero h1, .parent-hero h2, .parent-hero h3, .parent-hero h4, .parent-hero h5 {
   color: var(--ui-text, #172033);
   letter-spacing: 0;
 }
 
 .admin-hero .welcome-meta,
+.teacher-hero-copy .welcome-meta,
+.student-hero .welcome-meta,
+.parent-hero .welcome-meta,
+.admin-hero p,
 .teacher-hero-copy p,
 .student-hero p,
 .parent-hero p {

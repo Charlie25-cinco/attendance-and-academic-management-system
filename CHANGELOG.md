@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.48 — 2026-08-08
+
+### Fixed
+
+- Fixed invisible welcome text on the Parent dashboard by expanding CSS rules for `.welcome-title` and heading elements under `.parent-hero`, `.student-hero`, `.teacher-hero`, and `.admin-hero` to ensure readable dark text on light backgrounds and adapt to dark mode.
+
 ## v0.3.47 — 2026-08-08
 
 ### Fixed
