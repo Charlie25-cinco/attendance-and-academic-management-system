@@ -1,4 +1,9 @@
 <?php
+$__teacherReportsAction = (string)($_GET['action'] ?? '');
+$__teacherReportsNotesAction = in_array($__teacherReportsAction, ['save_note', 'list_notes', 'update_note', 'delete_note'], true);
+if ($__teacherReportsNotesAction) {
+    ob_start();
+}
 $__appRoot = __DIR__;
 while ($__appRoot !== dirname($__appRoot) && !is_file($__appRoot . '/functions/bootstrap.php')) {
     $__appRoot = dirname($__appRoot);
@@ -7,6 +12,7 @@ require_once $__appRoot . '/functions/bootstrap.php';
 unset($__appRoot);
 
 function teacherReportsJsonExit(array $payload, int $statusCode = 200): void {
+    while (ob_get_level() > 0) { ob_end_clean(); }
     header('Content-Type: application/json');
     http_response_code($statusCode);
     echo json_encode($payload);
@@ -30,8 +36,9 @@ if (!$db) {
 }
 
 $teacherId = (int)($_SESSION['user_id'] ?? 0);
-$action = $_GET['action'] ?? '';
+$action = $__teacherReportsAction;
 ensureReportNotesTables($db);
+unset($__teacherReportsAction, $__teacherReportsNotesAction);
 
 function requirePostAndCsrfOrExit() {
     if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
@@ -59,15 +66,10 @@ function requirePostAndCsrfOrExit() {
 
 function handleReportNotesError(Throwable $e): void {
     error_log('Teacher report notes action failed: ' . $e->getMessage());
-    if (!headers_sent()) {
-        header('Content-Type: application/json');
-        http_response_code(500);
-    }
-    echo json_encode([
+    teacherReportsJsonExit([
         'ok' => false,
         'message' => 'Report notes could not be loaded. Please try again or contact the administrator.'
-    ]);
-    exit();
+    ], 500);
 }
 
 if (in_array($action, ['save_note', 'list_notes', 'update_note', 'delete_note'], true)) {

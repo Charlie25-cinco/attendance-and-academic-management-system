@@ -614,7 +614,9 @@ function exportTeacherReportSf2(format) {
         const qs = typeFilter.value ? ('&report_type=' + encodeURIComponent(typeFilter.value)) : '';
 
         try {
-            const res = await fetch('teacher_Reports_Action.php?action=list_notes' + qs);
+            const res = await fetch('teacher_Reports_Action.php?action=list_notes' + qs, {
+                headers: { 'Accept': 'application/json' }
+            });
             const data = await readJsonResponse(res, 'Report notes returned an invalid response.');
             if (!res.ok || !data.ok) {
                 listWrap.innerHTML = '<div class="text-danger">' + esc(data.message || 'Failed to load notes.') + '</div>';
@@ -679,6 +681,7 @@ function exportTeacherReportSf2(format) {
             const action = isEdit ? 'update_note' : 'save_note';
             const res = await fetch('teacher_Reports_Action.php?action=' + action, {
                 method: 'POST',
+                headers: { 'Accept': 'application/json' },
                 body: fd
             });
             const data = await readJsonResponse(res, isEdit ? 'Report note update returned an invalid response.' : 'Report note save returned an invalid response.');
@@ -753,6 +756,7 @@ function exportTeacherReportSf2(format) {
         try {
             const res = await fetch('teacher_Reports_Action.php?action=delete_note', {
                 method: 'POST',
+                headers: { 'Accept': 'application/json' },
                 body: fd
             });
             const data = await readJsonResponse(res, 'Report note delete returned an invalid response.');

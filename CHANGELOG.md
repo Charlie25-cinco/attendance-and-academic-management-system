@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.23 — 2026-08-07
+
+### Fixed
+
+- Fixed Teacher SF2 XLSX export on hosted PHP runtimes without `ZipArchive` by adding an official-template fallback writer.
+- Hardened report notes requests to clear accidental output and request JSON explicitly so invalid-response messages are avoided.
+
 ## v0.3.22 — 2026-08-07
 
 ### Fixed

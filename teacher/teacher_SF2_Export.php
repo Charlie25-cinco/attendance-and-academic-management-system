@@ -124,4 +124,16 @@ $exporter->setTeacherName($teacherName);
 
 $filename = 'SF2_' . ($class['class_name'] ?? 'Class') . '_' . $monthName . '_' . $year . '.xlsx';
 $filename = preg_replace('/[^A-Za-z0-9._ -]+/', '_', $filename) ?: 'SF2.xlsx';
-$exporter->outputToBrowser($filename);
+try {
+    $exporter->outputToBrowser($filename);
+} catch (Throwable $e) {
+    error_log('Teacher SF2 XLSX export failed: ' . $e->getMessage());
+    while (ob_get_level() > 0) { ob_end_clean(); }
+    header('Content-Type: application/json');
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'message' => 'SF2 XLSX export failed. Please try CSV or contact the administrator.'
+    ]);
+    exit();
+}

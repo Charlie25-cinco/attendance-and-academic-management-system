@@ -8,6 +8,9 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use BshsAms\Xlsx\SimpleXlsxTemplateEditor;
+use RuntimeException;
+use Throwable;
 
 class Sf2Exporter {
     private array $class = [];
@@ -100,6 +103,18 @@ class Sf2Exporter {
     public function export(string $filePath): bool {
         $templatePath = $this->getTemplatePath();
         if ($templatePath === '') return false;
+        if (!class_exists('ZipArchive') || getenv('APP_FORCE_XLSX_FALLBACK') === '1') {
+            return $this->exportWithTemplateEditor($filePath, $templatePath);
+        }
+        try {
+            return $this->exportWithSpreadsheet($filePath, $templatePath);
+        } catch (Throwable $e) {
+            error_log('SF2 PhpSpreadsheet export failed: ' . $e->getMessage());
+            return $this->exportWithTemplateEditor($filePath, $templatePath);
+        }
+    }
+
+    private function exportWithSpreadsheet(string $filePath, string $templatePath): bool {
         $schoolDays = $this->computeSchoolDays();
         $spreadsheet = IOFactory::load($templatePath);
         $ws = $spreadsheet->getActiveSheet();
@@ -121,6 +136,17 @@ class Sf2Exporter {
         return true;
     }
 
+    private function exportWithTemplateEditor(string $filePath, string $templatePath): bool {
+        $schoolDays = $this->computeSchoolDays();
+        $groups = $this->splitStudentsBySex();
+        $maleChunks = $this->splitIntoChunks($groups['male'], self::MALE_CAPACITY);
+        $femaleChunks = $this->splitIntoChunks($groups['female'], self::FEMALE_CAPACITY);
+        $editor = new SimpleXlsxTemplateEditor($templatePath);
+        $this->fillTemplateEditor($editor, $maleChunks[0] ?? [], $femaleChunks[0] ?? [], $schoolDays);
+        $editor->save($filePath);
+        return is_file($filePath) && filesize($filePath) > 0;
+    }
+
     public function outputToBrowser(string $filename): void {
         $tmp = tempnam(sys_get_temp_dir(), 'sf2_') . '.xlsx';
         if ($this->export($tmp)) {
@@ -134,8 +160,104 @@ class Sf2Exporter {
             header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
             header('Pragma: public');
             readfile($tmp); unlink($tmp);
+        } else {
+            @unlink($tmp);
+            throw new RuntimeException('SF2 XLSX export failed.');
         }
         exit();
+    }
+
+    private function fillTemplateEditor(SimpleXlsxTemplateEditor $editor, array $maleChunk, array $femaleChunk, array $schoolDays): void {
+        $monthName = date('F', mktime(0, 0, 0, $this->month, 1, $this->year));
+        $schoolYearStart = $this->month >= 6 ? $this->year : $this->year - 1;
+        $schoolYear = $schoolYearStart . '-' . ($schoolYearStart + 1);
+        $schoolId = $this->schoolMetaValue('school_id', 'SCHOOL_ID', $this->class['school_id'] ?? '');
+        $schoolName = $this->schoolMetaValue('school_name', 'SCHOOL_NAME', 'Balingasag Senior High School');
+        $editor->setCell('C6', $schoolId);
+        $editor->setCell('K6', $schoolYear);
+        $editor->setCell('X6', $monthName . ' ' . $this->year);
+        $editor->setCell('C8', $schoolName);
+        $editor->setCell('X8', $this->class['grade_level'] ?? '');
+        $editor->setCell('AC8', $this->class['section'] ?? '');
+
+        $groupTotals = [
+            'male' => ['absent' => 0, 'tardy' => 0, 'present_by_day' => array_fill_keys($schoolDays, 0)],
+            'female' => ['absent' => 0, 'tardy' => 0, 'present_by_day' => array_fill_keys($schoolDays, 0)],
+            'combined' => ['absent' => 0, 'tardy' => 0, 'present_by_day' => array_fill_keys($schoolDays, 0)],
+        ];
+        $this->clearTemplateLearnerBlock($editor, self::MALE_START_ROW, self::MALE_TOTAL_ROW - 1, $schoolDays);
+        $this->clearTemplateLearnerBlock($editor, self::FEMALE_START_ROW, self::FEMALE_TOTAL_ROW - 1, $schoolDays);
+        $this->clearTemplateTotalsRow($editor, self::MALE_TOTAL_ROW, $schoolDays);
+        $this->clearTemplateTotalsRow($editor, self::FEMALE_TOTAL_ROW, $schoolDays);
+        $this->clearTemplateTotalsRow($editor, self::COMBINED_TOTAL_ROW, $schoolDays);
+        $this->writeTemplateLearnerGroup($editor, $maleChunk, self::MALE_START_ROW, self::MALE_TOTAL_ROW - 1, 'male', $schoolDays, $groupTotals);
+        $this->writeTemplateLearnerGroup($editor, $femaleChunk, self::FEMALE_START_ROW, self::FEMALE_TOTAL_ROW - 1, 'female', $schoolDays, $groupTotals);
+        $this->writeTemplateTotalsRow($editor, self::MALE_TOTAL_ROW, 'male', $schoolDays, $groupTotals);
+        $this->writeTemplateTotalsRow($editor, self::FEMALE_TOTAL_ROW, 'female', $schoolDays, $groupTotals);
+        $this->writeTemplateTotalsRow($editor, self::COMBINED_TOTAL_ROW, 'combined', $schoolDays, $groupTotals);
+    }
+
+    private function clearTemplateLearnerBlock(SimpleXlsxTemplateEditor $editor, int $startRow, int $endRow, array $schoolDays): void {
+        for ($row = $startRow; $row <= $endRow; $row++) {
+            $editor->setCell('A' . $row, '');
+            $editor->setCell('B' . $row, '');
+            foreach ($schoolDays as $di => $_day) {
+                $editor->setCell(Coordinate::stringFromColumnIndex(self::DAY_COL_START + $di) . $row, '');
+            }
+            $editor->setCell(self::ABSENT_COL . $row, '');
+            $editor->setCell(self::TARDY_COL . $row, '');
+        }
+    }
+
+    private function clearTemplateTotalsRow(SimpleXlsxTemplateEditor $editor, int $row, array $schoolDays): void {
+        foreach ($schoolDays as $di => $_day) {
+            $editor->setCell(Coordinate::stringFromColumnIndex(self::DAY_COL_START + $di) . $row, '');
+        }
+        $editor->setCell(self::ABSENT_COL . $row, '');
+        $editor->setCell(self::TARDY_COL . $row, '');
+    }
+
+    private function writeTemplateLearnerGroup(SimpleXlsxTemplateEditor $editor, array $students, int $startRow, int $endRow, string $group, array $schoolDays, array &$groupTotals): void {
+        $capacity = max(0, $endRow - $startRow + 1);
+        foreach (array_slice($students, 0, $capacity) as $idx => $student) {
+            $row = $startRow + $idx;
+            $editor->setCell('A' . $row, $idx + 1);
+            $editor->setCell(Coordinate::stringFromColumnIndex(self::NAME_COL) . $row, $this->studentDisplayName($student));
+            $absentCount = 0;
+            $tardyCount = 0;
+            foreach ($schoolDays as $di => $day) {
+                $col = Coordinate::stringFromColumnIndex(self::DAY_COL_START + $di);
+                $dateStr = sprintf('%04d-%02d-%02d', $this->year, $this->month, $day);
+                $status = strtolower(trim((string)($this->attendance[$student['id']][$dateStr] ?? '')));
+                $mark = '';
+                if ($status === 'present') {
+                    $mark = '/';
+                    $groupTotals[$group]['present_by_day'][$day]++;
+                    $groupTotals['combined']['present_by_day'][$day]++;
+                } elseif ($status === 'absent') {
+                    $mark = 'A';
+                    $absentCount++;
+                } elseif ($status === 'late' || $status === 'tardy') {
+                    $mark = 'L';
+                    $tardyCount++;
+                }
+                $editor->setCell($col . $row, $mark);
+            }
+            $groupTotals[$group]['absent'] += $absentCount;
+            $groupTotals[$group]['tardy'] += $tardyCount;
+            $groupTotals['combined']['absent'] += $absentCount;
+            $groupTotals['combined']['tardy'] += $tardyCount;
+            $editor->setCell(self::ABSENT_COL . $row, $absentCount);
+            $editor->setCell(self::TARDY_COL . $row, $tardyCount);
+        }
+    }
+
+    private function writeTemplateTotalsRow(SimpleXlsxTemplateEditor $editor, int $row, string $group, array $schoolDays, array $groupTotals): void {
+        foreach ($schoolDays as $di => $day) {
+            $editor->setCell(Coordinate::stringFromColumnIndex(self::DAY_COL_START + $di) . $row, $groupTotals[$group]['present_by_day'][$day] ?? 0);
+        }
+        $editor->setCell(self::ABSENT_COL . $row, $groupTotals[$group]['absent'] ?? 0);
+        $editor->setCell(self::TARDY_COL . $row, $groupTotals[$group]['tardy'] ?? 0);
     }
 
     private function clearLearnerBlock($ws, int $startRow, int $endRow, array $schoolDays): void {

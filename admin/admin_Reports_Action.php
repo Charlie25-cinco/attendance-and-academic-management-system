@@ -1,8 +1,14 @@
 <?php
+$__adminReportsAction = (string)($_GET['action'] ?? '');
+$__adminReportsNotesAction = in_array($__adminReportsAction, ['save_note', 'list_notes', 'update_note', 'delete_note'], true);
+if ($__adminReportsNotesAction) {
+    ob_start();
+}
 require_once __DIR__ . '/../functions/bootstrap.php';
 // Admin Reports Action Handler
 
 function adminReportsJsonExit(array $payload, int $statusCode = 200): void {
+    while (ob_get_level() > 0) { ob_end_clean(); }
     header('Content-Type: application/json');
     http_response_code($statusCode);
     echo json_encode($payload);
@@ -27,8 +33,9 @@ if (!$db) {
     ], 500);
 }
 
-$action = $_GET['action'] ?? '';
+$action = $__adminReportsAction;
 ensureReportNotesTables($db);
+unset($__adminReportsAction, $__adminReportsNotesAction);
 $type = $_GET['type'] ?? '';
 $dateFrom = normalizeDate($_GET['date_from'] ?? '');
 $dateTo = normalizeDate($_GET['date_to'] ?? '');
@@ -63,15 +70,10 @@ function requirePostAndCsrfOrExit() {
 
 function handleReportNotesError(Throwable $e): void {
     error_log('Admin report notes action failed: ' . $e->getMessage());
-    if (!headers_sent()) {
-        header('Content-Type: application/json');
-        http_response_code(500);
-    }
-    echo json_encode([
+    adminReportsJsonExit([
         'ok' => false,
         'message' => 'Report notes could not be loaded. Please try again or contact the administrator.'
-    ]);
-    exit();
+    ], 500);
 }
 
 if (in_array($action, ['save_note', 'list_notes', 'update_note', 'delete_note'], true)) {
