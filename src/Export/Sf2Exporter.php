@@ -4,10 +4,6 @@ namespace BshsAms\Export;
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use PhpOffice\PhpSpreadsheet\Style\Border;
-use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use BshsAms\Xlsx\SimpleXlsxTemplateEditor;
 use RuntimeException;
 use Throwable;
@@ -27,7 +23,11 @@ class Sf2Exporter {
     private const FEMALE_START_ROW = 30;
     private const FEMALE_TOTAL_ROW = 57;
     private const COMBINED_TOTAL_ROW = 58;
-    private const DAY_COL_START = 6;
+    private const DAY_COLUMNS = [
+        'F', 'H', 'I', 'J', 'K', 'L', 'M', 'O', 'P', 'Q',
+        'R', 'S', 'T', 'V', 'W', 'X', 'Z', 'AB', 'AC', 'AE',
+        'AF', 'AG', 'AH', 'AI', 'AJ', 'AK', 'AM', 'AN', 'AO', 'AQ',
+    ];
     private const NAME_COL = 3;
     private const ABSENT_COL = 'AR';
     private const TARDY_COL = 'AT';
@@ -67,7 +67,7 @@ class Sf2Exporter {
         $schoolDays = [];
         for ($d = 1; $d <= $daysInMonth; $d++) {
             $ts = mktime(0, 0, 0, $this->month, $d, $this->year);
-            if ((int)date('N', $ts) <= 5) { $schoolDays[] = $d; }
+            if ((int)date('N', $ts) !== 7) { $schoolDays[] = $d; }
         }
         return $schoolDays;
     }
@@ -77,16 +77,16 @@ class Sf2Exporter {
         return array_chunk($students, $capacity);
     }
 
-    private function fillSheet($ws, array $maleChunk, array $femaleChunk, array $schoolDays, int $sheetNumber, int $totalSheets): void {
+    private function fillSheet($ws, array $maleChunk, array $femaleChunk, array $schoolDays, int $sheetNumber): void {
         $monthName = date('F', mktime(0, 0, 0, $this->month, 1, $this->year));
         $schoolYearStart = $this->month >= 6 ? $this->year : $this->year - 1;
         $schoolYear = $schoolYearStart . '-' . ($schoolYearStart + 1);
-        $schoolId = $this->schoolMetaValue('school_id', 'SCHOOL_ID', $this->class['school_id'] ?? '');
-        $schoolName = $this->schoolMetaValue('school_name', 'SCHOOL_NAME', 'Balingasag Senior High School');
-        $sheetTitle = $totalSheets > 1 ? 'SF2' . ($sheetNumber > 1 ? ' (' . $sheetNumber . ')' : '') : 'SF2';
+        $sheetTitle = $sheetNumber === 1 ? 'SHSF-2' : 'SF2 (' . $sheetNumber . ')';
         $ws->setTitle($sheetTitle);
-        $ws->setCellValue('C6', $schoolId); $ws->setCellValue('K6', $schoolYear); $ws->setCellValue('X6', $monthName . ' ' . $this->year);
-        $ws->setCellValue('C8', $schoolName); $ws->setCellValue('X8', $this->class['grade_level'] ?? ''); $ws->setCellValue('AC8', $this->class['section'] ?? '');
+        foreach ($this->headerValues($schoolYear, $monthName) as $cell => $value) {
+            $ws->setCellValue($cell, $value);
+        }
+        $this->writeCalendarHeader($ws, $schoolDays);
         $groupTotals = ['male' => ['absent' => 0, 'tardy' => 0, 'present_by_day' => array_fill_keys($schoolDays, 0)], 'female' => ['absent' => 0, 'tardy' => 0, 'present_by_day' => array_fill_keys($schoolDays, 0)], 'combined' => ['absent' => 0, 'tardy' => 0, 'present_by_day' => array_fill_keys($schoolDays, 0)]];
         $this->clearLearnerBlock($ws, self::MALE_START_ROW, self::MALE_TOTAL_ROW - 1, $schoolDays);
         $this->clearLearnerBlock($ws, self::FEMALE_START_ROW, self::FEMALE_TOTAL_ROW - 1, $schoolDays);
@@ -118,16 +118,17 @@ class Sf2Exporter {
         $schoolDays = $this->computeSchoolDays();
         $spreadsheet = IOFactory::load($templatePath);
         $ws = $spreadsheet->getActiveSheet();
+        $templateSheet = clone $ws;
         $groups = $this->splitStudentsBySex();
         $maleChunks = $this->splitIntoChunks($groups['male'], self::MALE_CAPACITY);
         $femaleChunks = $this->splitIntoChunks($groups['female'], self::FEMALE_CAPACITY);
         $sheetCount = max(count($maleChunks), count($femaleChunks));
-        $this->fillSheet($ws, $maleChunks[0] ?? [], $femaleChunks[0] ?? [], $schoolDays, 1, $sheetCount);
+        $this->fillSheet($ws, $maleChunks[0] ?? [], $femaleChunks[0] ?? [], $schoolDays, 1);
         for ($i = 1; $i < $sheetCount; $i++) {
             $cloneIndex = $i + 1;
-            $newWs = $spreadsheet->createSheet();
-            $newWs->fromArray($ws->toArray());
-            $this->fillSheet($newWs, $maleChunks[$i] ?? [], $femaleChunks[$i] ?? [], $schoolDays, $cloneIndex, $sheetCount);
+            $newWs = clone $templateSheet;
+            $this->fillSheet($newWs, $maleChunks[$i] ?? [], $femaleChunks[$i] ?? [], $schoolDays, $cloneIndex);
+            $spreadsheet->addSheet($newWs);
         }
         if ($sheetCount > 1) { $spreadsheet->setActiveSheetIndex(0); }
         $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
@@ -141,8 +142,13 @@ class Sf2Exporter {
         $groups = $this->splitStudentsBySex();
         $maleChunks = $this->splitIntoChunks($groups['male'], self::MALE_CAPACITY);
         $femaleChunks = $this->splitIntoChunks($groups['female'], self::FEMALE_CAPACITY);
+        $sheetCount = max(count($maleChunks), count($femaleChunks));
         $editor = new SimpleXlsxTemplateEditor($templatePath);
         $this->fillTemplateEditor($editor, $maleChunks[0] ?? [], $femaleChunks[0] ?? [], $schoolDays);
+        for ($i = 1; $i < $sheetCount; $i++) {
+            $editor->duplicateTemplateSheet('SF2 (' . ($i + 1) . ')');
+            $this->fillTemplateEditor($editor, $maleChunks[$i] ?? [], $femaleChunks[$i] ?? [], $schoolDays);
+        }
         $editor->save($filePath);
         return is_file($filePath) && filesize($filePath) > 0;
     }
@@ -171,14 +177,10 @@ class Sf2Exporter {
         $monthName = date('F', mktime(0, 0, 0, $this->month, 1, $this->year));
         $schoolYearStart = $this->month >= 6 ? $this->year : $this->year - 1;
         $schoolYear = $schoolYearStart . '-' . ($schoolYearStart + 1);
-        $schoolId = $this->schoolMetaValue('school_id', 'SCHOOL_ID', $this->class['school_id'] ?? '');
-        $schoolName = $this->schoolMetaValue('school_name', 'SCHOOL_NAME', 'Balingasag Senior High School');
-        $editor->setCell('C6', $schoolId);
-        $editor->setCell('K6', $schoolYear);
-        $editor->setCell('X6', $monthName . ' ' . $this->year);
-        $editor->setCell('C8', $schoolName);
-        $editor->setCell('X8', $this->class['grade_level'] ?? '');
-        $editor->setCell('AC8', $this->class['section'] ?? '');
+        foreach ($this->headerValues($schoolYear, $monthName) as $cell => $value) {
+            $editor->setCell($cell, $value);
+        }
+        $this->writeTemplateCalendarHeader($editor, $schoolDays);
 
         $groupTotals = [
             'male' => ['absent' => 0, 'tardy' => 0, 'present_by_day' => array_fill_keys($schoolDays, 0)],
@@ -202,7 +204,7 @@ class Sf2Exporter {
             $editor->setCell('A' . $row, '');
             $editor->setCell('B' . $row, '');
             foreach ($schoolDays as $di => $_day) {
-                $editor->setCell(Coordinate::stringFromColumnIndex(self::DAY_COL_START + $di) . $row, '');
+                $editor->setCell($this->dayColumn($di) . $row, '');
             }
             $editor->setCell(self::ABSENT_COL . $row, '');
             $editor->setCell(self::TARDY_COL . $row, '');
@@ -211,7 +213,7 @@ class Sf2Exporter {
 
     private function clearTemplateTotalsRow(SimpleXlsxTemplateEditor $editor, int $row, array $schoolDays): void {
         foreach ($schoolDays as $di => $_day) {
-            $editor->setCell(Coordinate::stringFromColumnIndex(self::DAY_COL_START + $di) . $row, '');
+            $editor->setCell($this->dayColumn($di) . $row, '');
         }
         $editor->setCell(self::ABSENT_COL . $row, '');
         $editor->setCell(self::TARDY_COL . $row, '');
@@ -226,7 +228,7 @@ class Sf2Exporter {
             $absentCount = 0;
             $tardyCount = 0;
             foreach ($schoolDays as $di => $day) {
-                $col = Coordinate::stringFromColumnIndex(self::DAY_COL_START + $di);
+                $col = $this->dayColumn($di);
                 $dateStr = sprintf('%04d-%02d-%02d', $this->year, $this->month, $day);
                 $status = strtolower(trim((string)($this->attendance[$student['id']][$dateStr] ?? '')));
                 $mark = '';
@@ -254,7 +256,7 @@ class Sf2Exporter {
 
     private function writeTemplateTotalsRow(SimpleXlsxTemplateEditor $editor, int $row, string $group, array $schoolDays, array $groupTotals): void {
         foreach ($schoolDays as $di => $day) {
-            $editor->setCell(Coordinate::stringFromColumnIndex(self::DAY_COL_START + $di) . $row, $groupTotals[$group]['present_by_day'][$day] ?? 0);
+            $editor->setCell($this->dayColumn($di) . $row, $groupTotals[$group]['present_by_day'][$day] ?? 0);
         }
         $editor->setCell(self::ABSENT_COL . $row, $groupTotals[$group]['absent'] ?? 0);
         $editor->setCell(self::TARDY_COL . $row, $groupTotals[$group]['tardy'] ?? 0);
@@ -263,13 +265,13 @@ class Sf2Exporter {
     private function clearLearnerBlock($ws, int $startRow, int $endRow, array $schoolDays): void {
         for ($row = $startRow; $row <= $endRow; $row++) {
             $ws->setCellValue('A' . $row, ''); $ws->setCellValue('B' . $row, '');
-            foreach ($schoolDays as $di => $_day) { $ws->setCellValue(Coordinate::stringFromColumnIndex(self::DAY_COL_START + $di) . $row, ''); }
+            foreach ($schoolDays as $di => $_day) { $ws->setCellValue($this->dayColumn($di) . $row, ''); }
             $ws->setCellValue(self::ABSENT_COL . $row, ''); $ws->setCellValue(self::TARDY_COL . $row, '');
         }
     }
 
     private function clearTotalsRow($ws, int $row, array $schoolDays): void {
-        foreach ($schoolDays as $di => $_day) { $ws->setCellValue(Coordinate::stringFromColumnIndex(self::DAY_COL_START + $di) . $row, ''); }
+        foreach ($schoolDays as $di => $_day) { $ws->setCellValue($this->dayColumn($di) . $row, ''); }
         $ws->setCellValue(self::ABSENT_COL . $row, ''); $ws->setCellValue(self::TARDY_COL . $row, '');
     }
 
@@ -281,7 +283,7 @@ class Sf2Exporter {
             $ws->setCellValue(Coordinate::stringFromColumnIndex(self::NAME_COL) . $row, $this->studentDisplayName($student));
             $absentCount = 0; $tardyCount = 0;
             foreach ($schoolDays as $di => $day) {
-                $col = Coordinate::stringFromColumnIndex(self::DAY_COL_START + $di);
+                $col = $this->dayColumn($di);
                 $dateStr = sprintf('%04d-%02d-%02d', $this->year, $this->month, $day);
                 $status = strtolower(trim((string)($this->attendance[$student['id']][$dateStr] ?? '')));
                 $mark = '';
@@ -297,9 +299,81 @@ class Sf2Exporter {
     }
 
     private function writeTotalsRow($ws, int $row, string $group, array $schoolDays, array $groupTotals): void {
-        foreach ($schoolDays as $di => $day) { $ws->setCellValue(Coordinate::stringFromColumnIndex(self::DAY_COL_START + $di) . $row, $groupTotals[$group]['present_by_day'][$day] ?? 0); }
+        foreach ($schoolDays as $di => $day) { $ws->setCellValue($this->dayColumn($di) . $row, $groupTotals[$group]['present_by_day'][$day] ?? 0); }
         $ws->setCellValue(self::ABSENT_COL . $row, $groupTotals[$group]['absent'] ?? 0);
         $ws->setCellValue(self::TARDY_COL . $row, $groupTotals[$group]['tardy'] ?? 0);
+    }
+
+    private function headerValues(string $schoolYear, string $monthName): array {
+        $track = trim((string)($this->class['track_and_strand'] ?? $this->class['strand'] ?? ''));
+        if ($track === '') {
+            $trackKey = strtolower(trim((string)($this->class['track'] ?? '')));
+            $track = match ($trackKey) {
+                'academic' => 'Academic Track',
+                'techpro', 'tvl', 'technical-vocational-livelihood' => 'Technical-Vocational-Livelihood Track',
+                default => trim((string)($this->class['track'] ?? '')),
+            };
+        }
+
+        $semester = trim((string)($this->class['semester'] ?? ''));
+        if ($semester === '') { $semester = 'N/A (SSHS - Three-Term)'; }
+
+        return [
+            'F3' => $this->schoolMetaValue('school_name', 'SCHOOL_NAME', 'Balingasag Senior High School'),
+            'V3' => $this->schoolMetaValue('school_id', 'SCHOOL_ID', '341227'),
+            'AF3' => $this->schoolMetaValue('district', 'SCHOOL_DISTRICT', 'Balingasag North'),
+            'AR3' => $this->schoolMetaValue('division', 'SCHOOL_DIVISION', 'Misamis Oriental'),
+            'F5' => $semester,
+            'V5' => $schoolYear,
+            'AH5' => (string)($this->class['grade_level'] ?? ''),
+            'AV5' => $track,
+            'F7' => (string)($this->class['section'] ?? ''),
+            'W7' => (string)($this->class['course'] ?? ''),
+            'AV7' => $monthName . ' ' . $this->year,
+        ];
+    }
+
+    private function writeCalendarHeader($ws, array $schoolDays): void {
+        foreach (self::DAY_COLUMNS as $column) {
+            $ws->setCellValue($column . '10', '');
+            $ws->setCellValue($column . '11', '');
+        }
+        foreach ($schoolDays as $index => $day) {
+            $column = $this->dayColumn($index);
+            $ws->setCellValue($column . '10', $day);
+            $ws->setCellValue($column . '11', $this->weekdayLabel($day));
+        }
+    }
+
+    private function writeTemplateCalendarHeader(SimpleXlsxTemplateEditor $editor, array $schoolDays): void {
+        foreach (self::DAY_COLUMNS as $column) {
+            $editor->setCell($column . '10', '');
+            $editor->setCell($column . '11', '');
+        }
+        foreach ($schoolDays as $index => $day) {
+            $column = $this->dayColumn($index);
+            $editor->setCell($column . '10', $day);
+            $editor->setCell($column . '11', $this->weekdayLabel($day));
+        }
+    }
+
+    private function dayColumn(int $index): string {
+        if (!isset(self::DAY_COLUMNS[$index])) {
+            throw new RuntimeException('SF2 template does not have enough attendance day columns.');
+        }
+        return self::DAY_COLUMNS[$index];
+    }
+
+    private function weekdayLabel(int $day): string {
+        return match ((int)date('N', mktime(0, 0, 0, $this->month, $day, $this->year))) {
+            1 => 'M',
+            2 => 'T',
+            3 => 'W',
+            4 => 'TH',
+            5 => 'F',
+            6 => 'S',
+            default => '',
+        };
     }
 
     private function studentDisplayName(array $student): string {

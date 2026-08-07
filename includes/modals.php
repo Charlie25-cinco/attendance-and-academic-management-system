@@ -79,9 +79,18 @@
                         <input class="form-check-input" type="checkbox" id="pushNotifSwitch" checked>
                     </span>
                 </label>
+                <div class="px-3 pb-2">
+                    <span class="settings-option-desc d-block" id="pushPermissionGuidance"></span>
+                    <span class="d-flex flex-wrap gap-2 mt-2 d-none" id="pushPermissionActions">
+                        <button type="button" class="btn btn-sm btn-primary-custom" id="allowPushPermissionBtn">
+                            <i class="bi bi-bell-check me-1"></i>Allow Notifications
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="deferPushPermissionBtn">Not Now</button>
+                    </span>
+                </div>
             </div>
             <div class="modal-footer app-modal-footer settings-modal-footer">
-                <button type="button" class="btn btn-outline-primary" id="testPushNotificationBtn" disabled>
+                <button type="button" class="btn btn-outline-primary" id="testPushNotificationBtn" disabled title="Enable and allow notifications on this device first">
                     <i class="bi bi-bell-check me-1"></i>Test Notification
                 </button>
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>

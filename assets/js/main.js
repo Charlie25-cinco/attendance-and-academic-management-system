@@ -696,6 +696,30 @@ function setPushStatus(message, tone = "muted") {
   status.className = `settings-option-desc d-block text-${tone}`;
 }
 
+function setPushPermissionState(state, message = "") {
+  const actions = document.getElementById("pushPermissionActions");
+  const guidance = document.getElementById("pushPermissionGuidance");
+  const testButton = document.getElementById("testPushNotificationBtn");
+  if (actions) actions.classList.toggle("d-none", state !== "prompt");
+  if (guidance) {
+    guidance.textContent = message;
+    guidance.className = `settings-option-desc d-block mt-2${state === "blocked" ? " text-danger" : ""}`;
+  }
+  if (testButton) {
+    const reasons = {
+      configuring: "Checking notification readiness",
+      server: "Server push keys are not configured",
+      unsupported: "This browser does not support device notifications",
+      blocked: "Allow notifications in browser or Windows app settings first",
+      prompt: "Select Allow Notifications and approve the browser prompt first",
+      subscribe: "Save Push Notifications to subscribe this device",
+      ready: "Send a notification to this device",
+    };
+    testButton.title = reasons[state] || "Notification test is unavailable";
+    testButton.setAttribute("aria-disabled", testButton.disabled ? "true" : "false");
+  }
+}
+
 function urlBase64ToUint8Array(base64String) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
@@ -729,23 +753,33 @@ function updatePwaPushStatus() {
   const testButton = document.getElementById("testPushNotificationBtn");
   if (!pushSwitch) return;
   if (testButton) testButton.disabled = true;
+  setPushPermissionState("configuring");
 
   appFetchJson("web-push-status")
     .then((serverStatus) => {
       if (!serverStatus.configured || !window.APP_PUSH_PUBLIC_KEY) {
         pushSwitch.disabled = true;
         setPushStatus("Server push keys are not configured.", "danger");
+        setPushPermissionState("server", "Ask the administrator to configure Web Push for this server.");
         return;
       }
       if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
         pushSwitch.disabled = true;
         setPushStatus("Device notifications are not supported by this browser.", "muted");
+        setPushPermissionState("unsupported", "Use a supported browser or installed PWA on this device.");
         return;
       }
       pushSwitch.disabled = false;
 
       if (Notification.permission === "denied") {
         setPushStatus("Notifications are blocked in this browser.", "danger");
+        setPushPermissionState("blocked", "Open this site's browser or Windows app settings and change Notifications to Allow.");
+        return;
+      }
+
+      if (Notification.permission === "default") {
+        setPushStatus("Permission is required before this device can subscribe.", "muted");
+        setPushPermissionState("prompt", "Choose Allow Notifications, then approve the browser permission dialog.");
         return;
       }
 
@@ -756,12 +790,38 @@ function updatePwaPushStatus() {
             const ready = !!subscription && Number(serverStatus.subscription_count || 0) > 0;
             setPushStatus(ready ? "This device is ready for notifications." : "Save changes to subscribe this device.", ready ? "success" : "muted");
             if (testButton) testButton.disabled = !ready;
+            setPushPermissionState(ready ? "ready" : "subscribe", ready ? "You can receive notifications while the PWA is closed." : "Keep Push Notifications enabled and save changes to finish subscription.");
+            if (testButton) testButton.setAttribute("aria-disabled", ready ? "false" : "true");
           });
       }
 
       setPushStatus("Save changes to allow device notifications.", "muted");
     })
-    .catch((error) => setPushStatus(error.message || "Unable to check push status.", "danger"));
+    .catch((error) => {
+      setPushStatus(error.message || "Unable to check push status.", "danger");
+      setPushPermissionState("server", "The app could not verify notification readiness. Try reopening Settings.");
+    });
+}
+
+function requestPushPermissionFromSettings() {
+  const allowButton = document.getElementById("allowPushPermissionBtn");
+  if (!allowButton || !("Notification" in window)) return;
+  allowButton.disabled = true;
+  Notification.requestPermission()
+    .then((permission) => {
+      if (permission !== "granted") {
+        throw new Error(permission === "denied" ? "Notifications were blocked" : "Notification permission was not granted");
+      }
+      const pushSwitch = document.getElementById("pushNotifSwitch");
+      if (pushSwitch) pushSwitch.checked = true;
+      return enablePwaPushNotifications();
+    })
+    .then(() => showNotification("Notifications enabled for this device", "success"))
+    .catch((error) => showNotification(error.message || "Unable to enable notifications", "danger"))
+    .finally(() => {
+      allowButton.disabled = false;
+      updatePwaPushStatus();
+    });
 }
 
 function sendTestPushNotification() {
@@ -839,6 +899,13 @@ function initSettingsControls() {
   applyInitialSettingsToControls();
   updatePwaPushStatus();
   document.getElementById("testPushNotificationBtn")?.addEventListener("click", sendTestPushNotification);
+  document.getElementById("allowPushPermissionBtn")?.addEventListener("click", requestPushPermissionFromSettings);
+  document.getElementById("deferPushPermissionBtn")?.addEventListener("click", () => {
+    const pushSwitch = document.getElementById("pushNotifSwitch");
+    if (pushSwitch) pushSwitch.checked = false;
+    setPushStatus("Notifications are not enabled on this device.", "muted");
+    setPushPermissionState("deferred", "You can enable notifications later from Settings.");
+  });
   document.getElementById("settingsModal")?.addEventListener("shown.bs.modal", updatePwaPushStatus);
 
   const darkMode = document.getElementById("darkModeSwitch");

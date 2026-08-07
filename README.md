@@ -137,7 +137,7 @@ Open `http://localhost:5000`.
 - Installed app icons are generated from the school seal with safe padding for normal, maskable, and Apple touch icon use; regenerate them with `php scripts/generate_pwa_icons.php` after replacing `assets/images/bshs-logo.jpg`.
 - Install prompts are exposed through the shared header install button when the browser supports installation.
 - Device/system push notifications use the root service worker, browser Push API subscriptions, and VAPID keys.
-- Users enable or disable device notifications from the shared Settings modal; enabling push requests browser permission and subscribes the current device.
+- Users enable or disable device notifications from the shared Settings modal. When permission is undecided, Settings displays **Allow Notifications** and **Not Now** actions; blocked permission includes instructions to reopen permission through browser or operating-system app settings.
 - Generate standard Base64URL VAPID values with `composer run push:keys`, then configure the printed `PUSH_VAPID_PUBLIC_KEY`, `PUSH_VAPID_PRIVATE_KEY`, and `PUSH_VAPID_SUBJECT` values in Wasmer app **Settings > Secrets** before expecting installed PWA popup notifications. Regenerating keys requires users to subscribe their devices again.
 - Web Push sending requires PHP `curl` and `openssl`; failures are written to the PHP error log for deployment troubleshooting.
 - School and class announcements, attendance, materials, grade activities and scores, and report-card releases are always saved as in-app notifications before push delivery is attempted.
@@ -192,7 +192,7 @@ Open `http://localhost:5000`.
 - SF1 XLSX import reads the official DepEd layout: LRN from the merged A:B area and learner name in merged columns C:F as `Last Name, First Name, Name Extension, Middle Name`.
 - Student addresses follow SF1 separated columns: house/street, barangay, municipality/city, and province, while retaining the combined `address` value for older views.
 - SF1 import auto-creates missing section records from the template grade level, section, and track, but it does not create subject classes.
-- SF2 uses `deped/SF2_Senior_High_School.xlsx`.
+- SF2 uses `deped/SF2_Senior_High_School.xlsx`, fills the official merged school/month fields and Mon-Sat attendance slots, preserves the footer, and adds complete template sheets when learners exceed the male or female rows on one sheet.
 - ECR XLSX export uses a compatible three-term Strengthened SHS template in `deped/`, preferring `deped/ecr_template.xlsx`, `deped/ecr_template.xlsm`, the uploaded TeachPinas SSHS three-term `.xlsm`, or `ECR_TEMPLATE_PATH`.
 - If no compatible template is available, ECR XLSX export falls back to a generated workbook while CSV export remains available.
 - ECR teacher imports accept `.xlsx` only.

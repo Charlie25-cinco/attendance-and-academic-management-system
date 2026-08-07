@@ -2,6 +2,18 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.41 — 2026-08-08
+
+### Changed
+
+- Added explicit Allow Notifications and Not Now actions in Settings, with readiness and blocked-permission guidance for installed PWA users.
+
+### Fixed
+
+- Corrected SF2 XLSX school details, month, grade, section, track, calendar days, and attendance marks to the official DepEd template coordinates.
+- Preserved the official SF2 footer and added full template overflow sheets so larger male and female learner groups are not omitted.
+- Refreshed the PWA cache so installed apps receive the updated notification permission controls.
+
 ## v0.3.40 — 2026-08-07
 
 ### Fixed

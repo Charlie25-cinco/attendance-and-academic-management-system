@@ -36,6 +36,10 @@ final class Sf2ExporterTest extends TestCase
             'grade_level' => 11,
             'section' => 'Amethyst',
             'school_id' => '341227',
+            'school_name' => 'Balingasag Senior High School',
+            'district' => 'Balingasag North',
+            'division' => 'Misamis Oriental',
+            'track' => 'academic',
         ]);
         $exporter->setStudents([
             [
@@ -72,21 +76,101 @@ final class Sf2ExporterTest extends TestCase
 
             $parser = new SimpleXlsxParser($path);
             $rows = $parser->getSheet(0);
-            $this->assertSame('341227', $rows[6][2] ?? null);
-            $this->assertSame('2026-2027', $rows[6][10] ?? null);
-            $this->assertSame('August 2026', $rows[6][23] ?? null);
-            $this->assertSame('Balingasag Senior High School', $rows[8][2] ?? null);
+            $this->assertSame('Balingasag Senior High School', $rows[3][5] ?? null);
+            $this->assertSame('341227', $rows[3][21] ?? null);
+            $this->assertSame('Balingasag North', $rows[3][31] ?? null);
+            $this->assertSame('Misamis Oriental', $rows[3][43] ?? null);
+            $this->assertSame('N/A (SSHS - Three-Term)', $rows[5][5] ?? null);
+            $this->assertSame('2026-2027', $rows[5][21] ?? null);
+            $this->assertSame('11', $rows[5][33] ?? null);
+            $this->assertSame('Academic Track', $rows[5][47] ?? null);
+            $this->assertSame('Amethyst', $rows[7][5] ?? null);
+            $this->assertSame('August 2026', $rows[7][47] ?? null);
+            $this->assertSame('1', $rows[10][5] ?? null);
+            $this->assertSame('S', $rows[11][5] ?? null);
+            $this->assertSame('3', $rows[10][7] ?? null);
+            $this->assertSame('M', $rows[11][7] ?? null);
             $this->assertSame('Dagohoy, Dave S.', $rows[12][2] ?? null);
-            $this->assertSame('/', $rows[12][5] ?? null);
-            $this->assertSame('A', $rows[12][6] ?? null);
+            $this->assertSame('/', $rows[12][7] ?? null);
+            $this->assertSame('A', $rows[12][8] ?? null);
             $this->assertSame('Cruz, Ana R.', $rows[30][2] ?? null);
+            $this->assertSame('GUIDELINES:', $rows[60][0] ?? null);
         } finally {
             putenv('APP_FORCE_XLSX_FALLBACK');
             @unlink($path);
         }
     }
 
-    public function testSchoolDaysDoNotRequireCalendarExtension(): void
+    public function testSf2FallbackPreservesAllLearnersAcrossTemplateSheets(): void
+    {
+        $exporter = new Sf2Exporter();
+        $exporter->setClass(['grade_level' => 11, 'section' => 'Amethyst', 'track' => 'academic']);
+        $students = [];
+        for ($i = 1; $i <= 25; $i++) {
+            $students[] = ['id' => $i, 'first_name' => 'Male' . $i, 'last_name' => sprintf('Learner%02d', $i), 'sex' => 'male'];
+        }
+        for ($i = 1; $i <= 25; $i++) {
+            $students[] = ['id' => 100 + $i, 'first_name' => 'Female' . $i, 'last_name' => sprintf('Student%02d', $i), 'sex' => 'female'];
+        }
+        $exporter->setStudents($students);
+        $exporter->setAttendance([]);
+        $exporter->setMonth(8);
+        $exporter->setYear(2026);
+
+        $path = tempnam(sys_get_temp_dir(), 'sf2_overflow_') . '.xlsx';
+        putenv('APP_FORCE_XLSX_FALLBACK=1');
+        try {
+            $this->assertTrue($exporter->export($path));
+            $parser = new SimpleXlsxParser($path);
+            $this->assertSame(['SHSF-2', 'SF2 (2)'], $parser->getSheetNames());
+
+            $exportedNames = [];
+            foreach ([0, 1] as $sheetIndex) {
+                $rows = $parser->getSheet($sheetIndex);
+                foreach (array_merge(range(12, 28), range(30, 56)) as $row) {
+                    $name = trim((string)($rows[$row][2] ?? ''));
+                    if ($name !== '') { $exportedNames[] = $name; }
+                }
+                $this->assertSame('GUIDELINES:', $rows[60][0] ?? null);
+            }
+            $this->assertCount(50, array_unique($exportedNames));
+        } finally {
+            putenv('APP_FORCE_XLSX_FALLBACK');
+            @unlink($path);
+        }
+    }
+
+    public function testPhpSpreadsheetOverflowClonesOfficialTemplate(): void
+    {
+        if (!class_exists('ZipArchive')) {
+            $this->markTestSkipped('PHP Zip is required for the PhpSpreadsheet export path.');
+        }
+
+        $exporter = new Sf2Exporter();
+        $exporter->setClass(['grade_level' => 11, 'section' => 'Amethyst', 'track' => 'academic']);
+        $students = [];
+        for ($i = 1; $i <= 18; $i++) {
+            $students[] = ['id' => $i, 'first_name' => 'Male' . $i, 'last_name' => sprintf('Learner%02d', $i), 'sex' => 'male'];
+        }
+        $exporter->setStudents($students);
+        $exporter->setAttendance([]);
+        $exporter->setMonth(8);
+        $exporter->setYear(2026);
+
+        $path = tempnam(sys_get_temp_dir(), 'sf2_php_') . '.xlsx';
+        try {
+            $this->assertTrue($exporter->export($path));
+            $parser = new SimpleXlsxParser($path);
+            $this->assertSame(['SHSF-2', 'SF2 (2)'], $parser->getSheetNames());
+            $secondSheet = $parser->getSheet(1);
+            $this->assertSame('Learner18, Male18', $secondSheet[12][2] ?? null);
+            $this->assertSame('GUIDELINES:', $secondSheet[60][0] ?? null);
+        } finally {
+            @unlink($path);
+        }
+    }
+
+    public function testReportDaysDoNotRequireCalendarExtension(): void
     {
         $exporter = new Sf2Exporter();
         $exporter->setMonth(2);
@@ -95,8 +179,8 @@ final class Sf2ExporterTest extends TestCase
         $method = new ReflectionMethod($exporter, 'computeSchoolDays');
         $schoolDays = $method->invoke($exporter);
 
-        $this->assertContains(29, $schoolDays, 'Leap-year February 29 should be exported when it is a weekday.');
-        $this->assertCount(21, $schoolDays);
+        $this->assertContains(29, $schoolDays, 'Leap-year February 29 should be exported when it is a report day.');
+        $this->assertCount(25, $schoolDays);
 
         $endpoint = file_get_contents(__DIR__ . '/../teacher/teacher_SF2_Export.php');
         $exporterSource = file_get_contents(__DIR__ . '/../src/Export/Sf2Exporter.php');

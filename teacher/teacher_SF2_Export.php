@@ -76,6 +76,12 @@ foreach ($attStmt->fetchAll(PDO::FETCH_ASSOC) as $record) {
 
 $monthName = date('F', mktime(0, 0, 0, $month, 1, $year));
 $teacherName = trim(($class['first_name'] ?? '') . ' ' . ($class['last_name'] ?? ''));
+$schoolSettings = getSchoolSettings($db);
+foreach (['school_name', 'school_id', 'district', 'division'] as $settingKey) {
+    if (trim((string)($schoolSettings[$settingKey] ?? '')) !== '') {
+        $class[$settingKey] = $schoolSettings[$settingKey];
+    }
+}
 
 if ($export === 'csv') {
     $filename = 'SF2_' . ($class['class_name'] ?? 'Class') . '_' . $monthName . '_' . $year . '.csv';

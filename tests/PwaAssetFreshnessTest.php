@@ -24,7 +24,7 @@ final class PwaAssetFreshnessTest extends TestCase
         $serviceWorker = file_get_contents(__DIR__ . '/../sw.js');
 
         $this->assertIsString($serviceWorker);
-        $this->assertStringContainsString("const CACHE_NAME = 'bshs-ams-v8';", $serviceWorker);
+        $this->assertStringContainsString("const CACHE_NAME = 'bshs-ams-v9';", $serviceWorker);
         $this->assertStringContainsString('var needsFreshAsset = /\\.(css|js)$/i.test(url.pathname);', $serviceWorker);
         $this->assertStringContainsString('if (needsFreshAsset) {', $serviceWorker);
         $networkFirst = strpos($serviceWorker, 'if (needsFreshAsset) {');
@@ -43,5 +43,22 @@ final class PwaAssetFreshnessTest extends TestCase
             'document.getElementById("settingsModal")?.addEventListener("shown.bs.modal", updatePwaPushStatus);',
             $javascript
         );
+    }
+
+    public function testSettingsExplainsAndRequestsNotificationPermissionFromUserAction(): void
+    {
+        $modal = file_get_contents(__DIR__ . '/../includes/modals.php');
+        $javascript = file_get_contents(__DIR__ . '/../assets/js/main.js');
+
+        $this->assertIsString($modal);
+        $this->assertStringContainsString('id="allowPushPermissionBtn"', $modal);
+        $this->assertStringContainsString('id="deferPushPermissionBtn"', $modal);
+        $this->assertStringContainsString('id="pushPermissionGuidance"', $modal);
+
+        $this->assertIsString($javascript);
+        $this->assertStringContainsString('Notification.permission === "default"', $javascript);
+        $this->assertStringContainsString('Notification.permission === "denied"', $javascript);
+        $this->assertStringContainsString('Notification.requestPermission()', $javascript);
+        $this->assertStringContainsString('requestPushPermissionFromSettings', $javascript);
     }
 }
