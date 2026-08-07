@@ -172,7 +172,7 @@ Open `http://localhost:5000`.
 - Composer runtime platform checks are disabled in `composer.json` because Wasmer's PHP/WASI runtime can report a non-64-bit platform even though the application can still boot and serve normal web requests.
 - Wasmer app instances are stateless; runtime files should use the configured Wasmer volumes for `/app/storage` and `/app/assets/uploads`, while durable school data and PHP sessions should live in Wasmer Attached Database.
 - Teacher learning-material uploads are stored under `/app/storage/materials` on Wasmer and downloaded only through authenticated teacher/student handlers. `MATERIAL_STORAGE_PATH` may override this location for a trusted deployment.
-- Teacher Classes uses an inline learning-material upload panel instead of a modal file picker so installed mobile PWAs can return from the system document picker reliably; selection validates file metadata only and does not preview or read file contents.
+- Teacher Classes uses a learning-material upload modal with an unfiltered system picker and a drag-and-drop fallback. Browser and server validation still restrict uploads to supported file types and 10 MB, without previewing or reading file contents before upload.
 - For installed PWA use, set `APP_SESSION_DRIVER=database`, `APP_SESSION_LIFETIME=86400`, and `APP_SESSION_IDLE_TIMEOUT=86400`; users can stay signed in longer through the checked-by-default trusted-device option on login.
 - Wasmer Attached Database uses hosted MySQL; import `database/schema.sql` first so `app_sessions` and authentication tables exist before production traffic.
 - Use `DB_SSL_CA` for a CA file path, or `DB_SSL_CA_CONTENT` when the CA PEM is stored directly as a GitHub/Wasmer secret.

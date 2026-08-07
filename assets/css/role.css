@@ -2499,22 +2499,36 @@ body.dark-mode .welcome-role-chip {
   transform: none;
 }
 
-.material-upload-panel {
-  padding: 18px 24px;
-  border-bottom: 1px solid var(--ui-border-soft, #e8edf3);
-  background: #f8fafc;
+.material-drop-zone {
+  padding: 16px;
+  border: 1px dashed #98a2b3;
+  border-radius: 6px;
+  background: #fff;
+  text-align: center;
+  transition: border-color 160ms ease, background-color 160ms ease;
 }
 
-.material-upload-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(240px, 1.35fr);
-  gap: 14px;
-  align-items: start;
+.material-drop-zone.is-dragging {
+  border-color: var(--ui-primary, #1f4f82);
+  background: #eef6ff;
 }
 
-.material-upload-grid > div,
-.material-upload-file {
-  min-width: 0;
+.material-drop-icon {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ui-primary, #1f4f82);
+  font-size: 1.6rem;
+}
+
+.material-drop-title {
+  color: var(--ui-text, #172033);
+  font-weight: 700;
+}
+
+.material-drop-copy {
+  margin-bottom: 12px;
+  color: var(--ui-text-muted, #667085);
+  font-size: 0.82rem;
 }
 
 .material-file-status {
@@ -2525,37 +2539,22 @@ body.dark-mode .welcome-role-chip {
   overflow-wrap: anywhere;
 }
 
-.material-upload-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-body.dark-mode .material-upload-panel {
-  border-bottom-color: var(--dm-border);
+body.dark-mode .material-drop-zone {
+  border-color: var(--dm-border);
   background: #111827;
 }
 
-@media (max-width: 991.98px) {
-  .material-upload-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
+body.dark-mode .material-drop-zone.is-dragging {
+  border-color: #60a5fa;
+  background: #172554;
 }
 
-@media (max-width: 575.98px) {
-  .material-upload-panel {
-    padding: 16px;
-  }
+body.dark-mode .material-drop-title {
+  color: var(--dm-text);
+}
 
-  .material-upload-actions {
-    align-items: stretch;
-    flex-direction: column-reverse;
-  }
-
-  .material-upload-actions .btn {
-    width: 100%;
-  }
+body.dark-mode .material-drop-copy {
+  color: var(--dm-text-muted);
 }
 
 .pagination .page-link {

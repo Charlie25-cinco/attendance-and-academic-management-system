@@ -196,35 +196,7 @@ $page_title = 'Classes';
                             <h5 class="content-card-title mb-1">Learning Materials</h5>
                             <div class="teacher-section-note">Upload and maintain files linked to your classes.</div>
                         </div>
-                        <button class="btn btn-sm btn-primary-custom" type="button" data-bs-toggle="collapse" data-bs-target="#materialUploadPanel" aria-expanded="false" aria-controls="materialUploadPanel"><i class="bi bi-plus-lg me-1"></i>Upload</button>
-                    </div>
-                    <div class="collapse" id="materialUploadPanel">
-                        <form id="uploadMaterialForm" class="material-upload-panel" enctype="multipart/form-data" onsubmit="uploadMaterial(event)">
-                            <div class="material-upload-grid">
-                                <div>
-                                    <label class="form-label" for="materialTitle">Title <span class="text-danger">*</span></label>
-                                    <input type="text" name="title" id="materialTitle" class="form-control" maxlength="200" required>
-                                </div>
-                                <div>
-                                    <label class="form-label" for="materialClassId">Class <span class="text-danger">*</span></label>
-                                    <select name="class_id" id="materialClassId" class="form-select" required>
-                                        <option value="">Select class</option>
-                                        <?php foreach ($classes as $class): ?>
-                                            <option value="<?php echo (int)$class['id']; ?>"><?php echo htmlspecialchars($class['class_name'] . ' (G' . $class['grade_level'] . ' - ' . $class['section'] . ')'); ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                                <div class="material-upload-file">
-                                    <label class="form-label" for="materialFileInput">File <span class="text-danger">*</span></label>
-                                    <input type="file" name="material_file" id="materialFileInput" class="form-control" required accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.jpg,.jpeg,.png">
-                                    <div class="material-file-status text-muted" id="materialFileStatus" role="status" aria-live="polite">PDF, Office document, text, JPG, or PNG up to 10 MB.</div>
-                                </div>
-                            </div>
-                            <div class="material-upload-actions">
-                                <button class="btn btn-sm btn-outline-secondary" type="button" id="clearMaterialUploadBtn"><i class="bi bi-x-lg me-1"></i>Clear</button>
-                                <button class="btn btn-sm btn-primary-custom" id="uploadMaterialBtn" type="submit"><i class="bi bi-cloud-arrow-up me-1"></i>Upload File</button>
-                            </div>
-                        </form>
+                        <button class="btn btn-sm btn-primary-custom" type="button" data-bs-toggle="modal" data-bs-target="#uploadMaterialModal"><i class="bi bi-plus-lg me-1"></i>Upload</button>
                     </div>
                     <div class="content-card-body">
                         <?php if (empty($materials)): ?>
@@ -336,6 +308,56 @@ $page_title = 'Classes';
             </div>
         </div>
     </div>
+</div>
+
+<div class="modal fade" id="uploadMaterialModal" tabindex="-1" aria-labelledby="uploadMaterialModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content app-modal-content">
+        <form id="uploadMaterialForm" enctype="multipart/form-data" onsubmit="uploadMaterial(event)">
+            <div class="modal-header app-modal-header">
+                <div>
+                    <div class="app-modal-kicker"><i class="bi bi-folder-plus"></i>Learning Materials</div>
+                    <h5 class="modal-title mb-0" id="uploadMaterialModalTitle">Upload Material</h5>
+                    <p class="app-modal-subtitle">Add a file to one of your classes.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body app-modal-body">
+                <div class="app-modal-stack">
+                    <div class="app-modal-panel">
+                        <div class="app-modal-panel-title"><i class="bi bi-journal-text"></i>Material Details</div>
+                        <div class="mb-3">
+                            <label class="form-label" for="materialTitle">Title <span class="text-danger">*</span></label>
+                            <input type="text" name="title" id="materialTitle" class="form-control" maxlength="200" required>
+                        </div>
+                        <div>
+                            <label class="form-label" for="materialClassId">Class <span class="text-danger">*</span></label>
+                            <select name="class_id" id="materialClassId" class="form-select" required>
+                                <option value="">Select class</option>
+                                <?php foreach ($classes as $class): ?>
+                                    <option value="<?php echo (int)$class['id']; ?>"><?php echo htmlspecialchars($class['class_name'] . ' (G' . $class['grade_level'] . ' - ' . $class['section'] . ')'); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="app-modal-panel">
+                        <div class="app-modal-panel-title"><i class="bi bi-file-earmark-arrow-up"></i>File</div>
+                        <div class="material-drop-zone" id="materialDropZone">
+                            <i class="bi bi-cloud-arrow-up material-drop-icon" aria-hidden="true"></i>
+                            <div class="material-drop-title">Drop a file here</div>
+                            <div class="material-drop-copy">or choose a file from this device</div>
+                            <label class="form-label visually-hidden" for="materialFileInput">Material file</label>
+                            <input type="file" name="material_file" id="materialFileInput" class="form-control" required>
+                            <div class="material-file-status text-muted" id="materialFileStatus" role="status" aria-live="polite">PDF, Office document, text, JPG, or PNG up to 10 MB.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer app-modal-footer">
+                <button class="btn btn-secondary" type="button" id="clearMaterialUploadBtn"><i class="bi bi-x-lg me-1"></i>Clear</button>
+                <button class="btn btn-primary" id="uploadMaterialBtn" type="submit"><i class="bi bi-cloud-arrow-up me-1"></i>Upload File</button>
+            </div>
+        </form>
+    </div></div>
 </div>
 
 <div class="modal fade" id="createClassAnnouncementModal" tabindex="-1" aria-hidden="true">
@@ -516,11 +538,13 @@ $page_title = 'Classes';
 <script>
 let pendingDeleteAction = '';
 let pendingFinishGradeItemId = 0;
+const uploadMaterialModalEl = document.getElementById('uploadMaterialModal');
 const createClassAnnouncementModalEl = document.getElementById('createClassAnnouncementModal');
 const editMaterialModalEl = document.getElementById('editMaterialModal');
 const createGradeItemModalEl = document.getElementById('createGradeItemModal');
 const recordScoresModalEl = document.getElementById('recordScoresModal');
 const finishGradeItemModalEl = document.getElementById('finishGradeItemModal');
+const uploadMaterialModal = uploadMaterialModalEl ? new bootstrap.Modal(uploadMaterialModalEl) : null;
 const createClassAnnouncementModal = createClassAnnouncementModalEl ? new bootstrap.Modal(createClassAnnouncementModalEl) : null;
 const editMaterialModal = editMaterialModalEl ? new bootstrap.Modal(editMaterialModalEl) : null;
 const createGradeItemModal = createGradeItemModalEl ? new bootstrap.Modal(createGradeItemModalEl) : null;
@@ -528,7 +552,7 @@ const recordScoresModal = recordScoresModalEl ? new bootstrap.Modal(recordScores
 const finishGradeItemModal = finishGradeItemModalEl ? new bootstrap.Modal(finishGradeItemModalEl) : null;
 const classStudentsModalEl = document.getElementById('classStudentsModal');
 const classStudentsModal = classStudentsModalEl ? new bootstrap.Modal(classStudentsModalEl) : null;
-const materialUploadPanelEl = document.getElementById('materialUploadPanel');
+const materialDropZone = document.getElementById('materialDropZone');
 const materialFileInput = document.getElementById('materialFileInput');
 const materialFileStatus = document.getElementById('materialFileStatus');
 const csrfToken = (window.APP_CSRF_TOKEN || '').toString();
@@ -539,7 +563,7 @@ function setBusy(btn, busyText, idleText, isBusy) {
     btn.textContent = isBusy ? busyText : idleText;
 }
 
-function resetUploadMaterialForm(){const form=document.getElementById('uploadMaterialForm');if(form)form.reset();if(materialFileInput)materialFileInput.setCustomValidity('');if(materialFileStatus){materialFileStatus.textContent='PDF, Office document, text, JPG, or PNG up to 10 MB.';materialFileStatus.className='material-file-status text-muted';}}
+function resetUploadMaterialForm(){const form=document.getElementById('uploadMaterialForm');if(form)form.reset();if(materialFileInput)materialFileInput.setCustomValidity('');if(materialDropZone)materialDropZone.classList.remove('is-dragging');if(materialFileStatus){materialFileStatus.textContent='PDF, Office document, text, JPG, or PNG up to 10 MB.';materialFileStatus.className='material-file-status text-muted';}}
 function resetCreateAnnouncementModal(){const form=document.getElementById('createClassAnnouncementForm');if(form)form.reset();}
 function resetEditMaterialModal(){const form=document.getElementById('editMaterialForm');if(form)form.reset();const idEl=document.getElementById('editMaterialId');if(idEl)idEl.value='';}
 function resetCreateGradeItemModal(){const form=document.getElementById('createGradeItemForm');if(form)form.reset();const dateEl=form?form.querySelector('input[name=\"activity_date\"]'):null;if(dateEl)dateEl.value='<?php echo date('Y-m-d'); ?>';}
@@ -551,14 +575,15 @@ function validateMaterialFile(){if(!materialFileInput||!materialFileStatus)retur
 
 if(materialFileInput)materialFileInput.addEventListener('change',validateMaterialFile);
 document.getElementById('clearMaterialUploadBtn')?.addEventListener('click',resetUploadMaterialForm);
-if(materialUploadPanelEl)materialUploadPanelEl.addEventListener('shown.bs.collapse',()=>document.getElementById('materialTitle')?.focus({preventScroll:true}));
+if(materialDropZone){['dragenter','dragover'].forEach(type=>materialDropZone.addEventListener(type,event=>{event.preventDefault();event.stopPropagation();materialDropZone.classList.add('is-dragging');}));['dragleave','drop'].forEach(type=>materialDropZone.addEventListener(type,event=>{event.preventDefault();event.stopPropagation();materialDropZone.classList.remove('is-dragging');}));materialDropZone.addEventListener('drop',event=>{const file=event.dataTransfer?.files?.[0];if(!file||!materialFileInput)return;try{const transfer=new DataTransfer();transfer.items.add(file);materialFileInput.files=transfer.files;validateMaterialFile();}catch(error){materialFileStatus.textContent='Drag-and-drop is unavailable in this browser. Use Choose File instead.';materialFileStatus.className='material-file-status text-danger';}});}
+if(uploadMaterialModalEl){uploadMaterialModalEl.addEventListener('show.bs.modal',resetUploadMaterialForm);uploadMaterialModalEl.addEventListener('shown.bs.modal',()=>document.getElementById('materialTitle')?.focus({preventScroll:true}));uploadMaterialModalEl.addEventListener('hidden.bs.modal',resetUploadMaterialForm);}
 if(createClassAnnouncementModalEl){createClassAnnouncementModalEl.addEventListener('show.bs.modal',resetCreateAnnouncementModal);createClassAnnouncementModalEl.addEventListener('hidden.bs.modal',resetCreateAnnouncementModal);}
 if(editMaterialModalEl){editMaterialModalEl.addEventListener('hidden.bs.modal',resetEditMaterialModal);}
 if(createGradeItemModalEl){createGradeItemModalEl.addEventListener('show.bs.modal',resetCreateGradeItemModal);createGradeItemModalEl.addEventListener('hidden.bs.modal',resetCreateGradeItemModal);}
 if(recordScoresModalEl){recordScoresModalEl.addEventListener('hidden.bs.modal',resetRecordScoresModal);}
 if(finishGradeItemModalEl){finishGradeItemModalEl.addEventListener('hidden.bs.modal',resetFinishGradeItemModal);}
 if(classStudentsModalEl){classStudentsModalEl.addEventListener('hidden.bs.modal',resetClassStudentsModal);}
-function uploadMaterial(event){if(event)event.preventDefault();const form=document.getElementById('uploadMaterialForm');if(!form||!form.reportValidity()||!validateMaterialFile()){materialFileInput?.reportValidity();return;}const fd=new FormData(form);const uploadBtn=document.getElementById('uploadMaterialBtn');appendCsrfToFormData(fd);setBusy(uploadBtn,'Uploading...','Upload File',true);fetchMaterialJson('teacher_Action.php?action=upload_material',{method:'POST',body:fd}).then(d=>{showNotification(d.message||'Material uploaded successfully','success');resetUploadMaterialForm();setTimeout(()=>location.reload(),700);}).catch(error=>showNotification(error.message||'Error uploading material','danger')).finally(()=>setBusy(uploadBtn,'Uploading...','Upload File',false));}
+function uploadMaterial(event){if(event)event.preventDefault();const form=document.getElementById('uploadMaterialForm');if(!form||!form.reportValidity()||!validateMaterialFile()){materialFileInput?.reportValidity();return;}const fd=new FormData(form);const uploadBtn=document.getElementById('uploadMaterialBtn');appendCsrfToFormData(fd);setBusy(uploadBtn,'Uploading...','Upload File',true);fetchMaterialJson('teacher_Action.php?action=upload_material',{method:'POST',body:fd}).then(d=>{showNotification(d.message||'Material uploaded successfully','success');if(uploadMaterialModal)uploadMaterialModal.hide();setTimeout(()=>location.reload(),700);}).catch(error=>showNotification(error.message||'Error uploading material','danger')).finally(()=>setBusy(uploadBtn,'Uploading...','Upload File',false));}
 function openEditMaterialModal(materialId){resetEditMaterialModal();fetch('teacher_Action.php?action=get_material&id='+encodeURIComponent(materialId)).then(r=>r.json()).then(d=>{if(!d.success){showNotification(d.message||'Failed to load material','danger');return;}const m=d.material;document.getElementById('editMaterialId').value=m.id;document.getElementById('editMaterialTitle').value=m.title||'';document.getElementById('editMaterialClassId').value=m.class_id||'';if(editMaterialModal)editMaterialModal.show();}).catch(()=>showNotification('Error loading material data','danger'));}
 function updateMaterial(){const form=document.getElementById('editMaterialForm');const fd=new FormData(form);const id=(fd.get('material_id')||'').toString().trim();const title=(fd.get('title')||'').toString().trim();const classId=(fd.get('class_id')||'').toString().trim();const updateBtn=document.getElementById('updateMaterialBtn');if(!id||!title||!classId){showNotification('Please complete all fields','warning');return;}appendCsrfToFormData(fd);setBusy(updateBtn,'Saving...','Save Changes',true);fetchMaterialJson('teacher_Action.php?action=update_material',{method:'POST',body:fd}).then(d=>{showNotification(d.message||'Material updated successfully','success');if(editMaterialModal)editMaterialModal.hide();setTimeout(()=>location.reload(),700);}).catch(error=>showNotification(error.message||'Error updating material','danger')).finally(()=>setBusy(updateBtn,'Saving...','Save Changes',false));}
 function deleteMaterial(materialId,title){pendingDeleteAction='material';showDeleteModal(materialId,title,'material');}

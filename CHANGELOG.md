@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.45 — 2026-08-08
+
+### Fixed
+
+- Restored the teacher learning-material upload modal while removing the native picker's custom extension filter that could leave the Windows file dialog unresponsive.
+- Added drag-and-drop file selection as an alternative to the system picker while preserving browser and server type and size validation.
+
 ## v0.3.44 — 2026-08-08
 
 ### Fixed

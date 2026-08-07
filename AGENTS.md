@@ -107,7 +107,7 @@ For local manual testing, `composer run serve` starts the PHP development server
 - New learning-material files must use `BshsAms\Storage\MaterialStorage` and default to `storage/materials`, which maps to Wasmer's durable `/app/storage` volume.
 - Material downloads must remain behind teacher ownership or active student enrollment checks; never expose stored files through a direct public URL.
 - Keep legacy material-directory lookup for existing files unless a migration explicitly moves every stored material and updates its database record.
-- Keep the Teacher Classes material file input in the inline upload panel, not a modal; file selection may validate metadata but must not read or preview the selected file before upload.
+- Keep the Teacher Classes material file input unfiltered inside its upload modal and retain the drag-and-drop fallback; browser and server code must validate type and size without reading or previewing the selected file before upload.
 
 ## UI System
 
@@ -197,7 +197,7 @@ For local manual testing, `composer run serve` starts the PHP development server
 - New learning-material files must use `BshsAms\Storage\MaterialStorage` and default to `storage/materials`, which maps to Wasmer's durable `/app/storage` volume.
 - Material downloads must remain behind teacher ownership or active student enrollment checks; never expose stored files through a direct public URL.
 - Keep legacy material-directory lookup for existing files unless a migration explicitly moves every stored material and updates its database record.
-- Keep the Teacher Classes material file input in the inline upload panel, not a modal; file selection may validate metadata but must not read or preview the selected file before upload.
+- Keep the Teacher Classes material file input unfiltered inside its upload modal and retain the drag-and-drop fallback; browser and server code must validate type and size without reading or previewing the selected file before upload.
 
 ## UI System
 

@@ -95,11 +95,15 @@ final class MaterialStorageTest extends TestCase
         $this->assertStringContainsString('appendCsrfToFormData(fd)', substr($teacherPage, $uploadStart, $uploadEnd - $uploadStart));
         $this->assertStringContainsString('appendCsrfToFormData(fd)', substr($teacherPage, $updateStart, $updateEnd - $updateStart));
         $this->assertStringContainsString('fetchMaterialJson', $teacherPage);
-        $this->assertStringContainsString('id="materialUploadPanel"', $teacherPage);
+        $this->assertStringContainsString('id="uploadMaterialModal"', $teacherPage);
+        $this->assertStringContainsString('id="materialDropZone"', $teacherPage);
         $this->assertStringContainsString('id="materialFileStatus" role="status" aria-live="polite"', $teacherPage);
         $this->assertStringContainsString("materialFileInput.addEventListener('change',validateMaterialFile)", $teacherPage);
+        $this->assertStringContainsString("materialDropZone.addEventListener('drop'", $teacherPage);
+        $this->assertStringContainsString('new DataTransfer()', $teacherPage);
         $this->assertStringContainsString('file.size>10*1024*1024', $teacherPage);
-        $this->assertStringNotContainsString('id="uploadMaterialModal"', $teacherPage);
+        $this->assertMatchesRegularExpression('/<input type="file"[^>]*id="materialFileInput"[^>]*>/', $teacherPage);
+        $this->assertDoesNotMatchRegularExpression('/<input type="file"[^>]*id="materialFileInput"[^>]*accept=/', $teacherPage);
         $this->assertStringNotContainsString('FileReader', $teacherPage);
         $this->assertStringNotContainsString('createObjectURL', $teacherPage);
 
