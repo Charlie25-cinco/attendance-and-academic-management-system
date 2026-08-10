@@ -202,6 +202,73 @@ function initNavigationProgress() {
   });
 }
 
+function initLogicalSecurityGuards() {
+  const dirtyForms = new Set();
+  const sensitiveSelector = "form:not([data-skip-logical-security='true'])";
+
+  function isSensitiveForm(form) {
+    if (!(form instanceof HTMLFormElement)) return false;
+    if (!form.matches(sensitiveSelector)) return false;
+    const method = (form.getAttribute("method") || "get").toLowerCase();
+    return method !== "get" && method !== "dialog";
+  }
+
+  function dirtySensitiveForms() {
+    return Array.from(dirtyForms).filter((form) => form.isConnected && isSensitiveForm(form));
+  }
+
+  function hasDirtySensitiveForm() {
+    return dirtySensitiveForms().length > 0;
+  }
+
+  function markFormDirty(target) {
+    const field = target && target.closest ? target.closest("input, select, textarea") : null;
+    if (!field || field.type === "hidden") return;
+    const form = field.form;
+    if (isSensitiveForm(form)) {
+      dirtyForms.add(form);
+    }
+  }
+
+  document.addEventListener("input", function (event) {
+    markFormDirty(event.target);
+  }, true);
+
+  document.addEventListener("change", function (event) {
+    markFormDirty(event.target);
+  }, true);
+
+  document.addEventListener("submit", function (event) {
+    if (event.target instanceof HTMLFormElement) {
+      dirtyForms.delete(event.target);
+    }
+  }, true);
+
+  window.addEventListener("beforeunload", function (event) {
+    if (!hasDirtySensitiveForm()) return;
+    event.preventDefault();
+    event.returnValue = "";
+  });
+
+  document.addEventListener("keydown", function (event) {
+    const key = (event.key || "").toLowerCase();
+    const refreshShortcut = key === "f5" || ((event.ctrlKey || event.metaKey) && key === "r");
+    if (!refreshShortcut || !hasDirtySensitiveForm()) return;
+
+    event.preventDefault();
+    if (typeof showNotification === "function") {
+      showNotification("Save or clear the form before refreshing this page.", "warning");
+    }
+  }, true);
+
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden || !hasDirtySensitiveForm()) return;
+    try {
+      sessionStorage.setItem("app_unsaved_sensitive_form", "1");
+    } catch (e) {}
+  });
+}
+
 // Toggle sidebar collapse (desktop)
 function toggleSidebar() {
   const sidebar = document.getElementById("sidebar");
@@ -276,6 +343,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Show a slim, non-blocking page progress indicator during navigation
   initNavigationProgress();
+
+  // Guard sensitive forms from accidental refresh or app switching data loss
+  initLogicalSecurityGuards();
 
   // Focus the first usable field when modal forms open
   initModalAutofocus();

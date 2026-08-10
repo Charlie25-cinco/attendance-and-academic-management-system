@@ -70,6 +70,8 @@ Open `http://localhost:5000`.
 - Web login and remember-me auto-login both force password setup while a user's password still matches `DEFAULT_NEW_USER_PASSWORD`.
 - Shared profile modal updates name, sex, email, and password through the profile API; password fields include visibility toggles and require the current password before changing.
 - Default or first-run passwords must be changed before production.
+- Logical security is implemented at the web/PWA layer: `config/session.php` applies security headers, restricts camera and other device permissions by page, sends no-cache headers for authenticated pages, and recognizes forwarded HTTPS for hosted deployments.
+- The app warns before refreshing or leaving dirty sensitive POST forms; browser security does not permit the PWA to disable operating-system controls such as `Ctrl+Alt+Del`, `Alt+Tab`, or startup programs.
 
 ## Role Modules
 

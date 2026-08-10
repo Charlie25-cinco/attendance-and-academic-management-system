@@ -21,9 +21,17 @@ if (!function_exists('appIsEmbeddedRequest')) {
     }
 }
 
+if (!function_exists('appRequestIsHttps')) {
+    function appRequestIsHttps(): bool {
+        $https = strtolower(trim((string)($_SERVER['HTTPS'] ?? '')));
+        $forwardedProto = strtolower(trim((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')));
+        return ($https !== '' && $https !== 'off') || $forwardedProto === 'https';
+    }
+}
+
 if (!function_exists('appCookieSecure')) {
     function appCookieSecure(): bool {
-        return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || appIsLocalCookieHost();
+        return appRequestIsHttps() || appIsLocalCookieHost();
     }
 }
 
@@ -121,6 +129,41 @@ function appExpireCurrentSession(): void {
 }
 }
 
+if (!function_exists('appPermissionsPolicyHeader')) {
+    function appPermissionsPolicyHeader(string $scriptName): string {
+        $cameraDirective = strtolower($scriptName) === 'teacher_attendance.php' ? 'camera=(self)' : 'camera=()';
+        return $cameraDirective
+            . ', microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), accelerometer=(), gyroscope=(), magnetometer=()';
+    }
+}
+
+if (!function_exists('appApplyLogicalSecurityHeaders')) {
+    function appApplyLogicalSecurityHeaders(): void {
+        if (headers_sent()) { return; }
+
+        $scriptName = strtolower(basename((string)($_SERVER['SCRIPT_NAME'] ?? '')));
+        header("Content-Security-Policy: base-uri 'self'; object-src 'none'; frame-ancestors 'self'");
+        header('X-Frame-Options: SAMEORIGIN');
+        header('X-Content-Type-Options: nosniff');
+        header('X-Permitted-Cross-Domain-Policies: none');
+        header('Referrer-Policy: strict-origin-when-cross-origin');
+        header('Permissions-Policy: ' . appPermissionsPolicyHeader($scriptName));
+        header('Cross-Origin-Opener-Policy: same-origin');
+        header('Cross-Origin-Resource-Policy: same-origin');
+        header('Vary: Sec-Fetch-Dest');
+
+        if (!empty($_SESSION['logged_in'])) {
+            header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+            header('Pragma: no-cache');
+            header('Expires: 0');
+        }
+
+        if (appRequestIsHttps()) {
+            header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+        }
+    }
+}
+
 if (session_status() !== PHP_SESSION_ACTIVE) {
     $secure = appCookieSecure();
 
@@ -150,19 +193,7 @@ if (!empty($_SESSION['logged_in'])) {
     }
 }
 
-if (!headers_sent()) {
-    $scriptName = strtolower(basename((string)($_SERVER['SCRIPT_NAME'] ?? '')));
-    $cameraDirective = $scriptName === 'teacher_attendance.php' ? 'camera=(self)' : 'camera=()';
-    header("Content-Security-Policy: frame-ancestors 'self'");
-    header('X-Frame-Options: SAMEORIGIN');
-    header('X-Content-Type-Options: nosniff');
-    header('Referrer-Policy: strict-origin-when-cross-origin');
-    header('Permissions-Policy: ' . $cameraDirective . ', microphone=(), geolocation=(), payment=()');
-    header('Vary: Sec-Fetch-Dest');
-    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
-        header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
-    }
-}
+appApplyLogicalSecurityHeaders();
 
 if (!function_exists('appAssetPath')) {
     function appAssetPath(string $relativePath): string {

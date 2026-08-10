@@ -9,9 +9,9 @@ final class CameraPermissionPolicyTest extends TestCase
         $content = file_get_contents(__DIR__ . '/../config/session.php');
         $this->assertIsString($content);
 
-        $this->assertStringContainsString("\$scriptName === 'teacher_attendance.php'", $content);
+        $this->assertStringContainsString("strtolower(\$scriptName) === 'teacher_attendance.php'", $content);
         $this->assertStringContainsString("? 'camera=(self)' : 'camera=()'", $content);
-        $this->assertStringContainsString('microphone=(), geolocation=(), payment=()', $content);
+        $this->assertStringContainsString('microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=()', $content);
     }
 
     public function testQrScannerProvidesPermissionGuidanceAndRetry(): void

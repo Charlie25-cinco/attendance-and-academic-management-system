@@ -62,6 +62,7 @@ For local manual testing, `composer run serve` starts the PHP development server
 - RBAC permission enforcement is centralized from `functions/bootstrap.php`; keep the script-to-permission map in `functions/app-helpers.php` current when adding protected pages or action handlers.
 - Existing AJAX flows may pass CSRF by POST body, query string, or `X-CSRF-Token`; keep `requireCsrfToken()` compatible with all three unless those callers are migrated.
 - Browser camera access must remain limited to `teacher_Attendance.php` for QR attendance scanning; all other pages must keep camera access disabled through `Permissions-Policy`.
+- Logical security controls are web/PWA-scoped: `config/session.php` owns security headers, no-cache headers for authenticated pages, forwarded-HTTPS detection, and device permission restrictions; `assets/js/main.js` may warn on dirty sensitive forms but must not claim to disable OS shortcuts or startup programs.
 
 ## DepEd Forms
 
@@ -153,6 +154,7 @@ For local manual testing, `composer run serve` starts the PHP development server
 - Admin Audit Logs must remain read-only and use `admin_audit_logs` plus `auth_login_logs` to show actor, action, target, details, and timestamp records.
 - RBAC permission enforcement is centralized from `functions/bootstrap.php`; keep the script-to-permission map in `functions/app-helpers.php` current when adding protected pages or action handlers.
 - Existing AJAX flows may pass CSRF by POST body, query string, or `X-CSRF-Token`; keep `requireCsrfToken()` compatible with all three unless those callers are migrated.
+- Logical security controls are web/PWA-scoped: `config/session.php` owns security headers, no-cache headers for authenticated pages, forwarded-HTTPS detection, and device permission restrictions; `assets/js/main.js` may warn on dirty sensitive forms but must not claim to disable OS shortcuts or startup programs.
 
 ## DepEd Forms
 
