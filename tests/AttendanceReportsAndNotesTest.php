@@ -56,6 +56,7 @@ final class AttendanceReportsAndNotesTest extends TestCase
         $this->assertIsString($adminPage);
 
         $this->assertStringContainsString('throw $fallbackError;', $helper);
+        $this->assertStringContainsString('ALTER TABLE {$table} MODIFY COLUMN report_type', $helper);
         $this->assertStringContainsString('ensureReportNotesTables($db);', $teacherAction);
         $this->assertStringContainsString('ensureReportNotesTables($db);', $adminAction);
         $this->assertStringContainsString('teacherReportsJsonExit([', $teacherAction);
@@ -64,6 +65,8 @@ final class AttendanceReportsAndNotesTest extends TestCase
         $this->assertStringContainsString('while (ob_get_level() > 0) { ob_end_clean(); }', $adminAction);
         $this->assertStringContainsString('appendCsrf(fd);', $teacherPage);
         $this->assertStringContainsString('appendCsrf(fd);', $adminPage);
+        $this->assertStringContainsString('parsed.ok = Boolean(parsed.success);', $teacherPage);
+        $this->assertStringContainsString('parsed.ok = Boolean(parsed.success);', $adminPage);
         $this->assertStringContainsString('body: text.slice(0, 500)', $teacherPage);
         $this->assertStringContainsString('body: text.slice(0, 500)', $adminPage);
         $this->assertStringContainsString('WHERE id = ? AND teacher_id = ?', $teacherAction);

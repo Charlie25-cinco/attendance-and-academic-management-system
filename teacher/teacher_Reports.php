@@ -491,14 +491,22 @@ function exportTeacherReportSf2(format) {
     async function readJsonResponse(res, fallbackMessage) {
         const text = await res.text();
         try {
-            return text ? JSON.parse(text) : { ok: false, message: fallbackMessage };
+            const parsed = text ? JSON.parse(text) : null;
+            if (parsed && typeof parsed === 'object') {
+                if (parsed.ok === undefined && parsed.success !== undefined) {
+                    parsed.ok = Boolean(parsed.success);
+                }
+                return parsed;
+            }
+            return { ok: false, message: fallbackMessage };
         } catch (err) {
             console.error('Report notes returned a non-JSON response.', {
                 status: res.status,
                 contentType: res.headers.get('content-type') || '',
                 body: text.slice(0, 500)
             });
-            return { ok: false, message: fallbackMessage };
+            const snippet = text.replace(/<[^>]*>/g, '').trim().slice(0, 120);
+            return { ok: false, message: snippet || fallbackMessage };
         }
     }
 

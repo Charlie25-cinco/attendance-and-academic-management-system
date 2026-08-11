@@ -89,9 +89,10 @@ if (in_array($action, ['save_note', 'list_notes', 'update_note', 'delete_note'],
 }
 
 if ($action !== 'export') {
-    http_response_code(400);
-    echo 'Invalid action.';
-    exit();
+    adminReportsJsonExit([
+        'ok' => false,
+        'message' => 'Invalid action.'
+    ], 400);
 }
 
 $allowedTypes = ['attendance', 'top_attendance', 'class_summary', 'at_risk', 'grades', 'enrollment', 'teachers', 'classes'];

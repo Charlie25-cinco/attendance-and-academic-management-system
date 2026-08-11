@@ -331,6 +331,13 @@ function ensureReportNotesTables(PDO $db): void {
                 throw $fallbackError;
             }
         }
+
+        try {
+            $alterSql = "ALTER TABLE {$table} MODIFY COLUMN report_type ENUM({$reportTypes}) DEFAULT 'general'";
+            $db->exec($alterSql);
+        } catch (Throwable $alterError) {
+            // Non-critical if table already matches or user lacks ALTER privilege
+        }
     }
 
     $ready = true;

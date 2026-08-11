@@ -2,6 +2,15 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.55 — 2026-08-11
+
+### Fixed
+
+- Fixed Top Attendance, Class Summary, and At-risk Attendance aggregate calculation and preview across Admin and Teacher portals by removing rigid enrollment subquery constraints that prevented recorded attendance from populating report rows.
+- Fixed Report Notes journal responses by ensuring all non-export endpoints in `admin_Reports_Action.php` and `teacher_Reports_Action.php` return structured JSON payloads.
+- Added automatic `report_type` `ENUM` migration in `ensureReportNotesTables` so existing installations properly support `top_attendance`, `class_summary`, and `at_risk` note types.
+- Enhanced `readJsonResponse` in `admin_Reports.php` and `teacher_Reports.php` to handle response format normalization and surface server-provided error messages clearly.
+
 ## v0.3.54 — 2026-08-11
 
 ### Fixed

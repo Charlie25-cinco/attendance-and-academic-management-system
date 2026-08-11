@@ -108,21 +108,7 @@ if (!function_exists('trhBuildAttendanceScope')) {
             $sex = '';
         }
 
-        $where = [
-            "EXISTS (
-                SELECT 1
-                FROM enrollments e
-                WHERE e.student_id = a.student_id
-                AND e.class_id = a.class_id
-                AND e.id = (
-                    SELECT MAX(e2.id)
-                    FROM enrollments e2
-                    WHERE e2.student_id = a.student_id
-                    AND e2.class_id = a.class_id
-                )
-                AND COALESCE(e.status, 'enrolled') = 'enrolled'
-            )"
-        ];
+        $where = [];
         $params = [];
 
         if ($mode === 'advisory') {

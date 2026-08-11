@@ -76,17 +76,6 @@ if (!function_exists('aggregateAttendanceAdminScope')) {
             $params[] = $status;
         }
 
-        $where[] = "EXISTS (
-            SELECT 1 FROM enrollments e
-            WHERE e.student_id = a.student_id
-              AND e.class_id = a.class_id
-              AND e.id = (
-                  SELECT MAX(e2.id) FROM enrollments e2
-                  WHERE e2.student_id = a.student_id AND e2.class_id = a.class_id
-              )
-              AND COALESCE(e.status, 'enrolled') = 'enrolled'
-        )";
-
         return [$where, $params];
     }
 }
@@ -114,8 +103,10 @@ if (!function_exists('aggregateAttendanceReportRows')) {
                            {$rate} AS attendance_rate
                     FROM attendance a
                     JOIN classes c ON c.id = a.class_id
+                    JOIN users u ON u.id = a.student_id
                     WHERE {$whereSql}
                     GROUP BY c.id, c.class_name
+                    HAVING total_records > 0
                     ORDER BY {$definition['order']}";
         } else {
             $sql = "SELECT CONCAT(u.first_name, ' ', u.last_name) AS student_name,
