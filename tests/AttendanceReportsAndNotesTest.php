@@ -71,5 +71,8 @@ final class AttendanceReportsAndNotesTest extends TestCase
         $this->assertStringContainsString('body: text.slice(0, 500)', $adminPage);
         $this->assertStringContainsString('WHERE id = ? AND teacher_id = ?', $teacherAction);
         $this->assertStringContainsString('WHERE id = ? AND admin_id = ?', $adminAction);
+        $this->assertStringNotContainsString('function normalizeInt', $teacherAction);
+        $this->assertStringNotContainsString('function normalizeText', $teacherAction);
+        $this->assertStringContainsString('student_name ASC', aggregateAttendanceReportDefinition('top_attendance')['order']);
     }
 }

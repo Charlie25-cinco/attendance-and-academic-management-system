@@ -158,21 +158,6 @@ foreach ($rows as $row) {
 fclose($out);
 exit();
 
-function normalizeText($value) {
-    if (!is_scalar($value)) {
-        return '';
-    }
-    return trim((string)$value);
-}
-
-function normalizeInt($value) {
-    if (!is_scalar($value)) {
-        return 0;
-    }
-    $value = trim((string)$value);
-    return ctype_digit($value) ? (int)$value : 0;
-}
-
 function handleSaveNote($db, $teacherId) {
     requirePostAndCsrfOrExit();
 

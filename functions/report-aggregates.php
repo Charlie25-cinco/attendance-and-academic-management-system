@@ -15,19 +15,19 @@ if (!function_exists('aggregateAttendanceReportDefinition')) {
                 'headers' => ['Rank', 'Student', 'Reference', 'Present', 'Late', 'Absent', 'Total', 'Rate'],
                 'group' => 'student',
                 'limit' => true,
-                'order' => 'attendance_rate DESC, total_records DESC, u.last_name, u.first_name',
+                'order' => 'attendance_rate DESC, total_records DESC, student_name ASC',
             ],
             'class_summary' => [
                 'headers' => ['Class', 'Present', 'Late', 'Absent', 'Total', 'Rate'],
                 'group' => 'class',
                 'limit' => false,
-                'order' => 'c.class_name',
+                'order' => 'c.class_name ASC',
             ],
             'at_risk' => [
                 'headers' => ['Student', 'Reference', 'Absent', 'Total', 'Rate'],
                 'group' => 'student',
                 'limit' => true,
-                'order' => 'absent_count DESC, attendance_rate ASC, u.last_name, u.first_name',
+                'order' => 'absent_count DESC, attendance_rate ASC, student_name ASC',
             ],
         ];
 

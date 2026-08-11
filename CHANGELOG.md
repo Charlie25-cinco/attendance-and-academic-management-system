@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.56 — 2026-08-11
+
+### Fixed
+
+- Fixed HTTP 500 fatal error in `teacher_Reports_Action.php` during CSV export by removing duplicate declarations of `normalizeInt()` and `normalizeText()` which collided with `functions/app-helpers.php`.
+- Updated aggregate report ordering in `functions/report-aggregates.php` to use explicit `student_name ASC` and `c.class_name ASC` aliases for consistent cross-database execution.
+
 ## v0.3.55 — 2026-08-11
 
 ### Fixed
