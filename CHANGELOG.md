@@ -2,6 +2,15 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.54 — 2026-08-11
+
+### Fixed
+
+- Fixed Wasmer Edge deployment `operation timed out` errors on `https://registry.wasmer.io/graphql` by optimizing the deployment package payload from >65 MB to <10 MB.
+- Expanded `.wasmerignore` to exclude non-runtime documentation, database schemas/seeds, CLI scripts, samples, dynamic storage/upload volumes, and macro workbooks (`resources/`, `database/`, `scripts/`, `examples/`, `storage/`, `assets/uploads/`, `deped/*.xlsm`).
+- Added a production dependency pruning step (`composer install --no-dev`) prior to `wasmer deploy` in `.github/workflows/wasmer-deploy.yml`.
+- Recompressed `deped/ecr_template.xlsx` using standard Zip Deflate, reducing template file size from 7.82 MB to 1.38 MB while preserving all worksheet data, formulas, and styles.
+
 ## v0.3.53 — 2026-08-11
 
 ### Fixed

@@ -14,3 +14,5 @@ tmp_ecr_template/
 
 /vendor/
 .phpunit.cache/
+.agents/
+.commandcode/

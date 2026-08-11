@@ -18,7 +18,15 @@ final class WasmerDeploymentWorkflowTest extends TestCase
         $this->assertStringContainsString('for attempt in $(seq 1 "$max_attempts")', $workflow);
         $this->assertStringContainsString('if wasmer deploy --non-interactive --token="${WASMER_TOKEN}"; then', $workflow);
         $this->assertStringContainsString('delay=$((attempt * 30))', $workflow);
-        $this->assertStringContainsString('failed after ${max_attempts} attempts', $workflow);
+        $this->assertStringContainsString('composer install --no-dev', $workflow);
+        $this->assertStringContainsString('export WASMER_TOKEN="${WASMER_TOKEN}"', $workflow);
         $this->assertStringContainsString('.git/', $wasmerIgnore);
+        $this->assertStringContainsString('resources/', $wasmerIgnore);
+        $this->assertStringContainsString('database/', $wasmerIgnore);
+        $this->assertStringContainsString('scripts/', $wasmerIgnore);
+        $this->assertStringContainsString('examples/', $wasmerIgnore);
+        $this->assertStringContainsString('storage/', $wasmerIgnore);
+        $this->assertStringContainsString('assets/uploads/', $wasmerIgnore);
+        $this->assertStringContainsString('deped/*.xlsm', $wasmerIgnore);
     }
 }
