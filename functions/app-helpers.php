@@ -328,6 +328,7 @@ function ensureReportNotesTables(PDO $db): void {
                 $db->exec($fallbackSql);
             } catch (Throwable $fallbackError) {
                 error_log('Report notes fallback table check failed for ' . $table . ': ' . $fallbackError->getMessage());
+                throw $fallbackError;
             }
         }
     }

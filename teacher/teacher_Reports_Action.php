@@ -37,30 +37,23 @@ if (!$db) {
 
 $teacherId = (int)($_SESSION['user_id'] ?? 0);
 $action = $__teacherReportsAction;
-ensureReportNotesTables($db);
 unset($__teacherReportsAction, $__teacherReportsNotesAction);
 
 function requirePostAndCsrfOrExit() {
     if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
-        header('Content-Type: application/json');
-        http_response_code(405);
-        echo json_encode([
+        teacherReportsJsonExit([
             'ok' => false,
             'message' => 'Method not allowed.'
-        ]);
-        exit();
+        ], 405);
     }
 
     $sessionToken = (string)($_SESSION['csrf_token'] ?? '');
     $requestToken = trim((string)($_POST['csrf_token'] ?? ($_GET['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? ''))));
     if ($sessionToken === '' || $requestToken === '' || !hash_equals($sessionToken, $requestToken)) {
-        header('Content-Type: application/json');
-        http_response_code(403);
-        echo json_encode([
+        teacherReportsJsonExit([
             'ok' => false,
             'message' => 'Invalid CSRF token.'
-        ]);
-        exit();
+        ], 403);
     }
 }
 
@@ -74,6 +67,7 @@ function handleReportNotesError(Throwable $e): void {
 
 if (in_array($action, ['save_note', 'list_notes', 'update_note', 'delete_note'], true)) {
     try {
+        ensureReportNotesTables($db);
         if ($action === 'save_note') {
             handleSaveNote($db, $teacherId);
         }
@@ -148,69 +142,10 @@ $advisoryInfo = trhFetchAdvisoryInfo($db, $teacherId);
     $sex
 );
 
-$headers = [];
-$rows = [];
-
-if ($type === 'top_attendance') {
-    $headers = ['Rank', 'Student', 'Reference', 'Present', 'Late', 'Absent', 'Total', 'Rate'];
-    $sql = "SELECT CONCAT(u.first_name, ' ', u.last_name) AS student_name, u.reference_code,
-            SUM(CASE WHEN a.status='present' THEN 1 ELSE 0 END) AS present_count,
-            SUM(CASE WHEN a.status='late' THEN 1 ELSE 0 END) AS late_count,
-            (SUM(CASE WHEN a.status='absent' THEN 1 ELSE 0 END) + FLOOR(SUM(CASE WHEN a.status='late' THEN 1 ELSE 0 END) / 3)) AS absent_count,
-            COUNT(*) AS total_records,
-            MOD(SUM(CASE WHEN a.status='late' THEN 1 ELSE 0 END), 3) AS effective_late_count,
-            ROUND(((SUM(CASE WHEN a.status='present' THEN 1 ELSE 0 END) + MOD(SUM(CASE WHEN a.status='late' THEN 1 ELSE 0 END), 3)) / COUNT(*)) * 100, 2) AS attendance_rate
-            FROM attendance a
-            JOIN users u ON u.id = a.student_id
-            WHERE " . implode(' AND ', $where) . "
-            GROUP BY u.id, u.first_name, u.last_name, u.reference_code
-            HAVING total_records > 0
-            ORDER BY attendance_rate DESC, total_records DESC, u.last_name, u.first_name
-            LIMIT " . (int)$topN;
-    $stmt = $db->prepare($sql);
-    $stmt->execute($params);
-    $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    foreach ($data as $i => $r) {
-        $rows[] = [$i + 1, $r['student_name'], $r['reference_code'], $r['present_count'], $r['effective_late_count'], $r['absent_count'], $r['total_records'], $r['attendance_rate'] . '%'];
-    }
-} elseif ($type === 'class_summary') {
-    $headers = ['Class', 'Present', 'Late', 'Absent', 'Total', 'Rate'];
-    $sql = "SELECT c.class_name,
-            SUM(CASE WHEN a.status='present' THEN 1 ELSE 0 END) AS present_count,
-            SUM(CASE WHEN a.status='late' THEN 1 ELSE 0 END) AS late_count,
-            (SUM(CASE WHEN a.status='absent' THEN 1 ELSE 0 END) + FLOOR(SUM(CASE WHEN a.status='late' THEN 1 ELSE 0 END) / 3)) AS absent_count,
-            COUNT(*) AS total_records,
-            MOD(SUM(CASE WHEN a.status='late' THEN 1 ELSE 0 END), 3) AS effective_late_count,
-            ROUND(((SUM(CASE WHEN a.status='present' THEN 1 ELSE 0 END) + MOD(SUM(CASE WHEN a.status='late' THEN 1 ELSE 0 END), 3)) / COUNT(*)) * 100, 2) AS attendance_rate
-            FROM attendance a
-            JOIN classes c ON c.id = a.class_id
-            WHERE " . implode(' AND ', $where) . "
-            GROUP BY c.id, c.class_name
-            ORDER BY c.class_name";
-    $stmt = $db->prepare($sql);
-    $stmt->execute($params);
-    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
-        $rows[] = [$r['class_name'], $r['present_count'], $r['effective_late_count'], $r['absent_count'], $r['total_records'], $r['attendance_rate'] . '%'];
-    }
-} else {
-    $headers = ['Student', 'Reference', 'Absent', 'Total', 'Rate'];
-    $sql = "SELECT CONCAT(u.first_name, ' ', u.last_name) AS student_name, u.reference_code,
-            (SUM(CASE WHEN a.status='absent' THEN 1 ELSE 0 END) + FLOOR(SUM(CASE WHEN a.status='late' THEN 1 ELSE 0 END) / 3)) AS absent_count,
-            COUNT(*) AS total_records,
-            ROUND(((SUM(CASE WHEN a.status='present' THEN 1 ELSE 0 END) + MOD(SUM(CASE WHEN a.status='late' THEN 1 ELSE 0 END), 3)) / COUNT(*)) * 100, 2) AS attendance_rate
-            FROM attendance a
-            JOIN users u ON u.id = a.student_id
-            WHERE " . implode(' AND ', $where) . "
-            GROUP BY u.id, u.first_name, u.last_name, u.reference_code
-            HAVING total_records > 0
-            ORDER BY absent_count DESC, attendance_rate ASC, u.last_name, u.first_name
-            LIMIT " . (int)$topN;
-    $stmt = $db->prepare($sql);
-    $stmt->execute($params);
-    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
-        $rows[] = [$r['student_name'], $r['reference_code'], $r['absent_count'], $r['total_records'], $r['attendance_rate'] . '%'];
-    }
-}
+$aggregateRows = aggregateAttendanceReportRows($db, $type, $where, $params, $topN);
+$aggregateTable = aggregateAttendanceReportTable($type, $aggregateRows);
+$headers = $aggregateTable['headers'];
+$rows = $aggregateTable['rows'];
 
 $filename = 'teacher_' . $type . '_' . str_replace('-', '_', $academicYear) . '_' . date('Ymd_His') . '.csv';
 header('Content-Type: text/csv; charset=utf-8');

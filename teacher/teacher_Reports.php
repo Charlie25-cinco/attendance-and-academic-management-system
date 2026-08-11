@@ -133,88 +133,10 @@ if ($db) {
             ? round((($kpiPresent + $kpiEffectiveLate) / $kpis['attendance_records']) * 100, 2)
             : 0;
 
-        if ($selectedType === 'top_attendance') {
-            $previewHeaders = ['Rank', 'Student', 'Reference', 'Present', 'Late', 'Absent', 'Total', 'Rate'];
-            $query = "SELECT CONCAT(u.first_name, ' ', u.last_name) AS student_name, u.reference_code,
-                     SUM(CASE WHEN a.status='present' THEN 1 ELSE 0 END) AS present_count,
-                     SUM(CASE WHEN a.status='late' THEN 1 ELSE 0 END) AS late_count,
-                     (SUM(CASE WHEN a.status='absent' THEN 1 ELSE 0 END) + FLOOR(SUM(CASE WHEN a.status='late' THEN 1 ELSE 0 END) / 3)) AS absent_count,
-                     COUNT(*) AS total_records,
-                     MOD(SUM(CASE WHEN a.status='late' THEN 1 ELSE 0 END), 3) AS effective_late_count,
-                     ROUND(((SUM(CASE WHEN a.status='present' THEN 1 ELSE 0 END) + MOD(SUM(CASE WHEN a.status='late' THEN 1 ELSE 0 END), 3)) / COUNT(*)) * 100, 2) AS attendance_rate
-                     FROM attendance a
-                     JOIN users u ON u.id = a.student_id
-                     WHERE " . implode(' AND ', $where) . "
-                     GROUP BY u.id, u.first_name, u.last_name, u.reference_code
-                     HAVING total_records > 0
-                     ORDER BY attendance_rate DESC, total_records DESC, u.last_name, u.first_name
-                     LIMIT " . (int)$topN;
-            $stmt = $db->prepare($query);
-            $stmt->execute($params);
-            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            foreach ($rows as $i => $r) {
-                $previewRows[] = [
-                    $i + 1,
-                    $r['student_name'],
-                    $r['reference_code'],
-                    $r['present_count'],
-                    $r['effective_late_count'],
-                    $r['absent_count'],
-                    $r['total_records'],
-                    $r['attendance_rate'] . '%'
-                ];
-            }
-        } elseif ($selectedType === 'class_summary') {
-            $previewHeaders = ['Class', 'Present', 'Late', 'Absent', 'Total', 'Rate'];
-            $query = "SELECT c.class_name,
-                     SUM(CASE WHEN a.status='present' THEN 1 ELSE 0 END) AS present_count,
-                     SUM(CASE WHEN a.status='late' THEN 1 ELSE 0 END) AS late_count,
-                     (SUM(CASE WHEN a.status='absent' THEN 1 ELSE 0 END) + FLOOR(SUM(CASE WHEN a.status='late' THEN 1 ELSE 0 END) / 3)) AS absent_count,
-                     COUNT(*) AS total_records,
-                     MOD(SUM(CASE WHEN a.status='late' THEN 1 ELSE 0 END), 3) AS effective_late_count,
-                     ROUND(((SUM(CASE WHEN a.status='present' THEN 1 ELSE 0 END) + MOD(SUM(CASE WHEN a.status='late' THEN 1 ELSE 0 END), 3)) / COUNT(*)) * 100, 2) AS attendance_rate
-                     FROM attendance a
-                     JOIN classes c ON c.id = a.class_id
-                     WHERE " . implode(' AND ', $where) . "
-                     GROUP BY c.id, c.class_name
-                     ORDER BY c.class_name";
-            $stmt = $db->prepare($query);
-            $stmt->execute($params);
-            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
-                $previewRows[] = [
-                    $r['class_name'],
-                    $r['present_count'],
-                    $r['effective_late_count'],
-                    $r['absent_count'],
-                    $r['total_records'],
-                    $r['attendance_rate'] . '%'
-                ];
-            }
-        } else {
-            $previewHeaders = ['Student', 'Reference', 'Absent', 'Total', 'Rate'];
-            $query = "SELECT CONCAT(u.first_name, ' ', u.last_name) AS student_name, u.reference_code,
-                     (SUM(CASE WHEN a.status='absent' THEN 1 ELSE 0 END) + FLOOR(SUM(CASE WHEN a.status='late' THEN 1 ELSE 0 END) / 3)) AS absent_count,
-                     COUNT(*) AS total_records,
-                     ROUND(((SUM(CASE WHEN a.status='present' THEN 1 ELSE 0 END) + MOD(SUM(CASE WHEN a.status='late' THEN 1 ELSE 0 END), 3)) / COUNT(*)) * 100, 2) AS attendance_rate
-                     FROM attendance a
-                     JOIN users u ON u.id = a.student_id
-                     WHERE " . implode(' AND ', $where) . "
-                     GROUP BY u.id, u.first_name, u.last_name, u.reference_code
-                     HAVING total_records > 0
-                     ORDER BY absent_count DESC, attendance_rate ASC, u.last_name, u.first_name
-                     LIMIT " . (int)$topN;
-            $stmt = $db->prepare($query);
-            $stmt->execute($params);
-            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
-                $previewRows[] = [
-                    $r['student_name'],
-                    $r['reference_code'],
-                    $r['absent_count'],
-                    $r['total_records'],
-                    $r['attendance_rate'] . '%'
-                ];
-            }
-        }
+        $aggregateRows = aggregateAttendanceReportRows($db, $selectedType, $where, $params, $topN);
+        $aggregateTable = aggregateAttendanceReportTable($selectedType, $aggregateRows);
+        $previewHeaders = $aggregateTable['headers'];
+        $previewRows = $aggregateTable['rows'];
     }
 }
 ?>
@@ -571,6 +493,11 @@ function exportTeacherReportSf2(format) {
         try {
             return text ? JSON.parse(text) : { ok: false, message: fallbackMessage };
         } catch (err) {
+            console.error('Report notes returned a non-JSON response.', {
+                status: res.status,
+                contentType: res.headers.get('content-type') || '',
+                body: text.slice(0, 500)
+            });
             return { ok: false, message: fallbackMessage };
         }
     }

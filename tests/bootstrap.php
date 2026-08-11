@@ -10,3 +10,4 @@ require_once __DIR__ . '/../functions/db-helper.php';
 require_once __DIR__ . '/../functions/simple-xlsx-writer.php';
 require_once __DIR__ . '/../functions/grade-helper.php';
 require_once __DIR__ . '/../functions/ecr-exporter.php';
+require_once __DIR__ . '/../functions/report-aggregates.php';

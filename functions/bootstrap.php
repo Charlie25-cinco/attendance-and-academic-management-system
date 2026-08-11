@@ -15,6 +15,7 @@ require_once APP_ROOT . '/functions/simple-xlsx-writer.php';
 require_once APP_ROOT . '/functions/sf-exporter.php';
 require_once APP_ROOT . '/functions/grade-helper.php';
 require_once APP_ROOT . '/functions/ecr-exporter.php';
+require_once APP_ROOT . '/functions/report-aggregates.php';
 
 if (PHP_SAPI !== 'cli') {
     require_once APP_ROOT . '/config/session.php';

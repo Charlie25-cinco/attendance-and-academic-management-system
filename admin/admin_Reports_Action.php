@@ -34,7 +34,6 @@ if (!$db) {
 }
 
 $action = $__adminReportsAction;
-ensureReportNotesTables($db);
 unset($__adminReportsAction, $__adminReportsNotesAction);
 $type = $_GET['type'] ?? '';
 $dateFrom = normalizeDate($_GET['date_from'] ?? '');
@@ -43,28 +42,24 @@ $classId = normalizeInt($_GET['class_id'] ?? '');
 $gradeLevel = normalizeInt($_GET['grade_level'] ?? '');
 $section = normalizeText($_GET['section'] ?? '');
 $status = normalizeText($_GET['status'] ?? '');
+$topN = normalizeInt($_GET['top_n'] ?? 10);
+$topN = $topN >= 1 && $topN <= 100 ? $topN : 10;
 
 function requirePostAndCsrfOrExit() {
     if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
-        header('Content-Type: application/json');
-        http_response_code(405);
-        echo json_encode([
+        adminReportsJsonExit([
             'ok' => false,
             'message' => 'Method not allowed.'
-        ]);
-        exit();
+        ], 405);
     }
 
     $sessionToken = (string)($_SESSION['csrf_token'] ?? '');
     $requestToken = trim((string)($_POST['csrf_token'] ?? ($_GET['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? ''))));
     if ($sessionToken === '' || $requestToken === '' || !hash_equals($sessionToken, $requestToken)) {
-        header('Content-Type: application/json');
-        http_response_code(403);
-        echo json_encode([
+        adminReportsJsonExit([
             'ok' => false,
             'message' => 'Invalid CSRF token.'
-        ]);
-        exit();
+        ], 403);
     }
 }
 
@@ -78,6 +73,7 @@ function handleReportNotesError(Throwable $e): void {
 
 if (in_array($action, ['save_note', 'list_notes', 'update_note', 'delete_note'], true)) {
     try {
+        ensureReportNotesTables($db);
         if ($action === 'save_note') {
             handleSaveNote($db);
         }
@@ -101,7 +97,7 @@ if ($action !== 'export') {
     exit();
 }
 
-$allowedTypes = ['attendance', 'grades', 'enrollment', 'teachers', 'classes'];
+$allowedTypes = ['attendance', 'top_attendance', 'class_summary', 'at_risk', 'grades', 'enrollment', 'teachers', 'classes'];
 if (!in_array($type, $allowedTypes, true)) {
     http_response_code(400);
     echo 'Invalid report type';
@@ -115,7 +111,23 @@ $filters = [
     'status' => $status
 ];
 
-[$filename, $headers, $rows] = buildReportData($db, $type, $dateFrom, $dateTo, $filters);
+if (in_array($type, aggregateAttendanceReportTypes(), true)) {
+    [$where, $params] = aggregateAttendanceAdminScope($db, [
+        'date_from' => $dateFrom,
+        'date_to' => $dateTo,
+        'class_id' => $classId,
+        'grade_level' => $gradeLevel,
+        'section' => $section,
+        'status' => $status
+    ]);
+    $aggregateRows = aggregateAttendanceReportRows($db, $type, $where, $params, $topN);
+    $aggregateTable = aggregateAttendanceReportTable($type, $aggregateRows);
+    $filename = 'admin_' . $type . '_' . date('Ymd_His') . '.csv';
+    $headers = $aggregateTable['headers'];
+    $rows = $aggregateTable['rows'];
+} else {
+    [$filename, $headers, $rows] = buildReportData($db, $type, $dateFrom, $dateTo, $filters);
+}
 
 header('Content-Type: text/csv; charset=utf-8');
 header('Content-Disposition: attachment; filename="' . $filename . '"');

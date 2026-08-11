@@ -15,7 +15,7 @@ $current_page = 'reports';
 $page_title = 'Reports';
 
 $selectedType = $_GET['type'] ?? 'attendance';
-$allowedTypes = ['attendance', 'grades', 'enrollment', 'teachers', 'classes'];
+$allowedTypes = ['attendance', 'top_attendance', 'class_summary', 'at_risk', 'grades', 'enrollment', 'teachers', 'classes'];
 if (!in_array($selectedType, $allowedTypes, true)) {
     $selectedType = 'attendance';
 }
@@ -25,6 +25,8 @@ $classId = normalizeInt($_GET['class_id'] ?? '');
 $gradeLevel = normalizeInt($_GET['grade_level'] ?? '');
 $section = normalizeText($_GET['section'] ?? '');
 $status = normalizeText($_GET['status'] ?? '');
+$topN = normalizeInt($_GET['top_n'] ?? 10);
+$topN = $topN >= 1 && $topN <= 100 ? $topN : 10;
 $statusOptions = getStatusOptions($selectedType);
 if ($status !== '' && !in_array($status, $statusOptions, true)) {
     $status = '';
@@ -57,6 +59,23 @@ if ($db) {
     ];
 
     switch ($selectedType) {
+        case 'top_attendance':
+        case 'class_summary':
+        case 'at_risk':
+            [$aggregateWhere, $aggregateParams] = aggregateAttendanceAdminScope($db, [
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+                'class_id' => $classId,
+                'grade_level' => $gradeLevel,
+                'section' => $section,
+                'status' => $status
+            ]);
+            $aggregateRows = aggregateAttendanceReportRows($db, $selectedType, $aggregateWhere, $aggregateParams, $topN);
+            $aggregateTable = aggregateAttendanceReportTable($selectedType, $aggregateRows);
+            $previewHeaders = $aggregateTable['headers'];
+            $previewRows = $aggregateTable['rows'];
+            break;
+
         case 'attendance':
             $previewHeaders = ['Date', 'Class', 'Student', 'Status', 'Time In'];
             $where = [];
@@ -306,7 +325,7 @@ function appendAdvancedFilters($type, &$where, &$params, $filters) {
     }
 }
 
-function buildFilterParams($dateFrom, $dateTo, $classId, $gradeLevel, $section, $status) {
+function buildFilterParams($dateFrom, $dateTo, $classId, $gradeLevel, $section, $status, $topN = 10) {
     $params = [];
     if ($dateFrom !== '') {
         $params['date_from'] = $dateFrom;
@@ -325,6 +344,9 @@ function buildFilterParams($dateFrom, $dateTo, $classId, $gradeLevel, $section, 
     }
     if ($status !== '') {
         $params['status'] = $status;
+    }
+    if ($topN >= 1 && $topN <= 100) {
+        $params['top_n'] = $topN;
     }
     return $params;
 }
@@ -345,20 +367,23 @@ function getStatusOptions($type) {
     return [];
 }
 
-function exportUrl($type, $dateFrom, $dateTo, $classId, $gradeLevel, $section, $status) {
-    $params = array_merge(['action' => 'export', 'type' => $type], buildFilterParams($dateFrom, $dateTo, $classId, $gradeLevel, $section, $status));
+function exportUrl($type, $dateFrom, $dateTo, $classId, $gradeLevel, $section, $status, $topN = 10) {
+    $params = array_merge(['action' => 'export', 'type' => $type], buildFilterParams($dateFrom, $dateTo, $classId, $gradeLevel, $section, $status, $topN));
     return "admin_Reports_Action.php?" . http_build_query($params);
 }
 
 $typeLabels = [
     'attendance' => 'Attendance',
+    'top_attendance' => 'Top Attendance',
+    'class_summary' => 'Class Summary',
+    'at_risk' => 'At-risk Attendance',
     'grades' => 'Grades',
     'enrollment' => 'Enrollment',
     'teachers' => 'Teachers',
     'classes' => 'Classes'
 ];
 $selectedTypeLabel = $typeLabels[$selectedType] ?? 'Attendance';
-$appliedFilterCount = count(buildFilterParams($dateFrom, $dateTo, $classId, $gradeLevel, $section, $status));
+$appliedFilterCount = count(buildFilterParams($dateFrom, $dateTo, $classId, $gradeLevel, $section, $status, $topN));
 $previewCount = count($previewRows);
 ?>
 <!DOCTYPE html>
@@ -418,6 +443,12 @@ $previewCount = count($previewRows);
                 <div class="content-card-body">
                     <form method="GET" action="admin_Reports.php" id="adminReportFilterForm" class="row g-3 align-items-end admin-report-filter-form app-responsive-filter-form">
                         <input type="hidden" name="type" value="<?php echo htmlspecialchars($selectedType); ?>">
+                        <?php if (in_array($selectedType, ['top_attendance', 'at_risk'], true)): ?>
+                            <div class="col-md-2">
+                                <label class="form-label">Top N</label>
+                                <input type="number" class="form-control" name="top_n" min="1" max="100" value="<?php echo (int)$topN; ?>">
+                            </div>
+                        <?php endif; ?>
                         <div class="col-12">
                             <div class="admin-filter-copy">
                                 <strong>Filter the current report view</strong>
@@ -594,8 +625,41 @@ $previewCount = count($previewRows);
                         <h5 class="report-title">Attendance Report</h5>
                         <p class="report-desc">Daily attendance records by class and student</p>
                         <div class="d-flex gap-2">
-                            <a class="btn btn-sm btn-outline-primary flex-fill" href="admin_Reports.php?<?php echo http_build_query(array_merge(['type' => 'attendance'], buildFilterParams($dateFrom, $dateTo, $classId, $gradeLevel, $section, $status))); ?>">Preview</a>
+                            <a class="btn btn-sm btn-outline-primary flex-fill" href="admin_Reports.php?<?php echo http_build_query(array_merge(['type' => 'attendance'], buildFilterParams($dateFrom, $dateTo, $classId, $gradeLevel, $section, $status, $topN))); ?>">Preview</a>
                             <a class="btn btn-sm btn-primary-custom flex-fill" href="<?php echo exportUrl('attendance', $dateFrom, $dateTo, $classId, $gradeLevel, $section, $status); ?>"><i class="bi bi-download me-1"></i>CSV</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="report-card <?php echo $selectedType === 'top_attendance' ? 'admin-report-card-active' : ''; ?>">
+                        <div class="report-icon" style="background: rgba(59, 130, 246, 0.1); color: var(--secondary-color);"><i class="bi bi-trophy"></i></div>
+                        <h5 class="report-title">Top Attendance</h5>
+                        <p class="report-desc">Rank students by effective attendance rate.</p>
+                        <div class="d-flex gap-2">
+                            <a class="btn btn-sm btn-outline-primary flex-fill" href="admin_Reports.php?<?php echo http_build_query(array_merge(['type' => 'top_attendance'], buildFilterParams($dateFrom, $dateTo, $classId, $gradeLevel, $section, $status, $topN))); ?>">Preview</a>
+                            <a class="btn btn-sm btn-primary-custom flex-fill" href="<?php echo exportUrl('top_attendance', $dateFrom, $dateTo, $classId, $gradeLevel, $section, $status, $topN); ?>"><i class="bi bi-download me-1"></i>CSV</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="report-card <?php echo $selectedType === 'class_summary' ? 'admin-report-card-active' : ''; ?>">
+                        <div class="report-icon" style="background: rgba(16, 185, 129, 0.1); color: var(--accent-color);"><i class="bi bi-collection"></i></div>
+                        <h5 class="report-title">Class Summary</h5>
+                        <p class="report-desc">Summarize attendance by class.</p>
+                        <div class="d-flex gap-2">
+                            <a class="btn btn-sm btn-outline-primary flex-fill" href="admin_Reports.php?<?php echo http_build_query(array_merge(['type' => 'class_summary'], buildFilterParams($dateFrom, $dateTo, $classId, $gradeLevel, $section, $status, $topN))); ?>">Preview</a>
+                            <a class="btn btn-sm btn-primary-custom flex-fill" href="<?php echo exportUrl('class_summary', $dateFrom, $dateTo, $classId, $gradeLevel, $section, $status, $topN); ?>"><i class="bi bi-download me-1"></i>CSV</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="report-card <?php echo $selectedType === 'at_risk' ? 'admin-report-card-active' : ''; ?>">
+                        <div class="report-icon" style="background: rgba(239, 68, 68, 0.1); color: #dc2626;"><i class="bi bi-exclamation-triangle"></i></div>
+                        <h5 class="report-title">At-risk Attendance</h5>
+                        <p class="report-desc">Show students with the highest effective absences.</p>
+                        <div class="d-flex gap-2">
+                            <a class="btn btn-sm btn-outline-primary flex-fill" href="admin_Reports.php?<?php echo http_build_query(array_merge(['type' => 'at_risk'], buildFilterParams($dateFrom, $dateTo, $classId, $gradeLevel, $section, $status, $topN))); ?>">Preview</a>
+                            <a class="btn btn-sm btn-primary-custom flex-fill" href="<?php echo exportUrl('at_risk', $dateFrom, $dateTo, $classId, $gradeLevel, $section, $status, $topN); ?>"><i class="bi bi-download me-1"></i>CSV</a>
                         </div>
                     </div>
                 </div>
@@ -605,7 +669,7 @@ $previewCount = count($previewRows);
                         <h5 class="report-title">Grade Report</h5>
                         <p class="report-desc">Quiz, exam, activity, and final grade records</p>
                         <div class="d-flex gap-2">
-                            <a class="btn btn-sm btn-outline-primary flex-fill" href="admin_Reports.php?<?php echo http_build_query(array_merge(['type' => 'grades'], buildFilterParams($dateFrom, $dateTo, $classId, $gradeLevel, $section, $status))); ?>">Preview</a>
+                            <a class="btn btn-sm btn-outline-primary flex-fill" href="admin_Reports.php?<?php echo http_build_query(array_merge(['type' => 'grades'], buildFilterParams($dateFrom, $dateTo, $classId, $gradeLevel, $section, $status, $topN))); ?>">Preview</a>
                             <a class="btn btn-sm btn-primary-custom flex-fill" href="<?php echo exportUrl('grades', $dateFrom, $dateTo, $classId, $gradeLevel, $section, $status); ?>"><i class="bi bi-download me-1"></i>CSV</a>
                         </div>
                     </div>
@@ -616,7 +680,7 @@ $previewCount = count($previewRows);
                         <h5 class="report-title">Enrollment Report</h5>
                         <p class="report-desc">Enrollment status and class assignment list</p>
                         <div class="d-flex gap-2">
-                            <a class="btn btn-sm btn-outline-primary flex-fill" href="admin_Reports.php?<?php echo http_build_query(array_merge(['type' => 'enrollment'], buildFilterParams($dateFrom, $dateTo, $classId, $gradeLevel, $section, $status))); ?>">Preview</a>
+                            <a class="btn btn-sm btn-outline-primary flex-fill" href="admin_Reports.php?<?php echo http_build_query(array_merge(['type' => 'enrollment'], buildFilterParams($dateFrom, $dateTo, $classId, $gradeLevel, $section, $status, $topN))); ?>">Preview</a>
                             <a class="btn btn-sm btn-primary-custom flex-fill" href="<?php echo exportUrl('enrollment', $dateFrom, $dateTo, $classId, $gradeLevel, $section, $status); ?>"><i class="bi bi-download me-1"></i>CSV</a>
                         </div>
                     </div>
@@ -627,7 +691,7 @@ $previewCount = count($previewRows);
                         <h5 class="report-title">Teacher Report</h5>
                         <p class="report-desc">Teacher directory and current workload summary</p>
                         <div class="d-flex gap-2">
-                            <a class="btn btn-sm btn-outline-primary flex-fill" href="admin_Reports.php?<?php echo http_build_query(array_merge(['type' => 'teachers'], buildFilterParams($dateFrom, $dateTo, $classId, $gradeLevel, $section, $status))); ?>">Preview</a>
+                            <a class="btn btn-sm btn-outline-primary flex-fill" href="admin_Reports.php?<?php echo http_build_query(array_merge(['type' => 'teachers'], buildFilterParams($dateFrom, $dateTo, $classId, $gradeLevel, $section, $status, $topN))); ?>">Preview</a>
                             <a class="btn btn-sm btn-primary-custom flex-fill" href="<?php echo exportUrl('teachers', $dateFrom, $dateTo, $classId, $gradeLevel, $section, $status); ?>"><i class="bi bi-download me-1"></i>CSV</a>
                         </div>
                     </div>
@@ -638,7 +702,7 @@ $previewCount = count($previewRows);
                         <h5 class="report-title">Class Report</h5>
                         <p class="report-desc">Class list with section and enrollment counts</p>
                         <div class="d-flex gap-2">
-                            <a class="btn btn-sm btn-outline-primary flex-fill" href="admin_Reports.php?<?php echo http_build_query(array_merge(['type' => 'classes'], buildFilterParams($dateFrom, $dateTo, $classId, $gradeLevel, $section, $status))); ?>">Preview</a>
+                            <a class="btn btn-sm btn-outline-primary flex-fill" href="admin_Reports.php?<?php echo http_build_query(array_merge(['type' => 'classes'], buildFilterParams($dateFrom, $dateTo, $classId, $gradeLevel, $section, $status, $topN))); ?>">Preview</a>
                             <a class="btn btn-sm btn-primary-custom flex-fill" href="<?php echo exportUrl('classes', $dateFrom, $dateTo, $classId, $gradeLevel, $section, $status); ?>"><i class="bi bi-download me-1"></i>CSV</a>
                         </div>
                     </div>
@@ -836,12 +900,23 @@ $previewCount = count($previewRows);
             if (!form || !saveBtn || !cancelBtn || !listWrap || !typeFilter) return;
 
             let notesCache = [];
+            const csrfToken = (window.APP_CSRF_TOKEN || '').toString();
+
+            function appendCsrf(fd) {
+                if (fd && csrfToken) fd.set('csrf_token', csrfToken);
+                return fd;
+            }
 
             async function readJsonResponse(res, fallbackMessage) {
                 const text = await res.text();
                 try {
                     return text ? JSON.parse(text) : { ok: false, message: fallbackMessage };
                 } catch (err) {
+                    console.error('Report notes returned a non-JSON response.', {
+                        status: res.status,
+                        contentType: res.headers.get('content-type') || '',
+                        body: text.slice(0, 500)
+                    });
                     return { ok: false, message: fallbackMessage };
                 }
             }
@@ -921,6 +996,7 @@ $previewCount = count($previewRows);
             form.addEventListener('submit', async function (e) {
                 e.preventDefault();
                 const fd = new FormData(form);
+                appendCsrf(fd);
                 if (!String(fd.get('title') || '').trim() || !String(fd.get('content') || '').trim()) {
                     showNotification('Title and content are required.', 'warning');
                     return;
@@ -976,6 +1052,7 @@ $previewCount = count($previewRows);
 
                 const fd = new FormData();
                 fd.append('note_id', String(noteId));
+                appendCsrf(fd);
 
                 btn.disabled = true;
                 try {
