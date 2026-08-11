@@ -43,13 +43,14 @@ final class NotificationDeliveryTest extends TestCase
         $this->assertStringContainsString("\$action === 'read_all'", $api);
         $this->assertStringContainsString("\$action === 'delete_all'", $api);
         $this->assertStringContainsString("'unread_count' => (int)\$countStmt->fetchColumn()", $api);
-        $this->assertStringContainsString("\$route === 'web-push-test'", $api);
+        $this->assertStringNotContainsString("\$route === 'web-push-test'", $api);
 
         $this->assertIsString($javascript);
         $this->assertStringContainsString('initHeaderNotificationActions();', $javascript);
         $this->assertStringContainsString('updateNotificationState("delete_all")', $javascript);
         $this->assertStringContainsString('setHeaderNotificationCount(data.unread_count)', $javascript);
         $this->assertStringContainsString('focusNotificationTarget();', $javascript);
+        $this->assertStringNotContainsString('sendTestPushNotification', $javascript);
 
         $this->assertIsString($serviceWorker);
         $this->assertStringContainsString("const CACHE_NAME = 'bshs-ams-v11';", $serviceWorker);

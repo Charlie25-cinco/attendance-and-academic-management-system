@@ -769,24 +769,10 @@ function setPushStatus(message, tone = "muted") {
 function setPushPermissionState(state, message = "") {
   const actions = document.getElementById("pushPermissionActions");
   const guidance = document.getElementById("pushPermissionGuidance");
-  const testButton = document.getElementById("testPushNotificationBtn");
   if (actions) actions.classList.toggle("d-none", state !== "prompt");
   if (guidance) {
     guidance.textContent = message;
     guidance.className = `settings-option-desc d-block mt-2${state === "blocked" ? " text-danger" : ""}`;
-  }
-  if (testButton) {
-    const reasons = {
-      configuring: "Checking notification readiness",
-      server: "Server push keys are not configured",
-      unsupported: "This browser does not support device notifications",
-      blocked: "Allow notifications in browser or Windows app settings first",
-      prompt: "Select Allow Notifications and approve the browser prompt first",
-      subscribe: "Save Push Notifications to subscribe this device",
-      ready: "Send a notification to this device",
-    };
-    testButton.title = reasons[state] || "Notification test is unavailable";
-    testButton.setAttribute("aria-disabled", testButton.disabled ? "true" : "false");
   }
 }
 
@@ -820,9 +806,7 @@ function getPwaServiceWorkerRegistration() {
 
 function updatePwaPushStatus() {
   const pushSwitch = document.getElementById("pushNotifSwitch");
-  const testButton = document.getElementById("testPushNotificationBtn");
   if (!pushSwitch) return;
-  if (testButton) testButton.disabled = true;
   setPushPermissionState("configuring");
 
   appFetchJson("web-push-status")
@@ -859,9 +843,7 @@ function updatePwaPushStatus() {
           .then((subscription) => {
             const ready = !!subscription && Number(serverStatus.subscription_count || 0) > 0;
             setPushStatus(ready ? "This device is ready for notifications." : "Save changes to subscribe this device.", ready ? "success" : "muted");
-            if (testButton) testButton.disabled = !ready;
             setPushPermissionState(ready ? "ready" : "subscribe", ready ? "You can receive notifications while the PWA is closed." : "Keep Push Notifications enabled and save changes to finish subscription.");
-            if (testButton) testButton.setAttribute("aria-disabled", ready ? "false" : "true");
           });
       }
 
@@ -892,16 +874,6 @@ function requestPushPermissionFromSettings() {
       allowButton.disabled = false;
       updatePwaPushStatus();
     });
-}
-
-function sendTestPushNotification() {
-  const button = document.getElementById("testPushNotificationBtn");
-  if (!button) return;
-  button.disabled = true;
-  appFetchJson("web-push-test", { method: "POST", body: JSON.stringify({}) })
-    .then((data) => showNotification(data.message || "Test notification sent", "success"))
-    .catch((error) => showNotification(error.message || "Unable to send test notification", "danger"))
-    .finally(() => updatePwaPushStatus());
 }
 
 function enablePwaPushNotifications() {
@@ -968,7 +940,6 @@ function initSettingsControls() {
 
   applyInitialSettingsToControls();
   updatePwaPushStatus();
-  document.getElementById("testPushNotificationBtn")?.addEventListener("click", sendTestPushNotification);
   document.getElementById("allowPushPermissionBtn")?.addEventListener("click", requestPushPermissionFromSettings);
   document.getElementById("deferPushPermissionBtn")?.addEventListener("click", () => {
     const pushSwitch = document.getElementById("pushNotifSwitch");

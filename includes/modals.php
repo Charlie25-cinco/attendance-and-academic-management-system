@@ -90,9 +90,6 @@
                 </div>
             </div>
             <div class="modal-footer app-modal-footer settings-modal-footer">
-                <button type="button" class="btn btn-outline-primary" id="testPushNotificationBtn" disabled title="Enable and allow notifications on this device first">
-                    <i class="bi bi-bell-check me-1"></i>Test Notification
-                </button>
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
                 <button type="button" class="btn btn-primary-custom px-4" id="saveSettingsBtn">Save Changes</button>
             </div>

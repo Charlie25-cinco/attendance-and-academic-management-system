@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.52 — 2026-08-11
+
+### Removed
+
+- Removed the manual Settings test-notification button and `web-push-test` route while keeping real in-app and device push notifications for school events.
+
 ## v0.3.51 — 2026-08-10
 
 ### Added
