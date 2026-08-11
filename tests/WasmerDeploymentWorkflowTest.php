@@ -7,8 +7,11 @@ final class WasmerDeploymentWorkflowTest extends TestCase
     public function testDeployRetriesTransientRegistryFailures(): void
     {
         $workflow = file_get_contents(__DIR__ . '/../.github/workflows/wasmer-deploy.yml');
+        $wasmerIgnore = file_get_contents(__DIR__ . '/../.wasmerignore');
 
         $this->assertIsString($workflow);
+        $this->assertIsString($wasmerIgnore);
+        $this->assertStringContainsString('wasmer_ignore = Path(".wasmerignore")', $workflow);
         $this->assertStringContainsString('timeout-minutes: 40', $workflow);
         $this->assertStringContainsString('wasmer login "${WASMER_TOKEN}"', $workflow);
         $this->assertStringContainsString('max_attempts=5', $workflow);
@@ -16,5 +19,6 @@ final class WasmerDeploymentWorkflowTest extends TestCase
         $this->assertStringContainsString('if wasmer deploy --non-interactive --token="${WASMER_TOKEN}"; then', $workflow);
         $this->assertStringContainsString('delay=$((attempt * 30))', $workflow);
         $this->assertStringContainsString('failed after ${max_attempts} attempts', $workflow);
+        $this->assertStringContainsString('.git/', $wasmerIgnore);
     }
 }

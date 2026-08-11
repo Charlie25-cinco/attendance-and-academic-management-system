@@ -1,0 +1,11 @@
+.git/
+.github/
+.agents/
+.commandcode/
+.phpunit.cache/
+tests/
+docs/
+phpunit.xml
+README.md
+CHANGELOG.md
+AGENTS.md

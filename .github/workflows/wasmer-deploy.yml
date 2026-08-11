@@ -66,10 +66,13 @@ jobs:
 
           app_yaml = Path("app.yaml")
           wasmer_toml = Path("wasmer.toml")
+          wasmer_ignore = Path(".wasmerignore")
           if not app_yaml.is_file():
               raise SystemExit("app.yaml is missing.")
           if not wasmer_toml.is_file():
               raise SystemExit("wasmer.toml is missing.")
+          if not wasmer_ignore.is_file():
+              raise SystemExit(".wasmerignore is missing.")
 
           text = app_yaml.read_text(encoding="utf-8")
           expected_lines = [
