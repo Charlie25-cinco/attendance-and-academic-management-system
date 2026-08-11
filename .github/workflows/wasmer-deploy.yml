@@ -127,7 +127,7 @@ jobs:
           max_attempts=5
           for attempt in $(seq 1 "$max_attempts"); do
             echo "Wasmer deployment attempt ${attempt}/${max_attempts}"
-            if wasmer deploy --app-config app.yaml --non-interactive --token="${WASMER_TOKEN}"; then
+            if wasmer deploy --non-interactive --token="${WASMER_TOKEN}"; then
               echo "Wasmer Edge deployment succeeded."
               exit 0
             fi

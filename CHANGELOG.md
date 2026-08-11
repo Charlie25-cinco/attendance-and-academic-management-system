@@ -9,7 +9,7 @@ Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR fo
 - Fixed "Report notes returned an invalid response." error by ensuring `admin_Reports_Action.php` and `teacher_Reports_Action.php` clear output buffers and return clean JSON via `adminReportsJsonExit` and `teacherReportsJsonExit`.
 - Fixed CSV file downloads for "Top Attendance", "Class Summary", and "At-risk Attendance" reports by enforcing output buffer cleanup before setting CSV response headers and writing to output streams.
 - Expanded `admin_report_notes` allowed types to include `top_attendance`, `class_summary`, and `at_risk`.
-- Fixed Wasmer Edge deployment workflow timeouts by adding CLI session pre-authentication (`wasmer login`), explicit app configuration parameters (`--app-config app.yaml`), and expanding retries with 30s progressive backoff.
+- Fixed Wasmer Edge deployment workflow timeouts by adding CLI session pre-authentication (`wasmer login`) and expanding retries with 30s progressive backoff.
 
 ## v0.3.52 — 2026-08-11
 
