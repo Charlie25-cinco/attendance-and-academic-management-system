@@ -71,4 +71,26 @@ final class NotificationDeliveryTest extends TestCase
             $this->assertStringContainsString('notification-<?php echo htmlspecialchars($source); ?>-', $content);
         }
     }
+
+    public function testChatActionsDispatchNotificationsAndSidebarHasUnreadBadge(): void
+    {
+        $teacherAction = file_get_contents(__DIR__ . '/../teacher/teacher_Chat_Action.php');
+        $parentAction = file_get_contents(__DIR__ . '/../parent/Parent_Chat_Action.php');
+        $sidebar = file_get_contents(__DIR__ . '/../includes/sidebar.php');
+
+        $this->assertIsString($teacherAction);
+        $this->assertIsString($parentAction);
+        $this->assertIsString($sidebar);
+
+        $this->assertStringContainsString('appDispatchNotification(', $teacherAction);
+        $this->assertStringContainsString('chat_msg_', $teacherAction);
+        $this->assertStringContainsString('Parent_Chat.php?teacher_id=', $teacherAction);
+
+        $this->assertStringContainsString('appDispatchNotification(', $parentAction);
+        $this->assertStringContainsString('chat_msg_', $parentAction);
+        $this->assertStringContainsString('teacher_Chat.php?parent_id=', $parentAction);
+
+        $this->assertStringContainsString('$sidebarUnreadMessages', $sidebar);
+        $this->assertStringContainsString("SELECT COUNT(*) FROM messages WHERE to_user_id = ? AND is_read = 0", $sidebar);
+    }
 }

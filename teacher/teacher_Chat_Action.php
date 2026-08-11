@@ -124,8 +124,42 @@ if ($action === 'send_message') {
     $insertStmt = $db->prepare("INSERT INTO messages (from_user_id, to_user_id, student_id, message, created_at)
                                 VALUES (?, ?, ?, ?, NOW())");
     $insertStmt->execute([$teacherId, $toUserId, $verifiedStudentId, $message]);
+    $messageId = (int)$db->lastInsertId();
 
-    echo json_encode(['success' => true, 'message' => 'Sent.', 'id' => (int)$db->lastInsertId()]);
+    $senderName = trim((string)($_SESSION['first_name'] ?? 'Teacher') . ' ' . (string)($_SESSION['last_name'] ?? ''));
+    $studentName = '';
+    $stStmt = $db->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
+    $stStmt->execute([$verifiedStudentId]);
+    $stRow = $stStmt->fetch(PDO::FETCH_ASSOC);
+    if ($stRow) {
+        $studentName = trim($stRow['first_name'] . ' ' . $stRow['last_name']);
+    }
+
+    $preview = mb_substr($message, 0, 80);
+    $subtitle = $studentName !== '' ? "Re: $studentName - $preview" : $preview;
+
+    if (function_exists('appDispatchNotification')) {
+        appDispatchNotification(
+            $db,
+            [$toUserId],
+            'chat_msg_' . $messageId,
+            "New message from $senderName",
+            $subtitle,
+            'bi-chat-dots',
+            'primary',
+            [
+                'parent' => "Parent_Chat.php?teacher_id={$teacherId}&student_id={$verifiedStudentId}",
+                'default' => "Parent_Chat.php?teacher_id={$teacherId}"
+            ],
+            [
+                'type' => 'chat_message',
+                'from_user_id' => $teacherId,
+                'message_id' => $messageId
+            ]
+        );
+    }
+
+    echo json_encode(['success' => true, 'message' => 'Sent.', 'id' => $messageId]);
     exit();
 }
 

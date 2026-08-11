@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.57 — 2026-08-11
+
+### Added
+
+- Added in-app notification and Web Push delivery for chat messages between teachers and parents via `appDispatchNotification()`.
+- Added dynamic unread message count badges to the "Messages" link in the sidebar navigation for teachers and parents.
+
 ## v0.3.56 — 2026-08-11
 
 ### Fixed

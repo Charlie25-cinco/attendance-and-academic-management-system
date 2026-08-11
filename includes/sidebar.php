@@ -54,6 +54,20 @@ $sidebar_menus = [
 ];
 
 $menu_items = $sidebar_menus[$current_role] ?? $sidebar_menus['admin'];
+
+$sidebarUnreadMessages = 0;
+if (!empty($_SESSION['logged_in']) && in_array($current_role, ['teacher', 'parent'], true)) {
+    try {
+        $sidebarDb = (new Database())->getConnection();
+        if ($sidebarDb instanceof PDO && function_exists('dbHasTable') && dbHasTable($sidebarDb, 'messages')) {
+            $msgCountStmt = $sidebarDb->prepare("SELECT COUNT(*) FROM messages WHERE to_user_id = ? AND is_read = 0");
+            $msgCountStmt->execute([(int)$_SESSION['user_id']]);
+            $sidebarUnreadMessages = (int)$msgCountStmt->fetchColumn();
+        }
+    } catch (Throwable $e) {
+        $sidebarUnreadMessages = 0;
+    }
+}
 ?>
 
 <!-- Sidebar -->
@@ -78,6 +92,9 @@ $menu_items = $sidebar_menus[$current_role] ?? $sidebar_menus['admin'];
             <a href="<?php echo $item['link']; ?>" class="nav-link <?php echo ($current_page === $item['id']) ? 'active' : ''; ?>" title="<?php echo htmlspecialchars($item['label']); ?>" aria-label="<?php echo htmlspecialchars($item['label']); ?>">
                 <i class="bi <?php echo $item['icon']; ?>"></i>
                 <span class="nav-text"><?php echo $item['label']; ?></span>
+                <?php if ($item['id'] === 'chat' && $sidebarUnreadMessages > 0): ?>
+                <span class="badge bg-danger rounded-pill ms-auto me-1" style="font-size: 0.72rem; padding: 0.25em 0.55em;"><?php echo $sidebarUnreadMessages > 99 ? '99+' : $sidebarUnreadMessages; ?></span>
+                <?php endif; ?>
             </a>
         </div>
         <?php endforeach; ?>
