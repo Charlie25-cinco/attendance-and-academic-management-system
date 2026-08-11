@@ -119,20 +119,28 @@ jobs:
           curl https://get.wasmer.io -sSfL | sh
           export WASMER_DIR="$HOME/.wasmer"
           export PATH="$WASMER_DIR/bin:$PATH"
-          max_attempts=4
+          if wasmer login "${WASMER_TOKEN}"; then
+            echo "Wasmer CLI authenticated successfully."
+          else
+            echo "Wasmer login warning; proceeding to deploy step."
+          fi
+          max_attempts=5
           for attempt in $(seq 1 "$max_attempts"); do
             echo "Wasmer deployment attempt ${attempt}/${max_attempts}"
-            if wasmer deploy --non-interactive --token="${WASMER_TOKEN}"; then
+            if wasmer deploy --app-config app.yaml --non-interactive --token="${WASMER_TOKEN}"; then
+              echo "Wasmer Edge deployment succeeded."
               exit 0
             fi
             if [ "$attempt" -eq "$max_attempts" ]; then
               echo "::error::Wasmer deployment failed after ${max_attempts} attempts."
               exit 1
             fi
-            delay=$((attempt * 20))
-            echo "Wasmer registry request failed; retrying in ${delay} seconds."
+            delay=$((attempt * 30))
+            echo "Wasmer registry request failed; retrying in ${delay} seconds..."
             sleep "$delay"
           done
         env:
           WASMER_TOKEN: ${{ secrets.WASMER_TOKEN }}
+          WASMER_OWNER: ${{ secrets.WASMER_OWNER }}
+          WASMER_APP_NAME: ${{ secrets.WASMER_APP_NAME }}
 

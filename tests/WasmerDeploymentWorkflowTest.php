@@ -10,10 +10,11 @@ final class WasmerDeploymentWorkflowTest extends TestCase
 
         $this->assertIsString($workflow);
         $this->assertStringContainsString('timeout-minutes: 40', $workflow);
-        $this->assertStringContainsString('max_attempts=4', $workflow);
+        $this->assertStringContainsString('wasmer login "${WASMER_TOKEN}"', $workflow);
+        $this->assertStringContainsString('max_attempts=5', $workflow);
         $this->assertStringContainsString('for attempt in $(seq 1 "$max_attempts")', $workflow);
-        $this->assertStringContainsString('if wasmer deploy --non-interactive --token="${WASMER_TOKEN}"; then', $workflow);
-        $this->assertStringContainsString('delay=$((attempt * 20))', $workflow);
+        $this->assertStringContainsString('if wasmer deploy --app-config app.yaml --non-interactive --token="${WASMER_TOKEN}"; then', $workflow);
+        $this->assertStringContainsString('delay=$((attempt * 30))', $workflow);
         $this->assertStringContainsString('failed after ${max_attempts} attempts', $workflow);
     }
 }
