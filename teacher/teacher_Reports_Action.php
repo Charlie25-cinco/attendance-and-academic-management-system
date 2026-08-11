@@ -1,9 +1,6 @@
 <?php
+ob_start();
 $__teacherReportsAction = (string)($_GET['action'] ?? '');
-$__teacherReportsNotesAction = in_array($__teacherReportsAction, ['save_note', 'list_notes', 'update_note', 'delete_note'], true);
-if ($__teacherReportsNotesAction) {
-    ob_start();
-}
 $__appRoot = __DIR__;
 while ($__appRoot !== dirname($__appRoot) && !is_file($__appRoot . '/functions/bootstrap.php')) {
     $__appRoot = dirname($__appRoot);
@@ -37,7 +34,7 @@ if (!$db) {
 
 $teacherId = (int)($_SESSION['user_id'] ?? 0);
 $action = $__teacherReportsAction;
-unset($__teacherReportsAction, $__teacherReportsNotesAction);
+unset($__teacherReportsAction);
 
 function requirePostAndCsrfOrExit() {
     if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
@@ -148,6 +145,8 @@ $headers = $aggregateTable['headers'];
 $rows = $aggregateTable['rows'];
 
 $filename = 'teacher_' . $type . '_' . str_replace('-', '_', $academicYear) . '_' . date('Ymd_His') . '.csv';
+
+while (ob_get_level() > 0) { ob_end_clean(); }
 header('Content-Type: text/csv; charset=utf-8');
 header('Content-Disposition: attachment; filename="' . $filename . '"');
 $out = fopen('php://output', 'w');
@@ -175,7 +174,6 @@ function normalizeInt($value) {
 
 function handleSaveNote($db, $teacherId) {
     requirePostAndCsrfOrExit();
-    header('Content-Type: application/json');
 
     $title = normalizeText($_POST['title'] ?? '');
     $content = normalizeText($_POST['content'] ?? '');
@@ -187,36 +185,29 @@ function handleSaveNote($db, $teacherId) {
     }
 
     if ($title === '' || $content === '') {
-        http_response_code(422);
-        echo json_encode([
+        teacherReportsJsonExit([
             'ok' => false,
             'message' => 'Title and content are required.'
-        ]);
-        exit();
+        ], 422);
     }
 
     $stmt = $db->prepare("INSERT INTO teacher_report_notes (teacher_id, report_type, title, content) VALUES (?, ?, ?, ?)");
     $ok = $stmt->execute([$teacherId, $reportType, $title, $content]);
 
     if (!$ok) {
-        http_response_code(500);
-        echo json_encode([
+        teacherReportsJsonExit([
             'ok' => false,
             'message' => 'Failed to save report note.'
-        ]);
-        exit();
+        ], 500);
     }
 
-    echo json_encode([
+    teacherReportsJsonExit([
         'ok' => true,
         'message' => 'Report note saved.'
     ]);
-    exit();
 }
 
 function handleListNotes($db, $teacherId) {
-    header('Content-Type: application/json');
-
     $reportType = normalizeText($_GET['report_type'] ?? '');
     $params = [$teacherId];
     $where = "teacher_id = ?";
@@ -241,16 +232,14 @@ function handleListNotes($db, $teacherId) {
     $stmt = $db->prepare($sql);
     $stmt->execute($params);
 
-    echo json_encode([
+    teacherReportsJsonExit([
         'ok' => true,
         'notes' => $stmt->fetchAll(PDO::FETCH_ASSOC)
     ]);
-    exit();
 }
 
 function handleUpdateNote($db, $teacherId) {
     requirePostAndCsrfOrExit();
-    header('Content-Type: application/json');
 
     $noteId = normalizeInt($_POST['note_id'] ?? 0);
     $title = normalizeText($_POST['title'] ?? '');
@@ -263,12 +252,10 @@ function handleUpdateNote($db, $teacherId) {
     }
 
     if ($noteId <= 0 || $title === '' || $content === '') {
-        http_response_code(422);
-        echo json_encode([
+        teacherReportsJsonExit([
             'ok' => false,
             'message' => 'Note ID, title and content are required.'
-        ]);
-        exit();
+        ], 422);
     }
 
     $stmt = $db->prepare("UPDATE teacher_report_notes
@@ -276,34 +263,29 @@ function handleUpdateNote($db, $teacherId) {
                           WHERE id = ? AND teacher_id = ?");
     $stmt->execute([$reportType, $title, $content, $noteId, $teacherId]);
 
-    echo json_encode([
+    teacherReportsJsonExit([
         'ok' => true,
         'message' => 'Report note updated.'
     ]);
-    exit();
 }
 
 function handleDeleteNote($db, $teacherId) {
     requirePostAndCsrfOrExit();
-    header('Content-Type: application/json');
 
     $noteId = normalizeInt($_POST['note_id'] ?? 0);
     if ($noteId <= 0) {
-        http_response_code(422);
-        echo json_encode([
+        teacherReportsJsonExit([
             'ok' => false,
             'message' => 'Invalid note ID.'
-        ]);
-        exit();
+        ], 422);
     }
 
     $stmt = $db->prepare("DELETE FROM teacher_report_notes WHERE id = ? AND teacher_id = ?");
     $stmt->execute([$noteId, $teacherId]);
 
-    echo json_encode([
+    teacherReportsJsonExit([
         'ok' => true,
         'message' => 'Report note deleted.'
     ]);
-    exit();
 }
 ?>

@@ -1,9 +1,6 @@
 <?php
+ob_start();
 $__adminReportsAction = (string)($_GET['action'] ?? '');
-$__adminReportsNotesAction = in_array($__adminReportsAction, ['save_note', 'list_notes', 'update_note', 'delete_note'], true);
-if ($__adminReportsNotesAction) {
-    ob_start();
-}
 require_once __DIR__ . '/../functions/bootstrap.php';
 // Admin Reports Action Handler
 
@@ -34,7 +31,7 @@ if (!$db) {
 }
 
 $action = $__adminReportsAction;
-unset($__adminReportsAction, $__adminReportsNotesAction);
+unset($__adminReportsAction);
 $type = $_GET['type'] ?? '';
 $dateFrom = normalizeDate($_GET['date_from'] ?? '');
 $dateTo = normalizeDate($_GET['date_to'] ?? '');
@@ -129,6 +126,7 @@ if (in_array($type, aggregateAttendanceReportTypes(), true)) {
     [$filename, $headers, $rows] = buildReportData($db, $type, $dateFrom, $dateTo, $filters);
 }
 
+while (ob_get_level() > 0) { ob_end_clean(); }
 header('Content-Type: text/csv; charset=utf-8');
 header('Content-Disposition: attachment; filename="' . $filename . '"');
 
@@ -142,54 +140,46 @@ exit();
 
 function handleSaveNote($db) {
     requirePostAndCsrfOrExit();
-    header('Content-Type: application/json');
 
     $title = normalizeText($_POST['title'] ?? '');
     $content = normalizeText($_POST['content'] ?? '');
     $reportType = normalizeText($_POST['report_type'] ?? 'general');
 
-    $allowedTypes = ['general', 'attendance', 'grades', 'enrollment', 'teachers', 'classes'];
+    $allowedTypes = ['general', 'attendance', 'top_attendance', 'class_summary', 'at_risk', 'grades', 'enrollment', 'teachers', 'classes'];
     if (!in_array($reportType, $allowedTypes, true)) {
         $reportType = 'general';
     }
 
     if ($title === '' || $content === '') {
-        http_response_code(422);
-        echo json_encode([
+        adminReportsJsonExit([
             'ok' => false,
             'message' => 'Title and content are required.'
-        ]);
-        exit();
+        ], 422);
     }
 
     $stmt = $db->prepare("INSERT INTO admin_report_notes (admin_id, report_type, title, content) VALUES (?, ?, ?, ?)");
     $ok = $stmt->execute([(int)$_SESSION['user_id'], $reportType, $title, $content]);
 
     if (!$ok) {
-        http_response_code(500);
-        echo json_encode([
+        adminReportsJsonExit([
             'ok' => false,
             'message' => 'Failed to save report note.'
-        ]);
-        exit();
+        ], 500);
     }
 
-    echo json_encode([
+    adminReportsJsonExit([
         'ok' => true,
         'message' => 'Report note saved.'
     ]);
-    exit();
 }
 
 function handleListNotes($db) {
-    header('Content-Type: application/json');
-
     $reportType = normalizeText($_GET['report_type'] ?? '');
     $params = [(int)$_SESSION['user_id']];
     $where = "admin_id = ?";
 
     if ($reportType !== '') {
-        $allowedTypes = ['general', 'attendance', 'grades', 'enrollment', 'teachers', 'classes'];
+        $allowedTypes = ['general', 'attendance', 'top_attendance', 'class_summary', 'at_risk', 'grades', 'enrollment', 'teachers', 'classes'];
         if (!in_array($reportType, $allowedTypes, true)) {
             $reportType = '';
         }
@@ -208,58 +198,50 @@ function handleListNotes($db) {
     $stmt = $db->prepare($sql);
     $stmt->execute($params);
 
-    echo json_encode([
+    adminReportsJsonExit([
         'ok' => true,
         'notes' => $stmt->fetchAll(PDO::FETCH_ASSOC)
     ]);
-    exit();
 }
 
 function handleDeleteNote($db) {
     requirePostAndCsrfOrExit();
-    header('Content-Type: application/json');
 
     $noteId = normalizeInt($_POST['note_id'] ?? 0);
     if ($noteId <= 0) {
-        http_response_code(422);
-        echo json_encode([
+        adminReportsJsonExit([
             'ok' => false,
             'message' => 'Invalid note ID.'
-        ]);
-        exit();
+        ], 422);
     }
 
     $stmt = $db->prepare("DELETE FROM admin_report_notes WHERE id = ? AND admin_id = ?");
     $stmt->execute([$noteId, (int)$_SESSION['user_id']]);
 
-    echo json_encode([
+    adminReportsJsonExit([
         'ok' => true,
         'message' => 'Report note deleted.'
     ]);
-    exit();
 }
 
 function handleUpdateNote($db) {
     requirePostAndCsrfOrExit();
-    header('Content-Type: application/json');
 
     $noteId = normalizeInt($_POST['note_id'] ?? 0);
     $title = normalizeText($_POST['title'] ?? '');
     $content = normalizeText($_POST['content'] ?? '');
     $reportType = normalizeText($_POST['report_type'] ?? 'general');
 
-    $allowedTypes = ['general', 'attendance', 'grades', 'enrollment', 'teachers', 'classes'];
+    $allowedTypes = ['general', 'attendance', 'top_attendance', 'class_summary', 'at_risk', 'grades', 'enrollment', 'teachers', 'classes'];
     if (!in_array($reportType, $allowedTypes, true)) {
         $reportType = 'general';
     }
 
     if ($noteId <= 0 || $title === '' || $content === '') {
-        http_response_code(422);
-        echo json_encode([
+        adminReportsJsonExit([
             'ok' => false,
             'message' => 'Note ID, title and content are required.'
-        ]);
-        exit();
+        ], 422);
     }
 
     $stmt = $db->prepare("UPDATE admin_report_notes
@@ -267,11 +249,10 @@ function handleUpdateNote($db) {
                           WHERE id = ? AND admin_id = ?");
     $stmt->execute([$reportType, $title, $content, $noteId, (int)$_SESSION['user_id']]);
 
-    echo json_encode([
+    adminReportsJsonExit([
         'ok' => true,
         'message' => 'Report note updated.'
     ]);
-    exit();
 }
 
 function appendDateFilter($column, &$where, &$params, $dateFrom, $dateTo) {

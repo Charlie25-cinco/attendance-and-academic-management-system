@@ -284,7 +284,7 @@ function ensureReportNotesTables(PDO $db): void {
     $tables = [
         'admin_report_notes' => [
             'owner' => 'admin_id',
-            'types' => "'general','attendance','grades','enrollment','teachers','classes'",
+            'types' => "'general','attendance','top_attendance','class_summary','at_risk','grades','enrollment','teachers','classes'",
             'index' => 'idx_admin_type_created',
         ],
         'teacher_report_notes' => [

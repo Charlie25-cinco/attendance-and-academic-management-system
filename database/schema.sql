@@ -341,7 +341,7 @@ CREATE TABLE IF NOT EXISTS parent_students (
 CREATE TABLE IF NOT EXISTS admin_report_notes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     admin_id INT NOT NULL,
-    report_type ENUM('general','attendance','grades','enrollment','teachers','classes') DEFAULT 'general',
+    report_type ENUM('general','attendance','top_attendance','class_summary','at_risk','grades','enrollment','teachers','classes') DEFAULT 'general',
     title VARCHAR(200) NOT NULL,
     content TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

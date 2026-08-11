@@ -60,6 +60,8 @@ final class AttendanceReportsAndNotesTest extends TestCase
         $this->assertStringContainsString('ensureReportNotesTables($db);', $adminAction);
         $this->assertStringContainsString('teacherReportsJsonExit([', $teacherAction);
         $this->assertStringContainsString('adminReportsJsonExit([', $adminAction);
+        $this->assertStringContainsString('while (ob_get_level() > 0) { ob_end_clean(); }', $teacherAction);
+        $this->assertStringContainsString('while (ob_get_level() > 0) { ob_end_clean(); }', $adminAction);
         $this->assertStringContainsString('appendCsrf(fd);', $teacherPage);
         $this->assertStringContainsString('appendCsrf(fd);', $adminPage);
         $this->assertStringContainsString('body: text.slice(0, 500)', $teacherPage);
