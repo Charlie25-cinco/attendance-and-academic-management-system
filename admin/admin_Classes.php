@@ -143,8 +143,8 @@ $page_title = 'Manage Classes';
     <title><?php echo htmlspecialchars($page_title, ENT_QUOTES, 'UTF-8'); ?> - Balingasag Senior High School</title>
     <link href="<?php echo appAssetPath('src/vendor/bootstrap/bootstrap.min.css'); ?>" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo appAssetPath('src/vendor/bootstrap-icons/bootstrap-icons.css'); ?>">
-    <link rel="stylesheet" href="../assets/css/main.css">
-    <link rel="stylesheet" href="../assets/css/role.css">
+    <link rel="stylesheet" href="<?php echo appAssetPath('css/main.css'); ?>">
+    <link rel="stylesheet" href="<?php echo appAssetPath('css/role.css'); ?>">
     <style>
         .schedule-row .input-group .form-control { min-width: 56px; }
         .schedule-row .input-group-text { min-width: 18px; justify-content: center; }

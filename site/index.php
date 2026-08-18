@@ -262,7 +262,7 @@ $siteCss = '../assets/css/Site.css';
     </footer>
 
     <script src="<?php echo $bootstrapJs; ?>"></script>
-    <script src="../assets/js/main.js"></script>
+    <script src="<?php echo appAssetPath('js/main.js'); ?>"></script>
     <script>
     document.querySelectorAll('a[href^="#"]').forEach(function(anchor) {
         anchor.addEventListener('click', function(event) {

@@ -121,8 +121,8 @@ $page_title = 'Section Detail - Grade ' . $gradeLevel . ' - ' . $section;
     <title><?php echo htmlspecialchars($page_title); ?> - Balingasag Senior High School</title>
     <link href="<?php echo appAssetPath('src/vendor/bootstrap/bootstrap.min.css'); ?>" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo appAssetPath('src/vendor/bootstrap-icons/bootstrap-icons.css'); ?>">
-    <link rel="stylesheet" href="../assets/css/main.css">
-    <link rel="stylesheet" href="../assets/css/role.css">
+    <link rel="stylesheet" href="<?php echo appAssetPath('css/main.css'); ?>">
+    <link rel="stylesheet" href="<?php echo appAssetPath('css/role.css'); ?>">
 <?php echo pwaHeadHtml(); ?>
 </head>
 <body>

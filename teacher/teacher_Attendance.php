@@ -90,8 +90,8 @@ $page_title = 'Attendance';
     <title><?php echo htmlspecialchars($page_title, ENT_QUOTES, 'UTF-8'); ?> - Balingasag Senior High School</title>
     <link href="<?php echo appAssetPath('vendor/bootstrap/bootstrap.min.css'); ?>" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo appAssetPath('vendor/bootstrap-icons/bootstrap-icons.css'); ?>">
-    <link rel="stylesheet" href="../assets/css/main.css">
-    <link rel="stylesheet" href="../assets/css/role.css">
+    <link rel="stylesheet" href="<?php echo appAssetPath('css/main.css'); ?>">
+    <link rel="stylesheet" href="<?php echo appAssetPath('css/role.css'); ?>">
     <style>
     .teacher-status { display: inline-flex; align-items: center; gap: 8px; padding: 8px 15px; border-radius: 20px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: all 0.2s; }
     .teacher-status.present { background: rgba(16, 185, 129, 0.1); color: var(--accent-color); }

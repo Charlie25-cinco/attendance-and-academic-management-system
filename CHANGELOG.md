@@ -2,6 +2,15 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.60 — 2026-08-18
+
+### Fixed
+
+- Wrapped the header notification button and dropdown in `includes/header.php` inside a dedicated `.dropdown` container, eliminating improper Popper.js positioning calculations and preventing the menu from shifting excessively to the left on mobile viewports.
+- Enhanced notification dropdown styling in `assets/css/main.css` with responsive mobile positioning, `overscroll-behavior: contain`, `-webkit-overflow-scrolling: touch`, and custom thin scrollbars to prevent scrolling conflicts.
+- Standardized all 36 portal pages across `admin/`, `teacher/`, `student/`, and `parent/` to load CSS and JavaScript assets using `appAssetPath()`, guaranteeing automatic `?v=timestamp` cache-busting across all non-dashboard pages.
+- Bumped root Service Worker cache to `bshs-ams-v13` to invalidate stale browser asset caches.
+
 ## v0.3.59 — 2026-08-18
 
 ### Changed

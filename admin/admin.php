@@ -152,8 +152,8 @@ $page_title = 'Admin Dashboard';
     <link rel="stylesheet" href="<?php echo appAssetPath('src/vendor/bootstrap-icons/bootstrap-icons.css'); ?>">
     
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="../assets/css/main.css">
-    <link rel="stylesheet" href="../assets/css/role.css">
+    <link rel="stylesheet" href="<?php echo appAssetPath('css/main.css'); ?>">
+    <link rel="stylesheet" href="<?php echo appAssetPath('css/role.css'); ?>">
 <?php echo pwaHeadHtml(); ?>
 </head>
 <body>

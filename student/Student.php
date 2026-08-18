@@ -292,8 +292,8 @@ $nextClassLabel = !empty($todaySchedule)
     <title><?php echo htmlspecialchars($page_title, ENT_QUOTES, 'UTF-8'); ?> - Balingasag Senior High School</title>
     <link href="<?php echo appAssetPath('vendor/bootstrap/bootstrap.min.css'); ?>" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo appAssetPath('vendor/bootstrap-icons/bootstrap-icons.css'); ?>">
-    <link rel="stylesheet" href="../assets/css/main.css">
-    <link rel="stylesheet" href="../assets/css/role.css">
+    <link rel="stylesheet" href="<?php echo appAssetPath('css/main.css'); ?>">
+    <link rel="stylesheet" href="<?php echo appAssetPath('css/role.css'); ?>">
     <style>
         .weekly-schedule-grid { --schedule-accent: #1d4ed8; }
         .schedule-day-card {
