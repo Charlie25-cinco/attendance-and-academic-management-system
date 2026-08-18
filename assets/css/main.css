@@ -598,12 +598,16 @@ body.dark-mode .main-content {
 }
 
 .header-notification-menu {
+  display: none;
   width: min(380px, calc(100vw - 24px));
   max-height: min(480px, calc(100dvh - 85px));
   padding: 0 !important;
-  display: flex;
   flex-direction: column;
   overflow: hidden !important;
+}
+
+.header-notification-menu.show {
+  display: flex !important;
 }
 
 .header-notification-head {
@@ -2151,7 +2155,7 @@ body.dark-mode .material-btn:hover {
     max-width: calc(100vw - 24px);
   }
 
-  .header-dropdown-menu.header-notification-menu {
+  .header-dropdown-menu.header-notification-menu.show {
     position: fixed !important;
     top: 60px !important;
     left: 8px !important;
@@ -2161,6 +2165,7 @@ body.dark-mode .material-btn:hover {
     transform: none !important;
     max-height: calc(100dvh - 80px) !important;
     z-index: 1060 !important;
+    display: flex !important;
   }
 
   .dropdown-item,

@@ -2,6 +2,12 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.62 — 2026-08-18
+
+### Fixed
+
+- Fixed notification dropdown toggle state in `assets/css/main.css` by hiding `.header-notification-menu` by default (`display: none`) and only applying `display: flex !important` when Bootstrap's `.show` class is active, allowing the menu to open and close normally on click.
+
 ## v0.3.61 — 2026-08-18
 
 ### Fixed
