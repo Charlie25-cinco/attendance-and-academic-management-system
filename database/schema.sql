@@ -129,7 +129,8 @@ CREATE TABLE IF NOT EXISTS class_subjects (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
     FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE SET NULL,
-    FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE SET NULL
+    FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE SET NULL,
+    UNIQUE KEY uq_class_subject (class_id, subject_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =============================================================================
@@ -139,14 +140,15 @@ CREATE TABLE IF NOT EXISTS enrollments (
     id INT AUTO_INCREMENT PRIMARY KEY,
     student_id INT NOT NULL,
     class_id INT NOT NULL,
-    academic_year VARCHAR(20) NOT NULL,
+    academic_year VARCHAR(20) NOT NULL DEFAULT '2026-2027',
     semester INT NULL COMMENT '1/2 for legacy 4-quarter; NULL for 3-term system',
     curriculum VARCHAR(50) DEFAULT NULL COMMENT 'strengthened_shs for Grade 11 SY 2026+',
     program VARCHAR(50) DEFAULT NULL COMMENT 'academic_strengthened|technical_professional for Grade 11 SSHS',
     status ENUM('enrolled', 'dropped', 'completed') DEFAULT 'enrolled',
     enrolled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE
+    FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
+    UNIQUE KEY uq_student_class_year (student_id, class_id, academic_year)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =============================================================================
@@ -191,12 +193,13 @@ CREATE TABLE IF NOT EXISTS grades (
     final_grade DECIMAL(5,2),
     semester VARCHAR(20) NULL COMMENT 'S1/S2 for legacy 4-quarter; NULL for 3-term system',
     term ENUM('Q1','Q2','Q3','Q4','Term1','Term2','Term3') NOT NULL DEFAULT 'Term1',
-    academic_year VARCHAR(20),
+    academic_year VARCHAR(20) NOT NULL DEFAULT '2026-2027',
     recorded_by INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (class_subject_id) REFERENCES class_subjects(id) ON DELETE CASCADE,
-    FOREIGN KEY (recorded_by) REFERENCES users(id) ON DELETE SET NULL
+    FOREIGN KEY (recorded_by) REFERENCES users(id) ON DELETE SET NULL,
+    UNIQUE KEY uq_grade_student_subject_term_year (student_id, class_subject_id, term, academic_year)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =============================================================================

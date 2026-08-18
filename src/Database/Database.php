@@ -73,7 +73,6 @@ class Database
             }
 
             $options = [
-                PDO::ATTR_PERSISTENT => true,
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             ];
             if ($this->sslCa !== '' && defined('PDO::MYSQL_ATTR_SSL_CA')) {

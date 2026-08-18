@@ -1,7 +1,7 @@
 # Technical Architecture Specification
 
 **System Name:** Balingasag Senior High School - Attendance and Academic Management System (BSHS AMS)  
-**Document Version:** 1.0.0  
+**Document Version:** 1.0.1  
 **Status:** Approved  
 
 ---
@@ -60,7 +60,7 @@ BSHS AMS follows a modular, layered PHP Web and PWA architecture. Core domain bu
 The application source code lives under the `BshsAms\` namespace in `src/`:
 
 ### 2.1 Database Component (`BshsAms\Database`)
-- **`Database.php`**: Singleton/PDO connection manager with support for standard MySQL/MariaDB and hosted MySQL SSL certificates (`DB_SSL_CA` or `DB_SSL_CA_CONTENT`).
+- **`Database.php`**: PDO connection manager with support for standard MySQL/MariaDB and hosted MySQL SSL certificates (`DB_SSL_CA` or `DB_SSL_CA_CONTENT`).
 - **`SchemaCache.php`**: Static cache of database table schema metadata (`dbHasTable`, `dbHasColumn`) to reduce redundant `INFORMATION_SCHEMA` queries.
 - **`SessionHandler.php`**: Custom `SessionHandlerInterface` implementation for database-backed session storage (`APP_SESSION_DRIVER=database`), providing stateless session persistence across container instances.
 
@@ -83,6 +83,12 @@ The application source code lives under the `BshsAms\` namespace in `src/`:
 - **`SimpleXlsxTemplateEditor.php`**: Template cell modifier for fast DepEd Excel report generation.
 - **`SimpleXlsxWriter.php`**: Lightweight memory-efficient XLSX writer.
 
+### 2.6 Notification Component (`BshsAms\Notification`)
+- **`SmsService.php`**: Multi-gateway SMS dispatcher supporting PhilSMS (default), Semaphore, Twilio, and safe log fallbacks with Philippine mobile number normalization.
+
+### 2.7 Storage Component (`BshsAms\Storage`)
+- **`MaterialStorage.php`**: Secure learning material storage manager with randomized filenames, path traversal protection, and role-authorized file streaming.
+
 ---
 
 ## 3. Security Architecture
@@ -90,7 +96,7 @@ The application source code lives under the `BshsAms\` namespace in `src/`:
 ### 3.1 Authentication & Session Management
 - **Password Hashing:** Passwords are hashed using `PASSWORD_DEFAULT` (Bcrypt/Argon2id).
 - **Default Password Guard:** Web login and remember-me auto-login enforce mandatory password setup if `password_verify(DEFAULT_NEW_USER_PASSWORD)` matches.
-- **Stateless Cloud Sessions:** When running on cloud container platforms such as Wasmer Edge, setting `APP_SESSION_DRIVER=database` delegates session storage to the SQL `php_sessions` table.
+- **Stateless Cloud Sessions:** When running on cloud container platforms such as Wasmer Edge, setting `APP_SESSION_DRIVER=database` delegates session storage to the SQL `app_sessions` table.
 
 ### 3.2 Authorization & Centralized RBAC
 Script-level RBAC is configured centrally in `functions/bootstrap.php` via `enforceScriptPermission($db)`:

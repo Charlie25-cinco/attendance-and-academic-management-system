@@ -2,6 +2,18 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.59 — 2026-08-18
+
+### Changed
+
+- Removed `PDO::ATTR_PERSISTENT` in `BshsAms\Database\Database` to optimize connection lifecycle for stateless Wasmer edge container instances.
+- Aligned technical architecture documentation in `docs/ARCHITECTURE.md` with current codebase implementation (corrected session table name to `app_sessions`, documented `Notification` and `Storage` namespaces).
+- Added database-level `UNIQUE` constraints in `database/schema.sql` on `class_subjects(class_id, subject_id)`, `enrollments(student_id, class_id, academic_year)`, and `grades(student_id, class_subject_id, term, academic_year)` to prevent duplicate records.
+
+### Security
+
+- Added `api/.api_secret`, `api/.api_sync_secret`, `config/push_keys.php`, and `config/push_keys.json` to `.gitignore` to prevent accidental staging or commit of runtime secret files.
+
 ## v0.3.58 — 2026-08-18
 
 ### Added
