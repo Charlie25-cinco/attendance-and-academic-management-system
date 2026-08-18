@@ -600,6 +600,21 @@ body.dark-mode .main-content {
 .header-notification-menu {
   width: min(380px, calc(100vw - 24px));
   max-height: min(480px, calc(100dvh - 85px));
+  padding: 0 !important;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden !important;
+}
+
+.header-notification-head {
+  flex-shrink: 0;
+  background: var(--bg-surface, #ffffff);
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+}
+
+.header-notification-scroll-body {
+  flex: 1 1 auto;
+  max-height: min(360px, calc(100dvh - 160px));
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
@@ -607,13 +622,19 @@ body.dark-mode .main-content {
   scrollbar-width: thin;
 }
 
-.header-notification-menu::-webkit-scrollbar {
+.header-notification-scroll-body::-webkit-scrollbar {
   width: 5px;
 }
 
-.header-notification-menu::-webkit-scrollbar-thumb {
+.header-notification-scroll-body::-webkit-scrollbar-thumb {
   background: var(--border-color, #cbd5e1);
   border-radius: 4px;
+}
+
+.header-notification-foot {
+  flex-shrink: 0;
+  background: var(--bg-surface, #ffffff);
+  border-top: 1px solid var(--border-color, #e2e8f0);
 }
 
 .header-notification-menu .dropdown-item {
@@ -1857,7 +1878,7 @@ body.dark-mode .material-btn:hover {
   .header {
     position: fixed;
     top: 0 !important;
-    padding: 12px 16px 12px 0;
+    padding: 12px 16px;
     left: 0;
     right: 0;
     z-index: 100;
@@ -1939,7 +1960,7 @@ body.dark-mode .material-btn:hover {
 
   .header {
     min-height: var(--header-height);
-    padding: 10px 12px 10px 0;
+    padding: 10px 14px;
     gap: 10px;
     left: 0;
   }

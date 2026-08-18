@@ -434,44 +434,46 @@ try {
                 <span class="notification-badge" id="headerNotificationBadge"><?php echo $notification_count; ?></span>
                 <?php endif; ?>
             </button>
-            <ul class="dropdown-menu dropdown-menu-end header-dropdown-menu header-notification-menu shadow-lg">
-                <li class="dropdown-header d-flex justify-content-between align-items-center">
+            <div class="dropdown-menu dropdown-menu-end header-dropdown-menu header-notification-menu shadow-lg">
+                <div class="header-notification-head px-3 py-2 border-bottom d-flex justify-content-between align-items-center">
                     <span class="fw-semibold">Notifications</span>
                     <div class="d-flex gap-2">
                         <a href="#" id="markAllNotificationsRead" class="text-decoration-none" style="font-size: 12px;">Read all</a>
                         <a href="#" id="deleteAllNotifications" class="text-decoration-none text-danger" style="font-size: 12px;">Delete all</a>
                     </div>
-                </li>
-                <li><hr class="dropdown-divider"></li>
-                <?php if (empty($notificationItems)): ?>
-                    <li><div class="dropdown-item text-muted py-2">No new notifications</div></li>
-                <?php else: ?>
-                    <?php foreach ($notificationItems as $item): ?>
-                        <li data-notification-row="<?php echo (int)($item['id'] ?? 0); ?>">
-                            <div class="dropdown-item d-flex align-items-start py-2 <?php echo ((int)($item['is_read'] ?? 0) === 1) ? 'opacity-75' : ''; ?>">
-                                <a class="header-notification-item d-flex align-items-start text-decoration-none text-reset flex-grow-1" href="<?php echo htmlspecialchars((string)$item['link']); ?>" data-notification-id="<?php echo (int)($item['id'] ?? 0); ?>">
-                                    <div class="header-notification-icon bg-<?php echo htmlspecialchars((string)$item['color']); ?> bg-opacity-10 rounded-circle p-2 me-3 flex-shrink-0">
-                                        <i class="bi <?php echo htmlspecialchars((string)$item['icon']); ?> text-<?php echo htmlspecialchars((string)$item['color']); ?>"></i>
-                                    </div>
-                                    <div class="header-notification-body flex-grow-1 min-w-0">
-                                        <p class="mb-0 fw-medium notification-title" style="font-size: 14px;"><?php echo htmlspecialchars((string)$item['title']); ?></p>
-                                        <p class="mb-0 text-muted notification-subtitle" style="font-size: 12px;"><?php echo htmlspecialchars((string)$item['subtitle']); ?></p>
-                                        <small class="text-muted header-notification-time" data-event-at="<?php echo htmlspecialchars((string)($item['event_at'] ?? '')); ?>"><?php echo htmlspecialchars((string)$item['time']); ?></small>
-                                    </div>
-                                </a>
-                                <button type="button"
-                                        class="btn btn-sm btn-link text-danger p-0 ms-2 delete-notification-btn"
-                                        title="Delete"
-                                        data-notification-id="<?php echo (int)($item['id'] ?? 0); ?>">
-                                    <i class="bi bi-trash"></i>
-                                </button>
+                </div>
+                <div class="header-notification-scroll-body px-2 py-1">
+                    <?php if (empty($notificationItems)): ?>
+                        <div class="dropdown-item text-muted py-3 text-center">No new notifications</div>
+                    <?php else: ?>
+                        <?php foreach ($notificationItems as $item): ?>
+                            <div data-notification-row="<?php echo (int)($item['id'] ?? 0); ?>">
+                                <div class="dropdown-item d-flex align-items-start py-2 <?php echo ((int)($item['is_read'] ?? 0) === 1) ? 'opacity-75' : ''; ?>">
+                                    <a class="header-notification-item d-flex align-items-start text-decoration-none text-reset flex-grow-1" href="<?php echo htmlspecialchars((string)$item['link']); ?>" data-notification-id="<?php echo (int)($item['id'] ?? 0); ?>">
+                                        <div class="header-notification-icon bg-<?php echo htmlspecialchars((string)$item['color']); ?> bg-opacity-10 rounded-circle p-2 me-3 flex-shrink-0">
+                                            <i class="bi <?php echo htmlspecialchars((string)$item['icon']); ?> text-<?php echo htmlspecialchars((string)$item['color']); ?>"></i>
+                                        </div>
+                                        <div class="header-notification-body flex-grow-1 min-w-0">
+                                            <p class="mb-0 fw-medium notification-title" style="font-size: 14px;"><?php echo htmlspecialchars((string)$item['title']); ?></p>
+                                            <p class="mb-0 text-muted notification-subtitle" style="font-size: 12px;"><?php echo htmlspecialchars((string)$item['subtitle']); ?></p>
+                                            <small class="text-muted header-notification-time" data-event-at="<?php echo htmlspecialchars((string)($item['event_at'] ?? '')); ?>"><?php echo htmlspecialchars((string)$item['time']); ?></small>
+                                        </div>
+                                    </a>
+                                    <button type="button"
+                                            class="btn btn-sm btn-link text-danger p-0 ms-2 delete-notification-btn"
+                                            title="Delete"
+                                            data-notification-id="<?php echo (int)($item['id'] ?? 0); ?>">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
                             </div>
-                        </li>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item text-center text-primary" href="<?php echo htmlspecialchars($currentPages['announcements']); ?>" id="viewAllNotifications">View all notifications</a></li>
-            </ul>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+                <div class="header-notification-foot border-top p-2 text-center">
+                    <a class="dropdown-item text-center text-primary py-1" href="<?php echo htmlspecialchars($currentPages['announcements']); ?>" id="viewAllNotifications">View all notifications</a>
+                </div>
+            </div>
         </div>
 
         <!-- Profile -->

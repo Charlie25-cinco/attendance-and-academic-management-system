@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.61 — 2026-08-18
+
+### Fixed
+
+- Locked the notification dropdown header ("Notifications | Read all | Delete all") and footer ("View all notifications") in `includes/header.php` and `assets/css/main.css` so they remain permanently fixed while only the notification items scroll in the middle.
+- Fixed `.header` mobile and tablet padding in `assets/css/main.css` across responsive breakpoints ($\le 991.98\text{px}$) from `0px` left padding to balanced `14px-16px` padding, ensuring the mobile hamburger menu button no longer clings tightly to the left edge of the screen.
+
 ## v0.3.60 — 2026-08-18
 
 ### Fixed
