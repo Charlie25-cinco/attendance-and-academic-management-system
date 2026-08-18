@@ -90,6 +90,7 @@ For local manual testing, `composer run serve` starts the PHP development server
 - Admin may return verified subject grades to teachers by setting `grade_approvals.status = rejected`; this unlocks teacher editing and resubmission.
 - Adviser report-card submissions use `report_card_approvals.status = submitted_admin`; adviser recall is allowed only before final admin approval.
 - Student and parent grade/report-card visibility must require `report_card_approvals.status = approved`.
+- Official Admin report card approval and release (`report_card_approvals.status = approved`) triggers PhilSMS text notifications to parents and students via `smsNotifyGradePublication()`; attendance marking, teacher score entry, and draft submissions must not trigger SMS.
 - After final release, teachers may submit corrected subject grades again; affected approved report cards should be marked `rejected` so student and parent portals stop showing stale final grades until approval runs again.
 - Teacher-created grade activities must be visible to enrolled students and linked parents before scores are recorded.
 - Grade activity creation and score recording should create saved in-app notifications for student and parent recipients.

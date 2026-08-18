@@ -24,7 +24,8 @@ final class PwaAssetFreshnessTest extends TestCase
         $serviceWorker = file_get_contents(__DIR__ . '/../sw.js');
 
         $this->assertIsString($serviceWorker);
-        $this->assertStringContainsString("const CACHE_NAME = 'bshs-ams-v11';", $serviceWorker);
+        $this->assertStringContainsString("const CACHE_NAME = 'bshs-ams-v12';", $serviceWorker);
+        $this->assertStringContainsString("'/assets/js/networkSync.js'", $serviceWorker);
         $this->assertStringContainsString('var needsFreshAsset = /\\.(css|js)$/i.test(url.pathname);', $serviceWorker);
         $this->assertStringContainsString('if (needsFreshAsset) {', $serviceWorker);
         $networkFirst = strpos($serviceWorker, 'if (needsFreshAsset) {');
@@ -32,6 +33,14 @@ final class PwaAssetFreshnessTest extends TestCase
         $this->assertIsInt($networkFirst);
         $this->assertIsInt($cacheFirst);
         $this->assertLessThan($cacheFirst, $networkFirst);
+    }
+
+    public function testTeacherAttendanceUsesVersionedNetworkSync(): void
+    {
+        $attendanceContent = file_get_contents(__DIR__ . '/../teacher/teacher_Attendance.php');
+        $this->assertIsString($attendanceContent);
+        $this->assertStringContainsString("appAssetPath('js/networkSync.js')", $attendanceContent);
+        $this->assertStringNotContainsString('../assets/js/networkSync.js', $attendanceContent);
     }
 
     public function testPushStatusRefreshesWhenSettingsModalOpens(): void

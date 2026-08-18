@@ -3,6 +3,7 @@
 
     var QUEUE_KEY = 'bshs_offline_queue';
     var isOnline = navigator.onLine;
+    var isProcessing = false;
 
     function getQueue() {
         try {
@@ -16,7 +17,7 @@
         try {
             localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
         } catch (e) {
-            // storage full
+            // storage quota exceeded or disabled
         }
     }
 
@@ -25,11 +26,12 @@
         queue.push({
             id: Date.now() + '_' + Math.random().toString(36).slice(2, 8),
             action: action,
-            addedAt: new Date().toISOString()
+            addedAt: new Date().toISOString(),
+            attempts: 0
         });
         saveQueue(queue);
         if (typeof showNotification === 'function') {
-            showNotification('You are offline. Action queued for sync when online.', 'warning');
+            showNotification('You are offline. Attendance submission queued for automatic sync.', 'warning');
         }
     }
 
@@ -38,45 +40,77 @@
         saveQueue(queue);
     }
 
-    function processQueue() {
+    async function processQueue() {
+        if (isProcessing) return;
         var queue = getQueue();
         if (queue.length === 0) return;
 
-        var remaining = queue.filter(function (item) {
+        if (!navigator.onLine) {
+            return;
+        }
+
+        isProcessing = true;
+        var remaining = [];
+        var syncedCount = 0;
+
+        for (var i = 0; i < queue.length; i++) {
+            var item = queue[i];
             var action = item.action;
 
-            if (action.type === 'submit_attendance') {
-                var xhr = new XMLHttpRequest();
-                xhr.open('POST', action.url, false);
-                xhr.setRequestHeader('Content-Type', 'application/json');
-                if (action.csrfToken) {
-                    xhr.setRequestHeader('X-CSRF-Token', action.csrfToken);
-                }
+            if (action && action.type === 'submit_attendance') {
                 try {
-                    xhr.send(JSON.stringify(action.payload));
-                    var result = JSON.parse(xhr.responseText);
-                    if (result && result.success) {
-                        if (typeof showNotification === 'function') {
-                            showNotification('Offline attendance synced successfully!', 'success');
-                        }
-                        return false; // remove from queue
+                    var targetUrl = action.url;
+                    if (typeof withCsrfUrl === 'function') {
+                        targetUrl = withCsrfUrl(targetUrl);
                     }
-                } catch (e) {
-                    // still offline or error, keep in queue
-                }
-                return true; // keep in queue
-            }
 
-            return false; // unknown action type, remove
-        });
+                    var headers = {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    };
+                    if (action.csrfToken) {
+                        headers['X-CSRF-Token'] = action.csrfToken;
+                    }
+
+                    var response = await fetch(targetUrl, {
+                        method: 'POST',
+                        headers: headers,
+                        body: JSON.stringify(action.payload)
+                    });
+
+                    if (response.ok) {
+                        var result = await response.json();
+                        if (result && result.success) {
+                            syncedCount++;
+                            continue; // Successfully synced, do not add to remaining
+                        }
+                    }
+
+                    item.attempts = (item.attempts || 0) + 1;
+                    remaining.push(item);
+                } catch (err) {
+                    // Network still down or request failed; keep item in queue for next retry
+                    item.attempts = (item.attempts || 0) + 1;
+                    remaining.push(item);
+                }
+            }
+        }
 
         saveQueue(remaining);
+        isProcessing = false;
+
+        if (syncedCount > 0 && typeof showNotification === 'function') {
+            showNotification('Offline attendance (' + syncedCount + ') synced successfully!', 'success');
+        }
     }
 
     function handleOnline() {
         isOnline = true;
         if (typeof showNotification === 'function') {
-            showNotification('You are back online. Syncing pending data...', 'info');
+            var count = getQueue().length;
+            if (count > 0) {
+                showNotification('Back online! Syncing ' + count + ' pending attendance submission(s)...', 'info');
+            }
         }
         processQueue();
     }
@@ -84,7 +118,7 @@
     function handleOffline() {
         isOnline = false;
         if (typeof showNotification === 'function') {
-            showNotification('You are offline. Attendance submissions will be queued.', 'warning');
+            showNotification('You are offline. Attendance submissions will be queued safely on this device.', 'warning');
         }
     }
 
@@ -110,13 +144,12 @@
             return getQueue().length;
         },
         processNow: function () {
-            processQueue();
+            return processQueue();
         }
     };
 
-    // Process queue on load if online
-    if (isOnline) {
-        processQueue();
+    // Auto-sync pending items on load if online
+    if (isOnline && getQueue().length > 0) {
+        setTimeout(processQueue, 1000);
     }
 })();
-

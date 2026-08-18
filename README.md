@@ -165,11 +165,11 @@ Open `http://localhost:5000`.
   - `DB_SSL_CA` or `DB_SSL_CA_CONTENT` only when the hosted MySQL provider requires TLS CA verification
   - `DB_SSL_VERIFY_SERVER_CERT` optional, defaults to `1`
   - `APP_SESSION_DRIVER=database`
-  - `DEFAULT_NEW_USER_PASSWORD`, and `FIRST_RUN_ADMIN_PASSWORD` if first-admin seeding will run in that environment
   - `API_AUTH_SECRET`, `API_SYNC_SECRET`
   - `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `RESEND_FROM_NAME` for password reset OTP email
   - `PUSH_VAPID_PUBLIC_KEY`, `PUSH_VAPID_PRIVATE_KEY`, `PUSH_VAPID_SUBJECT` for installed PWA device notifications
-  - SMTP or SMS secrets if those fallback/features are enabled
+  - `SMS_PROVIDER=philsms`, `SMS_API_KEY`, `SMS_SENDER_NAME=BSHS-AMS`, and `SMS_ENDPOINT` for official grade approval SMS notifications to parents and students
+  - SMTP secrets if email fallback is enabled
 - `app.yaml` intentionally contains placeholder owner/public URL values that the GitHub workflow replaces from secrets.
 - Composer runtime platform checks are disabled in `composer.json` because Wasmer's PHP/WASI runtime can report a non-64-bit platform even though the application can still boot and serve normal web requests.
 - Wasmer app instances are stateless; runtime files should use the configured Wasmer volumes for `/app/storage` and `/app/assets/uploads`, while durable school data and PHP sessions should live in Wasmer Attached Database.

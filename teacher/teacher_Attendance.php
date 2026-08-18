@@ -218,7 +218,7 @@ $page_title = 'Attendance';
     </div>
 </div>
 <script src="<?php echo appAssetPath('vendor/bootstrap/bootstrap.bundle.min.js'); ?>"></script>
-<script src="../assets/js/networkSync.js"></script>
+<script src="<?php echo appAssetPath('js/networkSync.js'); ?>"></script>
 <script src="<?php echo appAssetPath('js/main.js'); ?>"></script>
 <script>
 const statusCycle=['present','absent','late'];

@@ -659,83 +659,166 @@ function pushNotifyGradePublication($db, int $classId, string $term = 'Final', s
         ['student' => 'Student_Report_Card.php', 'parent' => 'Parent_Report_Card.php'],
         ['type' => 'grade_publication', 'class_id' => $classId, 'term' => $term, 'academic_year' => $academicYear]
     );
+
+    if (function_exists('smsNotifyGradePublication')) {
+        try {
+            smsNotifyGradePublication($db, $classId, $term, $academicYear);
+        } catch (Throwable $e) {
+            error_log('[SMS] Grade publication notification error: ' . $e->getMessage());
+        }
+    }
+
     return true;
+}
+
+function smsGetService(): \BshsAms\Notification\SmsService {
+    static $service = null;
+    if ($service === null) {
+        $service = new \BshsAms\Notification\SmsService();
+    }
+    return $service;
 }
 
 function smsInitConfig(): void {
     global $smsConfig;
     if ($smsConfig !== null) return;
+    $service = smsGetService();
     $smsConfig = [
-        'provider' => strtolower(trim(getenv('SMS_PROVIDER') ?: 'log')),
-        'api_key' => trim(getenv('SMS_API_KEY') ?: ''),
-        'sender_name' => trim(getenv('SMS_SENDER_NAME') ?: 'BSHS-AMS'),
+        'provider' => $service->getProvider(),
+        'api_key' => trim((string)getenv('SMS_API_KEY') ?: ''),
+        'sender_name' => $service->getSenderName(),
     ];
 }
 
 function smsConfigured(): bool {
-    smsInitConfig();
-    global $smsConfig;
-    return $smsConfig['api_key'] !== '';
+    return smsGetService()->isConfigured();
 }
 
-function smsSend(string $to, string $message): array {
-    smsInitConfig();
-    global $smsConfig;
-    $to = preg_replace('/[^0-9]/', '', $to);
-    if ($to === '') {
-        return ['success' => false, 'error' => 'Invalid phone number'];
+function smsSend(string $to, string $message, ?int $recipientUserId = null, ?PDO $db = null): array {
+    return smsGetService()->send($to, $message, $recipientUserId, $db);
+}
+
+function smsNotifyGradePublication(
+    PDO $db,
+    int $classId,
+    string $term = 'Final',
+    string $academicYear = '',
+    ?int $singleStudentId = null
+): array {
+    $service = smsGetService();
+
+    $classStmt = $db->prepare("SELECT class_name, grade_level, section FROM classes WHERE id = ?");
+    $classStmt->execute([$classId]);
+    $classRow = $classStmt->fetch(PDO::FETCH_ASSOC);
+    $className = $classRow ? trim(($classRow['class_name'] ?? '') . ' (' . ($classRow['grade_level'] ?? '') . '-' . ($classRow['section'] ?? '') . ')') : 'Class #' . $classId;
+
+    $results = ['total' => 0, 'sent' => 0, 'failed' => 0];
+
+    if ($singleStudentId !== null && $singleStudentId > 0) {
+        $studentStmt = $db->prepare("SELECT id, first_name, last_name, contact_number FROM users WHERE id = ? AND role = 'student'");
+        $studentStmt->execute([$singleStudentId]);
+        $student = $studentStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$student) {
+            return $results;
+        }
+        $studentName = trim(($student['first_name'] ?? '') . ' ' . ($student['last_name'] ?? ''));
+
+        $parentStmt = $db->prepare("SELECT u.id, u.first_name, u.last_name, u.contact_number
+                                   FROM users u
+                                   JOIN parent_students ps ON ps.parent_id = u.id
+                                   WHERE ps.student_id = ? AND u.role = 'parent' AND u.contact_number IS NOT NULL AND u.contact_number != ''");
+        $parentStmt->execute([$singleStudentId]);
+        $parents = $parentStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $recipientsToSend = [];
+        if (!empty($student['contact_number'])) {
+            $recipientsToSend[] = [
+                'user_id' => (int)$student['id'],
+                'phone' => (string)$student['contact_number'],
+                'name' => $studentName,
+                'role' => 'student',
+            ];
+        }
+        foreach ($parents as $parent) {
+            $recipientsToSend[] = [
+                'user_id' => (int)$parent['id'],
+                'phone' => (string)$parent['contact_number'],
+                'name' => $studentName,
+                'role' => 'parent',
+            ];
+        }
+
+        $termLabel = $term !== '' ? $term : 'Final';
+        $ayLabel = $academicYear !== '' ? " S.Y. {$academicYear}" : '';
+        $message = "BSHS AMS: Official grades and report card for {$studentName} ({$className}{$ayLabel} - {$termLabel}) have been approved by Admin and are now available on the portal.";
+
+        foreach ($recipientsToSend as $recip) {
+            $results['total']++;
+            $res = $service->send($recip['phone'], $message, $recip['user_id'], $db);
+            if (!empty($res['success'])) {
+                $results['sent']++;
+            } else {
+                $results['failed']++;
+            }
+        }
+
+        return $results;
     }
-    $provider = $smsConfig['provider'];
-    switch ($provider) {
-        case 'semaphore': return smsSendSemaphore($to, $message);
-        case 'twilio': return smsSendTwilio($to, $message);
-        case 'log': default: return smsSendLog($to, $message);
+
+    // Section/Class-wide grade publication
+    $enrollStmt = $db->prepare("SELECT s.id, s.first_name, s.last_name, s.contact_number
+                                FROM enrollments e
+                                JOIN users s ON s.id = e.student_id
+                                WHERE e.class_id = ? AND COALESCE(e.status, 'enrolled') = 'enrolled' AND s.role = 'student'");
+    $enrollStmt->execute([$classId]);
+    $students = $enrollStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    if (empty($students)) {
+        return $results;
     }
-}
 
-function smsSendLog(string $to, string $message): array {
-    error_log("[SMS] To: {$to} | Message: {$message}");
-    return ['success' => true, 'provider' => 'log'];
-}
+    $studentIds = array_column($students, 'id');
+    $inClause = implode(',', array_fill(0, count($studentIds), '?'));
+    $parentStmt = $db->prepare("SELECT ps.student_id, u.id as parent_id, u.first_name, u.last_name, u.contact_number
+                               FROM users u
+                               JOIN parent_students ps ON ps.parent_id = u.id
+                               WHERE ps.student_id IN ($inClause) AND u.role = 'parent' AND u.contact_number IS NOT NULL AND u.contact_number != ''");
+    $parentStmt->execute($studentIds);
+    $parentsByStudent = [];
+    foreach ($parentStmt->fetchAll(PDO::FETCH_ASSOC) as $pRow) {
+        $parentsByStudent[(int)$pRow['student_id']][] = $pRow;
+    }
 
-function smsSendSemaphore(string $to, string $message): array {
-    global $smsConfig;
-    $apiKey = $smsConfig['api_key'];
-    $senderName = $smsConfig['sender_name'];
-    $ch = curl_init('https://api.semaphore.co/api/v4/messages');
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
-        'apikey' => $apiKey, 'number' => $to, 'message' => $message, 'sendername' => $senderName,
-    ]));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    $response = curl_exec($ch);
-    $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    if ($httpCode >= 200 && $httpCode < 300) { return ['success' => true, 'provider' => 'semaphore']; }
-    error_log("[SMS] Semaphore error (HTTP {$httpCode}): {$response}");
-    return ['success' => false, 'error' => "Semaphore returned HTTP {$httpCode}"];
-}
+    $termLabel = $term !== '' ? $term : 'Final';
+    $ayLabel = $academicYear !== '' ? " S.Y. {$academicYear}" : '';
 
-function smsSendTwilio(string $to, string $message): array {
-    global $smsConfig;
-    $apiKey = $smsConfig['api_key'];
-    $parts = explode(':', $apiKey, 2);
-    if (count($parts) !== 2) { return ['success' => false, 'error' => 'Twilio API key must be in format: AccountSID:AuthToken']; }
-    [$accountSid, $authToken] = $parts;
-    $from = $smsConfig['sender_name'];
-    $ch = curl_init("https://api.twilio.com/2010-04-01/Accounts/{$accountSid}/Messages.json");
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_USERPWD, "{$accountSid}:{$authToken}");
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query(['To' => '+' . $to, 'From' => $from, 'Body' => $message]));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    $response = curl_exec($ch);
-    $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    if ($httpCode >= 200 && $httpCode < 300) { return ['success' => true, 'provider' => 'twilio']; }
-    error_log("[SMS] Twilio error (HTTP {$httpCode}): {$response}");
-    return ['success' => false, 'error' => "Twilio returned HTTP {$httpCode}"];
+    foreach ($students as $student) {
+        $studentId = (int)$student['id'];
+        $studentName = trim(($student['first_name'] ?? '') . ' ' . ($student['last_name'] ?? ''));
+        $message = "BSHS AMS: Official grades and report card for {$studentName} ({$className}{$ayLabel} - {$termLabel}) have been approved by Admin and are now available on the portal.";
+
+        $recipients = [];
+        if (!empty($student['contact_number'])) {
+            $recipients[] = ['user_id' => $studentId, 'phone' => (string)$student['contact_number']];
+        }
+        if (isset($parentsByStudent[$studentId])) {
+            foreach ($parentsByStudent[$studentId] as $p) {
+                $recipients[] = ['user_id' => (int)$p['parent_id'], 'phone' => (string)$p['contact_number']];
+            }
+        }
+
+        foreach ($recipients as $r) {
+            $results['total']++;
+            $res = $service->send($r['phone'], $message, $r['user_id'], $db);
+            if (!empty($res['success'])) {
+                $results['sent']++;
+            } else {
+                $results['failed']++;
+            }
+        }
+    }
+
+    return $results;
 }
 
 function pwaHeadHtml(): string {

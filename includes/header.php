@@ -449,12 +449,12 @@ try {
                     <li data-notification-row="<?php echo (int)($item['id'] ?? 0); ?>">
                         <div class="dropdown-item d-flex align-items-start py-2 <?php echo ((int)($item['is_read'] ?? 0) === 1) ? 'opacity-75' : ''; ?>">
                             <a class="header-notification-item d-flex align-items-start text-decoration-none text-reset flex-grow-1" href="<?php echo htmlspecialchars((string)$item['link']); ?>" data-notification-id="<?php echo (int)($item['id'] ?? 0); ?>">
-                                <div class="bg-<?php echo htmlspecialchars((string)$item['color']); ?> bg-opacity-10 rounded-circle p-2 me-3">
+                                <div class="header-notification-icon bg-<?php echo htmlspecialchars((string)$item['color']); ?> bg-opacity-10 rounded-circle p-2 me-3 flex-shrink-0">
                                     <i class="bi <?php echo htmlspecialchars((string)$item['icon']); ?> text-<?php echo htmlspecialchars((string)$item['color']); ?>"></i>
                                 </div>
-                                <div>
-                                    <p class="mb-0 fw-medium" style="font-size: 14px;"><?php echo htmlspecialchars((string)$item['title']); ?></p>
-                                    <p class="mb-0 text-muted" style="font-size: 12px;"><?php echo htmlspecialchars((string)$item['subtitle']); ?></p>
+                                <div class="header-notification-body flex-grow-1 min-w-0">
+                                    <p class="mb-0 fw-medium notification-title" style="font-size: 14px;"><?php echo htmlspecialchars((string)$item['title']); ?></p>
+                                    <p class="mb-0 text-muted notification-subtitle" style="font-size: 12px;"><?php echo htmlspecialchars((string)$item['subtitle']); ?></p>
                                     <small class="text-muted header-notification-time" data-event-at="<?php echo htmlspecialchars((string)($item['event_at'] ?? '')); ?>"><?php echo htmlspecialchars((string)$item['time']); ?></small>
                                 </div>
                             </a>

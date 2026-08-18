@@ -637,26 +637,8 @@ function notifyAttendanceParents($db, $teacherId, $classId, $date, array $record
                 $eventAt
             );
 
-            $isParent = isset($parentLookup[$studentId]) && in_array($recipientId, $parentLookup[$studentId], true);
-            if ($isParent) {
-                smsSendAttendanceAlert($db, $recipientId, $studentName, $statusLabel, $date, $classSubtitle);
-            }
         }
     }
-}
-
-function smsSendAttendanceAlert(PDO $db, int $parentId, string $studentName, string $status, string $date, string $classLabel): void {
-    if (!smsConfigured()) {
-        return;
-    }
-    $stmt = $db->prepare("SELECT contact_number FROM users WHERE id = ? AND role = 'parent' AND contact_number IS NOT NULL AND contact_number != '' LIMIT 1");
-    $stmt->execute([$parentId]);
-    $contactNumber = $stmt->fetchColumn();
-    if (!$contactNumber) {
-        return;
-    }
-    $message = "BSHS Alert: {$studentName} was marked {$status} on {$date} in {$classLabel}.";
-    smsSend($contactNumber, $message);
 }
 
 function notifyGradeSubmissionParents($db, $teacherId, $classId, $classSubjectId, $term, $academicYear, array $records, $semester = null) {

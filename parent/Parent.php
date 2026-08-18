@@ -303,6 +303,7 @@ if ($db && $parentId > 0) {
 $selectedStudentName = $selectedStudent
     ? trim((string)($selectedStudent['first_name'] ?? '') . ' ' . (string)($selectedStudent['last_name'] ?? ''))
     : 'No student selected';
+$selectedStudentRef = trim((string)($selectedStudent['reference_code'] ?? ''));
 $announcementCount = count($announcements) + count($classAnnouncements);
 $nextClassLabel = !empty($todaySchedule)
     ? $todaySchedule[0]['subject'] . ' • ' . $todaySchedule[0]['time']
@@ -333,9 +334,14 @@ $nextClassLabel = !empty($todaySchedule)
                         <p class="welcome-meta mb-3">Follow attendance, approved grades, class-day activity, and school updates for your linked student accounts.</p>
                         <div class="parent-chip-row">
                             <?php if ($parentRef !== ''): ?>
-                                <span class="parent-chip"><i class="bi bi-upc-scan"></i>Ref: <?php echo htmlspecialchars($parentRef); ?></span>
+                                <span class="parent-chip"><i class="bi bi-person-check"></i>Guardian Ref: <?php echo htmlspecialchars($parentRef); ?></span>
                             <?php endif; ?>
-                            <span class="parent-chip"><i class="bi bi-person-heart"></i><?php echo htmlspecialchars($selectedStudentName); ?></span>
+                            <?php if ($selectedStudent): ?>
+                                <span class="parent-chip"><i class="bi bi-person-heart"></i><?php echo htmlspecialchars($selectedStudentName); ?></span>
+                                <?php if ($selectedStudentRef !== ''): ?>
+                                    <span class="parent-chip"><i class="bi bi-upc-scan"></i>Student Ref: <?php echo htmlspecialchars($selectedStudentRef); ?></span>
+                                <?php endif; ?>
+                            <?php endif; ?>
                             <span class="parent-chip"><i class="bi bi-calendar-event"></i><?php echo date('l, F d, Y'); ?></span>
                         </div>
                     </div>
@@ -366,9 +372,9 @@ $nextClassLabel = !empty($todaySchedule)
                         <div class="portal-switcher parent-switcher">
                             <?php foreach ($children as $child): ?>
                                 <a href="?student_id=<?php echo (int)$child['id']; ?>" class="btn portal-chip <?php echo ((int)$child['id'] === $selectedStudentId) ? 'btn-primary-custom' : 'btn-outline-secondary'; ?>">
-                                    <?php echo htmlspecialchars($child['first_name'] . ' ' . $child['last_name']); ?>
+                                    <i class="bi bi-person me-1"></i><?php echo htmlspecialchars($child['first_name'] . ' ' . $child['last_name']); ?>
                                     <?php if (!empty($child['reference_code'])): ?>
-                                        <small class="portal-chip-reference ms-1">(<?php echo htmlspecialchars((string)$child['reference_code']); ?>)</small>
+                                        <span class="portal-chip-reference ms-1">(<?php echo htmlspecialchars((string)$child['reference_code']); ?>)</span>
                                     <?php endif; ?>
                                 </a>
                             <?php endforeach; ?>
@@ -381,7 +387,14 @@ $nextClassLabel = !empty($todaySchedule)
                 <div class="dashboard-section-intro">
                     <div>
                         <span class="dashboard-section-kicker">Guardian view</span>
-                        <h4 class="dashboard-section-title">Student monitoring dashboard</h4>
+                        <h4 class="dashboard-section-title">
+                            <?php echo htmlspecialchars($selectedStudentName); ?>
+                            <?php if ($selectedStudentRef !== ''): ?>
+                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 fs-6 ms-2 align-middle">
+                                    <i class="bi bi-upc-scan me-1"></i>Ref: <?php echo htmlspecialchars($selectedStudentRef); ?>
+                                </span>
+                            <?php endif; ?>
+                        </h4>
                         <p class="dashboard-section-copy">Follow attendance, approved grades, and class-day activity for the selected learner.</p>
                     </div>
                 </div>

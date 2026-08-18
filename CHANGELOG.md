@@ -2,6 +2,30 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.58 — 2026-08-18
+
+### Added
+
+- Added PhilSMS notification provider integration via `BshsAms\Notification\SmsService` supporting mobile text alerts via `https://app.philsms.com/api/v3/sms/send`.
+- Added `smsNotifyGradePublication()` triggered exclusively upon official Admin approval and release of student report cards (`report_card_approvals.status = 'approved'`).
+- Added Philippine mobile number normalization supporting `09XXXXXXXXX`, `+639XXXXXXXXX`, `639XXXXXXXXX`, and hyphenated/spaced formats.
+- Added `sms_logs` database table in `database/schema.sql` to track SMS deliveries, status, and gateway responses.
+- Added unit and integration tests in `tests/SmsServiceTest.php`.
+- Pre-cached `networkSync.js` in `sw.js` under cache version `bshs-ams-v12`.
+
+### Changed
+
+- Updated `config/constants.php` to default SMS provider to PhilSMS and delegate SMS sending to `BshsAms\Notification\SmsService`.
+- Removed legacy attendance SMS triggers in `teacher/teacher_Action.php` so SMS is exclusively sent upon official Admin grade approval.
+- Modernized `assets/js/networkSync.js` to process offline queues via asynchronous `fetch()` without locking the browser UI thread.
+- Updated `teacher/teacher_Attendance.php` to load `networkSync.js` via `appAssetPath()`.
+
+### Fixed
+
+- Fixed notification text overlapping in header dropdown menu across mobile and desktop screens by removing nowrap constraints and adding word-break/flex-shrink rules.
+- Enhanced popup toast notifications (`.notification-toast`) with responsive mobile screen widths, word-break wrapping, and dark mode contrast.
+- Fixed student reference code visibility on the Parent Dashboard by featuring the selected child's reference code / LRN prominently in the hero chips, child switcher buttons, and monitoring header.
+
 ## v0.3.57 — 2026-08-11
 
 ### Added
