@@ -53,19 +53,6 @@
                 </label>
 
                 <div class="settings-group-title mt-4">Notifications</div>
-                <label class="settings-option" for="emailNotifSwitch">
-                    <span class="settings-option-main">
-                        <span class="settings-option-icon"><i class="bi bi-envelope"></i></span>
-                        <span>
-                            <span class="settings-option-title d-block">Email Notifications</span>
-                            <span class="settings-option-desc d-block">Keep email alerts enabled for important account and class updates.</span>
-                        </span>
-                    </span>
-                    <span class="form-check form-switch m-0">
-                        <input class="form-check-input" type="checkbox" id="emailNotifSwitch" checked>
-                    </span>
-                </label>
-
                 <label class="settings-option" for="pushNotifSwitch">
                     <span class="settings-option-main">
                         <span class="settings-option-icon"><i class="bi bi-bell"></i></span>

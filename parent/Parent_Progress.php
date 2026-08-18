@@ -87,7 +87,7 @@ function ensureReportCardApprovalsTableForParent($db) {
 
 if ($db && $parentId > 0) {
     ensureReportCardApprovalsTableForParent($db);
-    $childrenStmt = $db->prepare("SELECT u.id, u.reference_code, u.first_name, u.last_name
+    $childrenStmt = $db->prepare("SELECT u.id, u.reference_code, u.lrn, u.first_name, u.last_name, u.grade_level, u.section
                                   FROM parent_students ps
                                   JOIN users u ON u.id = ps.student_id
                                   WHERE ps.parent_id = ? AND u.role = 'student' AND u.status IN ('active', 'pending')
@@ -512,6 +512,14 @@ if ($db && $parentId > 0 && ($_GET['action'] ?? '') === 'export') {
         exit();
     }
 }
+
+$selectedStudentName = $selectedStudent
+    ? trim((string)($selectedStudent['first_name'] ?? '') . ' ' . (string)($selectedStudent['last_name'] ?? ''))
+    : 'No student selected';
+$selectedStudentRef = trim((string)($selectedStudent['reference_code'] ?? ''));
+$selectedStudentLrn = trim((string)($selectedStudent['lrn'] ?? ''));
+$selectedStudentGrade = !empty($selectedStudent['grade_level']) ? 'Grade ' . (int)$selectedStudent['grade_level'] : '';
+$selectedStudentSection = trim((string)($selectedStudent['section'] ?? ''));
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -538,16 +546,41 @@ if ($db && $parentId > 0 && ($_GET['action'] ?? '') === 'export') {
         </div>
 
         <div class="content-card mb-4">
-            <div class="content-card-header"><h5 class="content-card-title">Select Student</h5></div>
+            <div class="content-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h5 class="content-card-title mb-0">Select Student</h5>
+                <?php if ($selectedStudent): ?>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-1">
+                            <i class="bi bi-upc-scan me-1"></i>Ref Code: <strong><?php echo htmlspecialchars($selectedStudentRef !== '' ? $selectedStudentRef : 'N/A'); ?></strong>
+                        </span>
+                        <?php if ($selectedStudentLrn !== ''): ?>
+                            <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 px-2 py-1">
+                                <i class="bi bi-person-badge me-1"></i>LRN: <strong><?php echo htmlspecialchars($selectedStudentLrn); ?></strong>
+                            </span>
+                        <?php endif; ?>
+                        <?php if ($selectedStudentGrade !== '' || $selectedStudentSection !== ''): ?>
+                            <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-2 py-1">
+                                <i class="bi bi-mortarboard me-1"></i><?php echo htmlspecialchars(trim($selectedStudentGrade . ' ' . $selectedStudentSection)); ?>
+                            </span>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
             <div class="content-card-body">
                 <?php if (empty($children)): ?>
                     <div class="text-muted">No linked student found. Ask admin to link your account.</div>
                 <?php else: ?>
                     <div class="d-flex flex-wrap gap-2">
                         <?php foreach ($children as $child): ?>
-                            <a href="?student_id=<?php echo (int)$child['id']; ?>" class="btn <?php echo ((int)$child['id'] === $selectedStudentId) ? 'btn-primary-custom' : 'btn-outline-secondary'; ?>">
-                                <?php echo htmlspecialchars($child['first_name'] . ' ' . $child['last_name']); ?>
-                                <small class="ms-1">(<?php echo htmlspecialchars($child['reference_code']); ?>)</small>
+                            <?php 
+                                $childRef = trim((string)($child['reference_code'] ?? ''));
+                                $isSelected = ((int)$child['id'] === $selectedStudentId);
+                            ?>
+                            <a href="?student_id=<?php echo (int)$child['id']; ?>" class="btn <?php echo $isSelected ? 'btn-primary-custom' : 'btn-outline-secondary'; ?>">
+                                <i class="bi bi-person-circle me-1"></i><?php echo htmlspecialchars($child['first_name'] . ' ' . $child['last_name']); ?>
+                                <span class="badge <?php echo $isSelected ? 'bg-light text-primary' : 'bg-secondary bg-opacity-25 text-body'; ?> ms-1">
+                                    <?php echo htmlspecialchars($childRef !== '' ? $childRef : 'ID #' . $child['id']); ?>
+                                </span>
                             </a>
                         <?php endforeach; ?>
                     </div>

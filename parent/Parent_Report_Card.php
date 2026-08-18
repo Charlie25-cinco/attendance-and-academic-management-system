@@ -91,7 +91,7 @@ if ($db && $parentId > 0) {
         FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL
     )");
 
-    $childrenStmt = $db->prepare("SELECT u.id, u.reference_code, u.first_name, u.last_name
+    $childrenStmt = $db->prepare("SELECT u.id, u.reference_code, u.lrn, u.first_name, u.last_name, u.grade_level, u.section
                                   FROM parent_students ps
                                   JOIN users u ON u.id = ps.student_id
                                   WHERE ps.parent_id = ? AND u.role = 'student' AND u.status IN ('active', 'pending')
@@ -139,6 +139,7 @@ if ($db && $parentId > 0) {
         if (!empty($classes)) {
             $studentInfo['name'] = trim(($selectedStudent['first_name'] ?? '') . ' ' . ($selectedStudent['last_name'] ?? ''));
             $studentInfo['reference_code'] = trim((string)($selectedStudent['reference_code'] ?? ''));
+            $studentInfo['lrn'] = trim((string)($selectedStudent['lrn'] ?? ''));
             $studentInfo['grade_level'] = (string)$classes[0]['grade_level'];
             $studentInfo['section'] = (string)$classes[0]['section'];
             $classIds = array_map('intval', array_column($classes, 'id'));
@@ -311,6 +312,8 @@ $studentSectionLabel = trim(($studentInfo['grade_level'] !== '' ? 'G' . $student
                     <p class="text-muted mb-3">Switch between linked students, load a school year or semester, and review grades only after the report card has been officially approved.</p>
                     <div class="parent-chip-row">
                         <?php if ($studentInfo['name'] !== ''): ?><span class="parent-chip"><i class="bi bi-person"></i><?php echo htmlspecialchars($studentInfo['name']); ?></span><?php endif; ?>
+                        <?php if (!empty($studentInfo['reference_code'])): ?><span class="parent-chip"><i class="bi bi-upc-scan"></i>Student Ref: <?php echo htmlspecialchars($studentInfo['reference_code']); ?></span><?php endif; ?>
+                        <?php if (!empty($studentInfo['lrn'])): ?><span class="parent-chip"><i class="bi bi-person-badge"></i>LRN: <?php echo htmlspecialchars($studentInfo['lrn']); ?></span><?php endif; ?>
                         <?php if ($studentSectionLabel !== ''): ?><span class="parent-chip"><i class="bi bi-mortarboard"></i><?php echo htmlspecialchars($studentSectionLabel); ?></span><?php endif; ?>
                         <span class="parent-chip"><i class="bi bi-calendar3"></i><?php echo htmlspecialchars($selectedAcademicYear); ?></span>
                     </div>
@@ -337,9 +340,16 @@ $studentSectionLabel = trim(($studentInfo['grade_level'] !== '' ? 'G' . $student
                 <div class="content-card-body">
                     <div class="d-flex flex-wrap gap-2 mb-3 parent-switcher">
                         <?php foreach ($children as $child): ?>
+                            <?php 
+                                $cRef = trim((string)($child['reference_code'] ?? ''));
+                                $isCSelected = ((int)$child['id'] === $selectedStudentId);
+                            ?>
                             <a href="?student_id=<?php echo (int)$child['id']; ?>&semester=<?php echo urlencode($selectedSemester); ?>&academic_year=<?php echo urlencode($selectedAcademicYear); ?>"
-                               class="btn btn-sm <?php echo ((int)$child['id'] === $selectedStudentId) ? 'btn-primary-custom' : 'btn-outline-secondary'; ?>">
-                                <?php echo htmlspecialchars($child['first_name'] . ' ' . $child['last_name']); ?>
+                               class="btn btn-sm <?php echo $isCSelected ? 'btn-primary-custom' : 'btn-outline-secondary'; ?>">
+                                <i class="bi bi-person-circle me-1"></i><?php echo htmlspecialchars($child['first_name'] . ' ' . $child['last_name']); ?>
+                                <span class="badge <?php echo $isCSelected ? 'bg-light text-primary' : 'bg-secondary bg-opacity-25 text-body'; ?> ms-1">
+                                    <?php echo htmlspecialchars($cRef !== '' ? $cRef : 'ID #' . $child['id']); ?>
+                                </span>
                             </a>
                         <?php endforeach; ?>
                     </div>

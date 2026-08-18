@@ -926,11 +926,9 @@ function disablePwaPushNotifications() {
 function applyInitialSettingsToControls() {
   const settings = window.APP_INITIAL_SETTINGS || {};
   const darkMode = document.getElementById("darkModeSwitch");
-  const emailNotif = document.getElementById("emailNotifSwitch");
   const pushNotif = document.getElementById("pushNotifSwitch");
 
   if (darkMode) darkMode.checked = String(settings.dark_mode || "0") === "1";
-  if (emailNotif) emailNotif.checked = String(settings.email_notifications ?? "1") === "1";
   if (pushNotif) pushNotif.checked = String(settings.push_notifications ?? "1") === "1";
 }
 
@@ -960,7 +958,6 @@ function initSettingsControls() {
     const pushNotif = document.getElementById("pushNotifSwitch");
     const payload = {
       dark_mode: document.getElementById("darkModeSwitch")?.checked ? 1 : 0,
-      email_notifications: document.getElementById("emailNotifSwitch")?.checked ? 1 : 0,
       push_notifications: pushNotif?.checked ? 1 : 0,
     };
     const permissionStep = payload.push_notifications && pwaPushSupported() && Notification.permission !== "granted"

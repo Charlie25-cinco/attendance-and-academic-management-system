@@ -2,6 +2,25 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.64 — 2026-08-18
+
+### Added
+
+- Added student **Reference Code**, **LRN**, and **Grade & Section** badges to `parent/Parent_Progress.php` and `parent/Parent_Report_Card.php` header banners and child switcher pills for clear student identification in the Parent Portal.
+
+### Changed
+
+- Removed the unused **Email Notifications** toggle from the Settings modal in `includes/modals.php` and `assets/js/main.js`, keeping the modal focused exclusively on **Dark Mode** and **Push Notifications**.
+
+## v0.3.63 — 2026-08-18
+
+### Added
+
+- Added End-to-End Workflow Integration Test Suite in `tests/WorkflowIntegrationTest.php` validating:
+  - Full multi-role Grade Approval and Publication lifecycle (Subject Teacher score entry $\rightarrow$ Submission $\rightarrow$ Admin Verification $\rightarrow$ Adviser Report Card Submission $\rightarrow$ Admin Approval $\rightarrow$ Student/Parent visibility unlock and SMS alerts).
+  - Routine Attendance lifecycle (Teacher attendance recording $\rightarrow$ In-app notification creation for students and linked parents $\rightarrow$ KPI summary metrics $\rightarrow$ zero routine attendance SMS guard).
+  - Database-level unique constraint invariants for enrollments, class-subjects, and grade records.
+
 ## v0.3.62 — 2026-08-18
 
 ### Fixed

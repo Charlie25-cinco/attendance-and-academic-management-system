@@ -671,8 +671,12 @@ function pushNotifyGradePublication($db, int $classId, string $term = 'Final', s
     return true;
 }
 
-function smsGetService(): \BshsAms\Notification\SmsService {
+function smsGetService(?\BshsAms\Notification\SmsService $override = null): \BshsAms\Notification\SmsService {
     static $service = null;
+    if ($override !== null) {
+        $service = $override;
+        return $service;
+    }
     if ($service === null) {
         $service = new \BshsAms\Notification\SmsService();
     }
