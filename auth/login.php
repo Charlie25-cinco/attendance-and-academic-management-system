@@ -386,11 +386,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         async function checkOfflineSession() {
             if (!navigator.onLine && window.bshsOfflineStorage) {
                 const session = await window.bshsOfflineStorage.getTeacherSession();
-                if (session && session.teacher_id) {
-                    window.location.replace('../teacher/teacher.php');
-                } else {
-                    const btn = document.getElementById('offlineWorkspaceBtn');
-                    if (btn) btn.classList.add('d-none');
+                const card = document.querySelector('.auth-card');
+                if (session && session.teacher_id && card && !document.getElementById('offlineTeacherBanner')) {
+                    const fullName = (session.first_name || '') + ' ' + (session.last_name || '');
+                    const b = document.createElement('div');
+                    b.id = 'offlineTeacherBanner';
+                    b.className = 'alert alert-primary mb-4 p-3 shadow-sm rounded-3 text-start';
+                    b.innerHTML = '<div class="d-flex align-items-center gap-2 mb-2">' +
+                        '<i class="bi bi-person-check-fill fs-4 text-primary"></i>' +
+                        '<div><div class="fw-bold">Welcome back, ' + (fullName.trim() || 'Teacher') + '!</div>' +
+                        '<div class="small text-muted">Offline Mode Active — Select a workspace below:</div></div></div>' +
+                        '<div class="d-flex gap-2 flex-wrap mt-2">' +
+                        '<a href="../teacher/teacher_Attendance.php" class="btn btn-primary btn-sm"><i class="bi bi-calendar-check me-1"></i>Attendance</a>' +
+                        '<a href="../teacher/teacher_Classes.php" class="btn btn-outline-primary btn-sm"><i class="bi bi-journal-text me-1"></i>Activities</a>' +
+                        '<a href="../teacher/teacher.php" class="btn btn-outline-secondary btn-sm"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a>' +
+                        '</div>';
+                    card.insertBefore(b, card.firstChild);
+                } else if (!session && card && !document.getElementById('offlineNoSessionBanner')) {
+                    const b = document.createElement('div');
+                    b.id = 'offlineNoSessionBanner';
+                    b.className = 'alert alert-warning mb-3';
+                    b.innerHTML = '<i class="bi bi-wifi-off me-2"></i>Device is offline. Connect to the internet to log in for the first time.';
+                    card.insertBefore(b, card.firstChild);
                 }
             }
         }

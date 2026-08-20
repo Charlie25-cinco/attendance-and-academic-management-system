@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.75 — 2026-08-20
+
+### Fixed
+
+- **Eliminated Cold-Start Redirect Loops & Fixed Pre-Cache Behavior**:
+  - Removed protected teacher PHP endpoints from Service Worker installation pre-caching to prevent caching unauthenticated `302 Redirect` responses under teacher URLs.
+  - Replaced client-side blind redirect in [`auth/login.php`](file:///c:/laragon/www/attendance-and-academic-management-system/auth/login.php) with an immediate, interactive offline workspace launchpad to completely prevent `ERR_TOO_MANY_REDIRECTS`.
+  - Added guaranteed static offline HTML fallback in Service Worker navigation fetch handler.
+  - Bumped Service Worker cache to **`bshs-ams-v22`**.
+
 ## v0.3.74 — 2026-08-20
 
 ### Added
