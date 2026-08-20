@@ -499,6 +499,30 @@
           }
         }
 
+        if ('caches' in global) {
+          try {
+            const cacheName = global._CACHE_NAME || 'bshs-ams-v24';
+            const cache = await caches.open(cacheName);
+            const teacherPages = [
+              '/teacher/teacher.php',
+              '/teacher/teacher_Attendance.php',
+              '/teacher/teacher_Classes.php',
+              '/teacher/teacher_Grades.php'
+            ];
+            for (const pageUrl of teacherPages) {
+              try {
+                const pageRes = await fetch(pageUrl, { credentials: 'same-origin', cache: 'no-cache' });
+                if (pageRes && pageRes.status === 200 && !pageRes.redirected) {
+                  await cache.put(pageUrl, pageRes.clone());
+                  if (global.location && global.location.origin) {
+                    await cache.put(new URL(pageUrl, global.location.origin).href, pageRes);
+                  }
+                }
+              } catch (e) {}
+            }
+          } catch (e) {}
+        }
+
         return true;
       } catch (err) {
         return false;

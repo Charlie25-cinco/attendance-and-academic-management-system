@@ -1156,7 +1156,7 @@ if ('serviceWorker' in navigator && navigator.onLine) {
   if ('caches' in window) {
     caches.keys().then((keys) => {
       keys.forEach((key) => {
-        if (key !== 'bshs-ams-v23') {
+        if (key !== 'bshs-ams-v24') {
           caches.delete(key);
         }
       });

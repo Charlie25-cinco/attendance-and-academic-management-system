@@ -2,6 +2,15 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.77 — 2026-08-20
+
+### Fixed
+
+- **Automatic Authenticated Shell Cache Warming on Login**:
+  - Added background cache warming in [`assets/js/offlineStorage.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/offlineStorage.js) during `bootstrapOnline()` to pre-fetch and store verified `200 OK` HTML shells for all teacher subpages (`teacher_Attendance.php`, `teacher_Classes.php`, `teacher_Grades.php`, `teacher.php`).
+  - Updated Service Worker navigation fetch handler in [`sw.js`](file:///c:/laragon/www/attendance-and-academic-management-system/sw.js) with dual-key relative/absolute matching and `{ ignoreSearch: true }` search resilience.
+  - Bumped Service Worker cache to **`bshs-ams-v24`**.
+
 ## v0.3.76 — 2026-08-20
 
 ### Changed
