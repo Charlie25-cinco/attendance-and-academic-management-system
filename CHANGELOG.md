@@ -2,6 +2,14 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.81 — 2026-08-21
+
+### Removed
+
+- **Removed In-Page Offline Banners**:
+  - Removed all banner notices from [`teacher/teacher.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher.php), [`teacher/teacher_Attendance.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Attendance.php), [`teacher/teacher_Classes.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Classes.php), [`teacher/teacher_Reports.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Reports.php), and [`teacher/teacher_Chat.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Chat.php).
+  - Bumped Service Worker cache to **`bshs-ams-v27`** for complete client-side cache refresh.
+
 ## v0.3.80 — 2026-08-20
 
 ### Added

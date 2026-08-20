@@ -501,7 +501,7 @@
 
         if ('caches' in global) {
           try {
-            const cacheName = global._CACHE_NAME || 'bshs-ams-v25';
+            const cacheName = global._CACHE_NAME || 'bshs-ams-v27';
             const cache = await caches.open(cacheName);
             const teacherPages = [
               '/teacher/teacher.php',

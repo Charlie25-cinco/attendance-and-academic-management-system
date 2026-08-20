@@ -716,19 +716,6 @@ function exportTeacherReportSf2(format) {
 
     loadNotes();
 })();
-
-document.addEventListener('DOMContentLoaded', function () {
-    if (!navigator.onLine) {
-        const mainWrap = document.querySelector('.teacher-report-wrap, main, .container-fluid');
-        if (mainWrap && !document.getElementById('offlineReportsNotice')) {
-            const b = document.createElement('div');
-            b.id = 'offlineReportsNotice';
-            b.className = 'alert alert-warning mb-3 p-3 rounded-3 shadow-sm text-start';
-            b.innerHTML = '<div class="d-flex align-items-center gap-2 mb-2"><i class="bi bi-wifi-off fs-4 text-warning"></i><div><strong class="text-dark">Reports Require Internet Connection</strong><div class="small text-muted">Server report generation and SF2 exports require a live connection. Offline attendance and grade activities remain available.</div></div></div><div class="d-flex gap-2 mt-2"><a href="teacher_Attendance.php" class="btn btn-primary btn-sm"><i class="bi bi-calendar-check me-1"></i>Take Attendance</a><a href="teacher_Classes.php" class="btn btn-outline-primary btn-sm"><i class="bi bi-journal-text me-1"></i>Grade Activities</a></div>';
-            mainWrap.insertBefore(b, mainWrap.firstChild);
-        }
-    }
-});
 </script>
 </body>
 </html>
