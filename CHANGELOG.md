@@ -2,6 +2,14 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.67 — 2026-08-20
+
+### Added
+
+- Built full **Cold-Start Offline Teacher Attendance Workspace** inside [`offline.html`](file:///c:/laragon/www/attendance-and-academic-management-system/offline.html) allowing teachers to choose cached classes, cycle attendance marks (Present/Absent/Late), scan QR codes offline with camera, and save submissions locally with zero internet connection.
+- Bundled `html5-qrcode.min.js` locally under `assets/vendor/html5-qrcode/` and pre-cached it in `sw.js` under `bshs-ams-v15` so camera QR scanning works completely offline without CDN dependencies.
+- Added automatic background teacher class and student roster persistence in `teacher/teacher_Attendance.php` to keep rosters available in local storage.
+
 ## v0.3.66 — 2026-08-20
 
 ### Fixed

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Offline Mode - Balingasag Senior High School</title>
+    <title>Offline Mode & Attendance - Balingasag Senior High School</title>
     <link rel="manifest" href="assets/manifest.json">
     <link rel="icon" type="image/jpeg" href="assets/images/bshs-logo.jpg">
     <link rel="apple-touch-icon" href="assets/images/icon-192.png">
@@ -19,6 +19,9 @@
             --bshs-text-light: #1e293b;
             --bshs-muted-light: #64748b;
             --bshs-border-light: #e2e8f0;
+            --bshs-success: #10b981;
+            --bshs-warning: #f59e0b;
+            --bshs-danger: #ef4444;
         }
 
         body.dark-mode {
@@ -34,90 +37,135 @@
             color: var(--bshs-text-light);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             margin: 0;
-            padding: 20px;
+            padding: 16px;
+        }
+
+        .offline-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .offline-header-card {
+            background-color: var(--bshs-card-light);
+            border: 1px solid var(--bshs-border-light);
+            border-radius: 16px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+            padding: 20px 24px;
+            margin-bottom: 20px;
+        }
+
+        .offline-logo {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--bshs-gold);
+        }
+
+        .offline-badge-pulse {
+            width: 14px;
+            height: 14px;
+            background-color: #f59e0b;
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse-ring {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.6); }
+            50% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
         }
 
         .offline-card {
             background-color: var(--bshs-card-light);
             border: 1px solid var(--bshs-border-light);
             border-radius: 16px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
-            max-width: 520px;
-            width: 100%;
-            padding: 32px 28px;
-            text-align: center;
-        }
-
-        .offline-logo-wrapper {
-            position: relative;
-            display: inline-block;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+            padding: 24px;
             margin-bottom: 20px;
         }
 
-        .offline-logo {
-            width: 84px;
-            height: 84px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 3px solid var(--bshs-gold);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        .offline-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
         }
 
-        .offline-badge-pulse {
-            position: absolute;
-            bottom: 2px;
-            right: 2px;
-            width: 22px;
-            height: 22px;
-            background-color: #f59e0b;
-            border: 2px solid #ffffff;
+        .offline-kpi-card {
+            background: rgba(0, 0, 0, 0.02);
+            border: 1px solid var(--bshs-border-light);
+            border-radius: 12px;
+            padding: 12px 16px;
+            text-align: center;
+        }
+
+        body.dark-mode .offline-kpi-card {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .offline-kpi-val {
+            font-size: 24px;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .offline-kpi-lbl {
+            font-size: 12px;
+            color: var(--bshs-muted-light);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .teacher-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .teacher-status.present { background: rgba(16, 185, 129, 0.15); color: #059669; }
+        .teacher-status.absent { background: rgba(239, 68, 68, 0.15); color: #dc2626; }
+        .teacher-status.late { background: rgba(245, 158, 11, 0.15); color: #d97706; }
+
+        .student-avatar {
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
-            display: flex;
+            background: var(--bshs-navy);
+            color: #ffffff;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            color: #ffffff;
-            font-size: 11px;
-            animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            font-weight: 600;
+            font-size: 13px;
+            flex-shrink: 0;
         }
 
-        @keyframes pulse-ring {
-            0%, 100% {
-                box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.6);
-            }
-            50% {
-                box-shadow: 0 0 0 8px rgba(245, 158, 11, 0);
-            }
-        }
-
-        .offline-title {
-            font-size: 22px;
-            font-weight: 700;
-            margin-bottom: 8px;
-            color: var(--bshs-text-light);
-        }
-
-        .offline-desc {
-            font-size: 14px;
-            color: var(--bshs-muted-light);
-            margin-bottom: 24px;
-            line-height: 1.5;
+        body.dark-mode .student-avatar {
+            background: #334155;
+            color: var(--bshs-gold);
         }
 
         .offline-status-pill {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            padding: 6px 14px;
+            padding: 4px 12px;
             border-radius: 9999px;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             background-color: rgba(245, 158, 11, 0.12);
             color: #d97706;
-            margin-bottom: 20px;
         }
 
         .offline-status-pill.online {
@@ -125,131 +173,171 @@
             color: #059669;
         }
 
-        .offline-features-box {
-            background: rgba(0, 0, 0, 0.02);
-            border: 1px dashed var(--bshs-border-light);
-            border-radius: 12px;
-            padding: 16px;
-            text-align: left;
-            margin-bottom: 24px;
-            font-size: 13px;
-        }
-
-        body.dark-mode .offline-features-box {
-            background: rgba(255, 255, 255, 0.02);
-        }
-
-        .offline-feature-item {
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-
-        .offline-feature-item:last-child {
-            margin-bottom: 0;
-        }
-
-        .offline-feature-icon {
-            color: var(--bshs-navy);
-            font-size: 16px;
-            flex-shrink: 0;
-            margin-top: 2px;
-        }
-
-        body.dark-mode .offline-feature-icon {
-            color: var(--bshs-gold);
-        }
-
-        .offline-actions {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .btn-retry {
+        .btn-primary-custom {
             background-color: var(--bshs-navy);
+            border-color: var(--bshs-navy);
             color: #ffffff;
             font-weight: 600;
-            padding: 10px 18px;
-            border-radius: 10px;
-            border: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            transition: all 0.2s ease;
         }
 
-        .btn-retry:hover {
+        .btn-primary-custom:hover {
             background-color: #002244;
             color: #ffffff;
-        }
-
-        .btn-return {
-            background-color: transparent;
-            color: var(--bshs-muted-light);
-            font-weight: 500;
-            padding: 8px 16px;
-            border-radius: 10px;
-            border: 1px solid var(--bshs-border-light);
-            text-decoration: none;
-            display: inline-block;
-        }
-
-        .btn-return:hover {
-            color: var(--bshs-text-light);
-            background-color: rgba(0, 0, 0, 0.04);
         }
     </style>
 </head>
 <body>
-    <div class="offline-card">
-        <div class="offline-logo-wrapper">
-            <img src="assets/images/bshs-logo.jpg" alt="BSHS Logo" class="offline-logo">
-            <span class="offline-badge-pulse" id="statusDot">
-                <i class="bi bi-wifi-off"></i>
-            </span>
-        </div>
-
-        <h1 class="offline-title">You Are Offline</h1>
-        <p class="offline-desc">BSHS Attendance & Academic Management System is currently disconnected from the internet.</p>
-
-        <div class="offline-status-pill" id="connectionStatus">
-            <i class="bi bi-cloud-slash"></i>
-            <span>Offline Mode Active</span>
-        </div>
-
-        <div class="offline-features-box">
-            <div class="offline-feature-item">
-                <i class="bi bi-clipboard2-check offline-feature-icon"></i>
+    <div class="offline-container">
+        <!-- Top App Header -->
+        <div class="offline-header-card d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <img src="assets/images/bshs-logo.jpg" alt="BSHS Logo" class="offline-logo">
                 <div>
-                    <strong>Teacher Attendance Sync:</strong>
-                    <div class="text-muted" id="syncQueueInfo">Scans marked while offline will automatically sync once internet returns.</div>
+                    <h5 class="mb-0 fw-bold">BSHS AMS — Offline Attendance</h5>
+                    <div class="d-flex align-items-center gap-2 mt-1">
+                        <span class="offline-status-pill" id="connectionStatus">
+                            <span class="offline-badge-pulse" id="statusDot"></span>
+                            <span id="connectionText">Offline Mode Active</span>
+                        </span>
+                        <span class="badge bg-warning text-dark" id="offlineQueueBadge" style="display:none;"></span>
+                    </div>
                 </div>
             </div>
-            <div class="offline-feature-item">
-                <i class="bi bi-shield-check offline-feature-icon"></i>
-                <div>
-                    <strong>Secure Cache:</strong>
-                    <div class="text-muted">Your logged-in profile and cached dashboard remain safe.</div>
-                </div>
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-sm btn-outline-primary" id="retryBtn" onclick="checkConnection()">
+                    <i class="bi bi-arrow-clockwise me-1" id="retryIcon"></i>Check Connection
+                </button>
+                <a href="./" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-house me-1"></i>Portal
+                </a>
             </div>
         </div>
 
-        <div class="offline-actions">
-            <button type="button" class="btn-retry" id="retryBtn" onclick="checkConnection()">
-                <i class="bi bi-arrow-clockwise" id="retryIcon"></i>
-                <span>Retry Connection</span>
-            </button>
-            <a href="./" class="btn-return" id="returnLink">
-                <i class="bi bi-house me-1"></i>Return to Portal
-            </a>
+        <!-- Offline Attendance Workspace -->
+        <div class="offline-card" id="attendanceSection">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+                <div>
+                    <h5 class="fw-bold mb-1"><i class="bi bi-clipboard2-check me-2 text-primary"></i>Record Attendance (Offline)</h5>
+                    <p class="text-muted small mb-0">Record and scan attendance without internet. Scans are saved securely on your device and will auto-sync when online.</p>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <button type="button" class="btn btn-primary-custom btn-sm" onclick="openOfflineQrScanner()">
+                        <i class="bi bi-qr-code-scan me-1"></i>Scan QR Code
+                    </button>
+                    <button type="button" class="btn btn-outline-success btn-sm" onclick="markAllPresent()">
+                        <i class="bi bi-check-all me-1"></i>Mark All Present
+                    </button>
+                </div>
+            </div>
+
+            <!-- Class & Date Filters -->
+            <div class="row g-2 mb-3">
+                <div class="col-md-7 col-sm-12">
+                    <label class="form-label small fw-bold mb-1">Select Subject Class</label>
+                    <select class="form-select form-select-sm" id="offlineClassSelect" onchange="onClassChange()">
+                        <option value="">-- Choose Class --</option>
+                    </select>
+                </div>
+                <div class="col-md-5 col-sm-12">
+                    <label class="form-label small fw-bold mb-1">Attendance Date</label>
+                    <input type="date" class="form-control form-control-sm" id="offlineDateInput" value="">
+                </div>
+            </div>
+
+            <!-- Summary KPI Grid -->
+            <div class="offline-kpi-grid">
+                <div class="offline-kpi-card">
+                    <div class="offline-kpi-val text-success" id="kpiPresent">0</div>
+                    <div class="offline-kpi-lbl">Present</div>
+                </div>
+                <div class="offline-kpi-card">
+                    <div class="offline-kpi-val text-danger" id="kpiAbsent">0</div>
+                    <div class="offline-kpi-lbl">Absent</div>
+                </div>
+                <div class="offline-kpi-card">
+                    <div class="offline-kpi-val text-warning" id="kpiLate">0</div>
+                    <div class="offline-kpi-lbl">Late</div>
+                </div>
+                <div class="offline-kpi-card">
+                    <div class="offline-kpi-val text-primary" id="kpiTotal">0</div>
+                    <div class="offline-kpi-lbl">Total</div>
+                </div>
+            </div>
+
+            <!-- Search input -->
+            <div class="input-group input-group-sm mb-3">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control" id="offlineSearchInput" placeholder="Filter students by name or reference code..." oninput="filterStudents()">
+            </div>
+
+            <!-- Student List Container -->
+            <div class="table-responsive mb-4">
+                <table class="table align-middle">
+                    <thead>
+                        <tr class="table-light">
+                            <th>Student</th>
+                            <th>Reference / LRN</th>
+                            <th>Status (Tap to Cycle)</th>
+                            <th>Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody id="offlineStudentBody">
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-4">Select a class above to load enrolled learners.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Bottom Save Action -->
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pt-2 border-top">
+                <div class="text-muted small" id="queueStatusNote">
+                    <i class="bi bi-info-circle me-1"></i>Tap Save to store in offline queue.
+                </div>
+                <button type="button" class="btn btn-primary-custom" id="saveOfflineBtn" onclick="saveOfflineAttendance()">
+                    <i class="bi bi-save me-2"></i>Save Attendance (Offline Queue)
+                </button>
+            </div>
+        </div>
+
+        <!-- No Cached Data Fallback Box -->
+        <div class="offline-card text-center py-4" id="noDataNotice" style="display:none;">
+            <i class="bi bi-cloud-slash display-4 text-muted mb-3 d-block"></i>
+            <h5 class="fw-bold">No Cached Class Rosters Found</h5>
+            <p class="text-muted small max-w-md mx-auto mb-3">
+                You are offline, and no classes have been saved on this phone yet.<br>
+                Please connect to Wi-Fi/data and open the <strong>Teacher Attendance</strong> page once to store your class rosters for offline use.
+            </p>
         </div>
     </div>
 
+    <!-- Offline QR Scanner Modal -->
+    <div class="modal fade" id="offlineQrModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div>
+                        <h6 class="modal-title fw-bold mb-0"><i class="bi bi-qr-code-scan me-2 text-primary"></i>Offline QR Code Scanner</h6>
+                        <small class="text-muted">Point camera at student QR code to mark present</small>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" onclick="stopOfflineQrScanner()"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <div id="offline-qr-reader" style="width:100%; min-height: 250px;"></div>
+                    <div id="offlineQrFeedback" class="mt-2"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal" onclick="stopOfflineQrScanner()">Done Scanning</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="assets/vendor/bootstrap/bootstrap.bundle.min.js"></script>
+    <script src="assets/vendor/html5-qrcode/html5-qrcode.min.js"></script>
+    <script src="assets/js/networkSync.js"></script>
     <script>
-        // Apply dark mode if user previously configured it
+        // Apply dark mode if user previously set it
         try {
             var darkMode = localStorage.getItem('bshs_dark_mode');
             if (darkMode === '1' || (darkMode === null && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -257,46 +345,320 @@
             }
         } catch (e) {}
 
-        // Check pending offline attendance queue count
-        function updateQueueInfo() {
-            var queueInfo = document.getElementById('syncQueueInfo');
-            if (!queueInfo) return;
+        const statusCycle = ['present', 'absent', 'late'];
+        const statusTemplates = {
+            present: '<i class="bi bi-check-circle me-1"></i>Present',
+            absent: '<i class="bi bi-x-circle me-1"></i>Absent',
+            late: '<i class="bi bi-clock me-1"></i>Late'
+        };
+
+        var currentStudents = [];
+        var qrScannerInstance = null;
+
+        // Set default date to today
+        var todayStr = new Date().toISOString().split('T')[0];
+        document.getElementById('offlineDateInput').value = todayStr;
+
+        function loadOfflineClasses() {
+            var select = document.getElementById('offlineClassSelect');
+            select.innerHTML = '<option value="">-- Choose Class --</option>';
+            var raw = localStorage.getItem('bshs_offline_classes');
+            var classes = [];
             try {
-                var queue = JSON.parse(localStorage.getItem('bshs_offline_queue')) || [];
-                if (queue.length > 0) {
-                    queueInfo.innerHTML = '<span class="text-warning font-weight-bold">' + queue.length + ' attendance record' + (queue.length > 1 ? 's' : '') + ' pending sync</span> in local storage.';
-                } else {
-                    queueInfo.textContent = 'All attendance records are currently synced. New offline scans will queue automatically.';
-                }
+                classes = JSON.parse(raw) || [];
+            } catch (e) { classes = []; }
+
+            if (classes.length === 0) {
+                document.getElementById('noDataNotice').style.display = 'block';
+                return;
+            }
+
+            document.getElementById('noDataNotice').style.display = 'none';
+            classes.forEach(function (c) {
+                var opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = c.name + (c.subject_title ? ' - ' + c.subject_title : '');
+                select.appendChild(opt);
+            });
+
+            if (classes.length > 0) {
+                select.selectedIndex = 1;
+                onClassChange();
+            }
+        }
+
+        function onClassChange() {
+            var classId = document.getElementById('offlineClassSelect').value;
+            if (!classId) {
+                currentStudents = [];
+                renderStudentList([]);
+                return;
+            }
+
+            var raw = localStorage.getItem('bshs_offline_roster_' + classId);
+            try {
+                currentStudents = JSON.parse(raw) || [];
             } catch (e) {
-                queueInfo.textContent = 'Offline sync queue active.';
+                currentStudents = [];
+            }
+
+            renderStudentList(currentStudents);
+        }
+
+        function renderStudentList(students) {
+            var tbody = document.getElementById('offlineStudentBody');
+            if (!students || students.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No cached student roster found for this class.</td></tr>';
+                updateKpis();
+                return;
+            }
+
+            tbody.innerHTML = students.map(function (s, index) {
+                var name = s.first_name + ' ' + s.last_name;
+                var inits = ((s.first_name[0] || '') + (s.last_name[0] || '')).toUpperCase();
+                var st = s.attendance_status || 'present';
+                var ref = s.reference_code || (s.lrn ? 'LRN: ' + s.lrn : 'ID #' + s.id);
+
+                return '<tr data-student-id="' + s.id + '" data-index="' + index + '">' +
+                    '<td><div class="d-flex align-items-center gap-2">' +
+                    '<div class="student-avatar">' + inits + '</div>' +
+                    '<div class="fw-bold student-name">' + escapeHtml(name) + '</div>' +
+                    '</div></td>' +
+                    '<td class="text-muted small">' + escapeHtml(ref) + '</td>' +
+                    '<td><button type="button" class="teacher-status ' + st + '" data-status="' + st + '" onclick="cycleStatus(this, ' + index + ')">' +
+                    (statusTemplates[st] || statusTemplates.present) + '</button></td>' +
+                    '<td><input type="text" class="form-control form-control-sm remarks-input" placeholder="Add remarks..." value="' + escapeHtml(s.remarks || '') + '" onchange="updateRemark(' + index + ', this.value)"></td>' +
+                    '</tr>';
+            }).join('');
+
+            updateKpis();
+            filterStudents();
+        }
+
+        function cycleStatus(btn, index) {
+            var curr = btn.dataset.status || 'present';
+            var next = statusCycle[(statusCycle.indexOf(curr) + 1) % statusCycle.length];
+            btn.dataset.status = next;
+            btn.className = 'teacher-status ' + next;
+            btn.innerHTML = statusTemplates[next];
+            if (currentStudents[index]) {
+                currentStudents[index].attendance_status = next;
+            }
+            updateKpis();
+        }
+
+        function updateRemark(index, val) {
+            if (currentStudents[index]) {
+                currentStudents[index].remarks = val;
+            }
+        }
+
+        function markAllPresent() {
+            if (currentStudents.length === 0) return;
+            currentStudents.forEach(function (s) { s.attendance_status = 'present'; });
+            renderStudentList(currentStudents);
+        }
+
+        function updateKpis() {
+            var p = 0, a = 0, l = 0;
+            currentStudents.forEach(function (s) {
+                var st = s.attendance_status || 'present';
+                if (st === 'present') p++;
+                else if (st === 'absent') a++;
+                else if (st === 'late') l++;
+            });
+            document.getElementById('kpiPresent').textContent = p;
+            document.getElementById('kpiAbsent').textContent = a;
+            document.getElementById('kpiLate').textContent = l;
+            document.getElementById('kpiTotal').textContent = currentStudents.length;
+        }
+
+        function filterStudents() {
+            var q = (document.getElementById('offlineSearchInput').value || '').trim().toLowerCase();
+            var rows = document.querySelectorAll('#offlineStudentBody tr[data-student-id]');
+            rows.forEach(function (r) {
+                var name = (r.querySelector('.student-name')?.textContent || '').toLowerCase();
+                var ref = (r.children[1]?.textContent || '').toLowerCase();
+                r.style.display = (!q || name.includes(q) || ref.includes(q)) ? '' : 'none';
+            });
+        }
+
+        function saveOfflineAttendance() {
+            var classId = document.getElementById('offlineClassSelect').value;
+            var date = document.getElementById('offlineDateInput').value;
+
+            if (!classId) {
+                alert('Please select a subject class first.');
+                return;
+            }
+            if (!date) {
+                alert('Please select an attendance date.');
+                return;
+            }
+            if (currentStudents.length === 0) {
+                alert('No students to save.');
+                return;
+            }
+
+            var records = currentStudents.map(function (s) {
+                return {
+                    student_id: parseInt(s.id, 10),
+                    status: s.attendance_status || 'present',
+                    remarks: s.remarks || ''
+                };
+            });
+
+            // Queue using networkSync / localStorage
+            var queue = [];
+            try {
+                queue = JSON.parse(localStorage.getItem('bshs_offline_queue')) || [];
+            } catch (e) { queue = []; }
+
+            queue.push({
+                id: Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+                action: {
+                    type: 'submit_attendance',
+                    url: 'teacher_Action.php?action=submit_attendance',
+                    payload: {
+                        class_id: parseInt(classId, 10),
+                        date: date,
+                        mode: 'subject',
+                        records: records
+                    }
+                },
+                addedAt: new Date().toISOString(),
+                attempts: 0
+            });
+
+            try {
+                localStorage.setItem('bshs_offline_queue', JSON.stringify(queue));
+            } catch (e) {}
+
+            updateQueueCount();
+
+            // Success feedback
+            var btn = document.getElementById('saveOfflineBtn');
+            var orig = btn.innerHTML;
+            btn.className = 'btn btn-success';
+            btn.innerHTML = '<i class="bi bi-check2-circle me-2"></i>Saved in Offline Queue!';
+            setTimeout(function () {
+                btn.className = 'btn btn-primary-custom';
+                btn.innerHTML = orig;
+            }, 2000);
+        }
+
+        function updateQueueCount() {
+            var badge = document.getElementById('offlineQueueBadge');
+            var note = document.getElementById('queueStatusNote');
+            var queue = [];
+            try {
+                queue = JSON.parse(localStorage.getItem('bshs_offline_queue')) || [];
+            } catch (e) { queue = []; }
+
+            if (queue.length > 0) {
+                badge.style.display = 'inline-block';
+                badge.textContent = queue.length + ' queued for sync';
+                note.innerHTML = '<i class="bi bi-check-circle-fill text-success me-1"></i><strong>' + queue.length + ' attendance record' + (queue.length > 1 ? 's' : '') + '</strong> saved offline. Will sync automatically when online.';
+            } else {
+                badge.style.display = 'none';
+                note.innerHTML = '<i class="bi bi-info-circle me-1"></i>Tap Save to store in offline queue.';
+            }
+        }
+
+        // Offline QR Scanner
+        function openOfflineQrScanner() {
+            if (currentStudents.length === 0) {
+                alert('Please select a class with enrolled students first.');
+                return;
+            }
+
+            var modalEl = document.getElementById('offlineQrModal');
+            var modal = new bootstrap.Modal(modalEl);
+            modal.show();
+
+            document.getElementById('offlineQrFeedback').innerHTML = '';
+
+            setTimeout(startOfflineCamera, 400);
+        }
+
+        function startOfflineCamera() {
+            if (typeof Html5Qrcode === 'undefined') {
+                document.getElementById('offlineQrFeedback').innerHTML = '<div class="alert alert-danger py-2 small">QR Scanner engine not loaded.</div>';
+                return;
+            }
+
+            if (qrScannerInstance) {
+                try { qrScannerInstance.stop(); } catch (e) {}
+            }
+
+            qrScannerInstance = new Html5Qrcode('offline-qr-reader');
+            qrScannerInstance.start(
+                { facingMode: 'environment' },
+                { fps: 10, qrbox: { width: 220, height: 220 } },
+                function onScanSuccess(decodedText) {
+                    handleQrScan(decodedText);
+                },
+                function onScanError() {}
+            ).catch(function (err) {
+                document.getElementById('offlineQrFeedback').innerHTML = '<div class="alert alert-warning py-2 small">Camera access error: ' + escapeHtml(err.message || err) + '</div>';
+            });
+        }
+
+        function handleQrScan(qrText) {
+            var code = (qrText || '').trim().toLowerCase();
+            var matchedIndex = -1;
+
+            for (var i = 0; i < currentStudents.length; i++) {
+                var s = currentStudents[i];
+                var sRef = (s.reference_code || '').toLowerCase();
+                var sLrn = (s.lrn || '').toLowerCase();
+                var sId = String(s.id);
+                if (code === sRef || code === sLrn || code === sId || code.includes(sRef) || (sLrn && code.includes(sLrn))) {
+                    matchedIndex = i;
+                    break;
+                }
+            }
+
+            var fb = document.getElementById('offlineQrFeedback');
+            if (matchedIndex !== -1) {
+                var st = currentStudents[matchedIndex];
+                st.attendance_status = 'present';
+                renderStudentList(currentStudents);
+                fb.innerHTML = '<div class="alert alert-success py-2 small mb-0"><i class="bi bi-check-circle-fill me-1"></i>' + escapeHtml(st.first_name + ' ' + st.last_name) + ' marked <strong>PRESENT</strong>!</div>';
+            } else {
+                fb.innerHTML = '<div class="alert alert-warning py-2 small mb-0"><i class="bi bi-exclamation-triangle me-1"></i>QR Code not found in this class (' + escapeHtml(qrText) + ')</div>';
+            }
+        }
+
+        function stopOfflineQrScanner() {
+            if (qrScannerInstance) {
+                try {
+                    qrScannerInstance.stop().then(function () {
+                        qrScannerInstance.clear();
+                        qrScannerInstance = null;
+                    });
+                } catch (e) {
+                    qrScannerInstance = null;
+                }
             }
         }
 
         function setOnlineUI() {
             var pill = document.getElementById('connectionStatus');
+            var text = document.getElementById('connectionText');
             var dot = document.getElementById('statusDot');
-            if (pill) {
-                pill.className = 'offline-status-pill online';
-                pill.innerHTML = '<i class="bi bi-wifi"></i><span>Connection Restored! Reloading...</span>';
-            }
-            if (dot) {
-                dot.style.backgroundColor = '#10b981';
-                dot.innerHTML = '<i class="bi bi-wifi"></i>';
-            }
+            if (pill) pill.className = 'offline-status-pill online';
+            if (text) text.textContent = 'Connected! Syncing...';
+            if (dot) dot.style.backgroundColor = '#10b981';
         }
 
         function setOfflineUI() {
             var pill = document.getElementById('connectionStatus');
+            var text = document.getElementById('connectionText');
             var dot = document.getElementById('statusDot');
-            if (pill) {
-                pill.className = 'offline-status-pill';
-                pill.innerHTML = '<i class="bi bi-cloud-slash"></i><span>Offline Mode Active</span>';
-            }
-            if (dot) {
-                dot.style.backgroundColor = '#f59e0b';
-                dot.innerHTML = '<i class="bi bi-wifi-off"></i>';
-            }
+            if (pill) pill.className = 'offline-status-pill';
+            if (text) text.textContent = 'Offline Mode Active';
+            if (dot) dot.style.backgroundColor = '#f59e0b';
         }
 
         function checkConnection() {
@@ -309,9 +671,7 @@
                 .then(function (res) {
                     if (res.ok) {
                         setOnlineUI();
-                        setTimeout(function () {
-                            window.location.reload();
-                        }, 800);
+                        setTimeout(function () { window.location.reload(); }, 600);
                     } else {
                         throw new Error('Still offline');
                     }
@@ -323,18 +683,25 @@
                 });
         }
 
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
         window.addEventListener('online', function () {
             setOnlineUI();
-            setTimeout(function () {
-                window.location.reload();
-            }, 1000);
+            setTimeout(function () { window.location.reload(); }, 1200);
         });
 
-        window.addEventListener('offline', function () {
-            setOfflineUI();
-        });
+        window.addEventListener('offline', setOfflineUI);
 
-        updateQueueInfo();
+        loadOfflineClasses();
+        updateQueueCount();
     </script>
 </body>
 </html>

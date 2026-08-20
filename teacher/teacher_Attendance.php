@@ -218,6 +218,7 @@ $page_title = 'Attendance';
     </div>
 </div>
 <script src="<?php echo appAssetPath('vendor/bootstrap/bootstrap.bundle.min.js'); ?>"></script>
+<script src="<?php echo appAssetPath('vendor/html5-qrcode/html5-qrcode.min.js'); ?>"></script>
 <script src="<?php echo appAssetPath('js/networkSync.js'); ?>"></script>
 <script src="<?php echo appAssetPath('js/main.js'); ?>"></script>
 <script>
@@ -226,13 +227,48 @@ let canEditAttendance=<?php echo $canEditSelectedClass ? 'true' : 'false'; ?>;
 let editBlockedReason=<?php echo json_encode($editBlockedReason); ?>;
 const serverToday=<?php echo json_encode(date('Y-m-d')); ?>;
 const csrfToken=(window.APP_CSRF_TOKEN||'').toString();
+const initialTeacherClasses=<?php echo json_encode(array_map(function($c) { return ['id' => (int)$c['id'], 'name' => $c['name'], 'subject_title' => $c['subject_title'] ?? '', 'schedule' => $c['schedule'] ?? '']; }, $classes)); ?>;
+const initialStudents=<?php echo json_encode(array_map(function($s) { return ['id' => (int)$s['id'], 'first_name' => $s['first_name'], 'last_name' => $s['last_name'], 'reference_code' => $s['reference_code'] ?? '', 'lrn' => $s['lrn'] ?? '', 'gender' => $s['gender'] ?? '', 'attendance_status' => $s['attendance_status'] ?? 'present', 'remarks' => $s['remarks'] ?? '']; }, $students)); ?>;
+const currentSelectedClassId=<?php echo json_encode($selectedClassId); ?>;
+
+function persistOfflineRoster(classId, students) {
+    try {
+        if (initialTeacherClasses && initialTeacherClasses.length > 0) {
+            localStorage.setItem('bshs_offline_classes', JSON.stringify(initialTeacherClasses));
+        }
+        if (classId && students && students.length > 0) {
+            localStorage.setItem('bshs_offline_roster_' + classId, JSON.stringify(students));
+        }
+    } catch (e) {}
+}
+
+function prefetchOtherTeacherRosters() {
+    if (!initialTeacherClasses || initialTeacherClasses.length <= 1) return;
+    initialTeacherClasses.forEach(c => {
+        if (c.id === currentSelectedClassId) return;
+        if (localStorage.getItem('bshs_offline_roster_' + c.id)) return;
+        fetch(`teacher_Action.php?action=fetch_students&class_id=${c.id}&date=${encodeURIComponent(serverToday)}&mode=subject`)
+            .then(r => r.json())
+            .then(d => {
+                if (d.success && d.students) {
+                    try { localStorage.setItem('bshs_offline_roster_' + c.id, JSON.stringify(d.students)); } catch (e) {}
+                }
+            }).catch(() => {});
+    });
+}
+
+persistOfflineRoster(currentSelectedClassId, initialStudents);
+if (navigator.onLine) {
+    setTimeout(prefetchOtherTeacherRosters, 1200);
+}
+
 const statusTemplate={present:'<i class="bi bi-check-circle"></i> Present',absent:'<i class="bi bi-x-circle"></i> Absent',late:'<i class="bi bi-clock"></i> Late'};
 function updateEditState(){const btn=document.getElementById('submitAttendanceBtn');if(!btn)return;if(canEditAttendance){btn.disabled=false;btn.title='';btn.innerHTML='<i class=\"bi bi-save me-2\"></i>Submit Attendance';}else{btn.disabled=true;btn.title=editBlockedReason||'Attendance is unavailable for this class on the selected date';btn.innerHTML='<i class=\"bi bi-eye me-2\"></i>Attendance Unavailable';}}
 function cycleStatus(button){if(!canEditAttendance){return;}const current=button.dataset.status||'present';const next=statusCycle[(statusCycle.indexOf(current)+1)%statusCycle.length];button.dataset.status=next;button.classList.remove('present','absent','late');button.classList.add(next);button.innerHTML=statusTemplate[next];updateSummaryCounts();}
 function updateSummaryCounts(summary){if(summary){document.getElementById('presentCount').textContent=summary.present||0;document.getElementById('absentCount').textContent=summary.absent||0;document.getElementById('lateCount').textContent=summary.late||0;return;}let p=0,a=0,l=0;document.querySelectorAll('#attendanceBody tr[data-student-id]').forEach(r=>{const s=r.querySelector('.teacher-status')?.dataset.status;if(s==='present')p++;if(s==='absent')a++;if(s==='late')l++;});document.getElementById('presentCount').textContent=p;document.getElementById('absentCount').textContent=a;document.getElementById('lateCount').textContent=l;}
 function applySearchFilter(){const input=document.getElementById('attendanceSearch');const q=(input?.value||'').trim().toLowerCase();const tbody=document.getElementById('attendanceBody');if(!tbody){return;}const rows=Array.from(tbody.querySelectorAll('tr[data-student-id]'));if(rows.length===0){return;}let visible=0;rows.forEach(r=>{const name=r.querySelector('.student-name')?.textContent?.toLowerCase()||'';const code=r.children?.[1]?.textContent?.toLowerCase()||'';const match=!q||name.includes(q)||code.includes(q);r.style.display=match?'':'none';if(match){visible++;}});let emptyRow=document.getElementById('attendanceSearchEmpty');if(visible===0){if(!emptyRow){emptyRow=document.createElement('tr');emptyRow.id='attendanceSearchEmpty';emptyRow.innerHTML='<td colspan="4" class="text-center text-muted py-4">No students match your search.</td>';tbody.appendChild(emptyRow);}emptyRow.style.display='';}else if(emptyRow){emptyRow.style.display='none';}}
 function renderStudents(students){const tbody=document.getElementById('attendanceBody');if(!students||students.length===0){tbody.innerHTML='<tr><td colspan="4" class="text-center text-muted py-4">No enrolled students for this class.</td></tr>';updateSummaryCounts({present:0,absent:0,late:0});return;}tbody.innerHTML=students.map(s=>{const fn=`${s.first_name} ${s.last_name}`;const inits=`${s.first_name[0]||''}${s.last_name[0]||''}`.toUpperCase();const st=s.attendance_status||'present';return `<tr data-student-id="${s.id}"><td><div class="student-info"><div class="user-avatar-small">${inits}</div><span class="student-name">${escapeHtml(fn)}</span></div></td><td>${escapeHtml(s.reference_code)}</td><td><button type="button" class="teacher-status ${st}" data-status="${st}" onclick="cycleStatus(this)">${statusTemplate[st]||statusTemplate.present}</button></td><td><input type="text" class="form-control form-control-sm attendance-remarks" value="${escapeHtml(s.remarks||'')}" placeholder="Add remarks..."></td></tr>`;}).join('');updateSummaryCounts();applySearchFilter();}
-function loadAttendanceData(){const classId=(document.getElementById('classSelect')?.value||'').trim();const date=(document.getElementById('attendanceDate')?.value||'').trim();const sex=(document.getElementById('sexFilter')?.value||'').trim().toLowerCase();if(!classId){showNotification('No subject class available for this teacher account','warning');return;}if(!date){showNotification('Please select date','warning');return;}let url=`teacher_Action.php?action=fetch_students&class_id=${encodeURIComponent(classId)}&date=${encodeURIComponent(date)}&mode=subject`;if(sex==='male'||sex==='female'){url+=`&sex=${encodeURIComponent(sex)}`;}fetch(url).then(r=>r.json()).then(d=>{if(!d.success){showNotification(d.message||'Failed to load attendance data','danger');return;}canEditAttendance=!!d.can_edit;editBlockedReason=(d.message||'').trim();renderStudents(d.students||[]);updateSummaryCounts(d.summary||null);updateEditState();if(!canEditAttendance&&editBlockedReason){showNotification(editBlockedReason,'warning');}}).catch(()=>showNotification('Error loading attendance data','danger'));}
+function loadAttendanceData(){const classId=(document.getElementById('classSelect')?.value||'').trim();const date=(document.getElementById('attendanceDate')?.value||'').trim();const sex=(document.getElementById('sexFilter')?.value||'').trim().toLowerCase();if(!classId){showNotification('No subject class available for this teacher account','warning');return;}if(!date){showNotification('Please select date','warning');return;}let url=`teacher_Action.php?action=fetch_students&class_id=${encodeURIComponent(classId)}&date=${encodeURIComponent(date)}&mode=subject`;if(sex==='male'||sex==='female'){url+=`&sex=${encodeURIComponent(sex)}`;}fetch(url).then(r=>r.json()).then(d=>{if(!d.success){showNotification(d.message||'Failed to load attendance data','danger');return;}canEditAttendance=!!d.can_edit;editBlockedReason=(d.message||'').trim();renderStudents(d.students||[]);updateSummaryCounts(d.summary||null);updateEditState();persistOfflineRoster(classId, d.students||[]);if(!canEditAttendance&&editBlockedReason){showNotification(editBlockedReason,'warning');}}).catch(()=>{const cached=localStorage.getItem('bshs_offline_roster_'+classId);if(cached){try{renderStudents(JSON.parse(cached));showNotification('Loaded offline cached student roster','info');return;}catch(e){}}showNotification('Error loading attendance data','danger');});}
 function exportAttendanceSf2(format){const classId=(document.getElementById('classSelect')?.value||'').trim();const dateValue=(document.getElementById('attendanceDate')?.value||'').trim();if(!classId){showNotification('Select a class for SF2 export','warning');return;}if(!dateValue||!/^\d{4}-\d{2}-\d{2}$/.test(dateValue)){showNotification('Select a valid attendance date for SF2 export','warning');return;}const parts=dateValue.split('-');const params=new URLSearchParams({class_id:classId,month:String(Number(parts[1])),year:parts[0],export:format==='csv'?'csv':'xlsx'});window.location.href='teacher_SF2_Export.php?'+params.toString();}
 function submitAttendance(){if(!canEditAttendance){showNotification(editBlockedReason||'Attendance is unavailable for this class on the selected date','info');return;}const classId=document.getElementById('classSelect')?.value||'';const date=document.getElementById('attendanceDate')?.value||'';const rows=document.querySelectorAll('#attendanceBody tr[data-student-id]');if(!classId||!date||rows.length===0){showNotification('Nothing to submit','warning');return;}const records=Array.from(rows).map(r=>({student_id:parseInt(r.dataset.studentId,10),status:r.querySelector('.teacher-status')?.dataset.status||'present',remarks:r.querySelector('.attendance-remarks')?.value.trim()||''}));const btn=document.getElementById('submitAttendanceBtn');btn.disabled=true;btn.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Saving...';if(window.bshsOffline&&!window.bshsOffline.isOnline()){window.bshsOffline.queueAttendance(classId,date,records,csrfToken);btn.disabled=false;btn.innerHTML='<i class=\"bi bi-save me-2\"></i>Submit Attendance';updateEditState();return;}fetch(withCsrfUrl('teacher_Action.php?action=submit_attendance'),{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrfToken},body:JSON.stringify({class_id:parseInt(classId,10),date:date,mode:'subject',records:records})}).then(r=>r.json()).then(d=>{if(d.success){showNotification(d.message||'Attendance submitted successfully','success');updateSummaryCounts(d.summary||null);}else{showNotification(d.message||'Failed to submit attendance','danger');}}).catch(function(){if(window.bshsOffline){window.bshsOffline.queueAttendance(classId,date,records,csrfToken);showNotification('Network error. Attendance queued for sync when online.','warning');}else{showNotification('Error submitting attendance','danger');}}).finally(()=>{updateEditState();});}
 updateEditState();
@@ -241,7 +277,7 @@ document.getElementById('attendanceSearch')?.addEventListener('input', applySear
 
 // QR Scanner
 let qrScannerInstance = null;
-let qrScannerLibLoaded = false;
+let qrScannerLibLoaded = typeof Html5Qrcode !== 'undefined';
 
 function openQrScanner() {
     const classId = document.getElementById('classSelect')?.value;
@@ -250,16 +286,7 @@ function openQrScanner() {
     if (!canEditAttendance) { showNotification(editBlockedReason || 'Cannot edit attendance for this class/date.', 'info'); return; }
     if (date !== serverToday) { showNotification('QR attendance scanning is available only for today.', 'warning'); return; }
 
-    if (!qrScannerLibLoaded) {
-        const script = document.createElement('script');
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js';
-        script.crossOrigin = 'anonymous';
-        script.onload = () => { qrScannerLibLoaded = true; showQrModal(); };
-        script.onerror = () => showNotification('QR scanner library failed to load. Check internet connection.', 'danger');
-        document.head.appendChild(script);
-    } else {
-        showQrModal();
-    }
+    showQrModal();
 }
 
 function showQrModal() {
