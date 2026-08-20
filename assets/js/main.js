@@ -1142,6 +1142,24 @@ function capitalizeFirst(string) {
   return string.charAt(0).toUpperCase() + string.slice(1);
 }
 
+// ============================================
+// PWA & SERVICE WORKER AUTOMATIC FRESHNESS
+// ============================================
 
+if ('serviceWorker' in navigator && navigator.onLine) {
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    regs.forEach((reg) => {
+      reg.update().catch(() => {});
+    });
+  }).catch(() => {});
 
-
+  if ('caches' in window) {
+    caches.keys().then((keys) => {
+      keys.forEach((key) => {
+        if (key !== 'bshs-ams-v18') {
+          caches.delete(key);
+        }
+      });
+    }).catch(() => {});
+  }
+}
