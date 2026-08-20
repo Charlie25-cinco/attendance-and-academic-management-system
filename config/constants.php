@@ -834,7 +834,7 @@ function pwaHeadHtml(): string {
     $favicon32Url = $baseUrl !== '' ? $baseUrl . '/assets/images/favicon.png' : (function_exists('appAssetPath') ? appAssetPath('images/favicon.png') : '/assets/images/favicon.png');
     $favicon16Url = $baseUrl !== '' ? $baseUrl . '/assets/images/favicon-16.png' : (function_exists('appAssetPath') ? appAssetPath('images/favicon-16.png') : '/assets/images/favicon-16.png');
     $logoUrl = $baseUrl !== '' ? $baseUrl . '/assets/images/bshs-logo.jpg' : (function_exists('appAssetPath') ? appAssetPath('images/bshs-logo.jpg') : '/assets/images/bshs-logo.jpg');
-    $serviceWorkerUrl = $baseUrl !== '' ? $baseUrl . '/sw.js?v=0.3.73' : '/sw.js?v=0.3.73';
+    $serviceWorkerUrl = $baseUrl !== '' ? $baseUrl . '/sw.js?v=0.3.74' : '/sw.js?v=0.3.74';
     $scopeUrl = $baseUrl !== '' ? $baseUrl . '/' : '/';
 
     $html = '<link rel="manifest" href="' . htmlspecialchars($manifestUrl, ENT_QUOTES, 'UTF-8') . '">' . "\n";

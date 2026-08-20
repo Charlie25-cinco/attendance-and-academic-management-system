@@ -2,6 +2,15 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.74 — 2026-08-20
+
+### Added
+
+- **Complete Teacher Classes Grade Activity & Score Offline Recording**:
+  - Implemented client-side offline creation of grade activities and student score entry in [`teacher/teacher_Classes.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Classes.php) via IndexedDB `activity_records` and `sync_queue`.
+  - Pre-cached [`teacher/teacher_Classes.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Classes.php) under cache **`bshs-ams-v21`**.
+  - Localized all camera QR scanning libraries and dependencies within the pre-cached application shell.
+
 ## v0.3.73 — 2026-08-20
 
 ### Added
