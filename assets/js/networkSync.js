@@ -1,69 +1,38 @@
+/**
+ * BSHS AMS - Production Network Synchronization Engine
+ * Listens for connectivity restoration and submits pending offline
+ * attendance and activity records to MySQL with idempotency protection.
+ */
 (function (global) {
     'use strict';
 
-    var QUEUE_KEY = 'bshs_offline_queue';
-    var isOnline = navigator.onLine;
     var isProcessing = false;
-
-    function getQueue() {
-        try {
-            return JSON.parse(localStorage.getItem(QUEUE_KEY)) || [];
-        } catch (e) {
-            return [];
-        }
-    }
-
-    function saveQueue(queue) {
-        try {
-            localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
-        } catch (e) {
-            // storage quota exceeded or disabled
-        }
-    }
-
-    function addToQueue(action) {
-        var queue = getQueue();
-        queue.push({
-            id: Date.now() + '_' + Math.random().toString(36).slice(2, 8),
-            action: action,
-            addedAt: new Date().toISOString(),
-            attempts: 0
-        });
-        saveQueue(queue);
-        if (typeof showNotification === 'function') {
-            showNotification('You are offline. Submission queued safely for automatic sync.', 'warning');
-        }
-    }
-
-    function removeFromQueue(id) {
-        var queue = getQueue().filter(function (item) { return item.id !== id; });
-        saveQueue(queue);
-    }
 
     async function processQueue() {
         if (isProcessing) return;
-        var queue = getQueue();
-        if (queue.length === 0) return;
+        if (!navigator.onLine) return;
 
-        if (!navigator.onLine) {
-            return;
-        }
+        var storage = global.bshsOfflineStorage;
+        if (!storage) return;
+
+        var queue = await storage.getSyncQueue();
+        if (!queue || queue.length === 0) return;
 
         isProcessing = true;
-        var remaining = [];
         var syncedAttendance = 0;
         var syncedActivities = 0;
 
         for (var i = 0; i < queue.length; i++) {
             var item = queue[i];
-            var action = item.action;
+            var payload = item.payload || item.action?.payload;
+            var url = item.url || item.action?.url;
+            var opType = item.operation || item.action?.type;
+            var opId = item.operation_id || item.id;
 
-            if (!action || !action.url) {
-                continue;
-            }
+            if (!url || !payload) continue;
 
             try {
-                var targetUrl = action.url;
+                var targetUrl = url;
                 if (typeof withCsrfUrl === 'function') {
                     targetUrl = withCsrfUrl(targetUrl);
                 }
@@ -72,8 +41,8 @@
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 };
-                if (action.csrfToken) {
-                    headers['X-CSRF-Token'] = action.csrfToken;
+                if (item.csrfToken || item.action?.csrfToken) {
+                    headers['X-CSRF-Token'] = item.csrfToken || item.action?.csrfToken;
                 } else if (global.APP_CSRF_TOKEN) {
                     headers['X-CSRF-Token'] = global.APP_CSRF_TOKEN;
                 }
@@ -81,33 +50,32 @@
                 var response = await fetch(targetUrl, {
                     method: 'POST',
                     headers: headers,
-                    body: JSON.stringify(action.payload)
+                    body: JSON.stringify(payload)
                 });
 
                 if (response.ok) {
                     var result = await response.json();
                     if (result && result.success) {
-                        if (action.type === 'submit_attendance') {
+                        if (opType === 'attendance.upsert' || opType === 'submit_attendance') {
                             syncedAttendance++;
                         } else {
                             syncedActivities++;
                         }
-                        if (global.bshsOfflineStorage && typeof global.bshsOfflineStorage.removeSyncItem === 'function') {
-                            await global.bshsOfflineStorage.removeSyncItem(item.id);
+
+                        // Mark record synced in IndexedDB & remove from queue
+                        if (typeof storage.markRecordSynced === 'function') {
+                            await storage.markRecordSynced(opId);
+                        } else if (typeof storage.removeSyncItem === 'function') {
+                            await storage.removeSyncItem(item.id);
                         }
-                        continue;
                     }
                 }
-
-                item.attempts = (item.attempts || 0) + 1;
-                remaining.push(item);
             } catch (err) {
-                item.attempts = (item.attempts || 0) + 1;
-                remaining.push(item);
+                // Keep item in queue for next sync cycle
+                console.warn('[Sync] Sync attempt failed for item:', item.id, err);
             }
         }
 
-        saveQueue(remaining);
         isProcessing = false;
 
         var totalSynced = syncedAttendance + syncedActivities;
@@ -116,82 +84,49 @@
             if (syncedAttendance > 0) parts.push(syncedAttendance + ' attendance sheet(s)');
             if (syncedActivities > 0) parts.push(syncedActivities + ' activity score set(s)');
             var msg = 'Offline data (' + parts.join(', ') + ') synchronized to school database!';
+
             if (typeof showNotification === 'function') {
                 showNotification(msg, 'success');
             } else if (typeof showToast === 'function') {
                 showToast(msg, 'success');
             }
+
+            // Refresh fresh rosters from server
+            if (typeof storage.bootstrapOnline === 'function') {
+                storage.bootstrapOnline().catch(function () {});
+            }
         }
     }
 
     function handleOnline() {
-        isOnline = true;
-        var count = getQueue().length;
-        if (count > 0) {
-            if (typeof showNotification === 'function') {
-                showNotification('Back online! Syncing ' + count + ' pending offline submission(s)...', 'info');
-            } else if (typeof showToast === 'function') {
-                showToast('Back online! Syncing ' + count + ' pending offline submission(s)...', 'info');
-            }
+        if (typeof showNotification === 'function') {
+            showNotification('Internet connection restored. Synchronizing offline records...', 'info');
+        } else if (typeof showToast === 'function') {
+            showToast('Internet connection restored. Synchronizing offline records...', 'info');
         }
-        processQueue();
+        setTimeout(processQueue, 500);
     }
 
     function handleOffline() {
-        isOnline = false;
         if (typeof showNotification === 'function') {
-            showNotification('You are offline. Submissions will be queued safely on this device.', 'warning');
+            showNotification('You are in offline mode. All records will be stored safely on this device.', 'warning');
         }
     }
 
     global.addEventListener('online', handleOnline);
     global.addEventListener('offline', handleOffline);
 
+    global.BSHS_NetworkSync = {
+        processQueue: processQueue
+    };
+
     global.bshsOffline = {
         isOnline: function () { return navigator.onLine; },
-        queueAttendance: function (classId, date, records, csrfToken) {
-            addToQueue({
-                type: 'submit_attendance',
-                url: 'teacher_Action.php?action=submit_attendance',
-                csrfToken: csrfToken,
-                payload: {
-                    class_id: parseInt(classId, 10),
-                    date: date,
-                    mode: 'subject',
-                    records: records
-                }
-            });
-        },
-        queueActivity: function (classId, title, component, totalScore, date, scores, csrfToken) {
-            addToQueue({
-                type: 'save_offline_activity',
-                url: 'teacher_Action.php?action=save_offline_activity',
-                csrfToken: csrfToken,
-                payload: {
-                    class_id: parseInt(classId, 10),
-                    title: title,
-                    component: component,
-                    total_score: parseFloat(totalScore),
-                    activity_date: date,
-                    scores: scores
-                }
-            });
-        },
-        getQueueCount: function () {
-            return getQueue().length;
-        },
-        processNow: function () {
-            return processQueue();
-        }
+        processNow: function () { return processQueue(); }
     };
 
-    global.BSHS_NetworkSync = {
-        processQueue: processQueue,
-        getQueue: getQueue
-    };
-
-    // Auto-sync pending items on load if online
-    if (isOnline && getQueue().length > 0) {
-        setTimeout(processQueue, 1000);
+    // Trigger sync on startup if online
+    if (navigator.onLine) {
+        setTimeout(processQueue, 1200);
     }
 })(typeof window !== 'undefined' ? window : this);

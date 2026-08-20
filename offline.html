@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BSHS AMS - Offline Teacher Workspace</title>
+    <title>Teacher Workspace (Offline) - Balingasag Senior High School</title>
     <link rel="manifest" href="assets/manifest.json">
     <link rel="icon" type="image/jpeg" href="assets/images/bshs-logo.jpg">
     <link rel="apple-touch-icon" href="assets/images/icon-192.png">
     <link rel="stylesheet" href="assets/vendor/bootstrap/bootstrap.min.css">
     <link rel="stylesheet" href="assets/vendor/bootstrap-icons/bootstrap-icons.css">
     <link rel="stylesheet" href="assets/css/main.css">
+    <link rel="stylesheet" href="assets/css/role.css">
     <style>
         :root {
             --bshs-navy: #003366;
@@ -42,59 +43,77 @@
         }
 
         .offline-container {
-            max-width: 960px;
+            max-width: 1080px;
             margin: 0 auto;
         }
 
-        .offline-header-card {
-            background-color: var(--bshs-card-light);
-            border: 1px solid var(--bshs-border-light);
-            border-radius: 16px;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
-            padding: 20px 24px;
-            margin-bottom: 20px;
+        .teacher-hero-card {
+            background: linear-gradient(135deg, #003366 0%, #002244 100%);
+            color: #ffffff;
+            border-radius: 20px;
+            padding: 24px 28px;
+            margin-bottom: 24px;
+            box-shadow: 0 10px 30px rgba(0, 51, 102, 0.15);
+            position: relative;
+            overflow: hidden;
         }
 
-        .offline-logo {
-            width: 52px;
-            height: 52px;
+        .teacher-hero-card::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(255, 204, 0, 0.15) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .teacher-avatar-circle {
+            width: 56px;
+            height: 56px;
             border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid var(--bshs-gold);
+            background: #ffcc00;
+            color: #003366;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            font-weight: 700;
+            border: 2px solid #ffffff;
+            flex-shrink: 0;
         }
 
-        .offline-badge-pulse {
-            width: 12px;
-            height: 12px;
-            background-color: #f59e0b;
-            border-radius: 50%;
-            display: inline-block;
-            animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        .offline-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: rgba(245, 158, 11, 0.2);
+            color: #ffcc00;
+            border: 1px solid rgba(255, 204, 0, 0.4);
         }
 
-        @keyframes pulse-ring {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.6); }
-            50% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
-        }
-
-        .offline-card {
-            background-color: var(--bshs-card-light);
-            border: 1px solid var(--bshs-border-light);
-            border-radius: 16px;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
-            padding: 24px;
-            margin-bottom: 20px;
+        .offline-pill.online {
+            background: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+            border-color: rgba(52, 211, 153, 0.4);
         }
 
         .nav-tabs-custom {
             display: flex;
             gap: 8px;
             border-bottom: 2px solid var(--bshs-border-light);
-            margin-bottom: 20px;
+            margin-bottom: 24px;
+            overflow-x: auto;
+            white-space: nowrap;
         }
 
         .nav-tabs-custom .tab-btn {
-            padding: 10px 18px;
+            padding: 12px 20px;
             border: none;
             background: transparent;
             font-weight: 600;
@@ -119,25 +138,34 @@
             border-bottom-color: var(--bshs-gold);
         }
 
+        .offline-card {
+            background-color: var(--bshs-card-light);
+            border: 1px solid var(--bshs-border-light);
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
         .offline-kpi-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-            gap: 12px;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 14px;
             margin-bottom: 20px;
         }
 
         .offline-kpi-card {
             background: rgba(0, 0, 0, 0.02);
             border: 1px solid var(--bshs-border-light);
-            border-radius: 12px;
-            padding: 12px 16px;
+            border-radius: 14px;
+            padding: 14px 18px;
             display: flex;
             flex-direction: column;
         }
 
         .offline-kpi-card .kpi-label {
             font-size: 0.75rem;
-            font-weight: 600;
+            font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             color: var(--bshs-muted-light);
@@ -145,9 +173,9 @@
         }
 
         .offline-kpi-card .kpi-val {
-            font-size: 1.5rem;
+            font-size: 1.6rem;
             font-weight: 700;
-            line-height: 1;
+            line-height: 1.1;
         }
 
         .status-pill {
@@ -187,7 +215,7 @@
             align-items: center;
             justify-content: space-between;
             gap: 12px;
-            padding: 12px 16px;
+            padding: 14px 18px;
             border-bottom: 1px solid var(--bshs-border-light);
             transition: background-color 0.15s ease;
         }
@@ -201,8 +229,8 @@
         }
 
         .student-avatar {
-            width: 38px;
-            height: 38px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             background: linear-gradient(135deg, #003366, #0284c7);
             color: #fff;
@@ -210,7 +238,7 @@
             align-items: center;
             justify-content: center;
             font-weight: 700;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             flex-shrink: 0;
         }
 
@@ -229,7 +257,7 @@
         }
 
         .student-meta {
-            font-size: 0.78rem;
+            font-size: 0.8rem;
             color: var(--bshs-muted-light);
         }
 
@@ -243,206 +271,265 @@
         }
 
         .score-input {
-            width: 80px;
+            width: 85px;
             text-align: center;
             font-weight: 600;
         }
 
         .sync-queue-item {
-            padding: 14px 18px;
+            padding: 16px 20px;
             border-radius: 12px;
             border: 1px solid var(--bshs-border-light);
-            background: rgba(0,0,0,0.015);
-            margin-bottom: 10px;
+            background: rgba(0, 0, 0, 0.015);
+            margin-bottom: 12px;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 16px;
+        }
+
+        .saved-local-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            background: rgba(16, 185, 129, 0.12);
+            color: #059669;
         }
     </style>
 </head>
 <body>
     <div class="offline-container">
-        <!-- Top Status Bar -->
-        <div class="offline-header-card d-flex align-items-center justify-content-between flex-wrap gap-3">
-            <div class="d-flex align-items-center gap-3">
-                <img src="assets/images/bshs-logo.jpg" alt="BSHS Logo" class="offline-logo">
-                <div>
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="offline-badge-pulse" id="connectionDot"></span>
-                        <h5 class="mb-0 fw-bold" id="connectionStatusText">Offline Mode Active</h5>
+        <!-- Unauthenticated Notice Card (shown if no teacher session exists) -->
+        <div id="unauthPanel" class="offline-card text-center py-5 d-none">
+            <i class="bi bi-shield-lock text-warning" style="font-size: 3rem;"></i>
+            <h4 class="fw-bold mt-3 mb-2">No Synchronized Teacher Session Found</h4>
+            <p class="text-muted mx-auto mb-4" style="max-width: 460px;">
+                Please connect this device to the internet and log into your teacher account once. The application will automatically synchronize your classes and student rosters for offline use.
+            </p>
+            <a href="auth/login.php" class="btn btn-primary-custom px-4 py-2">
+                <i class="bi bi-box-arrow-in-right me-2"></i> Go to Login Screen
+            </a>
+        </div>
+
+        <!-- Main Teacher Workspace (shown when teacher session exists) -->
+        <div id="workspacePanel">
+            <!-- Top Hero Banner -->
+            <div class="teacher-hero-card d-flex align-items-center justify-content-between flex-wrap gap-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="teacher-avatar-circle" id="teacherAvatarText">T</div>
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <h4 class="mb-0 fw-bold" id="teacherDisplayName">Teacher Workspace</h4>
+                            <span class="offline-pill" id="liveConnectionPill">
+                                <i class="bi bi-wifi-off"></i> Offline Mode
+                            </span>
+                        </div>
+                        <p class="mb-0 small text-white-50" id="teacherMetaText">
+                            Reference: <span id="teacherRefCode">—</span> • School Year: 2026-2027
+                        </p>
                     </div>
-                    <p class="mb-0 text-muted small" id="teacherGreeting">Teacher Workspace • Zero internet required</p>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-warning text-dark px-3 py-2" id="headerQueueBadge">
+                        <i class="bi bi-clock-history me-1"></i> <span id="queueCountText">0</span> pending sync
+                    </span>
+                    <button type="button" class="btn btn-sm btn-light text-primary fw-semibold" onclick="triggerManualSync()">
+                        <i class="bi bi-arrow-repeat me-1"></i> Sync Now
+                    </button>
                 </div>
             </div>
-            <div class="d-flex align-items-center gap-2">
-                <span class="badge bg-warning text-dark px-3 py-2" id="headerQueueBadge">
-                    <i class="bi bi-clock-history me-1"></i> <span id="queueCountText">0</span> pending sync
-                </span>
-                <button type="button" class="btn btn-sm btn-outline-primary" id="manualSyncBtn" onclick="triggerManualSync()">
-                    <i class="bi bi-arrow-repeat me-1"></i> Sync Now
+
+            <!-- Tab Navigation Bar -->
+            <div class="nav-tabs-custom">
+                <button type="button" class="tab-btn active" id="tabAttendanceBtn" onclick="switchTab('attendance')">
+                    <i class="bi bi-calendar-check-fill"></i> Daily Attendance & QR
+                </button>
+                <button type="button" class="tab-btn" id="tabActivitiesBtn" onclick="switchTab('activities')">
+                    <i class="bi bi-journal-plus"></i> Record Activities & Scores
+                </button>
+                <button type="button" class="tab-btn" id="tabClassesBtn" onclick="switchTab('classes')">
+                    <i class="bi bi-journal-bookmark-fill"></i> My Classes Overview
+                </button>
+                <button type="button" class="tab-btn" id="tabQueueBtn" onclick="switchTab('queue')">
+                    <i class="bi bi-cloud-arrow-up-fill"></i> Sync Queue (<span id="tabQueueCount">0</span>)
                 </button>
             </div>
-        </div>
 
-        <!-- Tab Navigation -->
-        <div class="nav-tabs-custom">
-            <button type="button" class="tab-btn active" id="tabAttendanceBtn" onclick="switchTab('attendance')">
-                <i class="bi bi-calendar-check-fill"></i> Daily Attendance & QR
-            </button>
-            <button type="button" class="tab-btn" id="tabActivitiesBtn" onclick="switchTab('activities')">
-                <i class="bi bi-journal-plus"></i> Record Activities & Scores
-            </button>
-            <button type="button" class="tab-btn" id="tabQueueBtn" onclick="switchTab('queue')">
-                <i class="bi bi-cloud-arrow-up-fill"></i> Sync Queue (<span id="tabQueueCount">0</span>)
-            </button>
-        </div>
+            <!-- ========================================================================= -->
+            <!-- TAB 1: DAILY ATTENDANCE & QR SCANNER -->
+            <!-- ========================================================================= -->
+            <div id="tabAttendance" class="tab-content-panel">
+                <div class="offline-card">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-5">
+                            <label class="form-label fw-semibold small text-muted">SELECT ASSIGNED CLASS</label>
+                            <select id="attendanceClassSelect" class="form-select" onchange="onAttendanceClassChanged()">
+                                <option value="">Loading assigned classes...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold small text-muted">ATTENDANCE DATE</label>
+                            <input type="date" id="attendanceDateInput" class="form-control" onchange="onAttendanceDateChanged()">
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="button" class="btn btn-outline-primary w-100" onclick="openQrScannerModal()">
+                                <i class="bi bi-qr-code-scan me-1"></i> Camera Scan
+                            </button>
+                        </div>
+                    </div>
 
-        <!-- ========================================================================= -->
-        <!-- TAB 1: ATTENDANCE & QR SCANNER -->
-        <!-- ========================================================================= -->
-        <div id="tabAttendance" class="tab-content-panel">
-            <div class="offline-card">
-                <div class="row g-3 mb-3">
-                    <div class="col-md-5">
-                        <label class="form-label fw-semibold small text-muted">SELECT CLASS</label>
-                        <select id="attendanceClassSelect" class="form-select" onchange="onAttendanceClassChanged()">
-                            <option value="">Loading classes...</option>
-                        </select>
+                    <!-- KPI Counters -->
+                    <div class="offline-kpi-grid">
+                        <div class="offline-kpi-card">
+                            <span class="kpi-label">Present</span>
+                            <span class="kpi-val text-success" id="kpiPresentCount">0</span>
+                        </div>
+                        <div class="offline-kpi-card">
+                            <span class="kpi-label">Absent</span>
+                            <span class="kpi-val text-danger" id="kpiAbsentCount">0</span>
+                        </div>
+                        <div class="offline-kpi-card">
+                            <span class="kpi-label">Late</span>
+                            <span class="kpi-val text-warning" id="kpiLateCount">0</span>
+                        </div>
+                        <div class="offline-kpi-card">
+                            <span class="kpi-label">Enrolled Students</span>
+                            <span class="kpi-val" id="kpiTotalCount">0</span>
+                        </div>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-semibold small text-muted">DATE</label>
-                        <input type="date" id="attendanceDateInput" class="form-control" onchange="updateAttendanceKpis()">
+
+                    <!-- Search Filter & Batch Controls -->
+                    <div class="d-flex align-items-center justify-content-between gap-2 mb-3 flex-wrap">
+                        <div class="input-group" style="max-width: 340px;">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" id="attendanceSearchInput" class="form-control form-control-sm" placeholder="Search student name / LRN / Ref..." oninput="filterAttendanceList()">
+                        </div>
+                        <div class="d-flex gap-2 align-items-center">
+                            <span class="saved-local-badge d-none" id="attendanceSavedStatus">
+                                <i class="bi bi-check-circle-fill"></i> Saved Locally (Offline)
+                            </span>
+                            <button type="button" class="btn btn-sm btn-outline-success" onclick="markAllAttendance('present')">
+                                <i class="bi bi-check-all"></i> Mark All Present
+                            </button>
+                        </div>
                     </div>
-                    <div class="col-md-3 d-flex align-items-end">
-                        <button type="button" class="btn btn-outline-primary w-100" onclick="openQrScannerModal()">
-                            <i class="bi bi-qr-code-scan me-1"></i> Camera Scan
+
+                    <!-- Student Roster List -->
+                    <div id="attendanceStudentList" class="border rounded-3 mb-4 overflow-hidden">
+                        <div class="p-4 text-center text-muted">Please select a class to load the student roster.</div>
+                    </div>
+
+                    <!-- Save Attendance Button -->
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <span class="text-muted small">All attendance marks are saved immediately into your phone's secure local storage.</span>
+                        <button type="button" class="btn btn-success btn-lg px-4" id="saveAttendanceBtn" onclick="saveAttendanceOffline()">
+                            <i class="bi bi-floppy me-2"></i> Save Attendance (Offline Queue)
                         </button>
                     </div>
                 </div>
+            </div>
 
-                <!-- KPI Counters -->
-                <div class="offline-kpi-grid">
-                    <div class="offline-kpi-card">
-                        <span class="kpi-label">Present</span>
-                        <span class="kpi-val text-success" id="kpiPresentCount">0</span>
+            <!-- ========================================================================= -->
+            <!-- TAB 2: RECORD ACTIVITIES & SCORES -->
+            <!-- ========================================================================= -->
+            <div id="tabActivities" class="tab-content-panel d-none">
+                <div class="offline-card">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-5">
+                            <label class="form-label fw-semibold small text-muted">SELECT ASSIGNED CLASS</label>
+                            <select id="activityClassSelect" class="form-select" onchange="onActivityClassChanged()">
+                                <option value="">Loading assigned classes...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold small text-muted">COMPONENT</label>
+                            <select id="activityComponentSelect" class="form-select">
+                                <option value="ww">Written Work (WW)</option>
+                                <option value="pt">Performance Task (PT)</option>
+                                <option value="qa">Quarterly Assessment (QA)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold small text-muted">HIGHEST POSSIBLE SCORE</label>
+                            <input type="number" id="activityTotalScoreInput" class="form-control" placeholder="e.g. 20" min="1" step="0.5" value="20">
+                        </div>
                     </div>
-                    <div class="offline-kpi-card">
-                        <span class="kpi-label">Absent</span>
-                        <span class="kpi-val text-danger" id="kpiAbsentCount">0</span>
-                    </div>
-                    <div class="offline-kpi-card">
-                        <span class="kpi-label">Late</span>
-                        <span class="kpi-val text-warning" id="kpiLateCount">0</span>
-                    </div>
-                    <div class="offline-kpi-card">
-                        <span class="kpi-label">Total</span>
-                        <span class="kpi-val" id="kpiTotalCount">0</span>
-                    </div>
-                </div>
 
-                <!-- Search Filter & Quick Actions -->
-                <div class="d-flex align-items-center justify-content-between gap-2 mb-3 flex-wrap">
-                    <div class="input-group" style="max-width: 320px;">
-                        <span class="input-group-text"><i class="bi bi-search"></i></span>
-                        <input type="text" id="attendanceSearchInput" class="form-control form-control-sm" placeholder="Search learner name / LRN..." oninput="filterAttendanceList()">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold small text-muted">ACTIVITY TITLE</label>
+                            <input type="text" id="activityTitleInput" class="form-control" placeholder="e.g. Written Work #1 - Cell Structure">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold small text-muted">ACTIVITY DATE</label>
+                            <input type="date" id="activityDateInput" class="form-control">
+                        </div>
                     </div>
-                    <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-sm btn-outline-success" onclick="markAllAttendance('present')">
-                            <i class="bi bi-check-all"></i> Mark All Present
+
+                    <!-- Student Score Entry Table -->
+                    <div class="table-responsive border rounded-3 mb-4">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Student Name</th>
+                                    <th style="width: 150px;" class="text-center">Score (Max: <span id="maxScoreBadge">20</span>)</th>
+                                    <th>Remarks</th>
+                                </tr>
+                            </thead>
+                            <tbody id="activityScoresBody">
+                                <tr><td colspan="3" class="text-center text-muted py-4">Please select a class to enter student scores.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <span class="text-muted small">Scores entered offline are preserved locally and submitted when connectivity returns.</span>
+                        <button type="button" class="btn btn-success btn-lg px-4" id="saveActivityBtn" onclick="saveActivityOffline()">
+                            <i class="bi bi-floppy me-2"></i> Save Activity & Scores (Offline Queue)
                         </button>
                     </div>
                 </div>
+            </div>
 
-                <!-- Student List Container -->
-                <div id="attendanceStudentList" class="border rounded-3 mb-4 overflow-hidden">
-                    <div class="p-4 text-center text-muted">Please select a class to load students.</div>
-                </div>
-
-                <!-- Save Button -->
-                <div class="d-flex justify-content-end">
-                    <button type="button" class="btn btn-success btn-lg px-4" id="saveAttendanceBtn" onclick="saveAttendanceOffline()">
-                        <i class="bi bi-floppy me-2"></i> Save Attendance (Offline Queue)
-                    </button>
+            <!-- ========================================================================= -->
+            <!-- TAB 3: MY CLASSES OVERVIEW -->
+            <!-- ========================================================================= -->
+            <div id="tabClasses" class="tab-content-panel d-none">
+                <div class="offline-card">
+                    <h5 class="fw-bold mb-3">My Synchronized Assigned Classes</h5>
+                    <div id="classesListContainer" class="row g-3">
+                        <div class="col-12 text-center text-muted py-4">Loading classes...</div>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- ========================================================================= -->
-        <!-- TAB 2: RECORD ACTIVITIES & SCORES -->
-        <!-- ========================================================================= -->
-        <div id="tabActivities" class="tab-content-panel d-none">
-            <div class="offline-card">
-                <div class="row g-3 mb-3">
-                    <div class="col-md-5">
-                        <label class="form-label fw-semibold small text-muted">SELECT CLASS</label>
-                        <select id="activityClassSelect" class="form-select" onchange="onActivityClassChanged()">
-                            <option value="">Loading classes...</option>
-                        </select>
+            <!-- ========================================================================= -->
+            <!-- TAB 4: SYNC QUEUE -->
+            <!-- ========================================================================= -->
+            <div id="tabQueue" class="tab-content-panel d-none">
+                <div class="offline-card">
+                    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                        <div>
+                            <h5 class="fw-bold mb-1">Offline Submissions Queue</h5>
+                            <p class="text-muted small mb-0">All records saved while offline are listed below with their sync statuses.</p>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-danger btn-sm" onclick="clearSyncQueue()">
+                                <i class="bi bi-trash me-1"></i> Clear Queue
+                            </button>
+                            <button type="button" class="btn btn-primary-custom btn-sm" onclick="triggerManualSync()">
+                                <i class="bi bi-arrow-repeat me-1"></i> Sync Now
+                            </button>
+                        </div>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-semibold small text-muted">COMPONENT</label>
-                        <select id="activityComponentSelect" class="form-select">
-                            <option value="ww">Written Work (WW)</option>
-                            <option value="pt">Performance Task (PT)</option>
-                            <option value="qa">Quarterly Assessment (QA)</option>
-                        </select>
+
+                    <div id="syncQueueContainer">
+                        <div class="text-center text-muted py-4">No pending offline submissions.</div>
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-semibold small text-muted">HIGHEST POSSIBLE SCORE</label>
-                        <input type="number" id="activityTotalScoreInput" class="form-control" placeholder="e.g. 20" min="1" step="0.5" value="20">
-                    </div>
-                </div>
-
-                <div class="row g-3 mb-3">
-                    <div class="col-md-8">
-                        <label class="form-label fw-semibold small text-muted">ACTIVITY TITLE</label>
-                        <input type="text" id="activityTitleInput" class="form-control" placeholder="e.g. Quiz 1 - Cell Biology">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-semibold small text-muted">DATE</label>
-                        <input type="date" id="activityDateInput" class="form-control">
-                    </div>
-                </div>
-
-                <!-- Student Score Entry Table -->
-                <div class="table-responsive border rounded-3 mb-4">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Student Name</th>
-                                <th style="width: 140px;" class="text-center">Score (Max: <span id="maxScoreBadge">20</span>)</th>
-                                <th>Remarks</th>
-                            </tr>
-                        </thead>
-                        <tbody id="activityScoresBody">
-                            <tr><td colspan="3" class="text-center text-muted py-4">Please select a class to enter student scores.</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="d-flex justify-content-end">
-                    <button type="button" class="btn btn-success btn-lg px-4" id="saveActivityBtn" onclick="saveActivityOffline()">
-                        <i class="bi bi-floppy me-2"></i> Save Activity & Scores (Offline Queue)
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- ========================================================================= -->
-        <!-- TAB 3: SYNC QUEUE -->
-        <!-- ========================================================================= -->
-        <div id="tabQueue" class="tab-content-panel d-none">
-            <div class="offline-card">
-                <div class="d-flex align-items-center justify-content-between mb-3">
-                    <h5 class="fw-bold mb-0">Offline Submissions Queue</h5>
-                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="clearSyncQueue()">
-                        <i class="bi bi-trash me-1"></i> Clear Queue
-                    </button>
-                </div>
-                <p class="text-muted small">All records recorded while offline are queued below. Once an internet connection is available, they will automatically sync to the server.</p>
-
-                <div id="syncQueueContainer">
-                    <div class="text-center text-muted py-4">No pending offline submissions.</div>
                 </div>
             </div>
         </div>
@@ -488,101 +575,115 @@
         let qrScannerModalObj = null;
 
         document.addEventListener('DOMContentLoaded', async function () {
-            // Set today's date
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('attendanceDateInput').value = today;
             document.getElementById('activityDateInput').value = today;
 
-            // Initialize bootstrap modal
             const modalEl = document.getElementById('qrScannerModal');
             if (modalEl) {
                 qrScannerModalObj = new bootstrap.Modal(modalEl);
             }
 
-            // Sync max score label
             document.getElementById('activityTotalScoreInput')?.addEventListener('input', function(e) {
                 document.getElementById('maxScoreBadge').textContent = e.target.value || '20';
             });
 
-            // Monitor connectivity
             updateConnectionStatus();
             window.addEventListener('online', updateConnectionStatus);
             window.addEventListener('offline', updateConnectionStatus);
 
-            // Load stored data from IndexedDB
-            await loadOfflineWorkspace();
+            await initializeTeacherWorkspace();
             await refreshQueueCount();
         });
 
         function updateConnectionStatus() {
             const isOnline = navigator.onLine;
-            const dot = document.getElementById('connectionDot');
-            const text = document.getElementById('connectionStatusText');
+            const pill = document.getElementById('liveConnectionPill');
             if (isOnline) {
-                if (dot) { dot.style.backgroundColor = '#10b981'; dot.style.boxShadow = 'none'; }
-                if (text) text.textContent = 'Online — Ready to Sync';
+                if (pill) {
+                    pill.className = 'offline-pill online';
+                    pill.innerHTML = '<i class="bi bi-wifi"></i> Online — Ready to Sync';
+                }
             } else {
-                if (dot) { dot.style.backgroundColor = '#f59e0b'; }
-                if (text) text.textContent = 'Offline Mode Active';
+                if (pill) {
+                    pill.className = 'offline-pill';
+                    pill.innerHTML = '<i class="bi bi-wifi-off"></i> Offline Mode';
+                }
             }
         }
 
-        async function loadOfflineWorkspace() {
-            // 1. Profile
-            const profile = await window.bshsOfflineStorage.getTeacherProfile();
-            if (profile && profile.first_name) {
-                document.getElementById('teacherGreeting').textContent = `Teacher: ${profile.first_name} ${profile.last_name || ''} • Zero internet required`;
+        async function initializeTeacherWorkspace() {
+            const session = await window.bshsOfflineStorage.getTeacherSession();
+            const unauthPanel = document.getElementById('unauthPanel');
+            const workspacePanel = document.getElementById('workspacePanel');
+
+            if (!session || !session.teacher_id) {
+                if (unauthPanel) unauthPanel.classList.remove('d-none');
+                if (workspacePanel) workspacePanel.classList.add('d-none');
+                return;
             }
 
-            // 2. Classes
+            if (unauthPanel) unauthPanel.classList.add('d-none');
+            if (workspacePanel) workspacePanel.classList.remove('d-none');
+
+            // Render Teacher Header Info
+            const name = `${session.first_name || 'Teacher'} ${session.last_name || ''}`.trim();
+            document.getElementById('teacherDisplayName').textContent = name;
+            document.getElementById('teacherRefCode').textContent = session.reference_code || '—';
+            document.getElementById('teacherAvatarText').textContent = (session.first_name?.[0] || 'T').toUpperCase();
+
+            // Load Assigned Classes from IndexedDB
             currentClasses = await window.bshsOfflineStorage.getClasses();
             const attSelect = document.getElementById('attendanceClassSelect');
             const actSelect = document.getElementById('activityClassSelect');
 
             if (!currentClasses || currentClasses.length === 0) {
-                attSelect.innerHTML = '<option value="">No cached classes found</option>';
-                actSelect.innerHTML = '<option value="">No cached classes found</option>';
-                document.getElementById('attendanceStudentList').innerHTML = `
-                    <div class="p-4 text-center">
-                        <div class="text-muted mb-3">No teacher rosters are cached on this device yet.</div>
-                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="loadDemoData()">
-                            <i class="bi bi-magic me-1"></i> Load Demo Class & Roster (Offline Test)
-                        </button>
-                    </div>`;
+                attSelect.innerHTML = '<option value="">No assigned classes found</option>';
+                actSelect.innerHTML = '<option value="">No assigned classes found</option>';
+                document.getElementById('attendanceStudentList').innerHTML = '<div class="p-4 text-center text-muted">No classes synchronized. Connect to the internet once to download your class assignments.</div>';
                 return;
             }
 
-            const options = currentClasses.map(c => `<option value="${c.id}">${escapeHtml(c.name || '')} (G${c.grade_level || ''} - ${escapeHtml(c.section || '')})</option>`).join('');
+            const options = currentClasses.map(c => `<option value="${c.id}">${escapeHtml(c.name || '')} (Grade ${c.grade_level || ''} - ${escapeHtml(c.section || '')})</option>`).join('');
             attSelect.innerHTML = options;
             actSelect.innerHTML = options;
 
-            // Load first class roster
+            renderClassesOverview(currentClasses);
             await onAttendanceClassChanged();
             await onActivityClassChanged();
         }
 
-        async function loadDemoData() {
-            const demoClasses = [
-                { id: 101, name: 'General Biology 1', grade_level: 11, section: 'STEM-A', schedule: 'Mon/Wed/Fri 08:00 AM - 09:00 AM' },
-                { id: 102, name: 'Oral Communication', grade_level: 11, section: 'HUMSS-B', schedule: 'Tue/Thu 09:00 AM - 10:30 AM' }
-            ];
-            const demoRoster101 = [
-                { id: 1, first_name: 'Juan', last_name: 'Dela Cruz', reference_code: 'BSHS-ST-001', lrn: '123456789001', gender: 'male', attendance_status: 'present' },
-                { id: 2, first_name: 'Maria', last_name: 'Santos', reference_code: 'BSHS-ST-002', lrn: '123456789002', gender: 'female', attendance_status: 'present' },
-                { id: 3, first_name: 'Mark', last_name: 'Reyes', reference_code: 'BSHS-ST-003', lrn: '123456789003', gender: 'male', attendance_status: 'late' },
-                { id: 4, first_name: 'Anna', last_name: 'Lim', reference_code: 'BSHS-ST-004', lrn: '123456789004', gender: 'female', attendance_status: 'absent' },
-                { id: 5, first_name: 'Christian', last_name: 'Garcia', reference_code: 'BSHS-ST-005', lrn: '123456789005', gender: 'male', attendance_status: 'present' }
-            ];
-            const demoRoster102 = [
-                { id: 6, first_name: 'Sofia', last_name: 'Aquino', reference_code: 'BSHS-ST-006', lrn: '123456789006', gender: 'female', attendance_status: 'present' },
-                { id: 7, first_name: 'Daniel', last_name: 'Bautista', reference_code: 'BSHS-ST-007', lrn: '123456789007', gender: 'male', attendance_status: 'present' }
-            ];
+        function renderClassesOverview(classes) {
+            const container = document.getElementById('classesListContainer');
+            if (!container) return;
 
-            await window.bshsOfflineStorage.saveClasses(demoClasses);
-            await window.bshsOfflineStorage.saveClassRoster(101, demoRoster101);
-            await window.bshsOfflineStorage.saveClassRoster(102, demoRoster102);
-            await loadOfflineWorkspace();
-            showToast('Demo classes & student rosters loaded!', 'success');
+            if (!classes || classes.length === 0) {
+                container.innerHTML = '<div class="col-12 text-center text-muted py-4">No classes synchronized.</div>';
+                return;
+            }
+
+            container.innerHTML = classes.map(c => `
+                <div class="col-md-6 col-lg-4">
+                    <div class="offline-card h-100 p-3">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="badge bg-primary px-2 py-1">Grade ${c.grade_level || '11'}</span>
+                            <span class="text-muted small">${escapeHtml(c.section || '')}</span>
+                        </div>
+                        <h6 class="fw-bold mb-1">${escapeHtml(c.name || 'Subject')}</h6>
+                        <p class="text-muted small mb-2"><i class="bi bi-clock me-1"></i>${escapeHtml(c.schedule || 'Schedule not set')}</p>
+                        <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                            <span class="small text-muted">Status: Active</span>
+                            <button class="btn btn-sm btn-outline-primary" onclick="selectClassForAttendance(${c.id})">Take Attendance</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function selectClassForAttendance(classId) {
+            document.getElementById('attendanceClassSelect').value = classId;
+            switchTab('attendance');
+            onAttendanceClassChanged();
         }
 
         function switchTab(tab) {
@@ -595,6 +696,9 @@
             } else if (tab === 'activities') {
                 document.getElementById('tabActivitiesBtn').classList.add('active');
                 document.getElementById('tabActivities').classList.remove('d-none');
+            } else if (tab === 'classes') {
+                document.getElementById('tabClassesBtn').classList.add('active');
+                document.getElementById('tabClasses').classList.remove('d-none');
             } else if (tab === 'queue') {
                 document.getElementById('tabQueueBtn').classList.add('active');
                 document.getElementById('tabQueue').classList.remove('d-none');
@@ -607,16 +711,40 @@
         // -------------------------------------------------------------
         async function onAttendanceClassChanged() {
             const classId = document.getElementById('attendanceClassSelect').value;
+            const date = document.getElementById('attendanceDateInput').value;
             if (!classId) return;
 
             currentRoster = await window.bshsOfflineStorage.getClassRoster(classId);
+
+            // Check if local attendance was already recorded for this date
+            const localSaved = await window.bshsOfflineStorage.getLocalAttendance(classId, date);
+            const badge = document.getElementById('attendanceSavedStatus');
+
+            if (localSaved && Array.isArray(localSaved.records)) {
+                const markMap = {};
+                localSaved.records.forEach(r => { markMap[r.student_id] = r.status; });
+                currentRoster.forEach(s => {
+                    if (markMap[s.id]) s.attendance_status = markMap[s.id];
+                });
+                if (badge) {
+                    badge.classList.remove('d-none');
+                    badge.innerHTML = `<i class="bi bi-check-circle-fill"></i> Saved Locally (${localSaved.sync_status === 'synced' ? 'Synced' : 'Offline'})`;
+                }
+            } else {
+                if (badge) badge.classList.add('d-none');
+            }
+
             renderAttendanceList(currentRoster);
+        }
+
+        async function onAttendanceDateChanged() {
+            await onAttendanceClassChanged();
         }
 
         function renderAttendanceList(students) {
             const container = document.getElementById('attendanceStudentList');
             if (!students || students.length === 0) {
-                container.innerHTML = '<div class="p-4 text-center text-muted">No students enrolled in this class.</div>';
+                container.innerHTML = '<div class="p-4 text-center text-muted">No students enrolled in this class roster.</div>';
                 updateAttendanceKpis();
                 return;
             }
@@ -656,7 +784,6 @@
             const next = cycle[(cycle.indexOf(current) + 1) % cycle.length];
             currentRoster[studentIdx].attendance_status = next;
 
-            // Re-render single student row or update UI
             const rows = document.querySelectorAll('.student-row');
             if (rows[studentIdx]) {
                 const pill = rows[studentIdx].querySelector('.status-pill');
@@ -724,20 +851,16 @@
                 remarks: s.remarks || ''
             }));
 
-            const action = {
-                type: 'submit_attendance',
-                url: 'teacher_Action.php?action=submit_attendance',
-                payload: {
-                    class_id: classId,
-                    date: date,
-                    mode: 'subject',
-                    records: records
-                }
-            };
-
-            await window.bshsOfflineStorage.enqueueSyncItem(action);
+            await window.bshsOfflineStorage.saveAttendanceLocally(classId, date, records);
             await refreshQueueCount();
-            showToast('Attendance saved to offline queue!', 'success');
+
+            const badge = document.getElementById('attendanceSavedStatus');
+            if (badge) {
+                badge.classList.remove('d-none');
+                badge.innerHTML = '<i class="bi bi-check-circle-fill"></i> Saved Locally (Offline)';
+            }
+
+            showToast('Attendance saved locally! Will sync automatically when online.', 'success');
         }
 
         // -------------------------------------------------------------
@@ -751,27 +874,26 @@
             const tbody = document.getElementById('activityScoresBody');
 
             if (!students || students.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-4">No students enrolled in this class.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-4">No students enrolled in this class roster.</td></tr>';
                 return;
             }
 
             const maxScore = parseFloat(document.getElementById('activityTotalScoreInput').value) || 20;
 
-            tbody.innerHTML = students.map(s => {
-                return `
+            tbody.innerHTML = students.map(s => `
                 <tr data-student-id="${s.id}">
                     <td>
                         <div class="fw-semibold">${escapeHtml(s.last_name || '')}, ${escapeHtml(s.first_name || '')}</div>
-                        <div class="text-muted small">Ref: ${escapeHtml(s.reference_code || '—')}</div>
+                        <div class="text-muted small">Ref: ${escapeHtml(s.reference_code || '—')} | LRN: ${escapeHtml(s.lrn || '—')}</div>
                     </td>
                     <td class="text-center">
                         <input type="number" class="form-control form-control-sm score-input mx-auto" min="0" max="${maxScore}" step="0.5" placeholder="0">
                     </td>
                     <td>
-                        <input type="text" class="form-control form-control-sm" placeholder="Optional remark">
+                        <input type="text" class="form-control form-control-sm" placeholder="Optional remarks">
                     </td>
-                </tr>`;
-            }).join('');
+                </tr>
+            `).join('');
         }
 
         async function saveActivityOffline() {
@@ -799,22 +921,9 @@
                 }
             });
 
-            const action = {
-                type: 'save_offline_activity',
-                url: 'teacher_Action.php?action=save_offline_activity',
-                payload: {
-                    class_id: classId,
-                    title: title,
-                    component: component,
-                    total_score: totalScore,
-                    activity_date: date,
-                    scores: scores
-                }
-            };
-
-            await window.bshsOfflineStorage.enqueueSyncItem(action);
+            await window.bshsOfflineStorage.saveActivityLocally(classId, title, component, totalScore, date, scores);
             await refreshQueueCount();
-            showToast('Activity & scores saved to offline queue!', 'success');
+            showToast('Activity & scores saved locally! Will sync automatically when online.', 'success');
         }
 
         // -------------------------------------------------------------
@@ -836,7 +945,7 @@
 
             html5QrScanner.start({ facingMode: "environment" }, config, (decodedText) => {
                 onQrCodeScanned(decodedText);
-            }).catch(err => {
+            }).catch(() => {
                 document.getElementById('qrScanFeedback').textContent = 'Camera permission required for QR scanning.';
             });
         }
@@ -891,21 +1000,21 @@
             const container = document.getElementById('syncQueueContainer');
 
             if (!queue || queue.length === 0) {
-                container.innerHTML = '<div class="text-center text-muted py-4">No pending offline submissions.</div>';
+                container.innerHTML = '<div class="text-center text-muted py-4"><i class="bi bi-check-circle text-success fs-3 d-block mb-2"></i>All offline records are fully synchronized!</div>';
                 return;
             }
 
             container.innerHTML = queue.map(item => {
-                const isAttendance = item.action?.type === 'submit_attendance';
-                const title = isAttendance ? 'Daily Attendance Sheet' : `Activity: ${item.action?.payload?.title || 'Untitled'}`;
+                const isAttendance = (item.operation === 'attendance.upsert' || item.action?.type === 'submit_attendance');
+                const title = isAttendance ? 'Daily Attendance Sheet' : `Activity: ${item.payload?.title || item.action?.payload?.title || 'Untitled'}`;
                 const detail = isAttendance
-                    ? `Class ID ${item.action?.payload?.class_id} • ${item.action?.payload?.records?.length || 0} students`
-                    : `Class ID ${item.action?.payload?.class_id} • ${item.action?.payload?.scores?.length || 0} scores recorded`;
+                    ? `Class ID ${item.payload?.class_id || item.action?.payload?.class_id} • ${item.payload?.records?.length || item.action?.payload?.records?.length || 0} students`
+                    : `Class ID ${item.payload?.class_id || item.action?.payload?.class_id} • ${item.payload?.scores?.length || item.action?.payload?.scores?.length || 0} scores`;
                 return `
                 <div class="sync-queue-item">
                     <div>
                         <div class="fw-bold">${escapeHtml(title)}</div>
-                        <div class="text-muted small">${escapeHtml(detail)} • Queued: ${new Date(item.addedAt).toLocaleTimeString()}</div>
+                        <div class="text-muted small">${escapeHtml(detail)} • Queued: ${new Date(item.added_at || item.addedAt).toLocaleTimeString()}</div>
                     </div>
                     <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeQueueItem('${item.id}')">
                         <i class="bi bi-x"></i> Remove
@@ -943,7 +1052,8 @@
             }
             await refreshQueueCount();
             await renderSyncQueue();
-            showToast('Sync process completed!', 'success');
+            await onAttendanceClassChanged();
+            showToast('Synchronization completed successfully!', 'success');
         }
 
         function showToast(msg, type = 'primary') {

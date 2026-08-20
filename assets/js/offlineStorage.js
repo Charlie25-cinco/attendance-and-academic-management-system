@@ -1,16 +1,20 @@
 /**
- * BSHS AMS - IndexedDB & LocalStorage Client Offline Storage Engine
- * Manages teacher profile, class rosters, offline attendance, offline activities, and sync queue.
+ * BSHS AMS - Production IndexedDB Client Offline Storage Engine (v2)
+ * Manages teacher local session, assigned classes, student rosters,
+ * local attendance records, local activity scores, and sync queue.
  */
 (function (global) {
   'use strict';
 
   const DB_NAME = 'bshs_ams_offline_db';
-  const DB_VERSION = 1;
+  const DB_VERSION = 2;
   const STORES = {
+    SESSION: 'teacher_session',
     PROFILE: 'teacher_profile',
     CLASSES: 'teacher_classes',
     ROSTERS: 'class_rosters',
+    ATTENDANCE: 'attendance_records',
+    ACTIVITIES: 'activity_records',
     SYNC_QUEUE: 'sync_queue'
   };
 
@@ -22,11 +26,14 @@
       return Promise.resolve(null);
     }
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
 
       request.onupgradeneeded = function (event) {
         const db = event.target.result;
+        if (!db.objectStoreNames.contains(STORES.SESSION)) {
+          db.createObjectStore(STORES.SESSION, { keyPath: 'key' });
+        }
         if (!db.objectStoreNames.contains(STORES.PROFILE)) {
           db.createObjectStore(STORES.PROFILE, { keyPath: 'key' });
         }
@@ -36,8 +43,17 @@
         if (!db.objectStoreNames.contains(STORES.ROSTERS)) {
           db.createObjectStore(STORES.ROSTERS, { keyPath: 'class_id' });
         }
+        if (!db.objectStoreNames.contains(STORES.ATTENDANCE)) {
+          const attStore = db.createObjectStore(STORES.ATTENDANCE, { keyPath: 'local_id' });
+          attStore.createIndex('class_date', ['class_id', 'date'], { unique: false });
+        }
+        if (!db.objectStoreNames.contains(STORES.ACTIVITIES)) {
+          const actStore = db.createObjectStore(STORES.ACTIVITIES, { keyPath: 'local_id' });
+          actStore.createIndex('class_id', 'class_id', { unique: false });
+        }
         if (!db.objectStoreNames.contains(STORES.SYNC_QUEUE)) {
-          db.createObjectStore(STORES.SYNC_QUEUE, { keyPath: 'id' });
+          const queueStore = db.createObjectStore(STORES.SYNC_QUEUE, { keyPath: 'id' });
+          queueStore.createIndex('status', 'status', { unique: false });
         }
       };
 
@@ -47,54 +63,68 @@
       };
 
       request.onerror = function (event) {
-        console.warn('[OfflineDB] IndexedDB error:', event.target.error);
-        resolve(null); // Fallback to localStorage gracefully
+        console.warn('[OfflineDB] IndexedDB open error:', event.target.error);
+        resolve(null);
       };
     });
   }
 
   const bshsOfflineStorage = {
     // -------------------------------------------------------------
-    // Save Teacher Profile
+    // 1. Teacher Session Management
     // -------------------------------------------------------------
-    async saveTeacherProfile(profile) {
-      if (!profile) return;
+    async saveTeacherSession(session) {
+      if (!session || !session.teacher_id) return;
+      const data = {
+        key: 'current_user',
+        teacher_id: parseInt(session.teacher_id, 10),
+        role: session.role || 'teacher',
+        first_name: session.first_name || '',
+        last_name: session.last_name || '',
+        email: session.email || '',
+        reference_code: session.reference_code || '',
+        profile_picture: session.profile_picture || '',
+        authenticated_at: session.authenticated_at || Date.now(),
+        last_sync_at: Date.now()
+      };
+
       try {
-        localStorage.setItem('bshs_offline_profile', JSON.stringify(profile));
+        localStorage.setItem('bshs_teacher_session', JSON.stringify(data));
       } catch (e) {}
 
       const db = await openDatabase();
       if (!db) return;
       return new Promise((resolve) => {
         try {
-          const tx = db.transaction([STORES.PROFILE], 'readwrite');
-          tx.objectStore(STORES.PROFILE).put({ key: 'current_user', ...profile });
+          const tx = db.transaction([STORES.SESSION, STORES.PROFILE], 'readwrite');
+          tx.objectStore(STORES.SESSION).put(data);
+          tx.objectStore(STORES.PROFILE).put(data);
           tx.oncomplete = () => resolve(true);
           tx.onerror = () => resolve(false);
         } catch (e) { resolve(false); }
       });
     },
 
-    async getTeacherProfile() {
+    async getTeacherSession() {
       const db = await openDatabase();
       if (db) {
         try {
-          const profile = await new Promise((resolve) => {
-            const tx = db.transaction([STORES.PROFILE], 'readonly');
-            const req = tx.objectStore(STORES.PROFILE).get('current_user');
+          const session = await new Promise((resolve) => {
+            const tx = db.transaction([STORES.SESSION], 'readonly');
+            const req = tx.objectStore(STORES.SESSION).get('current_user');
             req.onsuccess = () => resolve(req.result || null);
             req.onerror = () => resolve(null);
           });
-          if (profile) return profile;
+          if (session && session.teacher_id) return session;
         } catch (e) {}
       }
       try {
-        return JSON.parse(localStorage.getItem('bshs_offline_profile')) || null;
+        return JSON.parse(localStorage.getItem('bshs_teacher_session')) || null;
       } catch (e) { return null; }
     },
 
     // -------------------------------------------------------------
-    // Save & Retrieve Teacher Classes
+    // 2. Teacher Assigned Classes Management
     // -------------------------------------------------------------
     async saveClasses(classes) {
       if (!Array.isArray(classes)) return;
@@ -108,7 +138,7 @@
         try {
           const tx = db.transaction([STORES.CLASSES], 'readwrite');
           const store = tx.objectStore(STORES.CLASSES);
-          tx.objectStore(STORES.CLASSES).clear();
+          store.clear();
           classes.forEach((c) => store.put(c));
           tx.oncomplete = () => resolve(true);
           tx.onerror = () => resolve(false);
@@ -135,7 +165,7 @@
     },
 
     // -------------------------------------------------------------
-    // Save & Retrieve Class Student Rosters
+    // 3. Enrolled Student Rosters Management
     // -------------------------------------------------------------
     async saveClassRoster(classId, students) {
       if (!classId || !Array.isArray(students)) return;
@@ -178,33 +208,181 @@
     },
 
     // -------------------------------------------------------------
-    // Sync Queue (Attendance & Activity Scores)
+    // 4. Local Offline Attendance Records
     // -------------------------------------------------------------
-    async enqueueSyncItem(action) {
-      const item = {
-        id: Date.now() + '_' + Math.random().toString(36).slice(2, 8),
-        action,
-        addedAt: new Date().toISOString(),
-        attempts: 0
+    async saveAttendanceLocally(classId, date, records) {
+      const cId = parseInt(classId, 10);
+      const localId = 'att_' + cId + '_' + date;
+      const recordItem = {
+        local_id: localId,
+        class_id: cId,
+        date: date,
+        records: records,
+        saved_at: new Date().toISOString(),
+        sync_status: 'pending'
       };
 
-      try {
-        const queue = JSON.parse(localStorage.getItem('bshs_offline_queue')) || [];
-        queue.push(item);
-        localStorage.setItem('bshs_offline_queue', JSON.stringify(queue));
-      } catch (e) {}
+      const syncOperation = {
+        id: 'op_' + localId,
+        operation_id: localId,
+        operation: 'attendance.upsert',
+        url: 'teacher_Action.php?action=submit_attendance',
+        payload: {
+          class_id: cId,
+          date: date,
+          mode: 'subject',
+          records: records
+        },
+        added_at: new Date().toISOString(),
+        attempts: 0,
+        status: 'pending'
+      };
 
       const db = await openDatabase();
       if (db) {
         try {
-          const tx = db.transaction([STORES.SYNC_QUEUE], 'readwrite');
-          tx.objectStore(STORES.SYNC_QUEUE).put(item);
+          const tx = db.transaction([STORES.ATTENDANCE, STORES.SYNC_QUEUE], 'readwrite');
+          tx.objectStore(STORES.ATTENDANCE).put(recordItem);
+          tx.objectStore(STORES.SYNC_QUEUE).put(syncOperation);
         } catch (e) {}
       }
 
-      return item;
+      // Also persist in localStorage queue for sync bridge
+      try {
+        const queue = JSON.parse(localStorage.getItem('bshs_offline_queue')) || [];
+        const filtered = queue.filter(q => q.id !== syncOperation.id);
+        filtered.push({
+          id: syncOperation.id,
+          action: {
+            type: 'submit_attendance',
+            url: syncOperation.url,
+            payload: syncOperation.payload
+          },
+          addedAt: syncOperation.added_at,
+          attempts: 0
+        });
+        localStorage.setItem('bshs_offline_queue', JSON.stringify(filtered));
+      } catch (e) {}
+
+      return recordItem;
     },
 
+    async getLocalAttendance(classId, date) {
+      const cId = parseInt(classId, 10);
+      const localId = 'att_' + cId + '_' + date;
+      const db = await openDatabase();
+      if (db) {
+        try {
+          return await new Promise((resolve) => {
+            const tx = db.transaction([STORES.ATTENDANCE], 'readonly');
+            const req = tx.objectStore(STORES.ATTENDANCE).get(localId);
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => resolve(null);
+          });
+        } catch (e) {}
+      }
+      return null;
+    },
+
+    async getAllLocalAttendance() {
+      const db = await openDatabase();
+      if (db) {
+        try {
+          return await new Promise((resolve) => {
+            const tx = db.transaction([STORES.ATTENDANCE], 'readonly');
+            const req = tx.objectStore(STORES.ATTENDANCE).getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => resolve([]);
+          });
+        } catch (e) {}
+      }
+      return [];
+    },
+
+    // -------------------------------------------------------------
+    // 5. Local Offline Activity & Score Records
+    // -------------------------------------------------------------
+    async saveActivityLocally(classId, title, component, totalScore, date, scores) {
+      const cId = parseInt(classId, 10);
+      const safeTitle = (title || 'untitled').replace(/\s+/g, '_').toLowerCase();
+      const localId = 'act_' + cId + '_' + safeTitle + '_' + date;
+
+      const activityItem = {
+        local_id: localId,
+        class_id: cId,
+        title: title,
+        component: component,
+        total_score: parseFloat(totalScore),
+        activity_date: date,
+        scores: scores,
+        saved_at: new Date().toISOString(),
+        sync_status: 'pending'
+      };
+
+      const syncOperation = {
+        id: 'op_' + localId,
+        operation_id: localId,
+        operation: 'activity.upsert',
+        url: 'teacher_Action.php?action=save_offline_activity',
+        payload: {
+          class_id: cId,
+          title: title,
+          component: component,
+          total_score: parseFloat(totalScore),
+          activity_date: date,
+          scores: scores
+        },
+        added_at: new Date().toISOString(),
+        attempts: 0,
+        status: 'pending'
+      };
+
+      const db = await openDatabase();
+      if (db) {
+        try {
+          const tx = db.transaction([STORES.ACTIVITIES, STORES.SYNC_QUEUE], 'readwrite');
+          tx.objectStore(STORES.ACTIVITIES).put(activityItem);
+          tx.objectStore(STORES.SYNC_QUEUE).put(syncOperation);
+        } catch (e) {}
+      }
+
+      try {
+        const queue = JSON.parse(localStorage.getItem('bshs_offline_queue')) || [];
+        const filtered = queue.filter(q => q.id !== syncOperation.id);
+        filtered.push({
+          id: syncOperation.id,
+          action: {
+            type: 'save_offline_activity',
+            url: syncOperation.url,
+            payload: syncOperation.payload
+          },
+          addedAt: syncOperation.added_at,
+          attempts: 0
+        });
+        localStorage.setItem('bshs_offline_queue', JSON.stringify(filtered));
+      } catch (e) {}
+
+      return activityItem;
+    },
+
+    async getAllLocalActivities() {
+      const db = await openDatabase();
+      if (db) {
+        try {
+          return await new Promise((resolve) => {
+            const tx = db.transaction([STORES.ACTIVITIES], 'readonly');
+            const req = tx.objectStore(STORES.ACTIVITIES).getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => resolve([]);
+          });
+        } catch (e) {}
+      }
+      return [];
+    },
+
+    // -------------------------------------------------------------
+    // 6. Sync Queue Operations
+    // -------------------------------------------------------------
     async getSyncQueue() {
       const db = await openDatabase();
       if (db) {
@@ -223,13 +401,49 @@
       } catch (e) { return []; }
     },
 
-    async removeSyncItem(id) {
+    async markRecordSynced(operationId) {
+      const db = await openDatabase();
+      if (db) {
+        try {
+          const tx = db.transaction([STORES.ATTENDANCE, STORES.ACTIVITIES, STORES.SYNC_QUEUE], 'readwrite');
+          // Update attendance record if exists
+          const attStore = tx.objectStore(STORES.ATTENDANCE);
+          const attReq = attStore.get(operationId);
+          attReq.onsuccess = function () {
+            if (attReq.result) {
+              const rec = attReq.result;
+              rec.sync_status = 'synced';
+              rec.synced_at = new Date().toISOString();
+              attStore.put(rec);
+            }
+          };
+
+          // Update activity record if exists
+          const actStore = tx.objectStore(STORES.ACTIVITIES);
+          const actReq = actStore.get(operationId);
+          actReq.onsuccess = function () {
+            if (actReq.result) {
+              const rec = actReq.result;
+              rec.sync_status = 'synced';
+              rec.synced_at = new Date().toISOString();
+              actStore.put(rec);
+            }
+          };
+
+          // Remove from sync queue
+          tx.objectStore(STORES.SYNC_QUEUE).delete('op_' + operationId);
+          tx.objectStore(STORES.SYNC_QUEUE).delete(operationId);
+        } catch (e) {}
+      }
+
       try {
         const queue = JSON.parse(localStorage.getItem('bshs_offline_queue')) || [];
-        const filtered = queue.filter((i) => i.id !== id);
+        const filtered = queue.filter(q => q.id !== operationId && q.id !== ('op_' + operationId));
         localStorage.setItem('bshs_offline_queue', JSON.stringify(filtered));
       } catch (e) {}
+    },
 
+    async removeSyncItem(id) {
       const db = await openDatabase();
       if (db) {
         try {
@@ -237,10 +451,15 @@
           tx.objectStore(STORES.SYNC_QUEUE).delete(id);
         } catch (e) {}
       }
+      try {
+        const queue = JSON.parse(localStorage.getItem('bshs_offline_queue')) || [];
+        const filtered = queue.filter(q => q.id !== id);
+        localStorage.setItem('bshs_offline_queue', JSON.stringify(filtered));
+      } catch (e) {}
     },
 
     // -------------------------------------------------------------
-    // Online Bootstrap Sync (Pulls entire teacher roster in <1s)
+    // 7. Online Bootstrap Sync (Fetches Real Teacher Data)
     // -------------------------------------------------------------
     async bootstrapOnline() {
       if (!navigator.onLine) return false;
@@ -259,16 +478,27 @@
         if (!data || !data.success) return false;
 
         if (data.teacher) {
-          await this.saveTeacherProfile(data.teacher);
+          await this.saveTeacherSession({
+            teacher_id: data.teacher.id,
+            role: 'teacher',
+            first_name: data.teacher.first_name,
+            last_name: data.teacher.last_name,
+            email: data.teacher.email,
+            reference_code: data.teacher.reference_code,
+            profile_picture: data.teacher.profile_picture
+          });
         }
+
         if (Array.isArray(data.classes)) {
           await this.saveClasses(data.classes);
         }
+
         if (data.rosters && typeof data.rosters === 'object') {
           for (const [classId, students] of Object.entries(data.rosters)) {
             await this.saveClassRoster(classId, students);
           }
         }
+
         return true;
       } catch (err) {
         return false;

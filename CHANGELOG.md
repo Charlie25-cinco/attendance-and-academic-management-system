@@ -2,6 +2,20 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.71 — 2026-08-20
+
+### Added
+
+- Built **Production Offline Teacher Application Shell** in [`offline.html`](file:///c:/laragon/www/attendance-and-academic-management-system/offline.html) that executes 100% client-side from IndexedDB without contacting PHP or MySQL:
+  - Automatically loads the authenticated teacher's real assigned classes and enrolled student rosters.
+  - Supports offline Daily Attendance recording and offline Camera QR Code scanning with live roster matching.
+  - Supports offline Grade Activities creation and student score encoding (WW, PT, QA).
+  - Persists all saves locally to IndexedDB `attendance_records` and `activity_records` with local timestamps and pending sync statuses.
+  - Seamlessly survives PWA closes, reboots, and complete offline restarts.
+- Enhanced **IndexedDB Client Engine v2** in [`assets/js/offlineStorage.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/offlineStorage.js) supporting `teacher_session`, `teacher_classes`, `class_rosters`, `attendance_records`, `activity_records`, and `sync_queue`.
+- Updated **Background Auto-Sync Engine** in [`assets/js/networkSync.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/networkSync.js) to submit pending offline records upon internet restoration with idempotency protection, mark records as `synced` in IndexedDB, and refresh local rosters.
+- Bumped Service Worker cache to `bshs-ams-v18`.
+
 ## v0.3.70 — 2026-08-20
 
 ### Fixed

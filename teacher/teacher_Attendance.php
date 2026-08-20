@@ -259,7 +259,15 @@ function prefetchOtherTeacherRosters() {
 }
 
 persistOfflineRoster(currentSelectedClassId, initialStudents);
-if (navigator.onLine) {
+if (window.bshsOfflineStorage && navigator.onLine) {
+    window.bshsOfflineStorage.saveTeacherSession({
+        teacher_id: <?php echo (int)($_SESSION['user_id'] ?? 0); ?>,
+        role: 'teacher',
+        first_name: <?php echo json_encode($_SESSION['first_name'] ?? ''); ?>,
+        last_name: <?php echo json_encode($_SESSION['last_name'] ?? ''); ?>,
+        email: <?php echo json_encode($_SESSION['email'] ?? ''); ?>,
+        reference_code: <?php echo json_encode($_SESSION['reference_code'] ?? ''); ?>
+    });
     setTimeout(prefetchOtherTeacherRosters, 1200);
 }
 
