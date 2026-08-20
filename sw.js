@@ -1,6 +1,6 @@
 // BSHS AMS root service worker - PWA cache + push notifications
 
-const CACHE_NAME = 'bshs-ams-v16';
+const CACHE_NAME = 'bshs-ams-v17';
 const BASE_PATH = (self.location.pathname || '').replace(/\/sw\.js$/, '');
 
 function resolvePath(path) {
@@ -118,17 +118,10 @@ self.addEventListener('fetch', function (event) {
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
-        .then(function (response) {
-          cacheResponse(event.request, response);
-          return response;
-        })
         .catch(function () {
-          return caches.match(event.request).then(function (cached) {
-            if (cached) return cached;
-            var offlineTarget = resolvePath('/offline.html');
-            return caches.match(offlineTarget).then(function (offlineRes) {
-              return offlineRes || caches.match('/offline.html') || caches.match('offline.html');
-            });
+          var offlineTarget = resolvePath('/offline.html');
+          return caches.match(offlineTarget).then(function (offlineRes) {
+            return offlineRes || caches.match('/offline.html') || caches.match('offline.html');
           });
         })
     );

@@ -366,6 +366,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             <i class="bi bi-box-arrow-in-right"></i>
                             Login
                         </button>
+                        <a href="../offline.html" class="btn btn-outline-warning w-100 mt-3 d-flex align-items-center justify-content-center gap-2" id="offlineWorkspaceBtn">
+                            <i class="bi bi-wifi-off"></i> Open Offline Workspace
+                        </a>
                     </form>
 
                     <div class="auth-footer">
@@ -377,8 +380,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     </div>
 
     <script src="<?php echo appAssetPath('vendor/bootstrap/bootstrap.bundle.min.js'); ?>"></script>
+    <script src="<?php echo appAssetPath('js/offlineStorage.js'); ?>"></script>
     <script src="<?php echo appAssetPath('js/main.js'); ?>"></script>
     <script>
+        if (!navigator.onLine) {
+            window.location.replace('../offline.html');
+        }
+        window.addEventListener('offline', function () {
+            window.location.replace('../offline.html');
+        });
         document.addEventListener('DOMContentLoaded', function() {
             const hour = new Date().getHours();
             let greeting = 'Welcome!';

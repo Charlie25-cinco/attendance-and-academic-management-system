@@ -2,6 +2,14 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.70 — 2026-08-20
+
+### Fixed
+
+- Updated `sw.js` navigation handler to strictly bypass stale cached dynamic PHP responses and directly serve [`offline.html`](file:///c:/laragon/www/attendance-and-academic-management-system/offline.html) when the device is offline, ensuring the offline workspace opens immediately upon launching the PWA without internet.
+- Added automatic offline redirection and an explicit **Open Offline Workspace** launch button on [`auth/login.php`](file:///c:/laragon/www/attendance-and-academic-management-system/auth/login.php) so opening the app offline from the login screen immediately switches to the offline attendance/activities workspace.
+- Bumped Service Worker cache to `bshs-ams-v17`.
+
 ## v0.3.68 — 2026-08-20
 
 ### Added
