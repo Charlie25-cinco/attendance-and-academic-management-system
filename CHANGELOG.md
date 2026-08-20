@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.66 — 2026-08-20
+
+### Fixed
+
+- Added dynamic `BASE_PATH` calculation and `resolvePath()` helper to `sw.js` so offline shell assets and fallback navigation routes resolve seamlessly across subfolder deployments (e.g. Laragon `/attendance-and-academic-management-system/`) and root domains alike.
+- Converted hardcoded root asset paths in `offline.html` to relative URLs (`assets/...`) to guarantee reliable asset loading in any directory hierarchy.
+
 ## v0.3.65 — 2026-08-20
 
 ### Added

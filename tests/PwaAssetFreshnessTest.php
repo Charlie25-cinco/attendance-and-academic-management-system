@@ -25,6 +25,8 @@ final class PwaAssetFreshnessTest extends TestCase
 
         $this->assertIsString($serviceWorker);
         $this->assertStringContainsString("const CACHE_NAME = 'bshs-ams-v14';", $serviceWorker);
+        $this->assertStringContainsString("const BASE_PATH = (self.location.pathname || '').replace(/\/sw\.js$/, '');", $serviceWorker);
+        $this->assertStringContainsString("function resolvePath(path)", $serviceWorker);
         $this->assertStringContainsString("'/offline.html'", $serviceWorker);
         $this->assertStringContainsString("'/assets/js/networkSync.js'", $serviceWorker);
         $this->assertStringContainsString('var needsFreshAsset = /\\.(css|js)$/i.test(url.pathname);', $serviceWorker);

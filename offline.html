@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Offline Mode - Balingasag Senior High School</title>
-    <link rel="manifest" href="/assets/manifest.json">
-    <link rel="icon" type="image/jpeg" href="/assets/images/bshs-logo.jpg">
-    <link rel="apple-touch-icon" href="/assets/images/icon-192.png">
-    <link rel="stylesheet" href="/assets/vendor/bootstrap/bootstrap.min.css">
-    <link rel="stylesheet" href="/assets/vendor/bootstrap-icons/bootstrap-icons.css">
-    <link rel="stylesheet" href="/assets/css/main.css">
+    <link rel="manifest" href="assets/manifest.json">
+    <link rel="icon" type="image/jpeg" href="assets/images/bshs-logo.jpg">
+    <link rel="apple-touch-icon" href="assets/images/icon-192.png">
+    <link rel="stylesheet" href="assets/vendor/bootstrap/bootstrap.min.css">
+    <link rel="stylesheet" href="assets/vendor/bootstrap-icons/bootstrap-icons.css">
+    <link rel="stylesheet" href="assets/css/main.css">
     <style>
         :root {
             --bshs-navy: #003366;
@@ -206,7 +206,7 @@
 <body>
     <div class="offline-card">
         <div class="offline-logo-wrapper">
-            <img src="/assets/images/bshs-logo.jpg" alt="BSHS Logo" class="offline-logo">
+            <img src="assets/images/bshs-logo.jpg" alt="BSHS Logo" class="offline-logo">
             <span class="offline-badge-pulse" id="statusDot">
                 <i class="bi bi-wifi-off"></i>
             </span>
@@ -242,7 +242,7 @@
                 <i class="bi bi-arrow-clockwise" id="retryIcon"></i>
                 <span>Retry Connection</span>
             </button>
-            <a href="/" class="btn-return" id="returnLink">
+            <a href="./" class="btn-return" id="returnLink">
                 <i class="bi bi-house me-1"></i>Return to Portal
             </a>
         </div>
@@ -305,7 +305,7 @@
             if (btn) btn.disabled = true;
             if (icon) icon.classList.add('bi-spin');
 
-            fetch('/assets/manifest.json?cache_bust=' + Date.now(), { method: 'HEAD', cache: 'no-store' })
+            fetch('assets/manifest.json?cache_bust=' + Date.now(), { method: 'HEAD', cache: 'no-store' })
                 .then(function (res) {
                     if (res.ok) {
                         setOnlineUI();

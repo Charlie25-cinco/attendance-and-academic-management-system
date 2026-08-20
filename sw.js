@@ -1,6 +1,16 @@
 // BSHS AMS root service worker - PWA cache + push notifications
 
 const CACHE_NAME = 'bshs-ams-v14';
+const BASE_PATH = (self.location.pathname || '').replace(/\/sw\.js$/, '');
+
+function resolvePath(path) {
+  if (!path) return path;
+  if (path.indexOf('/') === 0) {
+    return BASE_PATH + path;
+  }
+  return path;
+}
+
 const APP_SHELL_URLS = [
   '/offline.html',
   '/assets/manifest.json',
@@ -24,8 +34,9 @@ self.addEventListener('install', function (event) {
     caches.open(CACHE_NAME).then(function (cache) {
       return Promise.allSettled(
         APP_SHELL_URLS.map(function (url) {
-          return cache.add(url).catch(function (error) {
-            console.warn('[SW] Pre-cache failed for ' + url + ':', error);
+          var targetUrl = resolvePath(url);
+          return cache.add(targetUrl).catch(function (error) {
+            console.warn('[SW] Pre-cache failed for ' + targetUrl + ':', error);
           });
         })
       );
@@ -111,7 +122,11 @@ self.addEventListener('fetch', function (event) {
         })
         .catch(function () {
           return caches.match(event.request).then(function (cached) {
-            return cached || caches.match('/offline.html');
+            if (cached) return cached;
+            var offlineTarget = resolvePath('/offline.html');
+            return caches.match(offlineTarget).then(function (offlineRes) {
+              return offlineRes || caches.match('/offline.html') || caches.match('offline.html');
+            });
           });
         })
     );
