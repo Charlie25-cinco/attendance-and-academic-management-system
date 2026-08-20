@@ -569,6 +569,26 @@ $page_title = 'Teacher Dashboard';
             greetingEl.innerText = greeting + ", " + userName + "!";
         }
 
+        if (!navigator.onLine) {
+            const hero = document.querySelector('.hero-banner');
+            if (hero && !document.getElementById('offlineBanner')) {
+                const b = document.createElement('div');
+                b.id = 'offlineBanner';
+                b.className = 'alert alert-warning d-flex align-items-center justify-content-between mt-3 mb-0';
+                b.innerHTML = '<div><i class="bi bi-wifi-off me-2"></i><strong>Offline Mode Active</strong> — Showing locally stored teacher workspace. Records will synchronize automatically when online.</div>' +
+                    '<a href="teacher_Attendance.php" class="btn btn-sm btn-warning"><i class="bi bi-calendar-check me-1"></i>Take Attendance</a>';
+                hero.appendChild(b);
+            }
+
+            if (window.bshsOfflineStorage) {
+                window.bshsOfflineStorage.getTeacherSession().then(s => {
+                    if (s && s.first_name && greetingEl) {
+                        greetingEl.innerText = greeting + ", " + s.first_name + "!";
+                    }
+                });
+            }
+        }
+
         if (window.bshsOfflineStorage && navigator.onLine) {
             window.bshsOfflineStorage.saveTeacherSession({
                 teacher_id: <?php echo (int)($_SESSION['user_id'] ?? 0); ?>,

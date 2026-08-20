@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.72 — 2026-08-20
+
+### Added
+
+- **Unified Offline-First Real Teacher Application**:
+  - Pre-cached the real teacher application shells ([`teacher/teacher.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher.php), [`teacher/teacher_Attendance.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Attendance.php), [`teacher/teacher_Grades.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Grades.php), [`auth/login.php`](file:///c:/laragon/www/attendance-and-academic-management-system/auth/login.php)) under cache **`bshs-ams-v19`**.
+  - Updated Service Worker navigation routing to employ **Network-First with Exact Application Shell Cache Fallback**, guaranteeing teachers remain on the exact same portal URL and UI whether online or offline without falling back to generic offline screens.
+  - Implemented in-page offline hydration in [`teacher/teacher_Attendance.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Attendance.php) to automatically load assigned classes, enrolled student rosters, local attendance marks, and camera QR scanning directly from IndexedDB when offline.
+  - Updated [`auth/login.php`](file:///c:/laragon/www/attendance-and-academic-management-system/auth/login.php) to automatically route offline users to the real teacher dashboard when a local authenticated teacher session is detected.
+
 ## v0.3.71 — 2026-08-20
 
 ### Added

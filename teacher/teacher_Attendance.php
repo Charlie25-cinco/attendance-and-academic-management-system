@@ -277,12 +277,139 @@ function cycleStatus(button){if(!canEditAttendance){return;}const current=button
 function updateSummaryCounts(summary){if(summary){document.getElementById('presentCount').textContent=summary.present||0;document.getElementById('absentCount').textContent=summary.absent||0;document.getElementById('lateCount').textContent=summary.late||0;return;}let p=0,a=0,l=0;document.querySelectorAll('#attendanceBody tr[data-student-id]').forEach(r=>{const s=r.querySelector('.teacher-status')?.dataset.status;if(s==='present')p++;if(s==='absent')a++;if(s==='late')l++;});document.getElementById('presentCount').textContent=p;document.getElementById('absentCount').textContent=a;document.getElementById('lateCount').textContent=l;}
 function applySearchFilter(){const input=document.getElementById('attendanceSearch');const q=(input?.value||'').trim().toLowerCase();const tbody=document.getElementById('attendanceBody');if(!tbody){return;}const rows=Array.from(tbody.querySelectorAll('tr[data-student-id]'));if(rows.length===0){return;}let visible=0;rows.forEach(r=>{const name=r.querySelector('.student-name')?.textContent?.toLowerCase()||'';const code=r.children?.[1]?.textContent?.toLowerCase()||'';const match=!q||name.includes(q)||code.includes(q);r.style.display=match?'':'none';if(match){visible++;}});let emptyRow=document.getElementById('attendanceSearchEmpty');if(visible===0){if(!emptyRow){emptyRow=document.createElement('tr');emptyRow.id='attendanceSearchEmpty';emptyRow.innerHTML='<td colspan="4" class="text-center text-muted py-4">No students match your search.</td>';tbody.appendChild(emptyRow);}emptyRow.style.display='';}else if(emptyRow){emptyRow.style.display='none';}}
 function renderStudents(students){const tbody=document.getElementById('attendanceBody');if(!students||students.length===0){tbody.innerHTML='<tr><td colspan="4" class="text-center text-muted py-4">No enrolled students for this class.</td></tr>';updateSummaryCounts({present:0,absent:0,late:0});return;}tbody.innerHTML=students.map(s=>{const fn=`${s.first_name} ${s.last_name}`;const inits=`${s.first_name[0]||''}${s.last_name[0]||''}`.toUpperCase();const st=s.attendance_status||'present';return `<tr data-student-id="${s.id}"><td><div class="student-info"><div class="user-avatar-small">${inits}</div><span class="student-name">${escapeHtml(fn)}</span></div></td><td>${escapeHtml(s.reference_code)}</td><td><button type="button" class="teacher-status ${st}" data-status="${st}" onclick="cycleStatus(this)">${statusTemplate[st]||statusTemplate.present}</button></td><td><input type="text" class="form-control form-control-sm attendance-remarks" value="${escapeHtml(s.remarks||'')}" placeholder="Add remarks..."></td></tr>`;}).join('');updateSummaryCounts();applySearchFilter();}
-function loadAttendanceData(){const classId=(document.getElementById('classSelect')?.value||'').trim();const date=(document.getElementById('attendanceDate')?.value||'').trim();const sex=(document.getElementById('sexFilter')?.value||'').trim().toLowerCase();if(!classId){showNotification('No subject class available for this teacher account','warning');return;}if(!date){showNotification('Please select date','warning');return;}let url=`teacher_Action.php?action=fetch_students&class_id=${encodeURIComponent(classId)}&date=${encodeURIComponent(date)}&mode=subject`;if(sex==='male'||sex==='female'){url+=`&sex=${encodeURIComponent(sex)}`;}fetch(url).then(r=>r.json()).then(d=>{if(!d.success){showNotification(d.message||'Failed to load attendance data','danger');return;}canEditAttendance=!!d.can_edit;editBlockedReason=(d.message||'').trim();renderStudents(d.students||[]);updateSummaryCounts(d.summary||null);updateEditState();persistOfflineRoster(classId, d.students||[]);if(!canEditAttendance&&editBlockedReason){showNotification(editBlockedReason,'warning');}}).catch(()=>{const cached=localStorage.getItem('bshs_offline_roster_'+classId);if(cached){try{renderStudents(JSON.parse(cached));showNotification('Loaded offline cached student roster','info');return;}catch(e){}}showNotification('Error loading attendance data','danger');});}
+function loadAttendanceData(){
+    const classId=(document.getElementById('classSelect')?.value||'').trim();
+    const date=(document.getElementById('attendanceDate')?.value||'').trim();
+    const sex=(document.getElementById('sexFilter')?.value||'').trim().toLowerCase();
+    if(!classId){showNotification('No subject class available for this teacher account','warning');return;}
+    if(!date){showNotification('Please select date','warning');return;}
+    let url=`teacher_Action.php?action=fetch_students&class_id=${encodeURIComponent(classId)}&date=${encodeURIComponent(date)}&mode=subject`;
+    if(sex==='male'||sex==='female'){url+=`&sex=${encodeURIComponent(sex)}`;}
+
+    if(!navigator.onLine){
+        if(window.bshsOfflineStorage){
+            window.bshsOfflineStorage.getClassRoster(classId).then(students => {
+                if(students && students.length > 0){
+                    canEditAttendance = true;
+                    window.bshsOfflineStorage.getLocalAttendance(classId, date).then(localSaved => {
+                        if (localSaved && Array.isArray(localSaved.records)) {
+                            const markMap = {};
+                            localSaved.records.forEach(r => { markMap[r.student_id] = r.status; });
+                            students.forEach(s => {
+                                if (markMap[s.id]) s.attendance_status = markMap[s.id];
+                            });
+                        }
+                        renderStudents(students);
+                        updateEditState();
+                        showNotification('Loaded offline student roster from device storage', 'info');
+                    });
+                    return;
+                }
+                showNotification('No offline roster stored for this class', 'warning');
+            });
+        }
+        return;
+    }
+
+    fetch(url).then(r=>r.json()).then(d=>{
+        if(!d.success){showNotification(d.message||'Failed to load attendance data','danger');return;}
+        canEditAttendance=!!d.can_edit;
+        editBlockedReason=(d.message||'').trim();
+        renderStudents(d.students||[]);
+        updateSummaryCounts(d.summary||null);
+        updateEditState();
+        persistOfflineRoster(classId, d.students||[]);
+        if(window.bshsOfflineStorage){
+            window.bshsOfflineStorage.saveClassRoster(classId, d.students||[]);
+        }
+        if(!canEditAttendance&&editBlockedReason){showNotification(editBlockedReason,'warning');}
+    }).catch(()=>{
+        if(window.bshsOfflineStorage){
+            window.bshsOfflineStorage.getClassRoster(classId).then(students => {
+                if(students && students.length > 0){
+                    canEditAttendance = true;
+                    renderStudents(students);
+                    updateEditState();
+                    showNotification('Loaded offline class roster from device storage', 'info');
+                    return;
+                }
+            });
+        }
+        showNotification('Error loading attendance data','danger');
+    });
+}
 function exportAttendanceSf2(format){const classId=(document.getElementById('classSelect')?.value||'').trim();const dateValue=(document.getElementById('attendanceDate')?.value||'').trim();if(!classId){showNotification('Select a class for SF2 export','warning');return;}if(!dateValue||!/^\d{4}-\d{2}-\d{2}$/.test(dateValue)){showNotification('Select a valid attendance date for SF2 export','warning');return;}const parts=dateValue.split('-');const params=new URLSearchParams({class_id:classId,month:String(Number(parts[1])),year:parts[0],export:format==='csv'?'csv':'xlsx'});window.location.href='teacher_SF2_Export.php?'+params.toString();}
-function submitAttendance(){if(!canEditAttendance){showNotification(editBlockedReason||'Attendance is unavailable for this class on the selected date','info');return;}const classId=document.getElementById('classSelect')?.value||'';const date=document.getElementById('attendanceDate')?.value||'';const rows=document.querySelectorAll('#attendanceBody tr[data-student-id]');if(!classId||!date||rows.length===0){showNotification('Nothing to submit','warning');return;}const records=Array.from(rows).map(r=>({student_id:parseInt(r.dataset.studentId,10),status:r.querySelector('.teacher-status')?.dataset.status||'present',remarks:r.querySelector('.attendance-remarks')?.value.trim()||''}));const btn=document.getElementById('submitAttendanceBtn');btn.disabled=true;btn.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Saving...';if(window.bshsOffline&&!window.bshsOffline.isOnline()){window.bshsOffline.queueAttendance(classId,date,records,csrfToken);btn.disabled=false;btn.innerHTML='<i class=\"bi bi-save me-2\"></i>Submit Attendance';updateEditState();return;}fetch(withCsrfUrl('teacher_Action.php?action=submit_attendance'),{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrfToken},body:JSON.stringify({class_id:parseInt(classId,10),date:date,mode:'subject',records:records})}).then(r=>r.json()).then(d=>{if(d.success){showNotification(d.message||'Attendance submitted successfully','success');updateSummaryCounts(d.summary||null);}else{showNotification(d.message||'Failed to submit attendance','danger');}}).catch(function(){if(window.bshsOffline){window.bshsOffline.queueAttendance(classId,date,records,csrfToken);showNotification('Network error. Attendance queued for sync when online.','warning');}else{showNotification('Error submitting attendance','danger');}}).finally(()=>{updateEditState();});}
+function submitAttendance(){
+    if(!canEditAttendance){showNotification(editBlockedReason||'Attendance is unavailable for this class on the selected date','info');return;}
+    const classId=document.getElementById('classSelect')?.value||'';
+    const date=document.getElementById('attendanceDate')?.value||'';
+    const rows=document.querySelectorAll('#attendanceBody tr[data-student-id]');
+    if(!classId||!date||rows.length===0){showNotification('Nothing to submit','warning');return;}
+    const records=Array.from(rows).map(r=>({student_id:parseInt(r.dataset.studentId,10),status:r.querySelector('.teacher-status')?.dataset.status||'present',remarks:r.querySelector('.attendance-remarks')?.value.trim()||''}));
+    const btn=document.getElementById('submitAttendanceBtn');
+    btn.disabled=true;
+    btn.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+
+    if(!navigator.onLine){
+        if(window.bshsOfflineStorage){
+            window.bshsOfflineStorage.saveAttendanceLocally(classId, date, records);
+        }
+        btn.disabled=false;
+        btn.innerHTML='<i class="bi bi-save me-2"></i>Submit Attendance';
+        updateEditState();
+        showNotification('Attendance saved offline on device. Will sync automatically when online.', 'success');
+        return;
+    }
+
+    fetch(withCsrfUrl('teacher_Action.php?action=submit_attendance'),{
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-CSRF-Token':csrfToken},
+        body:JSON.stringify({class_id:parseInt(classId,10),date:date,mode:'subject',records:records})
+    }).then(r=>r.json()).then(d=>{
+        if(d.success){
+            if(window.bshsOfflineStorage){
+                window.bshsOfflineStorage.saveAttendanceLocally(classId, date, records);
+                window.bshsOfflineStorage.markRecordSynced('att_' + classId + '_' + date);
+            }
+            showNotification(d.message||'Attendance submitted successfully','success');
+            updateSummaryCounts(d.summary||null);
+        }else{
+            showNotification(d.message||'Failed to submit attendance','danger');
+        }
+    }).catch(function(){
+        if(window.bshsOfflineStorage){
+            window.bshsOfflineStorage.saveAttendanceLocally(classId, date, records);
+        }
+        showNotification('Connection dropped. Attendance saved offline for background sync.','warning');
+    }).finally(()=>{
+        updateEditState();
+    });
+}
 updateEditState();
 applySearchFilter();
 document.getElementById('attendanceSearch')?.addEventListener('input', applySearchFilter);
+
+// On load, if offline or class options missing, hydrate from IndexedDB
+if (!navigator.onLine || !initialTeacherClasses || initialTeacherClasses.length === 0) {
+    if (window.bshsOfflineStorage) {
+        window.bshsOfflineStorage.getClasses().then(cachedClasses => {
+            if (cachedClasses && cachedClasses.length > 0) {
+                const sel = document.getElementById('classSelect');
+                if (sel && sel.options.length <= 1) {
+                    sel.innerHTML = cachedClasses.map(c => `<option value="${c.id}">${escapeHtml(c.name || '')} (Grade ${c.grade_level || ''} - ${escapeHtml(c.section || '')})</option>`).join('');
+                }
+                const firstId = cachedClasses[0].id;
+                window.bshsOfflineStorage.getClassRoster(firstId).then(cachedStudents => {
+                    if (cachedStudents && cachedStudents.length > 0) {
+                        canEditAttendance = true;
+                        renderStudents(cachedStudents);
+                        updateEditState();
+                    }
+                });
+            }
+        });
+    }
+}
 
 // QR Scanner
 let qrScannerInstance = null;
@@ -413,6 +540,29 @@ async function handleQrScan(decodedText) {
     const classId = document.getElementById('classSelect')?.value || '';
     const date = document.getElementById('attendanceDate')?.value || '';
     try {
+        if (!navigator.onLine) {
+            const matchingRow = Array.from(document.querySelectorAll('#attendanceBody tr[data-student-id]')).find(r => {
+                const code = r.children?.[1]?.textContent?.trim()?.toLowerCase();
+                return code === refCode.toLowerCase();
+            });
+            if (!matchingRow) throw new Error('Student QR code (' + refCode + ') not found in this class');
+            const status = 'present';
+            const btn = matchingRow.querySelector('.teacher-status');
+            if (btn) {
+                btn.dataset.status = status;
+                btn.className = `teacher-status ${status}`;
+                btn.innerHTML = statusTemplate[status];
+                updateSummaryCounts();
+            }
+            const sName = matchingRow.querySelector('.student-name')?.textContent || refCode;
+            if (result) {
+                result.innerHTML = `<div class="alert alert-success"><i class="bi bi-check-circle-fill me-2"></i><strong>${escapeHtml(sName)}</strong> marked as <strong>Present (Offline)</strong></div>`;
+            }
+            matchingRow.style.background = '#d1fae5';
+            setTimeout(() => { matchingRow.style.background = ''; }, 2000);
+            return;
+        }
+
         const response = await fetch(withCsrfUrl('teacher_Action.php?action=classify_qr_scan'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },

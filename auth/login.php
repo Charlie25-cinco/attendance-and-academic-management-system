@@ -383,12 +383,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <script src="<?php echo appAssetPath('js/offlineStorage.js'); ?>"></script>
     <script src="<?php echo appAssetPath('js/main.js'); ?>"></script>
     <script>
-        if (!navigator.onLine) {
-            window.location.replace('../offline.html');
+        async function checkOfflineSession() {
+            if (!navigator.onLine && window.bshsOfflineStorage) {
+                const session = await window.bshsOfflineStorage.getTeacherSession();
+                if (session && session.teacher_id) {
+                    window.location.replace('../teacher/teacher.php');
+                } else {
+                    const btn = document.getElementById('offlineWorkspaceBtn');
+                    if (btn) btn.classList.add('d-none');
+                }
+            }
         }
-        window.addEventListener('offline', function () {
-            window.location.replace('../offline.html');
-        });
+        checkOfflineSession();
+        window.addEventListener('offline', checkOfflineSession);
         document.addEventListener('DOMContentLoaded', function() {
             const hour = new Date().getHours();
             let greeting = 'Welcome!';

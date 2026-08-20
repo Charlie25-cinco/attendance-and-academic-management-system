@@ -1,6 +1,6 @@
 // BSHS AMS root service worker - PWA cache + push notifications
 
-const CACHE_NAME = 'bshs-ams-v18';
+const CACHE_NAME = 'bshs-ams-v19';
 const BASE_PATH = (self.location.pathname || '').replace(/\/sw\.js$/, '');
 
 function resolvePath(path) {
@@ -12,9 +12,14 @@ function resolvePath(path) {
 }
 
 const APP_SHELL_URLS = [
+  '/teacher/teacher.php',
+  '/teacher/teacher_Attendance.php',
+  '/teacher/teacher_Grades.php',
+  '/auth/login.php',
   '/offline.html',
   '/assets/manifest.json',
   '/assets/css/main.css',
+  '/assets/css/role.css',
   '/assets/css/auth.css',
   '/assets/css/Site.css',
   '/assets/js/main.js',
@@ -74,25 +79,38 @@ function cacheResponse(request, response) {
   var clone = response.clone();
   caches.open(CACHE_NAME).then(function (cache) {
     cache.put(request, clone);
+  }).catch(function (error) {
+    console.warn('[SW] Cache put failed:', error);
   });
 }
 
 self.addEventListener('fetch', function (event) {
-  var url = new URL(event.request.url);
-
-  if (event.request.method !== 'GET' || url.origin !== self.location.origin) {
+  if (event.request.method !== 'GET') {
     return;
   }
 
-  var isAsset = url.pathname.indexOf('/assets/') === 0;
-  var isStaticAsset = /\.(css|js|png|jpg|jpeg|gif|svg|ico|woff2?|ttf|eot|json)(\?|$)/i.test(url.pathname);
+  var url = new URL(event.request.url);
+  var isSameOrigin = url.origin === self.location.origin;
+
+  if (!isSameOrigin) {
+    return;
+  }
+
+  // Bypass API and action routes from static caching
+  var isDynamicRoute = /\b(api|action|_Action|_Export|seed|scripts|logout)\.php/i.test(url.pathname);
+  if (isDynamicRoute) {
+    return;
+  }
+
+  var isAsset = url.pathname.indexOf(resolvePath('/assets/')) === 0;
+  var isStaticAsset = /\.(png|jpg|jpeg|svg|webp|gif|css|js|woff2?|ttf|eot|ico|json)$/i.test(url.pathname);
   var needsFreshAsset = /\.(css|js)$/i.test(url.pathname);
 
   if (needsFreshAsset) {
     event.respondWith(
-      fetch(event.request).then(function (response) {
-        cacheResponse(event.request, response);
-        return response;
+      fetch(event.request).then(function (networkResponse) {
+        cacheResponse(event.request, networkResponse);
+        return networkResponse;
       }).catch(function () {
         return caches.match(event.request);
       })
@@ -103,10 +121,13 @@ self.addEventListener('fetch', function (event) {
   if (isAsset || isStaticAsset) {
     event.respondWith(
       caches.match(event.request).then(function (cached) {
-        var fetchAndCache = fetch(event.request).then(function (response) {
-          cacheResponse(event.request, response);
-          return response;
+        var fetchAndCache = fetch(event.request).then(function (networkResponse) {
+          cacheResponse(event.request, networkResponse);
+          return networkResponse;
+        }).catch(function () {
+          return cached;
         });
+
         return cached || fetchAndCache;
       }).catch(function () {
         return caches.match(event.request);
@@ -118,10 +139,29 @@ self.addEventListener('fetch', function (event) {
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
+        .then(function (networkResponse) {
+          if (shouldCacheResponse(networkResponse)) {
+            var clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then(function (cache) {
+              cache.put(event.request, clone);
+            });
+          }
+          return networkResponse;
+        })
         .catch(function () {
-          var offlineTarget = resolvePath('/offline.html');
-          return caches.match(offlineTarget).then(function (offlineRes) {
-            return offlineRes || caches.match('/offline.html') || caches.match('offline.html');
+          return caches.match(event.request).then(function (cachedPage) {
+            if (cachedPage) {
+              return cachedPage;
+            }
+            var targetPath = resolvePath(url.pathname);
+            return caches.match(targetPath).then(function (matchedPath) {
+              if (matchedPath) {
+                return matchedPath;
+              }
+              return caches.match(resolvePath('/offline.html')).then(function (offlineRes) {
+                return offlineRes || caches.match('/offline.html') || caches.match('offline.html');
+              });
+            });
           });
         })
     );
