@@ -1211,31 +1211,30 @@ function showOfflineModal(featureName) {
   }
 }
 
-// Intercept online-only navigations when offline
+// Intercept online-only navigation links when offline
 document.addEventListener('click', function (e) {
   if (navigator.onLine) return;
   const link = e.target.closest('a[href]');
   if (!link) return;
-  const href = link.getAttribute('href');
-  if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+  const href = (link.getAttribute('href') || '').trim();
+  if (!href || href.startsWith('#') || href.startsWith('javascript:') || href === '') return;
 
-  const onlineOnlyPatterns = [
-    /Reports/i,
-    /SF2_Export/i,
-    /SF5_Export/i,
-    /SF9_Export/i,
-    /Export\.php/i,
-    /Chat/i,
-    /Messages/i,
-    /Advisory/i,
-    /Announcements/i,
-    /admin/i,
-    /student/i,
-    /parent/i,
+  // Only intercept navigation links to distinct online-only pages
+  const onlineOnlyPages = [
+    /teacher_Reports\.php/i,
+    /teacher_SF2_Export\.php/i,
+    /teacher_SF5_Export\.php/i,
+    /teacher_SF9_Export\.php/i,
+    /teacher_Chat\.php/i,
+    /teacher_Advisory\.php/i,
+    /teacher_Announcements\.php/i,
+    /admin\//i,
+    /student\//i,
+    /parent\//i,
     /site\//i
   ];
 
-  const isOnlineOnly = onlineOnlyPatterns.some(pattern => pattern.test(href));
+  const isOnlineOnly = onlineOnlyPages.some(pattern => pattern.test(href));
   if (isOnlineOnly) {
     e.preventDefault();
     e.stopPropagation();
