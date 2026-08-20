@@ -2,6 +2,15 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.82 — 2026-08-21
+
+### Fixed
+
+- **Instant Flicker-Free PWA Launch**:
+  - Added instant synchronous offline redirect check in `<head>` of [`auth/login.php`](file:///c:/laragon/www/attendance-and-academic-management-system/auth/login.php).
+  - Added pre-paint visual mask ensuring zero flash or glitch of the login form during cold-start offline launches.
+  - Bumped Service Worker cache to **`bshs-ams-v28`**.
+
 ## v0.3.81 — 2026-08-21
 
 ### Removed

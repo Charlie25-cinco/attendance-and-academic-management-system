@@ -302,6 +302,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Balingasag Senior High School</title>
+    <script>
+    (function() {
+        try {
+            if (!navigator.onLine && localStorage.getItem('bshs_cached_teacher') === '1') {
+                document.documentElement.classList.add('offline-launching');
+                window.location.replace('../teacher/teacher.php');
+            }
+        } catch (e) {}
+    })();
+    </script>
+    <style>
+    html.offline-launching body {
+        visibility: hidden !important;
+        background-color: #f8fafc !important;
+    }
+    </style>
     <link href="<?php echo appAssetPath('vendor/bootstrap/bootstrap.min.css'); ?>" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo appAssetPath('vendor/bootstrap-icons/bootstrap-icons.css'); ?>">
     <link rel="stylesheet" href="<?php echo appAssetPath('css/main.css'); ?>">

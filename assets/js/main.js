@@ -1156,13 +1156,23 @@ if ('serviceWorker' in navigator && navigator.onLine) {
   if ('caches' in window) {
     caches.keys().then((keys) => {
       keys.forEach((key) => {
-        if (key !== 'bshs-ams-v27') {
+        if (key !== 'bshs-ams-v28') {
           caches.delete(key);
         }
       });
     }).catch(() => {});
   }
 }
+
+// Clear offline cached session on explicit logout
+document.addEventListener('click', function(e) {
+  const link = e.target.closest('a[href*="logout.php"]');
+  if (link) {
+    try {
+      localStorage.removeItem('bshs_cached_teacher');
+    } catch(e) {}
+  }
+});
 
 // ============================================
 // OFFLINE FEATURE MODAL
