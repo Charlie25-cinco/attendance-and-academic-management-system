@@ -316,7 +316,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                     <div class="auth-header">
                         <div class="auth-logo">
-                            <img src="../assets/images/bshs-logo.jpg" alt="Balingasag SHS Logo" class="auth-logo-img">
+                            <img src="../assets/images/bshs-logo.jpg" alt="Balingasag SHS Logo" class="auth-logo-img" width="58" height="58" style="width: 58px; height: 58px; object-fit: cover;">
                         </div>
 
                         <h2 class="auth-title" id="greeting">Welcome!</h2>
@@ -383,25 +383,83 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <script src="<?php echo appAssetPath('js/offlineStorage.js'); ?>"></script>
     <script src="<?php echo appAssetPath('js/main.js'); ?>"></script>
     <script>
+        function escapeHtmlText(str) {
+            const div = document.createElement('div');
+            div.textContent = str || '';
+            return div.innerHTML;
+        }
+
         async function checkOfflineSession() {
             if (!navigator.onLine && window.bshsOfflineStorage) {
                 const session = await window.bshsOfflineStorage.getTeacherSession();
                 const card = document.querySelector('.auth-card');
-                if (session && session.teacher_id && card && !document.getElementById('offlineTeacherBanner')) {
-                    const fullName = (session.first_name || '') + ' ' + (session.last_name || '');
-                    const b = document.createElement('div');
-                    b.id = 'offlineTeacherBanner';
-                    b.className = 'alert alert-primary mb-4 p-3 shadow-sm rounded-3 text-start';
-                    b.innerHTML = '<div class="d-flex align-items-center gap-2 mb-2">' +
-                        '<i class="bi bi-person-check-fill fs-4 text-primary"></i>' +
-                        '<div><div class="fw-bold">Welcome back, ' + (fullName.trim() || 'Teacher') + '!</div>' +
-                        '<div class="small text-muted">Offline Mode Active — Select a workspace below:</div></div></div>' +
-                        '<div class="d-flex gap-2 flex-wrap mt-2">' +
-                        '<a href="../teacher/teacher_Attendance.php" class="btn btn-primary btn-sm"><i class="bi bi-calendar-check me-1"></i>Attendance</a>' +
-                        '<a href="../teacher/teacher_Classes.php" class="btn btn-outline-primary btn-sm"><i class="bi bi-journal-text me-1"></i>Activities</a>' +
-                        '<a href="../teacher/teacher.php" class="btn btn-outline-secondary btn-sm"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a>' +
-                        '</div>';
-                    card.insertBefore(b, card.firstChild);
+                const form = document.querySelector('.auth-form');
+                const footer = document.querySelector('.auth-footer');
+                const subtitle = document.querySelector('.auth-subtitle');
+                const greetingNode = document.getElementById('greeting');
+
+                if (session && session.teacher_id && card) {
+                    if (form) form.style.display = 'none';
+                    if (footer) footer.style.display = 'none';
+                    if (subtitle) subtitle.style.display = 'none';
+                    if (greetingNode) greetingNode.innerText = 'Teacher Workspace';
+
+                    const oldBanner = document.getElementById('offlineTeacherBanner');
+                    if (oldBanner) oldBanner.remove();
+
+                    if (!document.getElementById('offlineTeacherHub')) {
+                        const fullName = ((session.first_name || '') + ' ' + (session.last_name || '')).trim() || 'Teacher';
+                        const hub = document.createElement('div');
+                        hub.id = 'offlineTeacherHub';
+                        hub.className = 'd-flex flex-column gap-3 text-start';
+                        hub.innerHTML =
+                            '<div class="p-3 bg-light rounded-3 border">' +
+                                '<div class="d-flex align-items-center gap-2 mb-1">' +
+                                    '<i class="bi bi-person-check-fill fs-4 text-primary"></i>' +
+                                    '<div>' +
+                                        '<div class="fw-bold text-dark">' + escapeHtmlText(fullName) + '</div>' +
+                                        '<div class="small text-muted">Offline Mode Active</div>' +
+                                    '</div>' +
+                                '</div>' +
+                            '</div>' +
+                            '<div class="d-grid gap-2">' +
+                                '<a href="../teacher/teacher_Attendance.php" class="btn btn-primary d-flex align-items-center justify-content-between p-3 rounded-3 text-white text-decoration-none shadow-sm">' +
+                                    '<div class="d-flex align-items-center gap-2">' +
+                                        '<i class="bi bi-calendar-check fs-5"></i>' +
+                                        '<div class="text-start">' +
+                                            '<div class="fw-bold">Daily Attendance</div>' +
+                                            '<small class="opacity-75">Mark attendance & QR camera scan</small>' +
+                                        '</div>' +
+                                    '</div>' +
+                                    '<i class="bi bi-chevron-right"></i>' +
+                                '</a>' +
+                                '<a href="../teacher/teacher_Classes.php" class="btn btn-outline-primary d-flex align-items-center justify-content-between p-3 rounded-3 text-decoration-none">' +
+                                    '<div class="d-flex align-items-center gap-2">' +
+                                        '<i class="bi bi-journal-text fs-5"></i>' +
+                                        '<div class="text-start">' +
+                                            '<div class="fw-bold">Grade Activities</div>' +
+                                            '<small class="text-muted">Create activities & record scores</small>' +
+                                        '</div>' +
+                                    '</div>' +
+                                    '<i class="bi bi-chevron-right"></i>' +
+                                '</a>' +
+                                '<a href="../teacher/teacher.php" class="btn btn-outline-secondary d-flex align-items-center justify-content-between p-3 rounded-3 text-decoration-none">' +
+                                    '<div class="d-flex align-items-center gap-2">' +
+                                        '<i class="bi bi-speedometer2 fs-5"></i>' +
+                                        '<div class="text-start">' +
+                                            '<div class="fw-bold">Teacher Dashboard</div>' +
+                                            '<small class="text-muted">View offline summaries & rosters</small>' +
+                                        '</div>' +
+                                    '</div>' +
+                                    '<i class="bi bi-chevron-right"></i>' +
+                                '</a>' +
+                            '</div>' +
+                            '<div class="alert alert-info d-flex align-items-start gap-2 mb-0 p-2 small">' +
+                                '<i class="bi bi-info-circle-fill mt-1 flex-shrink-0"></i>' +
+                                '<div>All offline records are saved securely on your device and will auto-sync when online.</div>' +
+                            '</div>';
+                        card.appendChild(hub);
+                    }
                 } else if (!session && card && !document.getElementById('offlineNoSessionBanner')) {
                     const b = document.createElement('div');
                     b.id = 'offlineNoSessionBanner';

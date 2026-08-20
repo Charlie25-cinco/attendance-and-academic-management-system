@@ -2,6 +2,15 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.76 — 2026-08-20
+
+### Changed
+
+- **Polished Dedicated Offline Teacher Workspace Hub on App Launch**:
+  - Automatically hides the login form, footer, and subtext when a valid offline teacher session is detected in [`auth/login.php`](file:///c:/laragon/www/attendance-and-academic-management-system/auth/login.php), showing only the authenticated Teacher Workspace Hub.
+  - Provided direct action cards to **Daily Attendance** (`teacher_Attendance.php`), **Grade Activities** (`teacher_Classes.php`), and **Teacher Dashboard** (`teacher.php`).
+  - Added explicit inline dimensions on seal image and bumped Service Worker cache to **`bshs-ams-v23`**.
+
 ## v0.3.75 — 2026-08-20
 
 ### Fixed
