@@ -549,6 +549,8 @@ $page_title = 'Teacher Dashboard';
     </div>
 </div>
 <script src="<?php echo appAssetPath('vendor/bootstrap/bootstrap.bundle.min.js'); ?>"></script>
+<script src="<?php echo appAssetPath('js/offlineStorage.js'); ?>"></script>
+<script src="<?php echo appAssetPath('js/networkSync.js'); ?>"></script>
 <script src="<?php echo appAssetPath('js/main.js'); ?>"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -565,6 +567,12 @@ $page_title = 'Teacher Dashboard';
         if (greetingEl) {
             const userName = <?php echo json_encode($_SESSION['first_name'] ?? 'Teacher', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
             greetingEl.innerText = greeting + ", " + userName + "!";
+        }
+
+        if (window.bshsOfflineStorage && navigator.onLine) {
+            setTimeout(function () {
+                window.bshsOfflineStorage.bootstrapOnline();
+            }, 800);
         }
     });
 </script>

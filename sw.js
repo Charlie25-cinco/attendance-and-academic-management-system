@@ -1,6 +1,6 @@
 // BSHS AMS root service worker - PWA cache + push notifications
 
-const CACHE_NAME = 'bshs-ams-v15';
+const CACHE_NAME = 'bshs-ams-v16';
 const BASE_PATH = (self.location.pathname || '').replace(/\/sw\.js$/, '');
 
 function resolvePath(path) {
@@ -18,6 +18,7 @@ const APP_SHELL_URLS = [
   '/assets/css/auth.css',
   '/assets/css/Site.css',
   '/assets/js/main.js',
+  '/assets/js/offlineStorage.js',
   '/assets/js/networkSync.js',
   '/assets/images/bshs-logo.jpg',
   '/assets/images/icon-192.png',

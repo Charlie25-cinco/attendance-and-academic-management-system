@@ -44,6 +44,7 @@ $writeActions = [
     'delete_class_announcement',
     'create_grade_item',
     'save_grade_item_scores',
+    'save_offline_activity',
     'finish_grade_item',
     'delete_grade_item',
     'restore_grade_item',
@@ -134,6 +135,12 @@ switch ($action) {
         break;
     case 'recall_report_card':
         recallReportCard($db, $teacherId);
+        break;
+    case 'offline_bootstrap':
+        teacherOfflineBootstrap($db, $teacherId);
+        break;
+    case 'save_offline_activity':
+        teacherSaveOfflineActivity($db, $teacherId);
         break;
     default:
         echo json_encode(['success' => false, 'message' => 'Invalid action']);
@@ -3050,6 +3057,116 @@ function deleteClassAnnouncement($db, $teacherId) {
 
         echo json_encode(['success' => true, 'message' => 'Class announcement deleted successfully']);
     } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'message' => 'Database error. Please try again.']);
+    }
+}
+
+function teacherOfflineBootstrap($db, $teacherId) {
+    try {
+        $tStmt = $db->prepare("SELECT id, first_name, last_name, email, reference_code, profile_picture FROM users WHERE id = ? LIMIT 1");
+        $tStmt->execute([$teacherId]);
+        $teacher = $tStmt->fetch(PDO::FETCH_ASSOC);
+
+        $cStmt = $db->prepare("SELECT DISTINCT c.id, c.class_name AS name, s.subject_name AS subject_title, c.grade_level, c.section, c.schedule
+                               FROM class_subjects cs
+                               JOIN classes c ON c.id = cs.class_id
+                               LEFT JOIN subjects s ON s.id = cs.subject_id
+                               WHERE cs.teacher_id = ? AND c.status = 'active'
+                               ORDER BY c.grade_level, c.section, c.class_name");
+        $cStmt->execute([$teacherId]);
+        $classes = $cStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $rosters = [];
+        $today = date('Y-m-d');
+        foreach ($classes as $class) {
+            $cId = (int)$class['id'];
+            $students = tEnrollFetchStudentsWithAttendance($db, $cId, $today);
+            $rosters[$cId] = array_map(function($s) {
+                return [
+                    'id' => (int)$s['id'],
+                    'first_name' => $s['first_name'],
+                    'last_name' => $s['last_name'],
+                    'reference_code' => $s['reference_code'] ?? '',
+                    'lrn' => $s['lrn'] ?? '',
+                    'gender' => $s['gender'] ?? '',
+                    'attendance_status' => $s['attendance_status'] ?? 'present',
+                    'remarks' => $s['remarks'] ?? ''
+                ];
+            }, $students);
+        }
+
+        echo json_encode([
+            'success' => true,
+            'teacher' => $teacher,
+            'classes' => $classes,
+            'rosters' => $rosters
+        ]);
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'message' => 'Database error during offline bootstrap']);
+    }
+}
+
+function teacherSaveOfflineActivity($db, $teacherId) {
+    try {
+        $payload = json_decode((string)file_get_contents('php://input'), true);
+        if (!is_array($payload)) {
+            echo json_encode(['success' => false, 'message' => 'Invalid JSON payload']);
+            return;
+        }
+
+        $classId = (int)($payload['class_id'] ?? 0);
+        $title = trim((string)($payload['title'] ?? ''));
+        $component = strtolower(trim((string)($payload['component'] ?? 'ww')));
+        $totalScore = (float)($payload['total_score'] ?? 0);
+        $activityDate = trim((string)($payload['activity_date'] ?? date('Y-m-d')));
+        $scores = $payload['scores'] ?? [];
+
+        if ($classId <= 0 || $title === '' || $totalScore <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Class, title, and total score are required']);
+            return;
+        }
+
+        if (!in_array($component, ['ww', 'pt', 'qa'], true)) {
+            $component = 'ww';
+        }
+
+        if (!teacherOwnsClass($db, $teacherId, $classId)) {
+            echo json_encode(['success' => false, 'message' => 'You are not assigned to this class']);
+            return;
+        }
+
+        if (!gradeItemsTablesExist($db)) {
+            echo json_encode(['success' => false, 'message' => 'Grade items table not found']);
+            return;
+        }
+
+        $db->beginTransaction();
+
+        $stmt = $db->prepare("INSERT INTO grade_items (class_id, teacher_id, title, component, total_score, activity_date, status, created_at)
+                              VALUES (?, ?, ?, ?, ?, ?, 'active', NOW())");
+        $stmt->execute([$classId, $teacherId, $title, $component, round($totalScore, 2), $activityDate]);
+        $gradeItemId = (int)$db->lastInsertId();
+
+        if ($gradeItemId > 0 && is_array($scores) && !empty($scores)) {
+            $enrolled = array_fill_keys(getActiveEnrollmentStudentIds($db, $classId), true);
+            $upsert = $db->prepare("INSERT INTO grade_item_scores (grade_item_id, student_id, score, created_at, updated_at)
+                                    VALUES (?, ?, ?, NOW(), NOW())
+                                    ON DUPLICATE KEY UPDATE score = VALUES(score), updated_at = NOW()");
+            foreach ($scores as $row) {
+                $studentId = (int)($row['student_id'] ?? 0);
+                if ($studentId <= 0 || !isset($enrolled[$studentId])) continue;
+                $scoreRaw = $row['score'] ?? null;
+                if ($scoreRaw === '' || $scoreRaw === null || !is_numeric($scoreRaw)) continue;
+                $score = round((float)$scoreRaw, 2);
+                if ($score < 0 || $score > $totalScore) continue;
+                $upsert->execute([$gradeItemId, $studentId, $score]);
+            }
+        }
+
+        $db->commit();
+        echo json_encode(['success' => true, 'message' => 'Offline activity and scores saved successfully', 'grade_item_id' => $gradeItemId]);
+    } catch (PDOException $e) {
+        if ($db->inTransaction()) $db->rollBack();
         echo json_encode(['success' => false, 'message' => 'Database error. Please try again.']);
     }
 }

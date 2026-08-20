@@ -2,6 +2,18 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.68 — 2026-08-20
+
+### Added
+
+- Built **IndexedDB & LocalStorage Client Storage Engine** ([`assets/js/offlineStorage.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/offlineStorage.js)) with offline teacher profile, assigned classes, student rosters, offline submissions, and sync queue.
+- Added dual-module **Offline Workspace** in [`offline.html`](file:///c:/laragon/www/attendance-and-academic-management-system/offline.html) supporting:
+  - Daily Attendance taking and Camera QR scanning offline.
+  - Grade Activities and student score entry offline (Written Works, Performance Tasks, Quarterly Assessments).
+- Added `action=offline_bootstrap` and `action=save_offline_activity` endpoints in [`teacher/teacher_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Action.php) for instant roster population and multi-item score synchronization.
+- Updated [`assets/js/networkSync.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/networkSync.js) to automatically submit both offline attendance records and offline activity score sets upon internet reconnection.
+- Updated [`sw.js`](file:///c:/laragon/www/attendance-and-academic-management-system/sw.js) to pre-cache `offlineStorage.js` under cache `bshs-ams-v16`.
+
 ## v0.3.67 — 2026-08-20
 
 ### Added

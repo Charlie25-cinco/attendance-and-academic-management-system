@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Offline Mode & Attendance - Balingasag Senior High School</title>
+    <title>BSHS AMS - Offline Teacher Workspace</title>
     <link rel="manifest" href="assets/manifest.json">
     <link rel="icon" type="image/jpeg" href="assets/images/bshs-logo.jpg">
     <link rel="apple-touch-icon" href="assets/images/icon-192.png">
@@ -42,7 +42,7 @@
         }
 
         .offline-container {
-            max-width: 900px;
+            max-width: 960px;
             margin: 0 auto;
         }
 
@@ -64,8 +64,8 @@
         }
 
         .offline-badge-pulse {
-            width: 14px;
-            height: 14px;
+            width: 12px;
+            height: 12px;
             background-color: #f59e0b;
             border-radius: 50%;
             display: inline-block;
@@ -86,6 +86,39 @@
             margin-bottom: 20px;
         }
 
+        .nav-tabs-custom {
+            display: flex;
+            gap: 8px;
+            border-bottom: 2px solid var(--bshs-border-light);
+            margin-bottom: 20px;
+        }
+
+        .nav-tabs-custom .tab-btn {
+            padding: 10px 18px;
+            border: none;
+            background: transparent;
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--bshs-muted-light);
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .nav-tabs-custom .tab-btn.active {
+            color: var(--bshs-navy);
+            border-bottom-color: var(--bshs-navy);
+        }
+
+        body.dark-mode .nav-tabs-custom .tab-btn.active {
+            color: var(--bshs-gold);
+            border-bottom-color: var(--bshs-gold);
+        }
+
         .offline-kpi-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
@@ -98,610 +131,811 @@
             border: 1px solid var(--bshs-border-light);
             border-radius: 12px;
             padding: 12px 16px;
-            text-align: center;
+            display: flex;
+            flex-direction: column;
         }
 
-        body.dark-mode .offline-kpi-card {
-            background: rgba(255, 255, 255, 0.02);
-        }
-
-        .offline-kpi-val {
-            font-size: 24px;
-            font-weight: 700;
-            line-height: 1.2;
-        }
-
-        .offline-kpi-lbl {
-            font-size: 12px;
-            color: var(--bshs-muted-light);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+        .offline-kpi-card .kpi-label {
+            font-size: 0.75rem;
             font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--bshs-muted-light);
+            margin-bottom: 4px;
         }
 
-        .teacher-status {
+        .offline-kpi-card .kpi-val {
+            font-size: 1.5rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .status-pill {
             display: inline-flex;
             align-items: center;
             gap: 6px;
             padding: 6px 14px;
             border-radius: 20px;
-            font-size: 13px;
+            font-size: 0.85rem;
             font-weight: 600;
             cursor: pointer;
-            border: none;
-            transition: all 0.2s;
             user-select: none;
+            border: 1px solid transparent;
+            transition: all 0.15s ease;
         }
 
-        .teacher-status.present { background: rgba(16, 185, 129, 0.15); color: #059669; }
-        .teacher-status.absent { background: rgba(239, 68, 68, 0.15); color: #dc2626; }
-        .teacher-status.late { background: rgba(245, 158, 11, 0.15); color: #d97706; }
+        .status-pill.present {
+            background-color: rgba(16, 185, 129, 0.15);
+            color: #059669;
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
+        .status-pill.absent {
+            background-color: rgba(239, 68, 68, 0.15);
+            color: #dc2626;
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .status-pill.late {
+            background-color: rgba(245, 158, 11, 0.15);
+            color: #d97706;
+            border-color: rgba(245, 158, 11, 0.3);
+        }
+
+        .student-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--bshs-border-light);
+            transition: background-color 0.15s ease;
+        }
+
+        .student-row:last-child {
+            border-bottom: none;
+        }
+
+        .student-row:hover {
+            background-color: rgba(0, 0, 0, 0.015);
+        }
 
         .student-avatar {
-            width: 36px;
-            height: 36px;
+            width: 38px;
+            height: 38px;
             border-radius: 50%;
-            background: var(--bshs-navy);
-            color: #ffffff;
-            display: inline-flex;
+            background: linear-gradient(135deg, #003366, #0284c7);
+            color: #fff;
+            display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: 600;
-            font-size: 13px;
+            font-weight: 700;
+            font-size: 0.85rem;
             flex-shrink: 0;
         }
 
-        body.dark-mode .student-avatar {
-            background: #334155;
-            color: var(--bshs-gold);
+        .student-info {
+            flex-grow: 1;
+            min-width: 0;
         }
 
-        .offline-status-pill {
-            display: inline-flex;
+        .student-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .student-meta {
+            font-size: 0.78rem;
+            color: var(--bshs-muted-light);
+        }
+
+        #qr-reader-container {
+            width: 100%;
+            max-width: 480px;
+            margin: 0 auto;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #000;
+        }
+
+        .score-input {
+            width: 80px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .sync-queue-item {
+            padding: 14px 18px;
+            border-radius: 12px;
+            border: 1px solid var(--bshs-border-light);
+            background: rgba(0,0,0,0.015);
+            margin-bottom: 10px;
+            display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 4px 12px;
-            border-radius: 9999px;
-            font-size: 12px;
-            font-weight: 600;
-            background-color: rgba(245, 158, 11, 0.12);
-            color: #d97706;
-        }
-
-        .offline-status-pill.online {
-            background-color: rgba(16, 185, 129, 0.12);
-            color: #059669;
-        }
-
-        .btn-primary-custom {
-            background-color: var(--bshs-navy);
-            border-color: var(--bshs-navy);
-            color: #ffffff;
-            font-weight: 600;
-        }
-
-        .btn-primary-custom:hover {
-            background-color: #002244;
-            color: #ffffff;
+            justify-content: space-between;
         }
     </style>
 </head>
 <body>
     <div class="offline-container">
-        <!-- Top App Header -->
+        <!-- Top Status Bar -->
         <div class="offline-header-card d-flex align-items-center justify-content-between flex-wrap gap-3">
             <div class="d-flex align-items-center gap-3">
                 <img src="assets/images/bshs-logo.jpg" alt="BSHS Logo" class="offline-logo">
                 <div>
-                    <h5 class="mb-0 fw-bold">BSHS AMS — Offline Attendance</h5>
-                    <div class="d-flex align-items-center gap-2 mt-1">
-                        <span class="offline-status-pill" id="connectionStatus">
-                            <span class="offline-badge-pulse" id="statusDot"></span>
-                            <span id="connectionText">Offline Mode Active</span>
-                        </span>
-                        <span class="badge bg-warning text-dark" id="offlineQueueBadge" style="display:none;"></span>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="offline-badge-pulse" id="connectionDot"></span>
+                        <h5 class="mb-0 fw-bold" id="connectionStatusText">Offline Mode Active</h5>
                     </div>
+                    <p class="mb-0 text-muted small" id="teacherGreeting">Teacher Workspace • Zero internet required</p>
                 </div>
             </div>
             <div class="d-flex align-items-center gap-2">
-                <button type="button" class="btn btn-sm btn-outline-primary" id="retryBtn" onclick="checkConnection()">
-                    <i class="bi bi-arrow-clockwise me-1" id="retryIcon"></i>Check Connection
-                </button>
-                <a href="./" class="btn btn-sm btn-outline-secondary">
-                    <i class="bi bi-house me-1"></i>Portal
-                </a>
-            </div>
-        </div>
-
-        <!-- Offline Attendance Workspace -->
-        <div class="offline-card" id="attendanceSection">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
-                <div>
-                    <h5 class="fw-bold mb-1"><i class="bi bi-clipboard2-check me-2 text-primary"></i>Record Attendance (Offline)</h5>
-                    <p class="text-muted small mb-0">Record and scan attendance without internet. Scans are saved securely on your device and will auto-sync when online.</p>
-                </div>
-                <div class="d-flex gap-2 flex-wrap">
-                    <button type="button" class="btn btn-primary-custom btn-sm" onclick="openOfflineQrScanner()">
-                        <i class="bi bi-qr-code-scan me-1"></i>Scan QR Code
-                    </button>
-                    <button type="button" class="btn btn-outline-success btn-sm" onclick="markAllPresent()">
-                        <i class="bi bi-check-all me-1"></i>Mark All Present
-                    </button>
-                </div>
-            </div>
-
-            <!-- Class & Date Filters -->
-            <div class="row g-2 mb-3">
-                <div class="col-md-7 col-sm-12">
-                    <label class="form-label small fw-bold mb-1">Select Subject Class</label>
-                    <select class="form-select form-select-sm" id="offlineClassSelect" onchange="onClassChange()">
-                        <option value="">-- Choose Class --</option>
-                    </select>
-                </div>
-                <div class="col-md-5 col-sm-12">
-                    <label class="form-label small fw-bold mb-1">Attendance Date</label>
-                    <input type="date" class="form-control form-control-sm" id="offlineDateInput" value="">
-                </div>
-            </div>
-
-            <!-- Summary KPI Grid -->
-            <div class="offline-kpi-grid">
-                <div class="offline-kpi-card">
-                    <div class="offline-kpi-val text-success" id="kpiPresent">0</div>
-                    <div class="offline-kpi-lbl">Present</div>
-                </div>
-                <div class="offline-kpi-card">
-                    <div class="offline-kpi-val text-danger" id="kpiAbsent">0</div>
-                    <div class="offline-kpi-lbl">Absent</div>
-                </div>
-                <div class="offline-kpi-card">
-                    <div class="offline-kpi-val text-warning" id="kpiLate">0</div>
-                    <div class="offline-kpi-lbl">Late</div>
-                </div>
-                <div class="offline-kpi-card">
-                    <div class="offline-kpi-val text-primary" id="kpiTotal">0</div>
-                    <div class="offline-kpi-lbl">Total</div>
-                </div>
-            </div>
-
-            <!-- Search input -->
-            <div class="input-group input-group-sm mb-3">
-                <span class="input-group-text"><i class="bi bi-search"></i></span>
-                <input type="text" class="form-control" id="offlineSearchInput" placeholder="Filter students by name or reference code..." oninput="filterStudents()">
-            </div>
-
-            <!-- Student List Container -->
-            <div class="table-responsive mb-4">
-                <table class="table align-middle">
-                    <thead>
-                        <tr class="table-light">
-                            <th>Student</th>
-                            <th>Reference / LRN</th>
-                            <th>Status (Tap to Cycle)</th>
-                            <th>Remarks</th>
-                        </tr>
-                    </thead>
-                    <tbody id="offlineStudentBody">
-                        <tr>
-                            <td colspan="4" class="text-center text-muted py-4">Select a class above to load enrolled learners.</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Bottom Save Action -->
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pt-2 border-top">
-                <div class="text-muted small" id="queueStatusNote">
-                    <i class="bi bi-info-circle me-1"></i>Tap Save to store in offline queue.
-                </div>
-                <button type="button" class="btn btn-primary-custom" id="saveOfflineBtn" onclick="saveOfflineAttendance()">
-                    <i class="bi bi-save me-2"></i>Save Attendance (Offline Queue)
+                <span class="badge bg-warning text-dark px-3 py-2" id="headerQueueBadge">
+                    <i class="bi bi-clock-history me-1"></i> <span id="queueCountText">0</span> pending sync
+                </span>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="manualSyncBtn" onclick="triggerManualSync()">
+                    <i class="bi bi-arrow-repeat me-1"></i> Sync Now
                 </button>
             </div>
         </div>
 
-        <!-- No Cached Data Fallback Box -->
-        <div class="offline-card text-center py-4" id="noDataNotice" style="display:none;">
-            <i class="bi bi-cloud-slash display-4 text-muted mb-3 d-block"></i>
-            <h5 class="fw-bold">No Cached Class Rosters Found</h5>
-            <p class="text-muted small max-w-md mx-auto mb-3">
-                You are offline, and no classes have been saved on this phone yet.<br>
-                Please connect to Wi-Fi/data and open the <strong>Teacher Attendance</strong> page once to store your class rosters for offline use.
-            </p>
+        <!-- Tab Navigation -->
+        <div class="nav-tabs-custom">
+            <button type="button" class="tab-btn active" id="tabAttendanceBtn" onclick="switchTab('attendance')">
+                <i class="bi bi-calendar-check-fill"></i> Daily Attendance & QR
+            </button>
+            <button type="button" class="tab-btn" id="tabActivitiesBtn" onclick="switchTab('activities')">
+                <i class="bi bi-journal-plus"></i> Record Activities & Scores
+            </button>
+            <button type="button" class="tab-btn" id="tabQueueBtn" onclick="switchTab('queue')">
+                <i class="bi bi-cloud-arrow-up-fill"></i> Sync Queue (<span id="tabQueueCount">0</span>)
+            </button>
+        </div>
+
+        <!-- ========================================================================= -->
+        <!-- TAB 1: ATTENDANCE & QR SCANNER -->
+        <!-- ========================================================================= -->
+        <div id="tabAttendance" class="tab-content-panel">
+            <div class="offline-card">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-5">
+                        <label class="form-label fw-semibold small text-muted">SELECT CLASS</label>
+                        <select id="attendanceClassSelect" class="form-select" onchange="onAttendanceClassChanged()">
+                            <option value="">Loading classes...</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold small text-muted">DATE</label>
+                        <input type="date" id="attendanceDateInput" class="form-control" onchange="updateAttendanceKpis()">
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="button" class="btn btn-outline-primary w-100" onclick="openQrScannerModal()">
+                            <i class="bi bi-qr-code-scan me-1"></i> Camera Scan
+                        </button>
+                    </div>
+                </div>
+
+                <!-- KPI Counters -->
+                <div class="offline-kpi-grid">
+                    <div class="offline-kpi-card">
+                        <span class="kpi-label">Present</span>
+                        <span class="kpi-val text-success" id="kpiPresentCount">0</span>
+                    </div>
+                    <div class="offline-kpi-card">
+                        <span class="kpi-label">Absent</span>
+                        <span class="kpi-val text-danger" id="kpiAbsentCount">0</span>
+                    </div>
+                    <div class="offline-kpi-card">
+                        <span class="kpi-label">Late</span>
+                        <span class="kpi-val text-warning" id="kpiLateCount">0</span>
+                    </div>
+                    <div class="offline-kpi-card">
+                        <span class="kpi-label">Total</span>
+                        <span class="kpi-val" id="kpiTotalCount">0</span>
+                    </div>
+                </div>
+
+                <!-- Search Filter & Quick Actions -->
+                <div class="d-flex align-items-center justify-content-between gap-2 mb-3 flex-wrap">
+                    <div class="input-group" style="max-width: 320px;">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" id="attendanceSearchInput" class="form-control form-control-sm" placeholder="Search learner name / LRN..." oninput="filterAttendanceList()">
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-success" onclick="markAllAttendance('present')">
+                            <i class="bi bi-check-all"></i> Mark All Present
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Student List Container -->
+                <div id="attendanceStudentList" class="border rounded-3 mb-4 overflow-hidden">
+                    <div class="p-4 text-center text-muted">Please select a class to load students.</div>
+                </div>
+
+                <!-- Save Button -->
+                <div class="d-flex justify-content-end">
+                    <button type="button" class="btn btn-success btn-lg px-4" id="saveAttendanceBtn" onclick="saveAttendanceOffline()">
+                        <i class="bi bi-floppy me-2"></i> Save Attendance (Offline Queue)
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================================================= -->
+        <!-- TAB 2: RECORD ACTIVITIES & SCORES -->
+        <!-- ========================================================================= -->
+        <div id="tabActivities" class="tab-content-panel d-none">
+            <div class="offline-card">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-5">
+                        <label class="form-label fw-semibold small text-muted">SELECT CLASS</label>
+                        <select id="activityClassSelect" class="form-select" onchange="onActivityClassChanged()">
+                            <option value="">Loading classes...</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold small text-muted">COMPONENT</label>
+                        <select id="activityComponentSelect" class="form-select">
+                            <option value="ww">Written Work (WW)</option>
+                            <option value="pt">Performance Task (PT)</option>
+                            <option value="qa">Quarterly Assessment (QA)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold small text-muted">HIGHEST POSSIBLE SCORE</label>
+                        <input type="number" id="activityTotalScoreInput" class="form-control" placeholder="e.g. 20" min="1" step="0.5" value="20">
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-8">
+                        <label class="form-label fw-semibold small text-muted">ACTIVITY TITLE</label>
+                        <input type="text" id="activityTitleInput" class="form-control" placeholder="e.g. Quiz 1 - Cell Biology">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold small text-muted">DATE</label>
+                        <input type="date" id="activityDateInput" class="form-control">
+                    </div>
+                </div>
+
+                <!-- Student Score Entry Table -->
+                <div class="table-responsive border rounded-3 mb-4">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Student Name</th>
+                                <th style="width: 140px;" class="text-center">Score (Max: <span id="maxScoreBadge">20</span>)</th>
+                                <th>Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody id="activityScoresBody">
+                            <tr><td colspan="3" class="text-center text-muted py-4">Please select a class to enter student scores.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-end">
+                    <button type="button" class="btn btn-success btn-lg px-4" id="saveActivityBtn" onclick="saveActivityOffline()">
+                        <i class="bi bi-floppy me-2"></i> Save Activity & Scores (Offline Queue)
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================================================= -->
+        <!-- TAB 3: SYNC QUEUE -->
+        <!-- ========================================================================= -->
+        <div id="tabQueue" class="tab-content-panel d-none">
+            <div class="offline-card">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h5 class="fw-bold mb-0">Offline Submissions Queue</h5>
+                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="clearSyncQueue()">
+                        <i class="bi bi-trash me-1"></i> Clear Queue
+                    </button>
+                </div>
+                <p class="text-muted small">All records recorded while offline are queued below. Once an internet connection is available, they will automatically sync to the server.</p>
+
+                <div id="syncQueueContainer">
+                    <div class="text-center text-muted py-4">No pending offline submissions.</div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Offline QR Scanner Modal -->
-    <div class="modal fade" id="offlineQrModal" tabindex="-1" aria-hidden="true">
+    <!-- QR Camera Scanner Modal -->
+    <div class="modal fade" id="qrScannerModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <div>
-                        <h6 class="modal-title fw-bold mb-0"><i class="bi bi-qr-code-scan me-2 text-primary"></i>Offline QR Code Scanner</h6>
-                        <small class="text-muted">Point camera at student QR code to mark present</small>
-                    </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" onclick="stopOfflineQrScanner()"></button>
+                    <h5 class="modal-title"><i class="bi bi-camera me-2"></i>Scan Student QR Badge</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="stopQrScanner()"></button>
                 </div>
-                <div class="modal-body text-center">
-                    <div id="offline-qr-reader" style="width:100%; min-height: 250px;"></div>
-                    <div id="offlineQrFeedback" class="mt-2"></div>
+                <div class="modal-body p-3 text-center">
+                    <div id="qr-reader-container"></div>
+                    <div id="qrScanFeedback" class="alert alert-info mt-3 mb-0">Point your camera at a student ID QR code.</div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal" onclick="stopOfflineQrScanner()">Done Scanning</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" onclick="stopQrScanner()">Close Scanner</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="offlineToast" class="toast align-items-center text-white bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body" id="toastMessage">Action completed.</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
         </div>
     </div>
 
     <script src="assets/vendor/bootstrap/bootstrap.bundle.min.js"></script>
     <script src="assets/vendor/html5-qrcode/html5-qrcode.min.js"></script>
+    <script src="assets/js/offlineStorage.js"></script>
     <script src="assets/js/networkSync.js"></script>
     <script>
-        // Apply dark mode if user previously set it
-        try {
-            var darkMode = localStorage.getItem('bshs_dark_mode');
-            if (darkMode === '1' || (darkMode === null && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                document.body.classList.add('dark-mode');
-            }
-        } catch (e) {}
+        let currentClasses = [];
+        let currentRoster = [];
+        let html5QrScanner = null;
+        let qrScannerModalObj = null;
 
-        const statusCycle = ['present', 'absent', 'late'];
-        const statusTemplates = {
-            present: '<i class="bi bi-check-circle me-1"></i>Present',
-            absent: '<i class="bi bi-x-circle me-1"></i>Absent',
-            late: '<i class="bi bi-clock me-1"></i>Late'
-        };
+        document.addEventListener('DOMContentLoaded', async function () {
+            // Set today's date
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('attendanceDateInput').value = today;
+            document.getElementById('activityDateInput').value = today;
 
-        var currentStudents = [];
-        var qrScannerInstance = null;
-
-        // Set default date to today
-        var todayStr = new Date().toISOString().split('T')[0];
-        document.getElementById('offlineDateInput').value = todayStr;
-
-        function loadOfflineClasses() {
-            var select = document.getElementById('offlineClassSelect');
-            select.innerHTML = '<option value="">-- Choose Class --</option>';
-            var raw = localStorage.getItem('bshs_offline_classes');
-            var classes = [];
-            try {
-                classes = JSON.parse(raw) || [];
-            } catch (e) { classes = []; }
-
-            if (classes.length === 0) {
-                document.getElementById('noDataNotice').style.display = 'block';
-                return;
+            // Initialize bootstrap modal
+            const modalEl = document.getElementById('qrScannerModal');
+            if (modalEl) {
+                qrScannerModalObj = new bootstrap.Modal(modalEl);
             }
 
-            document.getElementById('noDataNotice').style.display = 'none';
-            classes.forEach(function (c) {
-                var opt = document.createElement('option');
-                opt.value = c.id;
-                opt.textContent = c.name + (c.subject_title ? ' - ' + c.subject_title : '');
-                select.appendChild(opt);
+            // Sync max score label
+            document.getElementById('activityTotalScoreInput')?.addEventListener('input', function(e) {
+                document.getElementById('maxScoreBadge').textContent = e.target.value || '20';
             });
 
-            if (classes.length > 0) {
-                select.selectedIndex = 1;
-                onClassChange();
+            // Monitor connectivity
+            updateConnectionStatus();
+            window.addEventListener('online', updateConnectionStatus);
+            window.addEventListener('offline', updateConnectionStatus);
+
+            // Load stored data from IndexedDB
+            await loadOfflineWorkspace();
+            await refreshQueueCount();
+        });
+
+        function updateConnectionStatus() {
+            const isOnline = navigator.onLine;
+            const dot = document.getElementById('connectionDot');
+            const text = document.getElementById('connectionStatusText');
+            if (isOnline) {
+                if (dot) { dot.style.backgroundColor = '#10b981'; dot.style.boxShadow = 'none'; }
+                if (text) text.textContent = 'Online — Ready to Sync';
+            } else {
+                if (dot) { dot.style.backgroundColor = '#f59e0b'; }
+                if (text) text.textContent = 'Offline Mode Active';
             }
         }
 
-        function onClassChange() {
-            var classId = document.getElementById('offlineClassSelect').value;
-            if (!classId) {
-                currentStudents = [];
-                renderStudentList([]);
+        async function loadOfflineWorkspace() {
+            // 1. Profile
+            const profile = await window.bshsOfflineStorage.getTeacherProfile();
+            if (profile && profile.first_name) {
+                document.getElementById('teacherGreeting').textContent = `Teacher: ${profile.first_name} ${profile.last_name || ''} • Zero internet required`;
+            }
+
+            // 2. Classes
+            currentClasses = await window.bshsOfflineStorage.getClasses();
+            const attSelect = document.getElementById('attendanceClassSelect');
+            const actSelect = document.getElementById('activityClassSelect');
+
+            if (!currentClasses || currentClasses.length === 0) {
+                attSelect.innerHTML = '<option value="">No cached classes found</option>';
+                actSelect.innerHTML = '<option value="">No cached classes found</option>';
+                document.getElementById('attendanceStudentList').innerHTML = '<div class="p-4 text-center text-muted">No classes saved on this device. Open the app while online once to download your rosters.</div>';
                 return;
             }
 
-            var raw = localStorage.getItem('bshs_offline_roster_' + classId);
-            try {
-                currentStudents = JSON.parse(raw) || [];
-            } catch (e) {
-                currentStudents = [];
-            }
+            const options = currentClasses.map(c => `<option value="${c.id}">${escapeHtml(c.name || '')} (G${c.grade_level || ''} - ${escapeHtml(c.section || '')})</option>`).join('');
+            attSelect.innerHTML = options;
+            actSelect.innerHTML = options;
 
-            renderStudentList(currentStudents);
+            // Load first class roster
+            await onAttendanceClassChanged();
+            await onActivityClassChanged();
         }
 
-        function renderStudentList(students) {
-            var tbody = document.getElementById('offlineStudentBody');
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content-panel').forEach(p => p.classList.add('d-none'));
+
+            if (tab === 'attendance') {
+                document.getElementById('tabAttendanceBtn').classList.add('active');
+                document.getElementById('tabAttendance').classList.remove('d-none');
+            } else if (tab === 'activities') {
+                document.getElementById('tabActivitiesBtn').classList.add('active');
+                document.getElementById('tabActivities').classList.remove('d-none');
+            } else if (tab === 'queue') {
+                document.getElementById('tabQueueBtn').classList.add('active');
+                document.getElementById('tabQueue').classList.remove('d-none');
+                renderSyncQueue();
+            }
+        }
+
+        // -------------------------------------------------------------
+        // Attendance Handlers
+        // -------------------------------------------------------------
+        async function onAttendanceClassChanged() {
+            const classId = document.getElementById('attendanceClassSelect').value;
+            if (!classId) return;
+
+            currentRoster = await window.bshsOfflineStorage.getClassRoster(classId);
+            renderAttendanceList(currentRoster);
+        }
+
+        function renderAttendanceList(students) {
+            const container = document.getElementById('attendanceStudentList');
             if (!students || students.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No cached student roster found for this class.</td></tr>';
-                updateKpis();
+                container.innerHTML = '<div class="p-4 text-center text-muted">No students enrolled in this class.</div>';
+                updateAttendanceKpis();
                 return;
             }
 
-            tbody.innerHTML = students.map(function (s, index) {
-                var name = s.first_name + ' ' + s.last_name;
-                var inits = ((s.first_name[0] || '') + (s.last_name[0] || '')).toUpperCase();
-                var st = s.attendance_status || 'present';
-                var ref = s.reference_code || (s.lrn ? 'LRN: ' + s.lrn : 'ID #' + s.id);
-
-                return '<tr data-student-id="' + s.id + '" data-index="' + index + '">' +
-                    '<td><div class="d-flex align-items-center gap-2">' +
-                    '<div class="student-avatar">' + inits + '</div>' +
-                    '<div class="fw-bold student-name">' + escapeHtml(name) + '</div>' +
-                    '</div></td>' +
-                    '<td class="text-muted small">' + escapeHtml(ref) + '</td>' +
-                    '<td><button type="button" class="teacher-status ' + st + '" data-status="' + st + '" onclick="cycleStatus(this, ' + index + ')">' +
-                    (statusTemplates[st] || statusTemplates.present) + '</button></td>' +
-                    '<td><input type="text" class="form-control form-control-sm remarks-input" placeholder="Add remarks..." value="' + escapeHtml(s.remarks || '') + '" onchange="updateRemark(' + index + ', this.value)"></td>' +
-                    '</tr>';
+            container.innerHTML = students.map((s, idx) => {
+                const status = s.attendance_status || 'present';
+                const initials = ((s.first_name?.[0] || '') + (s.last_name?.[0] || '')).toUpperCase() || 'ST';
+                return `
+                <div class="student-row" data-student-id="${s.id}">
+                    <div class="student-avatar">${initials}</div>
+                    <div class="student-info">
+                        <div class="student-name">${escapeHtml(s.last_name || '')}, ${escapeHtml(s.first_name || '')}</div>
+                        <div class="student-meta">Ref: ${escapeHtml(s.reference_code || '—')} | LRN: ${escapeHtml(s.lrn || '—')}</div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="status-pill ${status}" onclick="cycleAttendanceStatus(${idx})">
+                            <i class="bi ${getStatusIcon(status)}"></i>
+                            <span class="status-text">${capitalize(status)}</span>
+                        </span>
+                    </div>
+                </div>`;
             }).join('');
 
-            updateKpis();
-            filterStudents();
+            updateAttendanceKpis();
         }
 
-        function cycleStatus(btn, index) {
-            var curr = btn.dataset.status || 'present';
-            var next = statusCycle[(statusCycle.indexOf(curr) + 1) % statusCycle.length];
-            btn.dataset.status = next;
-            btn.className = 'teacher-status ' + next;
-            btn.innerHTML = statusTemplates[next];
-            if (currentStudents[index]) {
-                currentStudents[index].attendance_status = next;
+        function getStatusIcon(status) {
+            if (status === 'present') return 'bi-check-circle-fill';
+            if (status === 'absent') return 'bi-x-circle-fill';
+            return 'bi-clock-fill';
+        }
+
+        function cycleAttendanceStatus(studentIdx) {
+            if (!currentRoster[studentIdx]) return;
+            const cycle = ['present', 'absent', 'late'];
+            const current = currentRoster[studentIdx].attendance_status || 'present';
+            const next = cycle[(cycle.indexOf(current) + 1) % cycle.length];
+            currentRoster[studentIdx].attendance_status = next;
+
+            // Re-render single student row or update UI
+            const rows = document.querySelectorAll('.student-row');
+            if (rows[studentIdx]) {
+                const pill = rows[studentIdx].querySelector('.status-pill');
+                pill.className = `status-pill ${next}`;
+                pill.innerHTML = `<i class="bi ${getStatusIcon(next)}"></i> <span class="status-text">${capitalize(next)}</span>`;
             }
-            updateKpis();
+            updateAttendanceKpis();
         }
 
-        function updateRemark(index, val) {
-            if (currentStudents[index]) {
-                currentStudents[index].remarks = val;
-            }
-        }
-
-        function markAllPresent() {
-            if (currentStudents.length === 0) return;
-            currentStudents.forEach(function (s) { s.attendance_status = 'present'; });
-            renderStudentList(currentStudents);
-        }
-
-        function updateKpis() {
-            var p = 0, a = 0, l = 0;
-            currentStudents.forEach(function (s) {
-                var st = s.attendance_status || 'present';
-                if (st === 'present') p++;
-                else if (st === 'absent') a++;
-                else if (st === 'late') l++;
-            });
-            document.getElementById('kpiPresent').textContent = p;
-            document.getElementById('kpiAbsent').textContent = a;
-            document.getElementById('kpiLate').textContent = l;
-            document.getElementById('kpiTotal').textContent = currentStudents.length;
-        }
-
-        function filterStudents() {
-            var q = (document.getElementById('offlineSearchInput').value || '').trim().toLowerCase();
-            var rows = document.querySelectorAll('#offlineStudentBody tr[data-student-id]');
-            rows.forEach(function (r) {
-                var name = (r.querySelector('.student-name')?.textContent || '').toLowerCase();
-                var ref = (r.children[1]?.textContent || '').toLowerCase();
-                r.style.display = (!q || name.includes(q) || ref.includes(q)) ? '' : 'none';
-            });
-        }
-
-        function saveOfflineAttendance() {
-            var classId = document.getElementById('offlineClassSelect').value;
-            var date = document.getElementById('offlineDateInput').value;
-
-            if (!classId) {
-                alert('Please select a subject class first.');
-                return;
-            }
-            if (!date) {
-                alert('Please select an attendance date.');
-                return;
-            }
-            if (currentStudents.length === 0) {
-                alert('No students to save.');
-                return;
-            }
-
-            var records = currentStudents.map(function (s) {
-                return {
-                    student_id: parseInt(s.id, 10),
-                    status: s.attendance_status || 'present',
-                    remarks: s.remarks || ''
-                };
-            });
-
-            // Queue using networkSync / localStorage
-            var queue = [];
-            try {
-                queue = JSON.parse(localStorage.getItem('bshs_offline_queue')) || [];
-            } catch (e) { queue = []; }
-
-            queue.push({
-                id: Date.now() + '_' + Math.random().toString(36).slice(2, 8),
-                action: {
-                    type: 'submit_attendance',
-                    url: 'teacher_Action.php?action=submit_attendance',
-                    payload: {
-                        class_id: parseInt(classId, 10),
-                        date: date,
-                        mode: 'subject',
-                        records: records
-                    }
-                },
-                addedAt: new Date().toISOString(),
-                attempts: 0
-            });
-
-            try {
-                localStorage.setItem('bshs_offline_queue', JSON.stringify(queue));
-            } catch (e) {}
-
-            updateQueueCount();
-
-            // Success feedback
-            var btn = document.getElementById('saveOfflineBtn');
-            var orig = btn.innerHTML;
-            btn.className = 'btn btn-success';
-            btn.innerHTML = '<i class="bi bi-check2-circle me-2"></i>Saved in Offline Queue!';
-            setTimeout(function () {
-                btn.className = 'btn btn-primary-custom';
-                btn.innerHTML = orig;
-            }, 2000);
-        }
-
-        function updateQueueCount() {
-            var badge = document.getElementById('offlineQueueBadge');
-            var note = document.getElementById('queueStatusNote');
-            var queue = [];
-            try {
-                queue = JSON.parse(localStorage.getItem('bshs_offline_queue')) || [];
-            } catch (e) { queue = []; }
-
-            if (queue.length > 0) {
-                badge.style.display = 'inline-block';
-                badge.textContent = queue.length + ' queued for sync';
-                note.innerHTML = '<i class="bi bi-check-circle-fill text-success me-1"></i><strong>' + queue.length + ' attendance record' + (queue.length > 1 ? 's' : '') + '</strong> saved offline. Will sync automatically when online.';
-            } else {
-                badge.style.display = 'none';
-                note.innerHTML = '<i class="bi bi-info-circle me-1"></i>Tap Save to store in offline queue.';
-            }
-        }
-
-        // Offline QR Scanner
-        function openOfflineQrScanner() {
-            if (currentStudents.length === 0) {
-                alert('Please select a class with enrolled students first.');
-                return;
-            }
-
-            var modalEl = document.getElementById('offlineQrModal');
-            var modal = new bootstrap.Modal(modalEl);
-            modal.show();
-
-            document.getElementById('offlineQrFeedback').innerHTML = '';
-
-            setTimeout(startOfflineCamera, 400);
-        }
-
-        function startOfflineCamera() {
-            if (typeof Html5Qrcode === 'undefined') {
-                document.getElementById('offlineQrFeedback').innerHTML = '<div class="alert alert-danger py-2 small">QR Scanner engine not loaded.</div>';
-                return;
-            }
-
-            if (qrScannerInstance) {
-                try { qrScannerInstance.stop(); } catch (e) {}
-            }
-
-            qrScannerInstance = new Html5Qrcode('offline-qr-reader');
-            qrScannerInstance.start(
-                { facingMode: 'environment' },
-                { fps: 10, qrbox: { width: 220, height: 220 } },
-                function onScanSuccess(decodedText) {
-                    handleQrScan(decodedText);
-                },
-                function onScanError() {}
-            ).catch(function (err) {
-                document.getElementById('offlineQrFeedback').innerHTML = '<div class="alert alert-warning py-2 small">Camera access error: ' + escapeHtml(err.message || err) + '</div>';
-            });
-        }
-
-        function handleQrScan(qrText) {
-            var code = (qrText || '').trim().toLowerCase();
-            var matchedIndex = -1;
-
-            for (var i = 0; i < currentStudents.length; i++) {
-                var s = currentStudents[i];
-                var sRef = (s.reference_code || '').toLowerCase();
-                var sLrn = (s.lrn || '').toLowerCase();
-                var sId = String(s.id);
-                if (code === sRef || code === sLrn || code === sId || code.includes(sRef) || (sLrn && code.includes(sLrn))) {
-                    matchedIndex = i;
-                    break;
+        function markAllAttendance(status) {
+            currentRoster.forEach((s, idx) => {
+                s.attendance_status = status;
+                const rows = document.querySelectorAll('.student-row');
+                if (rows[idx]) {
+                    const pill = rows[idx].querySelector('.status-pill');
+                    pill.className = `status-pill ${status}`;
+                    pill.innerHTML = `<i class="bi ${getStatusIcon(status)}"></i> <span class="status-text">${capitalize(status)}</span>`;
                 }
-            }
-
-            var fb = document.getElementById('offlineQrFeedback');
-            if (matchedIndex !== -1) {
-                var st = currentStudents[matchedIndex];
-                st.attendance_status = 'present';
-                renderStudentList(currentStudents);
-                fb.innerHTML = '<div class="alert alert-success py-2 small mb-0"><i class="bi bi-check-circle-fill me-1"></i>' + escapeHtml(st.first_name + ' ' + st.last_name) + ' marked <strong>PRESENT</strong>!</div>';
-            } else {
-                fb.innerHTML = '<div class="alert alert-warning py-2 small mb-0"><i class="bi bi-exclamation-triangle me-1"></i>QR Code not found in this class (' + escapeHtml(qrText) + ')</div>';
-            }
+            });
+            updateAttendanceKpis();
         }
 
-        function stopOfflineQrScanner() {
-            if (qrScannerInstance) {
-                try {
-                    qrScannerInstance.stop().then(function () {
-                        qrScannerInstance.clear();
-                        qrScannerInstance = null;
+        function updateAttendanceKpis() {
+            let present = 0, absent = 0, late = 0;
+            currentRoster.forEach(s => {
+                const status = s.attendance_status || 'present';
+                if (status === 'present') present++;
+                else if (status === 'absent') absent++;
+                else if (status === 'late') late++;
+            });
+
+            document.getElementById('kpiPresentCount').textContent = present;
+            document.getElementById('kpiAbsentCount').textContent = absent;
+            document.getElementById('kpiLateCount').textContent = late;
+            document.getElementById('kpiTotalCount').textContent = currentRoster.length;
+        }
+
+        function filterAttendanceList() {
+            const query = (document.getElementById('attendanceSearchInput').value || '').toLowerCase().trim();
+            const rows = document.querySelectorAll('.student-row');
+            currentRoster.forEach((s, idx) => {
+                if (!rows[idx]) return;
+                const text = `${s.first_name} ${s.last_name} ${s.reference_code || ''} ${s.lrn || ''}`.toLowerCase();
+                rows[idx].style.display = text.includes(query) ? '' : 'none';
+            });
+        }
+
+        async function saveAttendanceOffline() {
+            const classId = parseInt(document.getElementById('attendanceClassSelect').value, 10);
+            const date = document.getElementById('attendanceDateInput').value;
+
+            if (!classId || !date) {
+                showToast('Please select a class and date', 'danger');
+                return;
+            }
+
+            if (!currentRoster || currentRoster.length === 0) {
+                showToast('No student records to save', 'warning');
+                return;
+            }
+
+            const records = currentRoster.map(s => ({
+                student_id: s.id,
+                status: s.attendance_status || 'present',
+                remarks: s.remarks || ''
+            }));
+
+            const action = {
+                type: 'submit_attendance',
+                url: 'teacher_Action.php?action=submit_attendance',
+                payload: {
+                    class_id: classId,
+                    date: date,
+                    mode: 'subject',
+                    records: records
+                }
+            };
+
+            await window.bshsOfflineStorage.enqueueSyncItem(action);
+            await refreshQueueCount();
+            showToast('Attendance saved to offline queue!', 'success');
+        }
+
+        // -------------------------------------------------------------
+        // Activity & Scores Handlers
+        // -------------------------------------------------------------
+        async function onActivityClassChanged() {
+            const classId = document.getElementById('activityClassSelect').value;
+            if (!classId) return;
+
+            const students = await window.bshsOfflineStorage.getClassRoster(classId);
+            const tbody = document.getElementById('activityScoresBody');
+
+            if (!students || students.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-4">No students enrolled in this class.</td></tr>';
+                return;
+            }
+
+            const maxScore = parseFloat(document.getElementById('activityTotalScoreInput').value) || 20;
+
+            tbody.innerHTML = students.map(s => {
+                return `
+                <tr data-student-id="${s.id}">
+                    <td>
+                        <div class="fw-semibold">${escapeHtml(s.last_name || '')}, ${escapeHtml(s.first_name || '')}</div>
+                        <div class="text-muted small">Ref: ${escapeHtml(s.reference_code || '—')}</div>
+                    </td>
+                    <td class="text-center">
+                        <input type="number" class="form-control form-control-sm score-input mx-auto" min="0" max="${maxScore}" step="0.5" placeholder="0">
+                    </td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm" placeholder="Optional remark">
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        async function saveActivityOffline() {
+            const classId = parseInt(document.getElementById('activityClassSelect').value, 10);
+            const title = (document.getElementById('activityTitleInput').value || '').trim();
+            const component = document.getElementById('activityComponentSelect').value;
+            const totalScore = parseFloat(document.getElementById('activityTotalScoreInput').value);
+            const date = document.getElementById('activityDateInput').value;
+
+            if (!classId || !title || isNaN(totalScore) || totalScore <= 0) {
+                showToast('Please enter class, title, and highest possible score', 'danger');
+                return;
+            }
+
+            const rows = document.querySelectorAll('#activityScoresBody tr[data-student-id]');
+            const scores = [];
+            rows.forEach(row => {
+                const sId = parseInt(row.getAttribute('data-student-id'), 10);
+                const scoreVal = row.querySelector('.score-input').value;
+                if (scoreVal !== '' && !isNaN(parseFloat(scoreVal))) {
+                    scores.push({
+                        student_id: sId,
+                        score: parseFloat(scoreVal)
                     });
-                } catch (e) {
-                    qrScannerInstance = null;
                 }
+            });
+
+            const action = {
+                type: 'save_offline_activity',
+                url: 'teacher_Action.php?action=save_offline_activity',
+                payload: {
+                    class_id: classId,
+                    title: title,
+                    component: component,
+                    total_score: totalScore,
+                    activity_date: date,
+                    scores: scores
+                }
+            };
+
+            await window.bshsOfflineStorage.enqueueSyncItem(action);
+            await refreshQueueCount();
+            showToast('Activity & scores saved to offline queue!', 'success');
+        }
+
+        // -------------------------------------------------------------
+        // Camera QR Scanner Modal
+        // -------------------------------------------------------------
+        function openQrScannerModal() {
+            if (qrScannerModalObj) qrScannerModalObj.show();
+            setTimeout(startQrScanner, 300);
+        }
+
+        function startQrScanner() {
+            if (typeof Html5Qrcode === 'undefined') {
+                document.getElementById('qrScanFeedback').textContent = 'QR Scanner library not loaded.';
+                return;
+            }
+
+            html5QrScanner = new Html5Qrcode("qr-reader-container");
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+            html5QrScanner.start({ facingMode: "environment" }, config, (decodedText) => {
+                onQrCodeScanned(decodedText);
+            }).catch(err => {
+                document.getElementById('qrScanFeedback').textContent = 'Camera permission required for QR scanning.';
+            });
+        }
+
+        function stopQrScanner() {
+            if (html5QrScanner) {
+                html5QrScanner.stop().catch(() => {}).finally(() => {
+                    html5QrScanner = null;
+                });
             }
         }
 
-        function setOnlineUI() {
-            var pill = document.getElementById('connectionStatus');
-            var text = document.getElementById('connectionText');
-            var dot = document.getElementById('statusDot');
-            if (pill) pill.className = 'offline-status-pill online';
-            if (text) text.textContent = 'Connected! Syncing...';
-            if (dot) dot.style.backgroundColor = '#10b981';
+        function onQrCodeScanned(qrCode) {
+            const raw = String(qrCode).trim();
+            const idx = currentRoster.findIndex(s =>
+                String(s.reference_code || '').trim().toLowerCase() === raw.toLowerCase() ||
+                String(s.lrn || '').trim() === raw ||
+                String(s.id) === raw
+            );
+
+            const feedback = document.getElementById('qrScanFeedback');
+            if (idx !== -1) {
+                currentRoster[idx].attendance_status = 'present';
+                const rows = document.querySelectorAll('.student-row');
+                if (rows[idx]) {
+                    const pill = rows[idx].querySelector('.status-pill');
+                    pill.className = 'status-pill present';
+                    pill.innerHTML = `<i class="bi bi-check-circle-fill"></i> <span class="status-text">Present</span>`;
+                }
+                updateAttendanceKpis();
+                feedback.className = 'alert alert-success mt-3 mb-0';
+                feedback.innerHTML = `<i class="bi bi-check-circle me-1"></i> Marked <strong>${escapeHtml(currentRoster[idx].first_name)} ${escapeHtml(currentRoster[idx].last_name)}</strong> Present!`;
+            } else {
+                feedback.className = 'alert alert-warning mt-3 mb-0';
+                feedback.innerHTML = `<i class="bi bi-exclamation-triangle me-1"></i> QR Code (${escapeHtml(raw)}) not matched in current class roster.`;
+            }
         }
 
-        function setOfflineUI() {
-            var pill = document.getElementById('connectionStatus');
-            var text = document.getElementById('connectionText');
-            var dot = document.getElementById('statusDot');
-            if (pill) pill.className = 'offline-status-pill';
-            if (text) text.textContent = 'Offline Mode Active';
-            if (dot) dot.style.backgroundColor = '#f59e0b';
+        // -------------------------------------------------------------
+        // Sync Queue UI
+        // -------------------------------------------------------------
+        async function refreshQueueCount() {
+            const queue = await window.bshsOfflineStorage.getSyncQueue();
+            const count = queue.length;
+            document.getElementById('queueCountText').textContent = count;
+            document.getElementById('tabQueueCount').textContent = count;
+            document.getElementById('headerQueueBadge').className = count > 0 ? 'badge bg-warning text-dark px-3 py-2' : 'badge bg-secondary px-3 py-2';
         }
 
-        function checkConnection() {
-            var btn = document.getElementById('retryBtn');
-            var icon = document.getElementById('retryIcon');
-            if (btn) btn.disabled = true;
-            if (icon) icon.classList.add('bi-spin');
+        async function renderSyncQueue() {
+            const queue = await window.bshsOfflineStorage.getSyncQueue();
+            const container = document.getElementById('syncQueueContainer');
 
-            fetch('assets/manifest.json?cache_bust=' + Date.now(), { method: 'HEAD', cache: 'no-store' })
-                .then(function (res) {
-                    if (res.ok) {
-                        setOnlineUI();
-                        setTimeout(function () { window.location.reload(); }, 600);
-                    } else {
-                        throw new Error('Still offline');
-                    }
-                })
-                .catch(function () {
-                    setOfflineUI();
-                    if (btn) btn.disabled = false;
-                    if (icon) icon.classList.remove('bi-spin');
-                });
+            if (!queue || queue.length === 0) {
+                container.innerHTML = '<div class="text-center text-muted py-4">No pending offline submissions.</div>';
+                return;
+            }
+
+            container.innerHTML = queue.map(item => {
+                const isAttendance = item.action?.type === 'submit_attendance';
+                const title = isAttendance ? 'Daily Attendance Sheet' : `Activity: ${item.action?.payload?.title || 'Untitled'}`;
+                const detail = isAttendance
+                    ? `Class ID ${item.action?.payload?.class_id} • ${item.action?.payload?.records?.length || 0} students`
+                    : `Class ID ${item.action?.payload?.class_id} • ${item.action?.payload?.scores?.length || 0} scores recorded`;
+                return `
+                <div class="sync-queue-item">
+                    <div>
+                        <div class="fw-bold">${escapeHtml(title)}</div>
+                        <div class="text-muted small">${escapeHtml(detail)} • Queued: ${new Date(item.addedAt).toLocaleTimeString()}</div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeQueueItem('${item.id}')">
+                        <i class="bi bi-x"></i> Remove
+                    </button>
+                </div>`;
+            }).join('');
+        }
+
+        async function removeQueueItem(id) {
+            await window.bshsOfflineStorage.removeSyncItem(id);
+            await refreshQueueCount();
+            await renderSyncQueue();
+            showToast('Item removed from queue', 'info');
+        }
+
+        async function clearSyncQueue() {
+            if (!confirm('Are you sure you want to clear all offline submissions?')) return;
+            const queue = await window.bshsOfflineStorage.getSyncQueue();
+            for (const item of queue) {
+                await window.bshsOfflineStorage.removeSyncItem(item.id);
+            }
+            await refreshQueueCount();
+            await renderSyncQueue();
+            showToast('Sync queue cleared', 'info');
+        }
+
+        async function triggerManualSync() {
+            if (!navigator.onLine) {
+                showToast('You are currently offline. Connect to Wi-Fi or data to sync.', 'warning');
+                return;
+            }
+            showToast('Starting synchronization...', 'info');
+            if (window.BSHS_NetworkSync && typeof window.BSHS_NetworkSync.processQueue === 'function') {
+                await window.BSHS_NetworkSync.processQueue();
+            }
+            await refreshQueueCount();
+            await renderSyncQueue();
+            showToast('Sync process completed!', 'success');
+        }
+
+        function showToast(msg, type = 'primary') {
+            const toastEl = document.getElementById('offlineToast');
+            const msgEl = document.getElementById('toastMessage');
+            if (toastEl && msgEl) {
+                toastEl.className = `toast align-items-center text-white bg-${type} border-0`;
+                msgEl.textContent = msg;
+                const toast = new bootstrap.Toast(toastEl);
+                toast.show();
+            }
+        }
+
+        function capitalize(str) {
+            return str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
         }
 
         function escapeHtml(str) {
-            if (!str) return '';
-            return String(str)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
+            const div = document.createElement('div');
+            div.textContent = str || '';
+            return div.innerHTML;
         }
-
-        window.addEventListener('online', function () {
-            setOnlineUI();
-            setTimeout(function () { window.location.reload(); }, 1200);
-        });
-
-        window.addEventListener('offline', setOfflineUI);
-
-        loadOfflineClasses();
-        updateQueueCount();
     </script>
 </body>
 </html>

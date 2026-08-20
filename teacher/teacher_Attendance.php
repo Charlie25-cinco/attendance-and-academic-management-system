@@ -219,6 +219,7 @@ $page_title = 'Attendance';
 </div>
 <script src="<?php echo appAssetPath('vendor/bootstrap/bootstrap.bundle.min.js'); ?>"></script>
 <script src="<?php echo appAssetPath('vendor/html5-qrcode/html5-qrcode.min.js'); ?>"></script>
+<script src="<?php echo appAssetPath('js/offlineStorage.js'); ?>"></script>
 <script src="<?php echo appAssetPath('js/networkSync.js'); ?>"></script>
 <script src="<?php echo appAssetPath('js/main.js'); ?>"></script>
 <script>
