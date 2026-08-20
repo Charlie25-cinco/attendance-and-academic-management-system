@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.65 — 2026-08-20
+
+### Added
+
+- Created dedicated PWA offline shell [`offline.html`](file:///c:/laragon/www/attendance-and-academic-management-system/offline.html) with branded BSHS styling, live connection pulse indicator, automatic reconnection reload, and local storage offline attendance sync queue inspection.
+- Pre-cached `/offline.html` in `sw.js` under cache `bshs-ams-v14` and updated navigation fetch routing to serve cached pages or fall back gracefully to the offline shell instead of a raw plaintext string.
+
 ## v0.3.64 — 2026-08-18
 
 ### Added

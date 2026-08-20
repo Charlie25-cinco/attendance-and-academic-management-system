@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline Mode - Balingasag Senior High School</title>
+    <link rel="manifest" href="/assets/manifest.json">
+    <link rel="icon" type="image/jpeg" href="/assets/images/bshs-logo.jpg">
+    <link rel="apple-touch-icon" href="/assets/images/icon-192.png">
+    <link rel="stylesheet" href="/assets/vendor/bootstrap/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/vendor/bootstrap-icons/bootstrap-icons.css">
+    <link rel="stylesheet" href="/assets/css/main.css">
+    <style>
+        :root {
+            --bshs-navy: #003366;
+            --bshs-gold: #ffcc00;
+            --bshs-bg-light: #f8fafc;
+            --bshs-card-light: #ffffff;
+            --bshs-text-light: #1e293b;
+            --bshs-muted-light: #64748b;
+            --bshs-border-light: #e2e8f0;
+        }
+
+        body.dark-mode {
+            --bshs-bg-light: #0f172a;
+            --bshs-card-light: #1e293b;
+            --bshs-text-light: #f1f5f9;
+            --bshs-muted-light: #94a3b8;
+            --bshs-border-light: #334155;
+        }
+
+        body {
+            background-color: var(--bshs-bg-light);
+            color: var(--bshs-text-light);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .offline-card {
+            background-color: var(--bshs-card-light);
+            border: 1px solid var(--bshs-border-light);
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+            max-width: 520px;
+            width: 100%;
+            padding: 32px 28px;
+            text-align: center;
+        }
+
+        .offline-logo-wrapper {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+
+        .offline-logo {
+            width: 84px;
+            height: 84px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--bshs-gold);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .offline-badge-pulse {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 22px;
+            height: 22px;
+            background-color: #f59e0b;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-size: 11px;
+            animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse-ring {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.6);
+            }
+            50% {
+                box-shadow: 0 0 0 8px rgba(245, 158, 11, 0);
+            }
+        }
+
+        .offline-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--bshs-text-light);
+        }
+
+        .offline-desc {
+            font-size: 14px;
+            color: var(--bshs-muted-light);
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .offline-status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            font-size: 13px;
+            font-weight: 600;
+            background-color: rgba(245, 158, 11, 0.12);
+            color: #d97706;
+            margin-bottom: 20px;
+        }
+
+        .offline-status-pill.online {
+            background-color: rgba(16, 185, 129, 0.12);
+            color: #059669;
+        }
+
+        .offline-features-box {
+            background: rgba(0, 0, 0, 0.02);
+            border: 1px dashed var(--bshs-border-light);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: left;
+            margin-bottom: 24px;
+            font-size: 13px;
+        }
+
+        body.dark-mode .offline-features-box {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .offline-feature-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .offline-feature-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .offline-feature-icon {
+            color: var(--bshs-navy);
+            font-size: 16px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        body.dark-mode .offline-feature-icon {
+            color: var(--bshs-gold);
+        }
+
+        .offline-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .btn-retry {
+            background-color: var(--bshs-navy);
+            color: #ffffff;
+            font-weight: 600;
+            padding: 10px 18px;
+            border-radius: 10px;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-retry:hover {
+            background-color: #002244;
+            color: #ffffff;
+        }
+
+        .btn-return {
+            background-color: transparent;
+            color: var(--bshs-muted-light);
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 10px;
+            border: 1px solid var(--bshs-border-light);
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-return:hover {
+            color: var(--bshs-text-light);
+            background-color: rgba(0, 0, 0, 0.04);
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-card">
+        <div class="offline-logo-wrapper">
+            <img src="/assets/images/bshs-logo.jpg" alt="BSHS Logo" class="offline-logo">
+            <span class="offline-badge-pulse" id="statusDot">
+                <i class="bi bi-wifi-off"></i>
+            </span>
+        </div>
+
+        <h1 class="offline-title">You Are Offline</h1>
+        <p class="offline-desc">BSHS Attendance & Academic Management System is currently disconnected from the internet.</p>
+
+        <div class="offline-status-pill" id="connectionStatus">
+            <i class="bi bi-cloud-slash"></i>
+            <span>Offline Mode Active</span>
+        </div>
+
+        <div class="offline-features-box">
+            <div class="offline-feature-item">
+                <i class="bi bi-clipboard2-check offline-feature-icon"></i>
+                <div>
+                    <strong>Teacher Attendance Sync:</strong>
+                    <div class="text-muted" id="syncQueueInfo">Scans marked while offline will automatically sync once internet returns.</div>
+                </div>
+            </div>
+            <div class="offline-feature-item">
+                <i class="bi bi-shield-check offline-feature-icon"></i>
+                <div>
+                    <strong>Secure Cache:</strong>
+                    <div class="text-muted">Your logged-in profile and cached dashboard remain safe.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="offline-actions">
+            <button type="button" class="btn-retry" id="retryBtn" onclick="checkConnection()">
+                <i class="bi bi-arrow-clockwise" id="retryIcon"></i>
+                <span>Retry Connection</span>
+            </button>
+            <a href="/" class="btn-return" id="returnLink">
+                <i class="bi bi-house me-1"></i>Return to Portal
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // Apply dark mode if user previously configured it
+        try {
+            var darkMode = localStorage.getItem('bshs_dark_mode');
+            if (darkMode === '1' || (darkMode === null && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.body.classList.add('dark-mode');
+            }
+        } catch (e) {}
+
+        // Check pending offline attendance queue count
+        function updateQueueInfo() {
+            var queueInfo = document.getElementById('syncQueueInfo');
+            if (!queueInfo) return;
+            try {
+                var queue = JSON.parse(localStorage.getItem('bshs_offline_queue')) || [];
+                if (queue.length > 0) {
+                    queueInfo.innerHTML = '<span class="text-warning font-weight-bold">' + queue.length + ' attendance record' + (queue.length > 1 ? 's' : '') + ' pending sync</span> in local storage.';
+                } else {
+                    queueInfo.textContent = 'All attendance records are currently synced. New offline scans will queue automatically.';
+                }
+            } catch (e) {
+                queueInfo.textContent = 'Offline sync queue active.';
+            }
+        }
+
+        function setOnlineUI() {
+            var pill = document.getElementById('connectionStatus');
+            var dot = document.getElementById('statusDot');
+            if (pill) {
+                pill.className = 'offline-status-pill online';
+                pill.innerHTML = '<i class="bi bi-wifi"></i><span>Connection Restored! Reloading...</span>';
+            }
+            if (dot) {
+                dot.style.backgroundColor = '#10b981';
+                dot.innerHTML = '<i class="bi bi-wifi"></i>';
+            }
+        }
+
+        function setOfflineUI() {
+            var pill = document.getElementById('connectionStatus');
+            var dot = document.getElementById('statusDot');
+            if (pill) {
+                pill.className = 'offline-status-pill';
+                pill.innerHTML = '<i class="bi bi-cloud-slash"></i><span>Offline Mode Active</span>';
+            }
+            if (dot) {
+                dot.style.backgroundColor = '#f59e0b';
+                dot.innerHTML = '<i class="bi bi-wifi-off"></i>';
+            }
+        }
+
+        function checkConnection() {
+            var btn = document.getElementById('retryBtn');
+            var icon = document.getElementById('retryIcon');
+            if (btn) btn.disabled = true;
+            if (icon) icon.classList.add('bi-spin');
+
+            fetch('/assets/manifest.json?cache_bust=' + Date.now(), { method: 'HEAD', cache: 'no-store' })
+                .then(function (res) {
+                    if (res.ok) {
+                        setOnlineUI();
+                        setTimeout(function () {
+                            window.location.reload();
+                        }, 800);
+                    } else {
+                        throw new Error('Still offline');
+                    }
+                })
+                .catch(function () {
+                    setOfflineUI();
+                    if (btn) btn.disabled = false;
+                    if (icon) icon.classList.remove('bi-spin');
+                });
+        }
+
+        window.addEventListener('online', function () {
+            setOnlineUI();
+            setTimeout(function () {
+                window.location.reload();
+            }, 1000);
+        });
+
+        window.addEventListener('offline', function () {
+            setOfflineUI();
+        });
+
+        updateQueueInfo();
+    </script>
+</body>
+</html>

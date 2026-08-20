@@ -1,7 +1,8 @@
 // BSHS AMS root service worker - PWA cache + push notifications
 
-const CACHE_NAME = 'bshs-ams-v13';
+const CACHE_NAME = 'bshs-ams-v14';
 const APP_SHELL_URLS = [
+  '/offline.html',
   '/assets/manifest.json',
   '/assets/css/main.css',
   '/assets/css/auth.css',
@@ -103,10 +104,18 @@ self.addEventListener('fetch', function (event) {
 
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request).catch(function () {
-        return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
-      })
+      fetch(event.request)
+        .then(function (response) {
+          cacheResponse(event.request, response);
+          return response;
+        })
+        .catch(function () {
+          return caches.match(event.request).then(function (cached) {
+            return cached || caches.match('/offline.html');
+          });
+        })
     );
+    return;
   }
 });
 
