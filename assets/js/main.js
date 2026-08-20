@@ -1156,13 +1156,42 @@ if ('serviceWorker' in navigator && navigator.onLine) {
   if ('caches' in window) {
     caches.keys().then((keys) => {
       keys.forEach((key) => {
-        if (key !== 'bshs-ams-v25') {
+        if (key !== 'bshs-ams-v26') {
           caches.delete(key);
         }
       });
     }).catch(() => {});
   }
 }
+
+// Global top header offline mode badge
+function updateOfflineHeaderBadge() {
+  const isOffline = !navigator.onLine;
+  let badge = document.getElementById('globalOfflineHeaderBadge');
+
+  if (isOffline) {
+    if (!badge) {
+      badge = document.createElement('div');
+      badge.id = 'globalOfflineHeaderBadge';
+      badge.className = 'badge bg-warning text-dark d-inline-flex align-items-center gap-1 px-2.5 py-1 rounded-pill shadow-sm';
+      badge.innerHTML = '<i class="bi bi-wifi-off fs-6"></i><span class="fw-semibold small">Offline Mode</span>';
+
+      const navContainer = document.querySelector('.app-header-actions, .navbar-nav, .teacher-header-actions, .app-header');
+      if (navContainer) {
+        navContainer.insertBefore(badge, navContainer.firstChild);
+      } else {
+        badge.style.cssText = 'position:fixed;top:12px;right:70px;z-index:9999;';
+        document.body.appendChild(badge);
+      }
+    }
+  } else if (badge) {
+    badge.remove();
+  }
+}
+
+window.addEventListener('online', updateOfflineHeaderBadge);
+window.addEventListener('offline', updateOfflineHeaderBadge);
+document.addEventListener('DOMContentLoaded', updateOfflineHeaderBadge);
 
 // Offline link protection: prevents navigating to online-only endpoints when disconnected
 document.addEventListener('click', function (e) {
@@ -1187,9 +1216,9 @@ document.addEventListener('click', function (e) {
   if (isOnlineOnly) {
     e.preventDefault();
     if (typeof showNotification === 'function') {
-      showNotification('This feature requires an active internet connection.', 'warning');
+      showNotification('This feature requires an active internet connection. Offline attendance and activities remain available.', 'warning');
     } else {
-      alert('This feature requires an active internet connection.');
+      alert('This feature requires an active internet connection. Offline attendance and activities remain available.');
     }
   }
 });

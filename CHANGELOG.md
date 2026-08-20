@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.80 — 2026-08-20
+
+### Added
+
+- **Persistent Header Offline Badge & In-Page Offline Workspace Guidance**:
+  - Added global topbar `Offline Mode` status badge in [`assets/js/main.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/main.js) that appears automatically whenever disconnected.
+  - Added in-page status banners in [`teacher/teacher_Attendance.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Attendance.php) and [`teacher/teacher_Classes.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Classes.php) confirming that offline attendance and score entries are saved locally.
+  - Added in-page connection-required guidance on [`teacher/teacher_Reports.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Reports.php) with quick action links to Attendance and Activities.
+  - Bumped Service Worker cache to **`bshs-ams-v26`**.
+
 ## v0.3.79 — 2026-08-20
 
 ### Removed

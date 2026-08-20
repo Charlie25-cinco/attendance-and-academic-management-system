@@ -276,6 +276,17 @@ if (window.bshsOfflineStorage && navigator.onLine) {
     setTimeout(prefetchOtherTeacherRosters, 1200);
 }
 
+if (!navigator.onLine) {
+    const card = document.querySelector('.card, .teacher-card, .table-responsive');
+    if (card && !document.getElementById('offlineAttendanceBanner')) {
+        const b = document.createElement('div');
+        b.id = 'offlineAttendanceBanner';
+        b.className = 'alert alert-primary d-flex align-items-center gap-2 mb-3 p-2.5 rounded-3 shadow-sm';
+        b.innerHTML = '<i class="bi bi-wifi-off fs-5 text-primary"></i><div><strong>Offline Attendance Active</strong>: Roster loaded from device. Submissions are saved locally and will auto-sync when online.</div>';
+        card.parentNode.insertBefore(b, card);
+    }
+}
+
 if (!navigator.onLine && window.bshsOfflineStorage) {
     window.bshsOfflineStorage.getClasses().then(cachedClasses => {
         if (cachedClasses && cachedClasses.length > 0) {

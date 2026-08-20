@@ -777,6 +777,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 500);
     }
 
+    if (!navigator.onLine) {
+        const wrap = document.querySelector('.teacher-classes-wrap, .card, main');
+        if (wrap && !document.getElementById('offlineClassesBanner')) {
+            const b = document.createElement('div');
+            b.id = 'offlineClassesBanner';
+            b.className = 'alert alert-primary d-flex align-items-center gap-2 mb-3 p-2.5 rounded-3 shadow-sm';
+            b.innerHTML = '<i class="bi bi-wifi-off fs-5 text-primary"></i><div><strong>Offline Activities Active</strong>: Create activities and enter student scores. All changes are saved locally and will auto-sync upon reconnection.</div>';
+            wrap.insertBefore(b, wrap.firstChild);
+        }
+    }
+
     if (!navigator.onLine && window.bshsOfflineStorage) {
         window.bshsOfflineStorage.getClasses().then(cachedClasses => {
             if (cachedClasses && cachedClasses.length > 0) {
