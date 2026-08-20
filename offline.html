@@ -542,7 +542,13 @@
             if (!currentClasses || currentClasses.length === 0) {
                 attSelect.innerHTML = '<option value="">No cached classes found</option>';
                 actSelect.innerHTML = '<option value="">No cached classes found</option>';
-                document.getElementById('attendanceStudentList').innerHTML = '<div class="p-4 text-center text-muted">No classes saved on this device. Open the app while online once to download your rosters.</div>';
+                document.getElementById('attendanceStudentList').innerHTML = `
+                    <div class="p-4 text-center">
+                        <div class="text-muted mb-3">No teacher rosters are cached on this device yet.</div>
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="loadDemoData()">
+                            <i class="bi bi-magic me-1"></i> Load Demo Class & Roster (Offline Test)
+                        </button>
+                    </div>`;
                 return;
             }
 
@@ -553,6 +559,30 @@
             // Load first class roster
             await onAttendanceClassChanged();
             await onActivityClassChanged();
+        }
+
+        async function loadDemoData() {
+            const demoClasses = [
+                { id: 101, name: 'General Biology 1', grade_level: 11, section: 'STEM-A', schedule: 'Mon/Wed/Fri 08:00 AM - 09:00 AM' },
+                { id: 102, name: 'Oral Communication', grade_level: 11, section: 'HUMSS-B', schedule: 'Tue/Thu 09:00 AM - 10:30 AM' }
+            ];
+            const demoRoster101 = [
+                { id: 1, first_name: 'Juan', last_name: 'Dela Cruz', reference_code: 'BSHS-ST-001', lrn: '123456789001', gender: 'male', attendance_status: 'present' },
+                { id: 2, first_name: 'Maria', last_name: 'Santos', reference_code: 'BSHS-ST-002', lrn: '123456789002', gender: 'female', attendance_status: 'present' },
+                { id: 3, first_name: 'Mark', last_name: 'Reyes', reference_code: 'BSHS-ST-003', lrn: '123456789003', gender: 'male', attendance_status: 'late' },
+                { id: 4, first_name: 'Anna', last_name: 'Lim', reference_code: 'BSHS-ST-004', lrn: '123456789004', gender: 'female', attendance_status: 'absent' },
+                { id: 5, first_name: 'Christian', last_name: 'Garcia', reference_code: 'BSHS-ST-005', lrn: '123456789005', gender: 'male', attendance_status: 'present' }
+            ];
+            const demoRoster102 = [
+                { id: 6, first_name: 'Sofia', last_name: 'Aquino', reference_code: 'BSHS-ST-006', lrn: '123456789006', gender: 'female', attendance_status: 'present' },
+                { id: 7, first_name: 'Daniel', last_name: 'Bautista', reference_code: 'BSHS-ST-007', lrn: '123456789007', gender: 'male', attendance_status: 'present' }
+            ];
+
+            await window.bshsOfflineStorage.saveClasses(demoClasses);
+            await window.bshsOfflineStorage.saveClassRoster(101, demoRoster101);
+            await window.bshsOfflineStorage.saveClassRoster(102, demoRoster102);
+            await loadOfflineWorkspace();
+            showToast('Demo classes & student rosters loaded!', 'success');
         }
 
         function switchTab(tab) {

@@ -901,7 +901,7 @@ if ('serviceWorker' in navigator) {
                     }
                 };
 
-                navigator.serviceWorker.register(desiredScript, { scope: desiredScope })
+                navigator.serviceWorker.register(desiredScript, { scope: desiredScope, updateViaCache: 'none' })
                     .then(function (reg) {
                         window._swRegistration = reg;
                         activateWaitingWorker(reg);
