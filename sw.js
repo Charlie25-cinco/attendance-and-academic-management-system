@@ -160,13 +160,11 @@ self.addEventListener('fetch', function (event) {
                 if (matchedPathname) {
                   return matchedPathname;
                 }
-                // If uncached or online-only navigation while offline, load cached teacher dashboard or login
-                return caches.match(resolvePath('/teacher/teacher.php'), { ignoreSearch: true }).then(function (teacherDash) {
-                  return teacherDash || caches.match(resolvePath('/auth/login.php'), { ignoreSearch: true }) || new Response(
-                    '<!DOCTYPE html><html><head><meta charset="utf-8"><title>BSHS AMS</title><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="font-family:sans-serif;padding:2rem;text-align:center;"><h2>BSHS AMS</h2><p>This feature requires an active internet connection.</p><a href="/teacher/teacher.php" style="display:inline-block;padding:0.5rem 1rem;background:#1f4f82;color:#fff;text-decoration:none;border-radius:6px;">Go to Teacher Dashboard</a></body></html>',
-                    { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
-                  );
-                });
+                // If uncached navigation while offline, return clean offline notice page
+                return new Response(
+                  '<!DOCTYPE html><html><head><meta charset="utf-8"><title>BSHS AMS</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font-family:sans-serif;margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f8fafc;color:#1e293b;text-align:center;padding:1.5rem;}.card{background:#fff;border-radius:1rem;padding:2rem;box-shadow:0 10px 25px rgba(0,0,0,0.05);max-width:380px;width:100%;}.icon{font-size:3rem;margin-bottom:1rem;}.btn{display:inline-block;margin-top:1.5rem;padding:0.75rem 1.5rem;background:#1f4f82;color:#fff;text-decoration:none;border-radius:0.5rem;font-weight:600;}</style></head><body><div class="card"><div class="icon">📶</div><h2>Connection Required</h2><p>This page requires an active internet connection. Offline attendance and grade activities remain available.</p><a href="javascript:history.back()" class="btn">Go Back</a></div></body></html>',
+                  { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+                );
               });
             });
           });

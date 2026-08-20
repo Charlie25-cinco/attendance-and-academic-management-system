@@ -1164,28 +1164,82 @@ if ('serviceWorker' in navigator && navigator.onLine) {
   }
 }
 
-// Global top header offline mode badge
-function updateOfflineHeaderBadge() {
-  const isOffline = !navigator.onLine;
-  let badge = document.getElementById('globalOfflineHeaderBadge');
+// ============================================
+// OFFLINE FEATURE MODAL
+// ============================================
+function showOfflineModal(featureName) {
+  let modalEl = document.getElementById('bshsOfflineFeatureModal');
+  if (!modalEl) {
+    modalEl = document.createElement('div');
+    modalEl.id = 'bshsOfflineFeatureModal';
+    modalEl.className = 'modal fade';
+    modalEl.setAttribute('tabindex', '-1');
+    modalEl.setAttribute('aria-hidden', 'true');
+    modalEl.innerHTML = `
+      <div class="modal-dialog modal-dialog-centered" style="max-width: 380px;">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+          <div class="modal-body text-center p-4">
+            <div class="d-inline-flex align-items-center justify-content-center bg-warning bg-opacity-10 text-warning rounded-circle mb-3" style="width: 60px; height: 60px;">
+              <i class="bi bi-wifi-off fs-2"></i>
+            </div>
+            <h5 class="fw-bold mb-2 text-dark">Connection Required</h5>
+            <p class="text-muted small mb-4" id="bshsOfflineModalMessage">
+              This feature requires an active internet connection. Offline attendance and grade activities remain available.
+            </p>
+            <button type="button" class="btn btn-primary w-100 py-2 rounded-3 fw-semibold" data-bs-dismiss="modal">
+              Got It
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modalEl);
+  }
 
-  if (isOffline) {
-    if (!badge) {
-      badge = document.createElement('div');
-      badge.id = 'globalOfflineHeaderBadge';
-      badge.className = 'd-inline-flex align-items-center me-1';
-      badge.innerHTML = '<span class="badge bg-warning text-dark d-inline-flex align-items-center gap-1 px-2 py-1 rounded-pill shadow-xs" style="font-size: 0.75rem; font-weight: 600;"><i class="bi bi-wifi-off"></i> Offline</span>';
+  const msgEl = document.getElementById('bshsOfflineModalMessage');
+  if (msgEl) {
+    msgEl.textContent = featureName
+      ? `"${featureName}" requires an active internet connection. Offline attendance and grade activities remain available.`
+      : 'This feature requires an active internet connection. Offline attendance and grade activities remain available.';
+  }
 
-      const actions = document.querySelector('.header-actions');
-      if (actions) {
-        actions.insertBefore(badge, actions.firstChild);
-      }
-    }
-  } else if (badge) {
-    badge.remove();
+  if (window.bootstrap && window.bootstrap.Modal) {
+    const modalInstance = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+    modalInstance.show();
+  } else {
+    alert('This feature requires an active internet connection. Offline attendance and grade activities remain available.');
   }
 }
 
-window.addEventListener('online', updateOfflineHeaderBadge);
-window.addEventListener('offline', updateOfflineHeaderBadge);
-document.addEventListener('DOMContentLoaded', updateOfflineHeaderBadge);
+// Intercept online-only navigations when offline
+document.addEventListener('click', function (e) {
+  if (navigator.onLine) return;
+  const link = e.target.closest('a[href]');
+  if (!link) return;
+  const href = link.getAttribute('href');
+  if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+
+  const onlineOnlyPatterns = [
+    /Reports/i,
+    /SF2_Export/i,
+    /SF5_Export/i,
+    /SF9_Export/i,
+    /Export\.php/i,
+    /Chat/i,
+    /Messages/i,
+    /Advisory/i,
+    /Announcements/i,
+    /admin/i,
+    /student/i,
+    /parent/i,
+    /site\//i
+  ];
+
+  const isOnlineOnly = onlineOnlyPatterns.some(pattern => pattern.test(href));
+  if (isOnlineOnly) {
+    e.preventDefault();
+    e.stopPropagation();
+    const linkText = (link.textContent || '').trim().replace(/\s+/g, ' ');
+    showOfflineModal(linkText);
+  }
+});
