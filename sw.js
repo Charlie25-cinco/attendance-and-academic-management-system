@@ -1,6 +1,6 @@
 // BSHS AMS root service worker - PWA cache + push notifications
 
-const CACHE_NAME = 'bshs-ams-v24';
+const CACHE_NAME = 'bshs-ams-v25';
 const BASE_PATH = (self.location.pathname || '').replace(/\/sw\.js$/, '');
 
 function resolvePath(path) {
@@ -13,7 +13,6 @@ function resolvePath(path) {
 
 const APP_SHELL_URLS = [
   '/auth/login.php',
-  '/offline.html',
   '/assets/manifest.json',
   '/assets/css/main.css',
   '/assets/css/role.css',
@@ -161,20 +160,12 @@ self.addEventListener('fetch', function (event) {
                 if (matchedPathname) {
                   return matchedPathname;
                 }
-                // If root navigation while offline, load cached teacher dashboard or login
-                if (url.pathname === '/' || url.pathname === '/index.php' || url.pathname === resolvePath('/') || url.pathname === resolvePath('/index.php')) {
-                  return caches.match(resolvePath('/teacher/teacher.php'), { ignoreSearch: true }).then(function (teacherDash) {
-                    return teacherDash || caches.match(resolvePath('/auth/login.php'), { ignoreSearch: true }) || caches.match(resolvePath('/offline.html'), { ignoreSearch: true });
-                  });
-                }
-                return caches.match(resolvePath('/offline.html'), { ignoreSearch: true }).then(function (offlineRes) {
-                  if (offlineRes) return offlineRes;
-                  return caches.match('/offline.html', { ignoreSearch: true }).then(function (off2) {
-                    return off2 || new Response(
-                      '<!DOCTYPE html><html><head><meta charset="utf-8"><title>BSHS AMS Offline</title><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="font-family:sans-serif;padding:2rem;text-align:center;"><h2>BSHS AMS Offline</h2><p>Device is offline. Please check your connection.</p><a href="/auth/login.php" style="display:inline-block;padding:0.5rem 1rem;background:#1d4ed8;color:#fff;text-decoration:none;border-radius:4px;">Go to Login</a></body></html>',
-                      { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
-                    );
-                  });
+                // If uncached or online-only navigation while offline, load cached teacher dashboard or login
+                return caches.match(resolvePath('/teacher/teacher.php'), { ignoreSearch: true }).then(function (teacherDash) {
+                  return teacherDash || caches.match(resolvePath('/auth/login.php'), { ignoreSearch: true }) || new Response(
+                    '<!DOCTYPE html><html><head><meta charset="utf-8"><title>BSHS AMS</title><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="font-family:sans-serif;padding:2rem;text-align:center;"><h2>BSHS AMS</h2><p>This feature requires an active internet connection.</p><a href="/teacher/teacher.php" style="display:inline-block;padding:0.5rem 1rem;background:#1f4f82;color:#fff;text-decoration:none;border-radius:6px;">Go to Teacher Dashboard</a></body></html>',
+                    { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+                  );
                 });
               });
             });

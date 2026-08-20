@@ -834,7 +834,7 @@ function pwaHeadHtml(): string {
     $favicon32Url = $baseUrl !== '' ? $baseUrl . '/assets/images/favicon.png' : (function_exists('appAssetPath') ? appAssetPath('images/favicon.png') : '/assets/images/favicon.png');
     $favicon16Url = $baseUrl !== '' ? $baseUrl . '/assets/images/favicon-16.png' : (function_exists('appAssetPath') ? appAssetPath('images/favicon-16.png') : '/assets/images/favicon-16.png');
     $logoUrl = $baseUrl !== '' ? $baseUrl . '/assets/images/bshs-logo.jpg' : (function_exists('appAssetPath') ? appAssetPath('images/bshs-logo.jpg') : '/assets/images/bshs-logo.jpg');
-    $serviceWorkerUrl = $baseUrl !== '' ? $baseUrl . '/sw.js?v=0.3.77' : '/sw.js?v=0.3.77';
+    $serviceWorkerUrl = $baseUrl !== '' ? $baseUrl . '/sw.js?v=0.3.79' : '/sw.js?v=0.3.79';
     $scopeUrl = $baseUrl !== '' ? $baseUrl . '/' : '/';
 
     $html = '<link rel="manifest" href="' . htmlspecialchars($manifestUrl, ENT_QUOTES, 'UTF-8') . '">' . "\n";
@@ -855,13 +855,13 @@ function pwaHeadHtml(): string {
         . '.app-top-progress.is-finishing{opacity:0;transition:width .32s cubic-bezier(0.4,0,0.2,1),opacity .28s ease .12s;}'
         . '</style>' . "\n";
     $html .= '<script>'
-        . 'window._CACHE_NAME="bshs-ams-v24";'
+        . 'window._CACHE_NAME="bshs-ams-v25";'
         . '(function(){try{if(sessionStorage.getItem("app_page_navigating")==="true"){var b=document.createElement("div");b.id="appTopProgress";b.className="app-top-progress is-visible";b.style.setProperty("--app-progress","75vw");b.style.width="75vw";(document.head||document.documentElement).appendChild(b);}}catch(e){}})();'
         . '</script>' . "\n";
 
     $swScript = "
 <script>
-window._CACHE_NAME = 'bshs-ams-v24';
+window._CACHE_NAME = 'bshs-ams-v25';
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
         var desiredScript = '" . htmlspecialchars($serviceWorkerUrl, ENT_QUOTES, 'UTF-8') . "';

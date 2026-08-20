@@ -1156,10 +1156,40 @@ if ('serviceWorker' in navigator && navigator.onLine) {
   if ('caches' in window) {
     caches.keys().then((keys) => {
       keys.forEach((key) => {
-        if (key !== 'bshs-ams-v24') {
+        if (key !== 'bshs-ams-v25') {
           caches.delete(key);
         }
       });
     }).catch(() => {});
   }
 }
+
+// Offline link protection: prevents navigating to online-only endpoints when disconnected
+document.addEventListener('click', function (e) {
+  if (navigator.onLine) return;
+  const link = e.target.closest('a[href]');
+  if (!link) return;
+  const href = link.getAttribute('href');
+  if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+
+  const onlineOnlyPatterns = [
+    /teacher_SF2_Export\.php/i,
+    /teacher_Reports\.php/i,
+    /teacher_Messages\.php/i,
+    /Export\.php/i,
+    /admin/i,
+    /student/i,
+    /parent/i,
+    /site\//i
+  ];
+
+  const isOnlineOnly = onlineOnlyPatterns.some(pattern => pattern.test(href));
+  if (isOnlineOnly) {
+    e.preventDefault();
+    if (typeof showNotification === 'function') {
+      showNotification('This feature requires an active internet connection.', 'warning');
+    } else {
+      alert('This feature requires an active internet connection.');
+    }
+  }
+});

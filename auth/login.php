@@ -366,9 +366,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             <i class="bi bi-box-arrow-in-right"></i>
                             Login
                         </button>
-                        <a href="../offline.html" class="btn btn-outline-warning w-100 mt-3 d-flex align-items-center justify-content-center gap-2" id="offlineWorkspaceBtn">
-                            <i class="bi bi-wifi-off"></i> Open Offline Workspace
-                        </a>
                     </form>
 
                     <div class="auth-footer">
@@ -383,99 +380,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <script src="<?php echo appAssetPath('js/offlineStorage.js'); ?>"></script>
     <script src="<?php echo appAssetPath('js/main.js'); ?>"></script>
     <script>
-        function escapeHtmlText(str) {
-            const div = document.createElement('div');
-            div.textContent = str || '';
-            return div.innerHTML;
-        }
-
-        function renderTeacherHub(session) {
-            const card = document.querySelector('.auth-card');
-            const form = document.querySelector('.auth-form');
-            const footer = document.querySelector('.auth-footer');
-            const subtitle = document.querySelector('.auth-subtitle');
-            const greetingNode = document.getElementById('greeting');
-
-            if (!card) return;
-            if (form) form.style.display = 'none';
-            if (footer) footer.style.display = 'none';
-            if (subtitle) subtitle.style.display = 'none';
-            if (greetingNode) greetingNode.innerText = 'Teacher Workspace';
-
-            const oldBanner = document.getElementById('offlineTeacherBanner');
-            if (oldBanner) oldBanner.remove();
-
-            if (!document.getElementById('offlineTeacherHub')) {
-                const fullName = ((session.first_name || '') + ' ' + (session.last_name || '')).trim() || 'Teacher';
-                const hub = document.createElement('div');
-                hub.id = 'offlineTeacherHub';
-                hub.className = 'd-flex flex-column gap-3 text-start';
-                hub.innerHTML =
-                    '<div class="p-3 bg-light rounded-3 border">' +
-                        '<div class="d-flex align-items-center gap-2 mb-1">' +
-                            '<i class="bi bi-person-check-fill fs-4 text-primary"></i>' +
-                            '<div>' +
-                                '<div class="fw-bold text-dark">' + escapeHtmlText(fullName) + '</div>' +
-                                '<div class="small text-muted">Offline Mode Active</div>' +
-                            '</div>' +
-                        '</div>' +
-                    '</div>' +
-                    '<div class="d-grid gap-2">' +
-                        '<a href="../teacher/teacher_Attendance.php" class="btn btn-primary d-flex align-items-center justify-content-between p-3 rounded-3 text-white text-decoration-none shadow-sm">' +
-                            '<div class="d-flex align-items-center gap-2">' +
-                                '<i class="bi bi-calendar-check fs-5"></i>' +
-                                '<div class="text-start">' +
-                                    '<div class="fw-bold">Daily Attendance</div>' +
-                                    '<small class="opacity-75">Mark attendance & QR camera scan</small>' +
-                                '</div>' +
-                            '</div>' +
-                            '<i class="bi bi-chevron-right"></i>' +
-                        '</a>' +
-                        '<a href="../teacher/teacher_Classes.php" class="btn btn-outline-primary d-flex align-items-center justify-content-between p-3 rounded-3 text-decoration-none">' +
-                            '<div class="d-flex align-items-center gap-2">' +
-                                '<i class="bi bi-journal-text fs-5"></i>' +
-                                '<div class="text-start">' +
-                                    '<div class="fw-bold">Grade Activities</div>' +
-                                    '<small class="text-muted">Create activities & record scores</small>' +
-                                '</div>' +
-                            '</div>' +
-                            '<i class="bi bi-chevron-right"></i>' +
-                        '</a>' +
-                        '<a href="../teacher/teacher.php" class="btn btn-outline-secondary d-flex align-items-center justify-content-between p-3 rounded-3 text-decoration-none">' +
-                            '<div class="d-flex align-items-center gap-2">' +
-                                '<i class="bi bi-speedometer2 fs-5"></i>' +
-                                '<div class="text-start">' +
-                                    '<div class="fw-bold">Teacher Dashboard</div>' +
-                                    '<small class="text-muted">View offline summaries & rosters</small>' +
-                                </div>' +
-                            '</div>' +
-                            '<i class="bi bi-chevron-right"></i>' +
-                        '</a>' +
-                    '</div>' +
-                    '<div class="alert alert-info d-flex align-items-start gap-2 mb-0 p-2 small">' +
-                        '<i class="bi bi-info-circle-fill mt-1 flex-shrink-0"></i>' +
-                        '<div>All offline records are saved securely on your device and will auto-sync when online.</div>' +
-                    '</div>';
-                card.appendChild(hub);
-            }
-        }
-
         async function checkOfflineSession() {
             if (!navigator.onLine && window.bshsOfflineStorage) {
                 const session = await window.bshsOfflineStorage.getTeacherSession();
                 const card = document.querySelector('.auth-card');
 
-                if (session && session.teacher_id && card) {
-                    if ('caches' in window) {
-                        try {
-                            const cached = await caches.match('/teacher/teacher.php', { ignoreSearch: true });
-                            if (cached) {
-                                window.location.replace('../teacher/teacher.php');
-                                return;
-                            }
-                        } catch (e) {}
-                    }
-                    renderTeacherHub(session);
+                if (session && session.teacher_id) {
+                    window.location.replace('../teacher/teacher.php');
                 } else if (!session && card && !document.getElementById('offlineNoSessionBanner')) {
                     const b = document.createElement('div');
                     b.id = 'offlineNoSessionBanner';

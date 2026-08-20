@@ -2,6 +2,20 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.79 — 2026-08-20
+
+### Removed
+
+- **Deleted Separate `offline.html` Application and Standalone Offline Hubs**:
+  - Removed `offline.html` completely from repository and cleared all cache entries.
+  - Removed standalone offline workspace button and hub rendering from [`auth/login.php`](file:///c:/laragon/www/attendance-and-academic-management-system/auth/login.php).
+
+### Added
+
+- **Client-Side Link Guard for Offline Browsing**:
+  - Added proactive offline click interception in [`assets/js/main.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/main.js) to display toast guidance when clicking online-only links while disconnected.
+  - Bumped Service Worker cache to **`bshs-ams-v25`**.
+
 ## v0.3.78 — 2026-08-20
 
 ### Changed
