@@ -326,8 +326,7 @@ $page_title = 'Messages';
                         wrapper.className = 'd-flex flex-column ' + (isSent ? 'align-items-end' : 'align-items-start');
                         wrapper.innerHTML = '<div class="chat-bubble ' + (isSent ? 'sent' : 'received') + '">' +
                             msg.message.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>') +
-                            '</div><div class="chat-time">' + msg.time + '</div>';
-                        container.appendChild(wrapper);
+                            '</div><div class="chat-time">' + msg.time + '</div>';                        container.appendChild(wrapper);
                         lastMsgId = Math.max(lastMsgId, msg.id);
                     });
                     scrollToBottom();
@@ -338,6 +337,17 @@ $page_title = 'Messages';
 
     if (selectedParentId) {
         setInterval(loadNewMessages, 5000);
+    }
+
+    if (!navigator.onLine) {
+        const wrap = document.querySelector('.teacher-chat-card, .card, main, .page-content');
+        if (wrap && !document.getElementById('offlineChatNotice')) {
+            const b = document.createElement('div');
+            b.id = 'offlineChatNotice';
+            b.className = 'alert alert-warning mb-3 p-3 rounded-3 shadow-sm text-start';
+            b.innerHTML = '<div class="d-flex align-items-center gap-2 mb-2"><i class="bi bi-wifi-off fs-4 text-warning"></i><div><strong class="text-dark">Parent-Teacher Chat Requires Internet Connection</strong><div class="small text-muted">Sending and receiving live chat messages requires an active server connection. Your offline Attendance and Grade Activities remain available.</div></div></div><div class="d-flex gap-2 mt-2"><a href="teacher_Attendance.php" class="btn btn-primary btn-sm"><i class="bi bi-calendar-check me-1"></i>Take Attendance</a><a href="teacher_Classes.php" class="btn btn-outline-primary btn-sm"><i class="bi bi-journal-text me-1"></i>Grade Activities</a></div>';
+            wrap.insertBefore(b, wrap.firstChild);
+        }
     }
     </script>
 </body>

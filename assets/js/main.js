@@ -1173,15 +1173,12 @@ function updateOfflineHeaderBadge() {
     if (!badge) {
       badge = document.createElement('div');
       badge.id = 'globalOfflineHeaderBadge';
-      badge.className = 'badge bg-warning text-dark d-inline-flex align-items-center gap-1 px-2.5 py-1 rounded-pill shadow-sm';
-      badge.innerHTML = '<i class="bi bi-wifi-off fs-6"></i><span class="fw-semibold small">Offline Mode</span>';
+      badge.className = 'd-inline-flex align-items-center me-1';
+      badge.innerHTML = '<span class="badge bg-warning text-dark d-inline-flex align-items-center gap-1 px-2 py-1 rounded-pill shadow-xs" style="font-size: 0.75rem; font-weight: 600;"><i class="bi bi-wifi-off"></i> Offline</span>';
 
-      const navContainer = document.querySelector('.app-header-actions, .navbar-nav, .teacher-header-actions, .app-header');
-      if (navContainer) {
-        navContainer.insertBefore(badge, navContainer.firstChild);
-      } else {
-        badge.style.cssText = 'position:fixed;top:12px;right:70px;z-index:9999;';
-        document.body.appendChild(badge);
+      const actions = document.querySelector('.header-actions');
+      if (actions) {
+        actions.insertBefore(badge, actions.firstChild);
       }
     }
   } else if (badge) {
@@ -1192,33 +1189,3 @@ function updateOfflineHeaderBadge() {
 window.addEventListener('online', updateOfflineHeaderBadge);
 window.addEventListener('offline', updateOfflineHeaderBadge);
 document.addEventListener('DOMContentLoaded', updateOfflineHeaderBadge);
-
-// Offline link protection: prevents navigating to online-only endpoints when disconnected
-document.addEventListener('click', function (e) {
-  if (navigator.onLine) return;
-  const link = e.target.closest('a[href]');
-  if (!link) return;
-  const href = link.getAttribute('href');
-  if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
-
-  const onlineOnlyPatterns = [
-    /teacher_SF2_Export\.php/i,
-    /teacher_Reports\.php/i,
-    /teacher_Messages\.php/i,
-    /Export\.php/i,
-    /admin/i,
-    /student/i,
-    /parent/i,
-    /site\//i
-  ];
-
-  const isOnlineOnly = onlineOnlyPatterns.some(pattern => pattern.test(href));
-  if (isOnlineOnly) {
-    e.preventDefault();
-    if (typeof showNotification === 'function') {
-      showNotification('This feature requires an active internet connection. Offline attendance and activities remain available.', 'warning');
-    } else {
-      alert('This feature requires an active internet connection. Offline attendance and activities remain available.');
-    }
-  }
-});

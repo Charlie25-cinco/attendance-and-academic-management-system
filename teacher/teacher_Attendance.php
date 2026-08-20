@@ -285,6 +285,17 @@ if (!navigator.onLine) {
         b.innerHTML = '<i class="bi bi-wifi-off fs-5 text-primary"></i><div><strong>Offline Attendance Active</strong>: Roster loaded from device. Submissions are saved locally and will auto-sync when online.</div>';
         card.parentNode.insertBefore(b, card);
     }
+    const statValues = document.querySelectorAll('.teacher-summary-stat .teacher-summary-value');
+    if (statValues.length >= 2) {
+        statValues[1].textContent = 'Open (Offline)';
+    }
+    const note = document.querySelector('.teacher-summary-note');
+    if (note) {
+        note.textContent = 'Offline Mode: Attendance editing and camera QR scanning are active.';
+    }
+    canEditAttendance = true;
+    editBlockedReason = '';
+    updateEditState();
 }
 
 if (!navigator.onLine && window.bshsOfflineStorage) {
@@ -322,6 +333,15 @@ function loadAttendanceData(){
             window.bshsOfflineStorage.getClassRoster(classId).then(students => {
                 if(students && students.length > 0){
                     canEditAttendance = true;
+                    editBlockedReason = '';
+                    const statValues = document.querySelectorAll('.teacher-summary-stat .teacher-summary-value');
+                    if (statValues.length >= 2) {
+                        statValues[1].textContent = 'Open (Offline)';
+                    }
+                    const note = document.querySelector('.teacher-summary-note');
+                    if (note) {
+                        note.textContent = 'Offline Mode: Attendance editing and camera QR scanning are active.';
+                    }
                     window.bshsOfflineStorage.getLocalAttendance(classId, date).then(localSaved => {
                         if (localSaved && Array.isArray(localSaved.records)) {
                             const markMap = {};
