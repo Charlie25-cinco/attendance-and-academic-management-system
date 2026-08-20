@@ -1,6 +1,6 @@
 // BSHS AMS root service worker - PWA cache + push notifications
 
-const CACHE_NAME = 'bshs-ams-v19';
+const CACHE_NAME = 'bshs-ams-v20';
 const BASE_PATH = (self.location.pathname || '').replace(/\/sw\.js$/, '');
 
 function resolvePath(path) {
@@ -157,6 +157,12 @@ self.addEventListener('fetch', function (event) {
             return caches.match(targetPath).then(function (matchedPath) {
               if (matchedPath) {
                 return matchedPath;
+              }
+              // If root navigation while offline, load cached teacher dashboard
+              if (url.pathname === '/' || url.pathname === '/index.php' || url.pathname === resolvePath('/') || url.pathname === resolvePath('/index.php')) {
+                return caches.match(resolvePath('/teacher/teacher.php')).then(function (teacherDash) {
+                  return teacherDash || caches.match(resolvePath('/offline.html'));
+                });
               }
               return caches.match(resolvePath('/offline.html')).then(function (offlineRes) {
                 return offlineRes || caches.match('/offline.html') || caches.match('offline.html');

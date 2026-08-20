@@ -2,6 +2,15 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.73 — 2026-08-20
+
+### Added
+
+- **Complete Teacher Grades Offline Hydration & Activity Sync**:
+  - Implemented client-side offline hydration in [`teacher/teacher_Grades.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Grades.php) to automatically load assigned classes and enrolled student rosters from IndexedDB when offline.
+  - Updated Service Worker navigation fallback to seamlessly route offline root `/` and `/index.php` launches directly into the cached teacher portal dashboard.
+  - Bumped Service Worker cache to **`bshs-ams-v20`**.
+
 ## v0.3.72 — 2026-08-20
 
 ### Added
