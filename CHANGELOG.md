@@ -2,6 +2,15 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.78 — 2026-08-20
+
+### Changed
+
+- **Unified Direct Offline Teacher Application Architecture**:
+  - Integrated direct launch of cached [`teacher/teacher.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher.php) upon offline cold start when authenticated session is present.
+  - Added automatic offline class and roster hydration in [`teacher/teacher_Attendance.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Attendance.php) and [`teacher/teacher_Classes.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Classes.php).
+  - Pre-warmed cache coverage for all teacher routes including `teacher_Archives.php`.
+
 ## v0.3.77 — 2026-08-20
 
 ### Fixed

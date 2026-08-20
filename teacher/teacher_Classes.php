@@ -759,7 +759,40 @@ function handleDelete(id){
         return;
     }
 }
-document.addEventListener('DOMContentLoaded',()=>{loadGradeItems();});
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (window.bshsOfflineStorage && navigator.onLine) {
+        window.bshsOfflineStorage.saveTeacherSession({
+            teacher_id: <?php echo (int)($_SESSION['user_id'] ?? 0); ?>,
+            role: 'teacher',
+            first_name: <?php echo json_encode($_SESSION['first_name'] ?? ''); ?>,
+            last_name: <?php echo json_encode($_SESSION['last_name'] ?? ''); ?>,
+            email: <?php echo json_encode($_SESSION['email'] ?? ''); ?>,
+            reference_code: <?php echo json_encode($_SESSION['reference_code'] ?? ''); ?>
+        });
+        setTimeout(function () {
+            if (typeof window.bshsOfflineStorage.bootstrapOnline === 'function') {
+                window.bshsOfflineStorage.bootstrapOnline();
+            }
+        }, 500);
+    }
+
+    if (!navigator.onLine && window.bshsOfflineStorage) {
+        window.bshsOfflineStorage.getClasses().then(cachedClasses => {
+            if (cachedClasses && cachedClasses.length > 0) {
+                const sel = document.getElementById('activityClassId');
+                if (sel && sel.options.length <= 1) {
+                    sel.innerHTML = '<option value="">Select Subject Class</option>' + cachedClasses.map(c => {
+                        const label = (c.name || 'Class') + (c.subject_title ? ' - ' + c.subject_title : '');
+                        return `<option value="${c.id}">${escapeHtml(label)}</option>`;
+                    }).join('');
+                }
+            }
+        });
+    }
+
+    loadGradeItems();
+});
 document.addEventListener('DOMContentLoaded',function(){
     const links=Array.from(document.querySelectorAll('.teacher-workspace-link'));
     const sections=links.map(link=>document.querySelector(link.getAttribute('href'))).filter(Boolean);

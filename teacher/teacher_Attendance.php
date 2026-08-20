@@ -268,7 +268,27 @@ if (window.bshsOfflineStorage && navigator.onLine) {
         email: <?php echo json_encode($_SESSION['email'] ?? ''); ?>,
         reference_code: <?php echo json_encode($_SESSION['reference_code'] ?? ''); ?>
     });
+    setTimeout(function () {
+        if (typeof window.bshsOfflineStorage.bootstrapOnline === 'function') {
+            window.bshsOfflineStorage.bootstrapOnline();
+        }
+    }, 500);
     setTimeout(prefetchOtherTeacherRosters, 1200);
+}
+
+if (!navigator.onLine && window.bshsOfflineStorage) {
+    window.bshsOfflineStorage.getClasses().then(cachedClasses => {
+        if (cachedClasses && cachedClasses.length > 0) {
+            const sel = document.getElementById('classSelect');
+            if (sel && sel.options.length <= 1) {
+                sel.innerHTML = cachedClasses.map(c => {
+                    const label = (c.name || 'Class') + (c.subject_title ? ' - ' + c.subject_title : '');
+                    return `<option value="${c.id}">${escapeHtml(label)}</option>`;
+                }).join('');
+            }
+            loadAttendanceData();
+        }
+    });
 }
 
 const statusTemplate={present:'<i class="bi bi-check-circle"></i> Present',absent:'<i class="bi bi-x-circle"></i> Absent',late:'<i class="bi bi-clock"></i> Late'};

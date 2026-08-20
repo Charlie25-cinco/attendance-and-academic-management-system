@@ -507,7 +507,8 @@
               '/teacher/teacher.php',
               '/teacher/teacher_Attendance.php',
               '/teacher/teacher_Classes.php',
-              '/teacher/teacher_Grades.php'
+              '/teacher/teacher_Grades.php',
+              '/teacher/teacher_Archives.php'
             ];
             for (const pageUrl of teacherPages) {
               try {
