@@ -24,7 +24,7 @@ final class PwaAssetFreshnessTest extends TestCase
         $serviceWorker = file_get_contents(__DIR__ . '/../sw.js');
 
         $this->assertIsString($serviceWorker);
-        $this->assertStringContainsString("const CACHE_NAME = 'bshs-ams-v28';", $serviceWorker);
+        $this->assertStringContainsString("const CACHE_NAME = 'bshs-ams-v29';", $serviceWorker);
         $this->assertStringContainsString("const BASE_PATH = (self.location.pathname || '').replace(/\/sw\.js$/, '');", $serviceWorker);
         $this->assertStringContainsString("function resolvePath(path)", $serviceWorker);
         $this->assertStringContainsString("'/assets/js/offlineStorage.js'", $serviceWorker);
@@ -32,6 +32,8 @@ final class PwaAssetFreshnessTest extends TestCase
         $this->assertStringContainsString("'/assets/vendor/html5-qrcode/html5-qrcode.min.js'", $serviceWorker);
         $this->assertStringContainsString('var needsFreshAsset = /\\.(css|js)$/i.test(url.pathname);', $serviceWorker);
         $this->assertStringContainsString('if (needsFreshAsset) {', $serviceWorker);
+        $this->assertStringContainsString('<svg xmlns="http://www.w3.org/2000/svg"', $serviceWorker);
+        $this->assertStringNotContainsString('📶', $serviceWorker);
         $networkFirst = strpos($serviceWorker, 'if (needsFreshAsset) {');
         $cacheFirst = strpos($serviceWorker, 'if (isAsset || isStaticAsset) {');
         $this->assertIsInt($networkFirst);
@@ -73,5 +75,21 @@ final class PwaAssetFreshnessTest extends TestCase
         $this->assertStringContainsString('Notification.permission === "denied"', $javascript);
         $this->assertStringContainsString('Notification.requestPermission()', $javascript);
         $this->assertStringContainsString('requestPushPermissionFromSettings', $javascript);
+    }
+
+    public function testPushPromptModalRendersAndPromptsFirstTimeUsers(): void
+    {
+        $modal = file_get_contents(__DIR__ . '/../includes/modals.php');
+        $javascript = file_get_contents(__DIR__ . '/../assets/js/main.js');
+
+        $this->assertIsString($modal);
+        $this->assertStringContainsString('id="pushPromptModal"', $modal);
+        $this->assertStringContainsString('id="pushPromptAllowBtn"', $modal);
+        $this->assertStringContainsString('id="pushPromptLaterBtn"', $modal);
+        $this->assertStringContainsString('id="pushPromptCloseBtn"', $modal);
+
+        $this->assertIsString($javascript);
+        $this->assertStringContainsString('initPwaPushFirstOpenPrompt', $javascript);
+        $this->assertStringContainsString('bshs_push_prompt_dismissed', $javascript);
     }
 }

@@ -2873,6 +2873,13 @@ body.dark-mode .admin-filter-copy strong {
   color: #b54708 !important;
 }
 
+.teacher-status.cutting,
+.attendance-status.cutting {
+  background: #fdf2fa !important;
+  border-color: #fce7f6 !important;
+  color: #c11574 !important;
+}
+
 .teacher-status-pill {
   border: 1px solid transparent;
   padding: 6px 9px;
@@ -2901,6 +2908,13 @@ body.dark-mode .admin-filter-copy strong {
   background: #fef3f2;
   border-color: #fecdca;
   color: #b42318;
+}
+
+body.dark-mode .teacher-status.cutting,
+body.dark-mode .attendance-status.cutting {
+  background: rgba(193, 21, 116, 0.15) !important;
+  border-color: rgba(193, 21, 116, 0.3) !important;
+  color: #f670c7 !important;
 }
 
 .teacher-action-bar {

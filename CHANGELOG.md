@@ -2,6 +2,44 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.86 — 2026-08-22
+
+### Changed
+
+- **Attendance Action Labeling Refinement**:
+  - Updated primary teacher attendance action button, loading state transitions, and feedback notifications from **"Submit Attendance"** to **"Save Attendance"** across [`teacher/teacher_Attendance.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Attendance.php), [`teacher/teacher_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Action.php), and [`assets/js/main.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/main.js).
+  - Clarifies that attendance records are directly editable and saveable at any time by the subject teacher without confusion of a multi-tier lock.
+
+## v0.3.85 — 2026-08-22
+
+### Added
+
+- **DepEd School Form 2 (SF2) Summary Statistics & Remarks Automation**:
+  - Automated calculation and population of the **Official Summary Statistics Table (Rows 60–89)** in [`src/Export/Sf2Exporter.php`](file:///c:/laragon/www/attendance-and-academic-management-system/src/Export/Sf2Exporter.php), including Enrolment (1st Friday), End-of-Month Registered Learners, Percentage of Enrolment, Average Daily Attendance (ADA), Percentage of Attendance (% PA), 5-consecutive-day absences counter, and NLS/NLPA/transfer placeholders across Male, Female, and Combined totals.
+  - Added automated calculation and population of **Remarks (Column `AV`)** for learners with 5+ consecutive absences, cutting class records, or custom learner remarks.
+  - Populated Adviser and School Head / Principal signature lines in cells `AS80` and `AS85` alongside report month (`AR61`) and school days count (`AU61`).
+  - Added **"Cutting Class"** tracking support with dedicated UI buttons, KPI card, and cycle transitions across [`teacher/teacher_Attendance.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Attendance.php), [`teacher/teacher_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Action.php), and [`assets/css/role.css`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/css/role.css).
+  - Added automated tests in [`tests/Sf2ExporterTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/Sf2ExporterTest.php) verifying summary calculations, remarks column population, cutting marks (`▄`), and sign-off blocks.
+
+## v0.3.84 — 2026-08-22
+
+### Changed
+
+- **Vector SVG Icon on Offline Connection-Lost Screen**:
+  - Replaced Unicode emoji `"📶"` in the [`sw.js`](file:///c:/laragon/www/attendance-and-academic-management-system/sw.js) offline fallback page with an inline vector SVG disconnected-wifi icon container.
+  - Bumped Service Worker cache to **`bshs-ams-v29`**.
+  - Added unit test assertion in [`tests/PwaAssetFreshnessTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/PwaAssetFreshnessTest.php).
+
+## v0.3.83 — 2026-08-22
+
+### Added
+
+- **First-Open Push Notification Permission Onboarding Prompt**:
+  - Added `#pushPromptModal` to [`includes/modals.php`](file:///c:/laragon/www/attendance-and-academic-management-system/includes/modals.php) with clear highlights for real-time attendance, grade releases, and announcements, offering explicit **Allow Notifications** and **Later** choices.
+  - Implemented `initPwaPushFirstOpenPrompt()` in [`assets/js/main.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/main.js) to trigger the onboarding prompt on first load when notification permission is unprompted (`default`).
+  - Added modal and feature-list component styling in [`assets/css/main.css`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/css/main.css) with responsive layout and dark-mode support.
+  - Added test coverage in [`tests/PwaAssetFreshnessTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/PwaAssetFreshnessTest.php).
+
 ## v0.3.82 — 2026-08-21
 
 ### Fixed

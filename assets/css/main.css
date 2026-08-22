@@ -3227,3 +3227,114 @@ body.dark-mode .password-guidance-list li {
 @media (prefers-reduced-motion: reduce) {
   .notification-target-highlight { animation: none; }
 }
+
+/* ============================================
+   Push Notification Permission Prompt Modal
+   ============================================ */
+.push-prompt-modal-content {
+  overflow: hidden;
+  border: 1px solid var(--ui-border-soft, #e8edf3);
+}
+
+.push-prompt-modal-header {
+  padding: 22px 24px 12px;
+}
+
+.push-prompt-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ui-primary, #1f4f82);
+  margin-bottom: 6px;
+}
+
+.push-prompt-subtitle {
+  color: var(--ui-muted-readable, #4b5565);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.push-prompt-modal-body {
+  padding: 12px 24px 20px;
+}
+
+.push-prompt-features {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--ui-panel-soft, #f8fafc);
+  border: 1px solid var(--ui-border-soft, #e8edf3);
+  border-radius: var(--ui-radius, 10px);
+  padding: 14px;
+}
+
+.push-prompt-feature-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.push-prompt-feature-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(31, 79, 130, 0.08);
+  font-size: 1rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.push-prompt-feature-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.push-prompt-feature-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ui-text, #172033);
+  line-height: 1.3;
+}
+
+.push-prompt-feature-desc {
+  font-size: 0.8rem;
+  color: var(--ui-muted-readable, #4b5565);
+  line-height: 1.35;
+  margin-top: 2px;
+}
+
+.push-prompt-modal-footer {
+  padding: 12px 24px 20px;
+}
+
+body.dark-mode .push-prompt-modal-content {
+  background: var(--ui-panel-strong, #182230);
+  border-color: var(--ui-border-soft, #293548);
+}
+
+body.dark-mode .push-prompt-features {
+  background: var(--ui-panel-soft, #131c27);
+  border-color: var(--ui-border-soft, #293548);
+}
+
+body.dark-mode .push-prompt-feature-title {
+  color: var(--ui-text, #f2f4f7);
+}
+
+body.dark-mode .push-prompt-feature-desc,
+body.dark-mode .push-prompt-subtitle {
+  color: var(--ui-muted-readable, #c0c8d2) !important;
+}
+
+body.dark-mode .push-prompt-feature-icon {
+  background: rgba(124, 163, 223, 0.15);
+}
+

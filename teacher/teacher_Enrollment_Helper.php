@@ -63,7 +63,10 @@ if (!function_exists('tEnrollFetchStudentsWithAttendance')) {
         }
 
         $query = "SELECT DISTINCT u.id, u.reference_code, u.first_name, u.last_name,
-                  COALESCE(a.status, 'present') AS attendance_status,
+                  CASE
+                    WHEN a.status = 'cutting' OR (a.status = 'absent' AND a.remarks LIKE '%Cutting%') THEN 'cutting'
+                    ELSE COALESCE(a.status, 'present')
+                  END AS attendance_status,
                   COALESCE(a.remarks, '') AS remarks
                   FROM users u
                   JOIN classes c ON c.id = ?

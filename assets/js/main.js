@@ -357,6 +357,7 @@ document.addEventListener("DOMContentLoaded", function () {
   initHeaderNotificationActions();
   focusNotificationTarget();
   window.setTimeout(initPwaPushAutoRegistration, 1200);
+  window.setTimeout(initPwaPushFirstOpenPrompt, 1500);
 
 });
 
@@ -445,7 +446,7 @@ function initAttendanceToggles() {
   });
 }
 
-// Submit attendance
+// Save attendance
 function submitAttendance() {
   const btn = document.getElementById("submitAttendanceBtn");
   if (btn) {
@@ -460,10 +461,10 @@ function submitAttendance() {
       btn.classList.add("btn-success");
 
       // Show success notification
-      showNotification("Attendance submitted successfully!", "success");
+      showNotification("Attendance saved successfully!", "success");
 
       setTimeout(() => {
-        btn.innerHTML = '<i class="bi bi-save me-2"></i>Submit Attendance';
+        btn.innerHTML = '<i class="bi bi-save me-2"></i>Save Attendance';
         btn.classList.remove("btn-success");
         btn.classList.add("btn-primary");
       }, 2000);
@@ -1007,6 +1008,91 @@ function initPwaPushAutoRegistration() {
   enablePwaPushNotifications().catch(() => {
     updatePwaPushStatus();
   });
+}
+
+function initPwaPushFirstOpenPrompt() {
+  const modalEl = document.getElementById("pushPromptModal");
+  if (!modalEl || typeof bootstrap === "undefined" || !bootstrap.Modal) {
+    return;
+  }
+
+  if (!pwaPushSupported() || !("Notification" in window)) {
+    return;
+  }
+
+  if (Notification.permission !== "default") {
+    return;
+  }
+
+  const dismissed = localStorage.getItem("bshs_push_prompt_dismissed");
+  if (dismissed) {
+    return;
+  }
+
+  const promptModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  const allowBtn = document.getElementById("pushPromptAllowBtn");
+  const laterBtn = document.getElementById("pushPromptLaterBtn");
+  const closeBtn = document.getElementById("pushPromptCloseBtn");
+
+  const handleDismiss = (status) => {
+    try {
+      localStorage.setItem("bshs_push_prompt_dismissed", status || "later");
+    } catch (_) {}
+    promptModal.hide();
+  };
+
+  if (allowBtn) {
+    allowBtn.onclick = function () {
+      allowBtn.disabled = true;
+      Notification.requestPermission()
+        .then((permission) => {
+          try {
+            localStorage.setItem("bshs_push_prompt_dismissed", permission === "granted" ? "granted" : "later");
+          } catch (_) {}
+          promptModal.hide();
+          if (permission === "granted") {
+            const pushSwitch = document.getElementById("pushNotifSwitch");
+            if (pushSwitch) pushSwitch.checked = true;
+            return enablePwaPushNotifications()
+              .then(() => {
+                showNotification("Notifications enabled for this device", "success");
+                updatePwaPushStatus();
+              })
+              .catch((err) => {
+                showNotification(err.message || "Failed to subscribe for notifications", "warning");
+                updatePwaPushStatus();
+              });
+          } else {
+            showNotification("Notifications deferred. You can enable them anytime in Settings.", "muted");
+            updatePwaPushStatus();
+          }
+        })
+        .catch(() => {
+          promptModal.hide();
+        })
+        .finally(() => {
+          allowBtn.disabled = false;
+        });
+    };
+  }
+
+  if (laterBtn) {
+    laterBtn.onclick = function () {
+      handleDismiss("later");
+    };
+  }
+
+  if (closeBtn) {
+    closeBtn.onclick = function () {
+      handleDismiss("closed");
+    };
+  }
+
+  window.setTimeout(() => {
+    if (Notification.permission === "default" && !localStorage.getItem("bshs_push_prompt_dismissed")) {
+      promptModal.show();
+    }
+  }, 100);
 }
 
 function ensureAppConfirmModal() {

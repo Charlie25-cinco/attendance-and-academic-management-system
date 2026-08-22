@@ -294,7 +294,14 @@ function teacherAttendanceSupportsColumn($db, $column) {
 
 function teacherAttendanceUpsertRecord($db, $teacherId, $classId, $date, $studentId, $status, $remarks = '') {
     $status = strtolower(trim((string)$status));
-    if (!in_array($status, ['present', 'absent', 'late'], true)) {
+    if ($status === 'cutting') {
+        $status = 'absent';
+        if ($remarks === '') {
+            $remarks = 'Cutting Class';
+        } elseif (!str_contains($remarks, 'Cutting Class')) {
+            $remarks = 'Cutting Class; ' . $remarks;
+        }
+    } elseif (!in_array($status, ['present', 'absent', 'late'], true)) {
         $status = 'present';
     }
 
@@ -1276,7 +1283,7 @@ function buildStudentAttendancePayload($db, $classId, $date, $mode = 'subject', 
 
     $students = tEnrollFetchStudentsWithAttendance($db, $classId, $date, $sex);
 
-    $summary = ['present' => 0, 'absent' => 0, 'late' => 0, 'total' => count($students), 'rate' => 0];
+    $summary = ['present' => 0, 'absent' => 0, 'late' => 0, 'cutting' => 0, 'total' => count($students), 'rate' => 0];
     foreach ($students as $student) {
         $status = $student['attendance_status'];
         if (isset($summary[$status])) {
@@ -1399,7 +1406,7 @@ function submitAttendance($db, $teacherId) {
 
         $enrolledIds = getActiveEnrollmentStudentIds($db, $classId);
         $enrolledLookup = array_fill_keys($enrolledIds, true);
-        $validStatuses = ['present', 'absent', 'late'];
+        $validStatuses = ['present', 'absent', 'late', 'cutting'];
 
         $db->beginTransaction();
         foreach ($records as $record) {
@@ -1421,7 +1428,7 @@ function submitAttendance($db, $teacherId) {
         notifyAttendanceParents($db, $teacherId, $classId, $date, $records);
 
         [, $summary] = buildStudentAttendancePayload($db, $classId, $date);
-        echo json_encode(['success' => true, 'message' => 'Attendance submitted successfully', 'summary' => $summary]);
+        echo json_encode(['success' => true, 'message' => 'Attendance saved successfully', 'summary' => $summary]);
     } catch (PDOException $e) {
         if ($db->inTransaction()) {
             $db->rollBack();

@@ -67,11 +67,14 @@ $startDate = sprintf('%04d-%02d-01', $year, $month);
 $daysInMonth = (int)date('t', mktime(0, 0, 0, $month, 1, $year));
 $endDate = sprintf('%04d-%02d-%02d', $year, $month, $daysInMonth);
 
-$attStmt = $db->prepare("SELECT student_id, date, status FROM attendance WHERE class_id = ? AND date BETWEEN ? AND ? ORDER BY date");
+$attStmt = $db->prepare("SELECT student_id, date, status, remarks FROM attendance WHERE class_id = ? AND date BETWEEN ? AND ? ORDER BY date");
 $attStmt->execute([$classId, $startDate, $endDate]);
 $attendance = [];
 foreach ($attStmt->fetchAll(PDO::FETCH_ASSOC) as $record) {
-    $attendance[$record['student_id']][$record['date']] = $record['status'];
+    $attendance[$record['student_id']][$record['date']] = [
+        'status' => $record['status'],
+        'remarks' => $record['remarks'] ?? ''
+    ];
 }
 
 $monthName = date('F', mktime(0, 0, 0, $month, 1, $year));
@@ -95,11 +98,11 @@ if ($export === 'csv') {
         $present = 0;
         $absent = 0;
         $tardy = 0;
-        foreach ($attendance[(int)$student['id']] ?? [] as $status) {
-            $status = strtolower((string)$status);
+        foreach ($attendance[(int)$student['id']] ?? [] as $entry) {
+            $status = is_array($entry) ? strtolower((string)($entry['status'] ?? '')) : strtolower((string)$entry);
             if ($status === 'present') {
                 $present++;
-            } elseif ($status === 'absent') {
+            } elseif ($status === 'absent' || $status === 'cutting') {
                 $absent++;
             } elseif ($status === 'late' || $status === 'tardy') {
                 $tardy++;

@@ -178,6 +178,10 @@ $page_title = 'Attendance';
                         <strong id="lateCount"><?php echo (int)$summary['late']; ?></strong>
                     </div>
                     <div class="teacher-kpi-card">
+                        <span>Cutting</span>
+                        <strong id="cuttingCount"><?php echo (int)($summary['cutting'] ?? 0); ?></strong>
+                    </div>
+                    <div class="teacher-kpi-card">
                         <span>Total</span>
                         <strong><?php echo (int)$summary['total']; ?></strong>
                     </div>
@@ -196,7 +200,7 @@ $page_title = 'Attendance';
                                     <td><?php echo htmlspecialchars($student['reference_code']); ?></td>
                                     <td>
                                         <button type="button" class="teacher-status <?php echo htmlspecialchars($student['attendance_status']); ?>" data-status="<?php echo htmlspecialchars($student['attendance_status']); ?>" onclick="cycleStatus(this)">
-                                            <?php if ($student['attendance_status'] === 'present'): ?><i class="bi bi-check-circle"></i> Present<?php elseif ($student['attendance_status'] === 'absent'): ?><i class="bi bi-x-circle"></i> Absent<?php else: ?><i class="bi bi-clock"></i> Late<?php endif; ?>
+                                            <?php if ($student['attendance_status'] === 'present'): ?><i class="bi bi-check-circle"></i> Present<?php elseif ($student['attendance_status'] === 'absent'): ?><i class="bi bi-x-circle"></i> Absent<?php elseif ($student['attendance_status'] === 'cutting'): ?><i class="bi bi-box-arrow-right"></i> Cutting<?php else: ?><i class="bi bi-clock"></i> Late<?php endif; ?>
                                         </button>
                                     </td>
                                     <td><input type="text" class="form-control form-control-sm attendance-remarks" value="<?php echo htmlspecialchars($student['remarks']); ?>" placeholder="Add remarks..."></td>
@@ -209,9 +213,9 @@ $page_title = 'Attendance';
             <div class="p-3 border-top">
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <div class="teacher-section-note">
-                        Status buttons cycle through <strong>Present</strong>, <strong>Absent</strong>, and <strong>Late</strong>. Add remarks only when needed.
+                        Status buttons cycle through <strong>Present</strong>, <strong>Absent</strong>, <strong>Late</strong>, and <strong>Cutting</strong>. Add remarks only when needed.
                     </div>
-                    <button class="btn btn-primary-custom" id="submitAttendanceBtn" onclick="submitAttendance()"><i class="bi bi-save me-2"></i>Submit Attendance</button>
+                    <button class="btn btn-primary-custom" id="submitAttendanceBtn" onclick="submitAttendance()"><i class="bi bi-save me-2"></i>Save Attendance</button>
                 </div>
             </div>
         </div>
@@ -305,10 +309,16 @@ if (!navigator.onLine && window.bshsOfflineStorage) {
     });
 }
 
-const statusTemplate={present:'<i class="bi bi-check-circle"></i> Present',absent:'<i class="bi bi-x-circle"></i> Absent',late:'<i class="bi bi-clock"></i> Late'};
-function updateEditState(){const btn=document.getElementById('submitAttendanceBtn');if(!btn)return;if(canEditAttendance){btn.disabled=false;btn.title='';btn.innerHTML='<i class=\"bi bi-save me-2\"></i>Submit Attendance';}else{btn.disabled=true;btn.title=editBlockedReason||'Attendance is unavailable for this class on the selected date';btn.innerHTML='<i class=\"bi bi-eye me-2\"></i>Attendance Unavailable';}}
-function cycleStatus(button){if(!canEditAttendance){return;}const current=button.dataset.status||'present';const next=statusCycle[(statusCycle.indexOf(current)+1)%statusCycle.length];button.dataset.status=next;button.classList.remove('present','absent','late');button.classList.add(next);button.innerHTML=statusTemplate[next];updateSummaryCounts();}
-function updateSummaryCounts(summary){if(summary){document.getElementById('presentCount').textContent=summary.present||0;document.getElementById('absentCount').textContent=summary.absent||0;document.getElementById('lateCount').textContent=summary.late||0;return;}let p=0,a=0,l=0;document.querySelectorAll('#attendanceBody tr[data-student-id]').forEach(r=>{const s=r.querySelector('.teacher-status')?.dataset.status;if(s==='present')p++;if(s==='absent')a++;if(s==='late')l++;});document.getElementById('presentCount').textContent=p;document.getElementById('absentCount').textContent=a;document.getElementById('lateCount').textContent=l;}
+const statusCycle=['present','absent','late','cutting'];
+const statusTemplate={
+    present:'<i class="bi bi-check-circle"></i> Present',
+    absent:'<i class="bi bi-x-circle"></i> Absent',
+    late:'<i class="bi bi-clock"></i> Late',
+    cutting:'<i class="bi bi-box-arrow-right"></i> Cutting'
+};
+function updateEditState(){const btn=document.getElementById('submitAttendanceBtn');if(!btn)return;if(canEditAttendance){btn.disabled=false;btn.title='';btn.innerHTML='<i class=\"bi bi-save me-2\"></i>Save Attendance';}else{btn.disabled=true;btn.title=editBlockedReason||'Attendance is unavailable for this class on the selected date';btn.innerHTML='<i class=\"bi bi-eye me-2\"></i>Attendance Unavailable';}}
+function cycleStatus(button){if(!canEditAttendance){return;}const current=button.dataset.status||'present';const next=statusCycle[(statusCycle.indexOf(current)+1)%statusCycle.length];button.dataset.status=next;button.classList.remove('present','absent','late','cutting');button.classList.add(next);button.innerHTML=statusTemplate[next];updateSummaryCounts();}
+function updateSummaryCounts(summary){if(summary){document.getElementById('presentCount').textContent=summary.present||0;document.getElementById('absentCount').textContent=summary.absent||0;document.getElementById('lateCount').textContent=summary.late||0;if(document.getElementById('cuttingCount'))document.getElementById('cuttingCount').textContent=summary.cutting||0;return;}let p=0,a=0,l=0,c=0;document.querySelectorAll('#attendanceBody tr[data-student-id]').forEach(r=>{const s=r.querySelector('.teacher-status')?.dataset.status;if(s==='present')p++;if(s==='absent')a++;if(s==='late')l++;if(s==='cutting')c++;});document.getElementById('presentCount').textContent=p;document.getElementById('absentCount').textContent=a;document.getElementById('lateCount').textContent=l;if(document.getElementById('cuttingCount'))document.getElementById('cuttingCount').textContent=c;}
 function applySearchFilter(){const input=document.getElementById('attendanceSearch');const q=(input?.value||'').trim().toLowerCase();const tbody=document.getElementById('attendanceBody');if(!tbody){return;}const rows=Array.from(tbody.querySelectorAll('tr[data-student-id]'));if(rows.length===0){return;}let visible=0;rows.forEach(r=>{const name=r.querySelector('.student-name')?.textContent?.toLowerCase()||'';const code=r.children?.[1]?.textContent?.toLowerCase()||'';const match=!q||name.includes(q)||code.includes(q);r.style.display=match?'':'none';if(match){visible++;}});let emptyRow=document.getElementById('attendanceSearchEmpty');if(visible===0){if(!emptyRow){emptyRow=document.createElement('tr');emptyRow.id='attendanceSearchEmpty';emptyRow.innerHTML='<td colspan="4" class="text-center text-muted py-4">No students match your search.</td>';tbody.appendChild(emptyRow);}emptyRow.style.display='';}else if(emptyRow){emptyRow.style.display='none';}}
 function renderStudents(students){const tbody=document.getElementById('attendanceBody');if(!students||students.length===0){tbody.innerHTML='<tr><td colspan="4" class="text-center text-muted py-4">No enrolled students for this class.</td></tr>';updateSummaryCounts({present:0,absent:0,late:0});return;}tbody.innerHTML=students.map(s=>{const fn=`${s.first_name} ${s.last_name}`;const inits=`${s.first_name[0]||''}${s.last_name[0]||''}`.toUpperCase();const st=s.attendance_status||'present';return `<tr data-student-id="${s.id}"><td><div class="student-info"><div class="user-avatar-small">${inits}</div><span class="student-name">${escapeHtml(fn)}</span></div></td><td>${escapeHtml(s.reference_code)}</td><td><button type="button" class="teacher-status ${st}" data-status="${st}" onclick="cycleStatus(this)">${statusTemplate[st]||statusTemplate.present}</button></td><td><input type="text" class="form-control form-control-sm attendance-remarks" value="${escapeHtml(s.remarks||'')}" placeholder="Add remarks..."></td></tr>`;}).join('');updateSummaryCounts();applySearchFilter();}
 function loadAttendanceData(){
@@ -387,7 +397,7 @@ function submitAttendance(){
     const classId=document.getElementById('classSelect')?.value||'';
     const date=document.getElementById('attendanceDate')?.value||'';
     const rows=document.querySelectorAll('#attendanceBody tr[data-student-id]');
-    if(!classId||!date||rows.length===0){showNotification('Nothing to submit','warning');return;}
+    if(!classId||!date||rows.length===0){showNotification('Nothing to save','warning');return;}
     const records=Array.from(rows).map(r=>({student_id:parseInt(r.dataset.studentId,10),status:r.querySelector('.teacher-status')?.dataset.status||'present',remarks:r.querySelector('.attendance-remarks')?.value.trim()||''}));
     const btn=document.getElementById('submitAttendanceBtn');
     btn.disabled=true;
@@ -398,7 +408,7 @@ function submitAttendance(){
             window.bshsOfflineStorage.saveAttendanceLocally(classId, date, records);
         }
         btn.disabled=false;
-        btn.innerHTML='<i class="bi bi-save me-2"></i>Submit Attendance';
+        btn.innerHTML='<i class="bi bi-save me-2"></i>Save Attendance';
         updateEditState();
         showNotification('Attendance saved offline on device. Will sync automatically when online.', 'success');
         return;
@@ -414,10 +424,10 @@ function submitAttendance(){
                 window.bshsOfflineStorage.saveAttendanceLocally(classId, date, records);
                 window.bshsOfflineStorage.markRecordSynced('att_' + classId + '_' + date);
             }
-            showNotification(d.message||'Attendance submitted successfully','success');
+            showNotification(d.message||'Attendance saved successfully','success');
             updateSummaryCounts(d.summary||null);
         }else{
-            showNotification(d.message||'Failed to submit attendance','danger');
+            showNotification(d.message||'Failed to save attendance','danger');
         }
     }).catch(function(){
         if(window.bshsOfflineStorage){

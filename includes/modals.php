@@ -24,6 +24,53 @@
     </div>
 </div>
 
+<!-- Push Notification First-Open Prompt Modal -->
+<div class="modal fade" id="pushPromptModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content app-modal-content push-prompt-modal-content">
+            <div class="modal-header app-modal-header push-prompt-modal-header border-0 pb-0">
+                <div>
+                    <div class="app-modal-kicker push-prompt-kicker"><i class="bi bi-bell-fill text-primary"></i>Stay Updated</div>
+                    <h5 class="modal-title mb-1 fw-bold">Enable Notifications?</h5>
+                    <p class="app-modal-subtitle push-prompt-subtitle mb-0">Get important academic updates and alerts even when the app is closed.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" id="pushPromptCloseBtn" aria-label="Close"></button>
+            </div>
+            <div class="modal-body app-modal-body push-prompt-modal-body pt-3">
+                <div class="push-prompt-features">
+                    <div class="push-prompt-feature-item">
+                        <div class="push-prompt-feature-icon text-primary"><i class="bi bi-calendar-check-fill"></i></div>
+                        <div class="push-prompt-feature-text">
+                            <span class="push-prompt-feature-title">Real-time Attendance</span>
+                            <span class="push-prompt-feature-desc">Immediate alerts when attendance or tardiness is recorded.</span>
+                        </div>
+                    </div>
+                    <div class="push-prompt-feature-item">
+                        <div class="push-prompt-feature-icon text-success"><i class="bi bi-file-earmark-spreadsheet-fill"></i></div>
+                        <div class="push-prompt-feature-text">
+                            <span class="push-prompt-feature-title">Grade & Report Card Releases</span>
+                            <span class="push-prompt-feature-desc">Be notified the moment quarterly grades and report cards are published.</span>
+                        </div>
+                    </div>
+                    <div class="push-prompt-feature-item">
+                        <div class="push-prompt-feature-icon text-warning"><i class="bi bi-megaphone-fill"></i></div>
+                        <div class="push-prompt-feature-text">
+                            <span class="push-prompt-feature-title">School Announcements</span>
+                            <span class="push-prompt-feature-desc">Direct advisories, class messages, and urgent school notices.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer app-modal-footer push-prompt-modal-footer d-flex flex-column flex-sm-row justify-content-end gap-2 border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary w-100 w-sm-auto order-2 order-sm-1" id="pushPromptLaterBtn">Later</button>
+                <button type="button" class="btn btn-primary-custom w-100 w-sm-auto order-1 order-sm-2" id="pushPromptAllowBtn">
+                    <i class="bi bi-bell-fill me-1"></i>Allow Notifications
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Settings Modal -->
 <div class="modal fade" id="settingsModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">

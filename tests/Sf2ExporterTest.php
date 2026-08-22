@@ -103,6 +103,83 @@ final class Sf2ExporterTest extends TestCase
             $this->assertSame(1, (int)($rows[29][7] ?? -1));
             $this->assertSame(1, (int)($rows[57][8] ?? -1));
             $this->assertSame('GUIDELINES:', $rows[60][0] ?? null);
+
+            // Verify Summary Statistics Block
+            $this->assertSame('August', $rows[61][43] ?? null);
+            $this->assertSame(26, (int)($rows[61][46] ?? 0));
+            $this->assertSame(1, (int)($rows[62][48] ?? 0)); // Male Enrolment 1st Friday
+            $this->assertSame(1, (int)($rows[62][49] ?? 0)); // Female Enrolment 1st Friday
+            $this->assertSame(2, (int)($rows[62][50] ?? 0)); // Total Enrolment 1st Friday
+            $this->assertSame(1, (int)($rows[64][48] ?? 0)); // End of month M
+            $this->assertSame(1, (int)($rows[64][49] ?? 0)); // End of month F
+            $this->assertSame(2, (int)($rows[64][50] ?? 0)); // End of month Total
+            $this->assertSame('TEST TEACHER', $rows[80][44] ?? null); // Adviser Sign-Off
+        } finally {
+            putenv('APP_FORCE_XLSX_FALLBACK');
+            @unlink($path);
+        }
+    }
+
+    public function testSf2ConsecutiveAbsencesAndRemarksPopulation(): void
+    {
+        $exporter = new Sf2Exporter();
+        $exporter->setClass([
+            'class_name' => 'English 1',
+            'grade_level' => 11,
+            'section' => 'Emerald',
+            'track' => 'academic',
+        ]);
+        $exporter->setStudents([
+            [
+                'id' => 10,
+                'first_name' => 'Juan',
+                'last_name' => 'Luna',
+                'sex' => 'male',
+            ],
+            [
+                'id' => 20,
+                'first_name' => 'Maria',
+                'last_name' => 'Clara',
+                'sex' => 'female',
+                'remarks' => 'CCT Recipient',
+            ],
+        ]);
+        // 5 consecutive absences for Juan Luna (Aug 3, 4, 5, 6, 7)
+        $exporter->setAttendance([
+            10 => [
+                '2026-08-03' => 'absent',
+                '2026-08-04' => 'absent',
+                '2026-08-05' => 'absent',
+                '2026-08-06' => 'absent',
+                '2026-08-07' => 'absent',
+            ],
+            20 => [
+                '2026-08-03' => ['status' => 'cutting', 'remarks' => 'Cutting Class (Period 3)'],
+                '2026-08-04' => 'present',
+            ],
+        ]);
+        $exporter->setMonth(8);
+        $exporter->setYear(2026);
+        $exporter->setTeacherName('Mr. Adviser');
+
+        $path = tempnam(sys_get_temp_dir(), 'sf2_remarks_') . '.xlsx';
+        putenv('APP_FORCE_XLSX_FALLBACK=1');
+        try {
+            $this->assertTrue($exporter->export($path));
+            $parser = new SimpleXlsxParser($path);
+            $rows = $parser->getSheet(0);
+
+            // Learner remarks column AV (index 47)
+            $this->assertSame('5 consecutive days absent', $rows[12][47] ?? null);
+            $this->assertSame('CCT Recipient; Cutting Class (Period 3)', $rows[30][47] ?? null);
+
+            // Cutting mark for female learner on Aug 3 (row 30, col 7)
+            $this->assertSame("\u{2584}", $rows[30][7] ?? null);
+
+            // Row 68 summary: 5 consecutive days absent count (1 male, 0 female, 1 total)
+            $this->assertSame(1, (int)($rows[68][48] ?? 0));
+            $this->assertSame(0, (int)($rows[68][49] ?? 0));
+            $this->assertSame(1, (int)($rows[68][50] ?? 0));
         } finally {
             putenv('APP_FORCE_XLSX_FALLBACK');
             @unlink($path);
