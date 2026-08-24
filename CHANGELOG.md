@@ -2,6 +2,22 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.88 — 2026-08-24
+
+### Fixed
+
+- **Web Push VAPID Key Loading in Local & PWA Environments**:
+  - Updated [`config/constants.php`](file:///c:/laragon/www/attendance-and-academic-management-system/config/constants.php) to resolve `PUSH_VAPID_PUBLIC_KEY`, `PUSH_VAPID_PRIVATE_KEY`, and `PUSH_VAPID_SUBJECT` via `appEnvValue()` instead of raw `getenv()`.
+  - Ensures device push subscriptions and settings modals properly detect configured VAPID server keys from `.env`.
+
+## v0.3.87 — 2026-08-24
+
+### Added
+
+- **Real-Time Password Match Indicator on Setup & Reset**:
+  - Added live matching validation to the "Confirm Password" field across initial password setup ([`auth/change-password.php`](file:///c:/laragon/www/attendance-and-academic-management-system/auth/change-password.php)) and password reset ([`auth/reset-password.php`](file:///c:/laragon/www/attendance-and-academic-management-system/auth/reset-password.php)).
+  - Provides real-time visual feedback (`✓ Passwords match` in green / `✗ Passwords do not match` in red) on keystroke input and blur events with accessible styling in [`assets/css/auth.css`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/css/auth.css).
+
 ## v0.3.86 — 2026-08-22
 
 ### Changed

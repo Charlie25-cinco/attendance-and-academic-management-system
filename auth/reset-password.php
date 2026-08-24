@@ -206,6 +206,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <i class="bi bi-eye"></i>
                         </button>
                     </div>
+                    <div id="passwordMatchIndicator" class="password-match-indicator" aria-live="polite"></div>
                 </div>
 
                 <button type="submit" class="auth-btn">
@@ -231,6 +232,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         });
     });
+
+    const newPassInput = document.getElementById('new_password');
+    const confirmPassInput = document.getElementById('confirm_password');
+    const matchIndicator = document.getElementById('passwordMatchIndicator');
+
+    function updatePasswordMatch() {
+        if (!matchIndicator || !newPassInput || !confirmPassInput) return;
+        const newV = newPassInput.value || '';
+        const confirmV = confirmPassInput.value || '';
+        if (!confirmV && !newV) {
+            matchIndicator.textContent = '';
+            matchIndicator.className = 'password-match-indicator';
+            return;
+        }
+        if (confirmV && newV && confirmV === newV) {
+            matchIndicator.textContent = '✓ Passwords match';
+            matchIndicator.className = 'password-match-indicator is-match';
+        } else if (confirmV) {
+            matchIndicator.textContent = '✗ Passwords do not match';
+            matchIndicator.className = 'password-match-indicator is-mismatch';
+        } else {
+            matchIndicator.textContent = '';
+            matchIndicator.className = 'password-match-indicator';
+        }
+    }
+
+    if (newPassInput) newPassInput.addEventListener('input', updatePasswordMatch);
+    if (confirmPassInput) confirmPassInput.addEventListener('input', updatePasswordMatch);
 
     document.querySelectorAll('[data-password-guidance]').forEach(function (guide) {
         const input = document.getElementById(guide.getAttribute('data-target'));

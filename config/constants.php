@@ -257,15 +257,15 @@ if (is_file($pushKeysFile)) {
 }
 
 if (!defined('PUSH_VAPID_PUBLIC_KEY')) {
-    $envPublic = getenv('PUSH_VAPID_PUBLIC_KEY') ?: '';
+    $envPublic = appEnvValue('PUSH_VAPID_PUBLIC_KEY');
     define('PUSH_VAPID_PUBLIC_KEY', $envPublic !== '' ? $envPublic : (string)($pushFileKeys['public'] ?? ''));
 }
 if (!defined('PUSH_VAPID_PRIVATE_KEY')) {
-    $envPrivate = getenv('PUSH_VAPID_PRIVATE_KEY') ?: '';
+    $envPrivate = appEnvValue('PUSH_VAPID_PRIVATE_KEY');
     define('PUSH_VAPID_PRIVATE_KEY', $envPrivate !== '' ? $envPrivate : (string)($pushFileKeys['private'] ?? ''));
 }
 if (!defined('PUSH_VAPID_SUBJECT')) {
-    $envSubject = getenv('PUSH_VAPID_SUBJECT') ?: '';
+    $envSubject = appEnvValue('PUSH_VAPID_SUBJECT');
     define('PUSH_VAPID_SUBJECT', $envSubject !== '' ? $envSubject : (string)($pushFileKeys['subject'] ?? 'mailto:admin@example.com'));
 }
 

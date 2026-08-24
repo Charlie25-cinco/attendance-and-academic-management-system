@@ -383,6 +383,25 @@ body {
   background: var(--auth-success);
 }
 
+.password-match-indicator {
+  align-items: center;
+  display: flex;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  gap: 5px;
+  margin-top: 6px;
+  min-height: 1.25rem;
+  transition: color 0.15s ease, opacity 0.15s ease;
+}
+
+.password-match-indicator.is-match {
+  color: var(--auth-success);
+}
+
+.password-match-indicator.is-mismatch {
+  color: var(--auth-danger);
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
