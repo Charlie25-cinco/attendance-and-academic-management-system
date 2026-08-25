@@ -110,11 +110,17 @@ if ($route === 'teacher-attendance' && $method === 'POST') {
 
         if (!apiTeacherOwnsClass($db, $teacherId, $classId)) continue;
 
-        $existing = $db->prepare("SELECT id FROM attendance WHERE class_id = ? AND student_id = ? AND date = ? LIMIT 1");
+        $existing = $db->prepare("SELECT id, status FROM attendance WHERE class_id = ? AND student_id = ? AND date = ? LIMIT 1");
         $existing->execute([$classId, $studentId, $date]);
-        $existingId = $existing->fetchColumn();
+        $existingRow = $existing->fetch(PDO::FETCH_ASSOC);
 
-        if ($existingId) {
+        $isChanged = false;
+        if ($existingRow) {
+            $existingId = (int)$existingRow['id'];
+            $existingStatus = strtolower(trim((string)$existingRow['status']));
+            if ($existingStatus !== $status) {
+                $isChanged = true;
+            }
             $updateSql = "UPDATE attendance SET status = ?, recorded_by = ?, updated_at = NOW()" .
                 ($hasTermColumns ? ", academic_year = ?, semester = ?" : "") .
                 " WHERE id = ?";
@@ -124,6 +130,7 @@ if ($route === 'teacher-attendance' && $method === 'POST') {
             $db->prepare($updateSql)->execute($updateParams);
             $updated++;
         } else {
+            $isChanged = true;
             $insertSql = "INSERT INTO attendance (class_id, student_id, date, status, recorded_by, created_at, updated_at" .
                 ($hasTermColumns ? ", academic_year, semester" : "") . ")
                           VALUES (?, ?, ?, ?, ?, NOW(), NOW()" .
@@ -133,10 +140,14 @@ if ($route === 'teacher-attendance' && $method === 'POST') {
             $db->prepare($insertSql)->execute($insertParams);
             $inserted++;
         }
-        $savedRecords[] = ['student_id' => $studentId, 'status' => $status];
+        if ($isChanged) {
+            $savedRecords[] = ['student_id' => $studentId, 'status' => $status];
+        }
     }
 
-    appNotifyAttendanceRecords($db, $classId, $date, $savedRecords, $teacherId);
+    if (!empty($savedRecords)) {
+        appNotifyAttendanceRecords($db, $classId, $date, $savedRecords, $teacherId);
+    }
 
     apiJson(['ok' => true, 'message' => "Attendance saved: $inserted new, $updated updated"]);
 }

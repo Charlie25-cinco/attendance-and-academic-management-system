@@ -671,6 +671,56 @@ function pushNotifyGradePublication($db, int $classId, string $term = 'Final', s
     return true;
 }
 
+function pushNotifyGradeRecall($db, int $classId, string $term = 'Final', string $academicYear = '', string $reason = ''): bool {
+    if ($classId <= 0 || !$db) {
+        return false;
+    }
+    $classStmt = $db->prepare("SELECT class_name, grade_level, section FROM classes WHERE id = ?");
+    $classStmt->execute([$classId]);
+    $class = $classStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$class) {
+        return false;
+    }
+    $className = trim(($class['class_name'] ?? '') . ' (' . ($class['grade_level'] ?? '') . '-' . ($class['section'] ?? '') . ')');
+
+    if (function_exists('pushActiveClassRecipientIds')) {
+        $recipients = pushActiveClassRecipientIds($db, $classId);
+    } else {
+        $sStmt = $db->prepare("SELECT DISTINCT student_id FROM enrollments WHERE class_id = ? AND COALESCE(status, 'enrolled') = 'enrolled'");
+        $sStmt->execute([$classId]);
+        $sIds = array_map('intval', $sStmt->fetchAll(PDO::FETCH_COLUMN));
+
+        $pIds = [];
+        if (!empty($sIds)) {
+            $inClause = implode(',', array_fill(0, count($sIds), '?'));
+            $pStmt = $db->prepare("SELECT DISTINCT parent_id FROM parent_students WHERE student_id IN ($inClause)");
+            $pStmt->execute($sIds);
+            $pIds = array_map('intval', $pStmt->fetchAll(PDO::FETCH_COLUMN));
+        }
+        $recipients = array_values(array_unique(array_merge($sIds, $pIds)));
+    }
+
+    if (empty($recipients)) {
+        return false;
+    }
+
+    $subtitle = 'Report cards for ' . $className . ' have been recalled for review/correction by administration.' . ($reason !== '' ? ' Reason: ' . $reason : '');
+
+    appDispatchNotification(
+        $db,
+        $recipients,
+        'report_card_recalled_' . $classId . '_' . $term . '_' . $academicYear . '_' . time(),
+        'Report Card Recalled for Correction',
+        $subtitle,
+        'bi-exclamation-triangle',
+        'warning',
+        ['student' => 'Student_Report_Card.php', 'parent' => 'Parent_Report_Card.php'],
+        ['type' => 'grade_recall', 'class_id' => $classId, 'term' => $term, 'academic_year' => $academicYear]
+    );
+
+    return true;
+}
+
 function smsGetService(?\BshsAms\Notification\SmsService $override = null): \BshsAms\Notification\SmsService {
     static $service = null;
     if ($override !== null) {

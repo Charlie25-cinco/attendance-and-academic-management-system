@@ -196,6 +196,19 @@ if ($action === 'review_report_card') {
                 pushNotifyGradePublication($db, $classId, (string)($rcRow['semester'] ?? 'Final'), (string)($rcRow['academic_year'] ?? ''));
             }
         }
+    } elseif ($status === 'rejected') {
+        $rcStmt = $db->prepare("SELECT student_id, academic_year, semester FROM report_card_approvals WHERE id = ?");
+        $rcStmt->execute([$approvalId]);
+        $rcRow = $rcStmt->fetch(PDO::FETCH_ASSOC);
+        if ($rcRow) {
+            $studentId = (int)$rcRow['student_id'];
+            $enStmt = $db->prepare("SELECT class_id FROM enrollments WHERE student_id = ? AND COALESCE(status, 'enrolled') = 'enrolled' LIMIT 1");
+            $enStmt->execute([$studentId]);
+            $classId = (int)($enStmt->fetchColumn() ?: 0);
+            if ($classId > 0 && function_exists('pushNotifyGradeRecall')) {
+                pushNotifyGradeRecall($db, $classId, (string)($rcRow['semester'] ?? 'Final'), (string)($rcRow['academic_year'] ?? ''), $remarks);
+            }
+        }
     }
 
     echo json_encode(['success' => true, 'message' => 'Report card status updated to ' . ucfirst($status)]);
@@ -326,6 +339,14 @@ if ($action === 'return_released_report_card_batch') {
         }
 
         $db->commit();
+
+        $cStmt = $db->prepare("SELECT id FROM classes WHERE grade_level = ? AND " . sectionMatchSql('section') . " LIMIT 1");
+        $cStmt->execute([$gradeLevel, $section, $section]);
+        $classId = (int)($cStmt->fetchColumn() ?: 0);
+        if ($classId > 0 && function_exists('pushNotifyGradeRecall')) {
+            pushNotifyGradeRecall($db, $classId, $semester !== '' ? $semester : 'Final', $academicYear, $reason);
+        }
+
         echo json_encode([
             'success' => true,
             'message' => 'Released grades returned for correction. Teachers can edit and submit again.'

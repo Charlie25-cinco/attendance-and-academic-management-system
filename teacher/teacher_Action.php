@@ -1353,6 +1353,17 @@ function submitAttendance($db, $teacherId) {
         $enrolledLookup = array_fill_keys($enrolledIds, true);
         $validStatuses = ['present', 'absent', 'late', 'cutting'];
 
+        $existingRecordsStmt = $db->prepare("SELECT student_id, status, remarks FROM attendance WHERE class_id = ? AND date = ?");
+        $existingRecordsStmt->execute([(int)$classId, $date]);
+        $existingMap = [];
+        foreach ($existingRecordsStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $existingMap[(int)$row['student_id']] = [
+                'status' => strtolower(trim((string)$row['status'])),
+                'remarks' => trim((string)($row['remarks'] ?? '')),
+            ];
+        }
+
+        $changedRecords = [];
         $db->beginTransaction();
         foreach ($records as $record) {
             $studentId = (int)($record['student_id'] ?? 0);
@@ -1365,12 +1376,21 @@ function submitAttendance($db, $teacherId) {
             if (!in_array($status, $validStatuses, true)) {
                 $status = 'present';
             }
+
+            if (!isset($existingMap[$studentId])) {
+                $changedRecords[] = ['student_id' => $studentId, 'status' => $status, 'remarks' => $remarks];
+            } elseif ($existingMap[$studentId]['status'] !== $status || $existingMap[$studentId]['remarks'] !== $remarks) {
+                $changedRecords[] = ['student_id' => $studentId, 'status' => $status, 'remarks' => $remarks];
+            }
+
             teacherAttendanceUpsertRecord($db, $teacherId, $classId, $date, $studentId, $status, $remarks);
         }
 
         $db->commit();
 
-        notifyAttendanceParents($db, $teacherId, $classId, $date, $records);
+        if (!empty($changedRecords)) {
+            notifyAttendanceParents($db, $teacherId, $classId, $date, $changedRecords);
+        }
 
         [, $summary] = buildStudentAttendancePayload($db, $classId, $date);
         echo json_encode(['success' => true, 'message' => 'Attendance saved successfully', 'summary' => $summary]);

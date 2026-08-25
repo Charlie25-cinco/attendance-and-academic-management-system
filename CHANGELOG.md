@@ -2,6 +2,20 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.100 — 2026-08-25
+
+### Added
+
+- **Admin Grade Reversion / Recall Notifications to Student & Parent**:
+  - Implemented `pushNotifyGradeRecall()` in [`config/constants.php`](file:///c:/laragon/www/attendance-and-academic-management-system/config/constants.php) and wired it into `return_released_report_card_batch` and `review_report_card` in [`admin/admin_Grade_Approvals_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Grade_Approvals_Action.php).
+  - When the school administration recalls or reverts a released report card for correction, affected students and linked parents immediately receive an in-app and push notification explaining that the report card was recalled for administrative review/correction so they are aware why it is temporarily unavailable.
+
+### Changed
+
+- **Delta-Only Attendance Notifications**:
+  - Updated `submitAttendance()` in [`teacher/teacher_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Action.php) and `10-teacher.php` API route to compare submitted student attendance against existing records before sending notifications.
+  - When saving or editing attendance (for current or past dates), notifications are dispatched **only** to students whose records are new or whose attendance status/remarks actually changed. Unchanged student records generate zero repeat duplicate notifications.
+
 ## v0.3.99 — 2026-08-25
 
 ### Fixed
