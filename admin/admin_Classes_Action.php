@@ -691,6 +691,12 @@ function exportSf2(PDO $db): void {
                              INNER JOIN enrollments e ON e.student_id = u.id
                              WHERE e.class_id = ?
                              AND (
+                                 e.academic_year = ?
+                                 OR e.academic_year = (SELECT e2.academic_year FROM enrollments e2 WHERE e2.class_id = ? AND e2.academic_year IS NOT NULL AND TRIM(e2.academic_year) <> '' LIMIT 1)
+                                 OR e.academic_year IS NULL
+                                 OR TRIM(e.academic_year) = ''
+                             )
+                             AND COALESCE(e.status, 'enrolled') = 'enrolled'
                              AND u.role = 'student'
                              AND u.status = 'active'
                              ORDER BY u.last_name, u.first_name");
