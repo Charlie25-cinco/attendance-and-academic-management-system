@@ -2,6 +2,14 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.95 — 2026-08-25
+
+### Fixed
+
+- **Live Grade Activity Computation & Term Dropdown Auto-Reload**:
+  - Updated `computeQuarterSummaryFromItems()` in [`teacher/teacher_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Action.php) to include active activities alongside finished activities (`gi.status IN ('active', 'finished')`), ensuring entered scores calculate into the Grade Entry table immediately without requiring a manual "Finish" step.
+  - Added `onchange` handlers to Class, Term, Academic Year, and Sex filter dropdowns in [`teacher/teacher_Grades.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Grades.php) for instant automatic reloading upon changing selection.
+
 ## v0.3.94 — 2026-08-25
 
 ### Fixed

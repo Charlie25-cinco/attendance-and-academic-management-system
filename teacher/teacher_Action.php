@@ -1133,8 +1133,8 @@ function computeQuarterSummaryFromItems($db, $classId, $teacherId, $dateFrom, $d
             FROM grade_items gi
             JOIN grade_item_scores gis ON gis.grade_item_id = gi.id
             WHERE gi.class_id = ?
-            AND gi.status = 'finished'
-            AND COALESCE(DATE(gi.finished_at), gi.activity_date) BETWEEN ? AND ?";
+            AND gi.status IN ('active', 'finished')
+            AND COALESCE(DATE(gi.finished_at), gi.activity_date, DATE(gi.created_at)) BETWEEN ? AND ?";
     $params = [$classId, $dateFrom, $dateTo];
     if ($teacherId !== null) {
         $sql .= " AND gi.teacher_id = ?";

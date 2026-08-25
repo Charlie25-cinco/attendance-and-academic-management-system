@@ -182,7 +182,7 @@ $page_title = 'Grade Entry';
                 <div class="row g-3 mb-3 app-filter-panel">
                     <div class="col-md-5">
                         <label class="form-label">Class</label>
-                        <select id="gradeClassSelect" class="form-select">
+                        <select id="gradeClassSelect" class="form-select" onchange="loadGradesData(true)">
                             <?php foreach ($classes as $class): ?>
                                 <option value="<?php echo (int)$class['id']; ?>" <?php echo ((int)$class['id'] === $selectedGradeClassId) ? 'selected' : ''; ?>>
                                     <?php echo htmlspecialchars($class['class_name'] . ' (G' . $class['grade_level'] . ' - ' . $class['section'] . ')'); ?>
@@ -192,7 +192,7 @@ $page_title = 'Grade Entry';
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Term</label>
-                        <select id="termSelect" class="form-select">
+                        <select id="termSelect" class="form-select" onchange="loadGradesData(true)">
                             <option value="Term1" <?php echo $selectedTerm === 'Term1' ? 'selected' : ''; ?>>Term 1</option>
                             <option value="Term2" <?php echo $selectedTerm === 'Term2' ? 'selected' : ''; ?>>Term 2</option>
                             <option value="Term3" <?php echo $selectedTerm === 'Term3' ? 'selected' : ''; ?>>Term 3</option>
@@ -200,11 +200,11 @@ $page_title = 'Grade Entry';
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Academic Year</label>
-                        <input type="text" id="academicYearInput" class="form-control" value="<?php echo htmlspecialchars($selectedAcademicYear); ?>" placeholder="YYYY-YYYY">
+                        <input type="text" id="academicYearInput" class="form-control" value="<?php echo htmlspecialchars($selectedAcademicYear); ?>" placeholder="YYYY-YYYY" onchange="loadGradesData(true)">
                     </div>
                     <div class="col-md-2">
                         <label class="form-label">Sex</label>
-                        <select id="gradeSexFilter" class="form-select">
+                        <select id="gradeSexFilter" class="form-select" onchange="loadGradesData(true)">
                             <option value="" <?php echo $selectedSex === '' ? 'selected' : ''; ?>>All</option>
                             <option value="male" <?php echo $selectedSex === 'male' ? 'selected' : ''; ?>>Male</option>
                             <option value="female" <?php echo $selectedSex === 'female' ? 'selected' : ''; ?>>Female</option>
