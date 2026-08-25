@@ -116,14 +116,22 @@ $page_title = 'Edit Class - ' . $class['class_name'];
                         <div class="mb-3">
                             <label class="form-label">Subject Category <span class="text-danger">*</span></label>
                             <select name="subject_category" class="form-select" onchange="onSubjectCategoryChange(this)">
-                                <option value="">Select Category</option>
-                                <option value="core" <?php echo (($class['subject_category'] ?? '') === 'core') ? 'selected' : ''; ?>>Core Subject</option>
-                                <option value="academic_elective" <?php echo (($class['subject_category'] ?? '') === 'academic_elective') ? 'selected' : ''; ?>>Academic Elective</option>
-                                <option value="techpro_elective" <?php echo (($class['subject_category'] ?? '') === 'techpro_elective') ? 'selected' : ''; ?>>TechPro Elective</option>
-                                <option value="work_immersion" <?php echo (($class['subject_category'] ?? '') === 'work_immersion') ? 'selected' : ''; ?>>Work Immersion</option>
-                                <option value="field_experience_elective" <?php echo (($class['subject_category'] ?? '') === 'field_experience_elective') ? 'selected' : ''; ?>>Field Experience / Sports</option>
+                                <option value="">Select Category (DepEd DO 8, s. 2015)</option>
+                                <optgroup label="Academic Track">
+                                    <option value="core" <?php echo (($class['subject_category'] ?? '') === 'core') ? 'selected' : ''; ?>>Core Subjects (WW 25%, PT 50%, QA 25%)</option>
+                                    <option value="academic_elective" <?php echo (($class['subject_category'] ?? '') === 'academic_elective') ? 'selected' : ''; ?>>Academic Electives / Specialized (STEM, ABM, HUMSS) (WW 25%, PT 45%, QA 30%)</option>
+                                    <option value="research" <?php echo (($class['subject_category'] ?? '') === 'research') ? 'selected' : ''; ?>>Research Electives, Design & Innovation (WW 40%, PT 60%, QA 0%)</option>
+                                    <option value="work_immersion" <?php echo (($class['subject_category'] ?? '') === 'work_immersion') ? 'selected' : ''; ?>>Work Immersion / Business Simulation / Culminating (WW 20%, PT 60%, QA 20%)</option>
+                                </optgroup>
+                                <optgroup label="Technical-Professional (TechPro / TVL) Track">
+                                    <option value="techpro_elective" <?php echo (($class['subject_category'] ?? '') === 'techpro_elective') ? 'selected' : ''; ?>>TechPro Electives / Specialized TVL (ICT, IA, AFA, HE) (WW 20%, PT 60%, QA 20%)</option>
+                                    <option value="tvl_immersion" <?php echo (($class['subject_category'] ?? '') === 'tvl_immersion') ? 'selected' : ''; ?>>TechPro Immersion / Apprenticeship / Research (WW 20%, PT 80%, QA 0%)</option>
+                                </optgroup>
+                                <optgroup label="Other DepEd Categories">
+                                    <option value="field_experience_elective" <?php echo (($class['subject_category'] ?? '') === 'field_experience_elective') ? 'selected' : ''; ?>>Field Experience / Sports & Arts (WW 15%, PT 65%, QA 20%)</option>
+                                </optgroup>
                             </select>
-                            <small class="text-muted">Determines default grading weights per DM 74, s. 2025.</small>
+                            <small class="text-muted">Auto-configures default weights per DepEd Order No. 8, s. 2015.</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Track</label>
@@ -178,22 +186,25 @@ $page_title = 'Edit Class - ' . $class['class_name'];
                             <input type="text" id="editRoomInput" name="room" class="form-control" value="<?php echo htmlspecialchars($class['room']); ?>" placeholder="e.g., Room 101">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Grading Weights (%)</label>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label mb-0">Grading Weights (%)</label>
+                                <span id="weightSumBadge" class="badge bg-success">Total: 100%</span>
+                            </div>
                             <div class="row g-2">
                                 <div class="col-4">
-                                    <label class="form-label small text-muted">Written Work</label>
-                                    <input type="number" name="ww_weight" class="form-control" value="<?php echo htmlspecialchars($class['ww_weight'] ?? '25'); ?>" min="0" max="100" step="0.01" required>
+                                    <label class="form-label small text-muted">Written Work (WW %)</label>
+                                    <input type="number" name="ww_weight" class="form-control" value="<?php echo htmlspecialchars($class['ww_weight'] ?? '25'); ?>" min="0" max="100" step="0.01" required oninput="updateWeightTotal(this.form)">
                                 </div>
                                 <div class="col-4">
-                                    <label class="form-label small text-muted">Performance Task</label>
-                                    <input type="number" name="pt_weight" class="form-control" value="<?php echo htmlspecialchars($class['pt_weight'] ?? '50'); ?>" min="0" max="100" step="0.01" required>
+                                    <label class="form-label small text-muted">Performance Task (PT %)</label>
+                                    <input type="number" name="pt_weight" class="form-control" value="<?php echo htmlspecialchars($class['pt_weight'] ?? '50'); ?>" min="0" max="100" step="0.01" required oninput="updateWeightTotal(this.form)">
                                 </div>
                                 <div class="col-4">
-                                    <label class="form-label small text-muted">Assessment</label>
-                                    <input type="number" name="assessment_weight" class="form-control" value="<?php echo htmlspecialchars($class['assessment_weight'] ?? '25'); ?>" min="0" max="100" step="0.01" required>
+                                    <label class="form-label small text-muted">Assessment (QA %)</label>
+                                    <input type="number" name="assessment_weight" class="form-control" value="<?php echo htmlspecialchars($class['assessment_weight'] ?? '25'); ?>" min="0" max="100" step="0.01" required oninput="updateWeightTotal(this.form)">
                                 </div>
                             </div>
-                            <small class="text-muted">Total must be 100%.</small>
+                            <small class="text-muted">Auto-configured or customize manually. Total must equal 100%.</small>
                         </div>
                         
                         <div class="d-flex gap-2">
@@ -246,20 +257,44 @@ $page_title = 'Edit Class - ' . $class['class_name'];
         const weightPresets = {
             core: { ww: 25, pt: 50, qa: 25 },
             academic_elective: { ww: 25, pt: 45, qa: 30 },
+            research: { ww: 40, pt: 60, qa: 0 },
+            work_immersion: { ww: 20, pt: 60, qa: 20 },
             techpro_elective: { ww: 20, pt: 60, qa: 20 },
-            work_immersion: { ww: 20, pt: 80, qa: 0 },
+            tvl_immersion: { ww: 20, pt: 80, qa: 0 },
             field_experience_elective: { ww: 15, pt: 65, qa: 20 },
         };
 
         function onSubjectCategoryChange(select) {
             const category = select?.value;
             const preset = weightPresets[category];
-            if (preset) {
-                const form = select.closest('form');
-                if (form) {
-                    form.querySelector('[name="ww_weight"]').value = preset.ww;
-                    form.querySelector('[name="pt_weight"]').value = preset.pt;
-                    form.querySelector('[name="assessment_weight"]').value = preset.qa;
+            const form = select?.closest('form');
+            if (preset && form) {
+                const wwInput = form.querySelector('[name="ww_weight"]');
+                const ptInput = form.querySelector('[name="pt_weight"]');
+                const qaInput = form.querySelector('[name="assessment_weight"]');
+                if (wwInput) wwInput.value = preset.ww;
+                if (ptInput) ptInput.value = preset.pt;
+                if (qaInput) qaInput.value = preset.qa;
+            }
+            if (form) {
+                updateWeightTotal(form);
+            }
+        }
+
+        function updateWeightTotal(form) {
+            if (!form) return;
+            const ww = parseFloat(form.querySelector('[name="ww_weight"]')?.value || '0') || 0;
+            const pt = parseFloat(form.querySelector('[name="pt_weight"]')?.value || '0') || 0;
+            const qa = parseFloat(form.querySelector('[name="assessment_weight"]')?.value || '0') || 0;
+            const total = Math.round((ww + pt + qa) * 100) / 100;
+            const badge = form.querySelector('#weightSumBadge') || document.getElementById('weightSumBadge');
+            if (badge) {
+                if (Math.abs(total - 100) < 0.01) {
+                    badge.className = 'badge bg-success';
+                    badge.textContent = `Total: ${total}% (Valid)`;
+                } else {
+                    badge.className = 'badge bg-danger';
+                    badge.textContent = `Total: ${total}% (Must equal 100%)`;
                 }
             }
         }

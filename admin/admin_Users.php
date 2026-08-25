@@ -857,22 +857,6 @@ $page_title = 'Manage Users';
         function filterParentStudentList(inputId, itemSelector) {
             const input = document.getElementById(inputId);
             const term = (input?.value || '').trim().toLowerCase();
-            const items = document.querySelectorAll(itemSelector);
-            items.forEach(el => {
-                const text = (el.getAttribute('data-student-search') || el.textContent || '').toLowerCase();
-                const checkbox = el.querySelector('input[type="checkbox"]');
-                const isChecked = checkbox ? checkbox.checked : false;
-                if (!term || text.includes(term) || isChecked) {
-                    el.style.display = '';
-                } else {
-                    el.style.display = 'none';
-                }
-            });
-        }
-        
-        function toggleClassDropdown() {
-            const role = document.getElementById('userRole').value;
-            const gradeLevelDropdown = document.getElementById('gradeLevelDropdown');
             const sectionDropdown = document.getElementById('sectionDropdown');
             const classDropdown = document.getElementById('classDropdown');
             const parentStudentDropdown = document.getElementById('parentStudentDropdown');

@@ -2,6 +2,14 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.97 — 2026-08-25
+
+### Added
+
+- **DepEd Order No. 8, s. 2015 Auto & Manual Class Grading Weights**:
+  - Implemented automatic grading weight configuration across Academic Track (Core: 25/50/25, Specialized/Elective: 25/45/30, Research: 40/60/0, Immersion: 20/60/20) and Technical-Professional Track (TechPro Specialized: 20/60/20, TechPro Immersion/Apprenticeship: 20/80/0) in [`src/Grade/SshsGradeCalculator.php`](file:///c:/laragon/www/attendance-and-academic-management-system/src/Grade/SshsGradeCalculator.php), [`admin/admin_Classes.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Classes.php), and [`admin/admin_Class_Edit.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Class_Edit.php).
+  - Preserved full manual editing on Written Work (WW), Performance Task (PT), and Assessment (QA) inputs with real-time visual total sum validation badge (`Total: 100%`).
+
 ## v0.3.96 — 2026-08-25
 
 ### Added

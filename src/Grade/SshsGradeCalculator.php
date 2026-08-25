@@ -20,10 +20,12 @@ class SshsGradeCalculator
         return match ($subjectCategory) {
             'core' => ['ww' => 25, 'pt' => 50, 'assessment' => 25],
             'academic_elective' => ['ww' => 25, 'pt' => 45, 'assessment' => 30],
+            'research' => ['ww' => 40, 'pt' => 60, 'assessment' => 0],
+            'work_immersion' => ['ww' => 20, 'pt' => 60, 'assessment' => 20],
             'techpro_elective' => ['ww' => 20, 'pt' => 60, 'assessment' => 20],
+            'tvl_immersion' => ['ww' => 20, 'pt' => 80, 'assessment' => 0],
             'field_experience_elective' => ['ww' => 15, 'pt' => 65, 'assessment' => 20],
             'other_elective' => ['ww' => 20, 'pt' => 50, 'assessment' => 30],
-            'work_immersion' => ['ww' => 20, 'pt' => 80, 'assessment' => 0],
             default => ['ww' => 25, 'pt' => 50, 'assessment' => 25],
         };
     }
@@ -68,9 +70,11 @@ class SshsGradeCalculator
     {
         return match ($category) {
             'core' => 'Core Subject',
-            'academic_elective' => 'Academic Elective',
-            'techpro_elective' => 'TechPro Elective',
-            'work_immersion' => 'Work Immersion',
+            'academic_elective' => 'Academic Elective / Specialized',
+            'research' => 'Research Electives, Design & Innovation',
+            'work_immersion' => 'Work Immersion / Business Simulation',
+            'techpro_elective' => 'TechPro / TVL Elective',
+            'tvl_immersion' => 'TechPro Immersion / Apprenticeship',
             'field_experience_elective' => 'Field Experience / Sports & Arts Elective',
             'other_elective' => 'Other Elective',
             default => 'Core Subject',

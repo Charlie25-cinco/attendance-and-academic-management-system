@@ -12,17 +12,23 @@ final class GradeCalculatorTest extends TestCase
         $academicElective = SshsGradeCalculator::defaultWeights('academic_elective');
         $this->assertSame(['ww' => 25, 'pt' => 45, 'assessment' => 30], $academicElective);
 
+        $research = SshsGradeCalculator::defaultWeights('research');
+        $this->assertSame(['ww' => 40, 'pt' => 60, 'assessment' => 0], $research);
+
+        $workImmersion = SshsGradeCalculator::defaultWeights('work_immersion');
+        $this->assertSame(['ww' => 20, 'pt' => 60, 'assessment' => 20], $workImmersion);
+
         $techproElective = SshsGradeCalculator::defaultWeights('techpro_elective');
         $this->assertSame(['ww' => 20, 'pt' => 60, 'assessment' => 20], $techproElective);
+
+        $tvlImmersion = SshsGradeCalculator::defaultWeights('tvl_immersion');
+        $this->assertSame(['ww' => 20, 'pt' => 80, 'assessment' => 0], $tvlImmersion);
 
         $fieldExp = SshsGradeCalculator::defaultWeights('field_experience_elective');
         $this->assertSame(['ww' => 15, 'pt' => 65, 'assessment' => 20], $fieldExp);
 
         $otherElective = SshsGradeCalculator::defaultWeights('other_elective');
         $this->assertSame(['ww' => 20, 'pt' => 50, 'assessment' => 30], $otherElective);
-
-        $workImmersion = SshsGradeCalculator::defaultWeights('work_immersion');
-        $this->assertSame(['ww' => 20, 'pt' => 80, 'assessment' => 0], $workImmersion);
 
         $defaultFallback = SshsGradeCalculator::defaultWeights('unknown_category');
         $this->assertSame(['ww' => 25, 'pt' => 50, 'assessment' => 25], $defaultFallback);
