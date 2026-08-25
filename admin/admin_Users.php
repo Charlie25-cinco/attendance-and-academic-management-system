@@ -447,7 +447,7 @@ $page_title = 'Manage Users';
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
                                         <label class="form-label">Role <span class="text-danger">*</span></label>
-                                        <select name="role" id="userRole" class="form-select" required onchange="updateReferenceCode(); toggleClassDropdown();">
+                                        <select name="role" id="userRole" class="form-select" required onchange="updateReferenceCode(); onRoleChange(this);">
                                             <option value="">Select Role</option>
                                             <option value="teacher">Teacher</option>
                                             <option value="parent">Parent</option>
@@ -876,7 +876,8 @@ $page_title = 'Manage Users';
         }
 
         function onRoleChange(roleSelect) {
-            const role = roleSelect?.value || '';
+            const roleInput = (roleSelect && roleSelect.value !== undefined) ? roleSelect : document.getElementById('userRole');
+            const role = roleInput?.value || '';
             const gradeLevelDropdown = document.getElementById('gradeLevelDropdown');
             const sectionDropdown = document.getElementById('sectionDropdown');
             const classDropdown = document.getElementById('classDropdown');
@@ -938,6 +939,12 @@ $page_title = 'Manage Users';
 
             updateClassAvailabilityWarning();
         }
+
+        function toggleClassDropdown() {
+            onRoleChange(document.getElementById('userRole'));
+        }
+        window.onRoleChange = onRoleChange;
+        window.toggleClassDropdown = toggleClassDropdown;
 
         function filterParentStudentList(inputId, itemSelector) {
             const input = document.getElementById(inputId);
