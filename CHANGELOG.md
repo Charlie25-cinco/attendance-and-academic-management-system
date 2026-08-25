@@ -6,10 +6,11 @@ Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR fo
 
 ### Fixed
 
-- **Admin Manage Users Modal & Buttons JavaScript Restoration**:
-  - Repaired the Edit User modal markup and JavaScript syntax in [`admin/admin_Users.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Users.php) (`onRoleChange`, `hydrateSectionsCache`, `filterParentStudentList`, `clearParentSearch`).
-  - Restored full functionality to "Add User", "Edit User", "Delete User", and "Reset Password" buttons and fixed dynamic form controls for Teacher and Parent role selection.
-  - Kept mobile `contact_number` field and instant student linking fully operational during parent account creation.
+- **Admin Manage Users Modal, View/Edit Details & Buttons Restoration**:
+  - Fixed missing SQL prepare/execute in `getUser()` within [`admin/admin_Users_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Users_Action.php) that caused database errors when clicking the eye (View) icon and prevented user fields from populating in the Edit modal.
+  - Repaired Add User and Edit User modal markup and JavaScript syntax in [`admin/admin_Users.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Users.php) (`onRoleChange`, `hydrateSectionsCache`, `filterParentStudentList`, `clearParentSearch`).
+  - Restored full functionality to "Add User", "View User", "Edit User", "Delete User", and "Reset Password" buttons and fixed dynamic form controls for Teacher and Parent role selection.
+  - Added full support for `contact_number` in Add, View, and Edit modals as well as `createUser()` and `updateUser()` backend persistence with searchable student linking for parent accounts.
 
 ### Added
 

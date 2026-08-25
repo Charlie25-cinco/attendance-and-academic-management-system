@@ -266,6 +266,12 @@ function createUser($db) {
             }
         }
 
+        $contactNumber = trim((string)($_POST['contact_number'] ?? ''));
+        if ($contactNumber !== '' && strlen($contactNumber) > 20) {
+            echo json_encode(['success' => false, 'message' => 'Contact number must not exceed 20 characters']);
+            return;
+        }
+
         $hashedPassword = password_hash(getDefaultNewUserPassword(), PASSWORD_DEFAULT);
         $email = $referenceCode . '@balingasag.edu.ph';
 
@@ -274,6 +280,7 @@ function createUser($db) {
         $hasUserGradeSection = usersHasColumn($db, 'grade_level') && usersHasColumn($db, 'section');
         $hasUserSex = usersHasColumn($db, 'sex');
         $hasUserTrack = usersHasColumn($db, 'track');
+        $hasUserContact = usersHasColumn($db, 'contact_number');
         $userGradeLevel = null;
         $userSection = null;
         $userTrack = null;
@@ -458,6 +465,8 @@ function getUser($db) {
         $hasUserTrack = usersHasColumn($db, 'track');
         $hasUserContact = usersHasColumn($db, 'contact_number');
         $extraCols = ($hasUserSex ? ", sex" : "") . ($hasUserContact ? ", contact_number" : "") . ($hasUserGrade ? ", grade_level" : "") . ($hasUserSection ? ", section" : "") . ($hasUserTrack ? ", track" : "");
+        $stmt = $db->prepare("SELECT id, reference_code, first_name, middle_name, last_name, email, role, status, created_at, last_login{$extraCols} FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if ($user) {
@@ -613,29 +622,35 @@ function updateUser($db) {
         
         $contactNumber = trim((string)($_POST['contact_number'] ?? ''));
         if ($contactNumber !== '' && strlen($contactNumber) > 20) {
+            echo json_encode(['success' => false, 'message' => 'Contact number must not exceed 20 characters']);
+            return;
+        }
+
+        $db->beginTransaction();
+
         $hasUserGradeSection = usersHasColumn($db, 'grade_level') && usersHasColumn($db, 'section');
         $hasUserSex = usersHasColumn($db, 'sex');
         $hasUserTrack = usersHasColumn($db, 'track');
         $hasUserContact = usersHasColumn($db, 'contact_number');
 
-            $userGradeLevel = null;
-            $userSection = null;
-            if ($userRole === 'teacher') {
-                $userGradeLevel = ($gradeLevel !== '') ? (int)$gradeLevel : null;
-                $userSection = ($section !== '') ? $section : null;
-                $userTrack = ($track !== '') ? $track : null;
-            }
+        $userGradeLevel = null;
+        $userSection = null;
+        $userTrack = null;
+        if ($userRole === 'teacher') {
+            $userGradeLevel = ($gradeLevel !== '') ? (int)$gradeLevel : null;
+            $userSection = ($section !== '') ? $section : null;
+            $userTrack = ($track !== '') ? $track : null;
+        }
+
+        if ($hasUserGradeSection && $hasUserSex && $hasUserTrack && $hasUserContact) {
             $stmt = $db->prepare("UPDATE users SET first_name = ?, middle_name = ?, last_name = ?, sex = ?, contact_number = ?, grade_level = ?, section = ?, track = ? WHERE id = ?");
             $stmt->execute([$firstName, ($middleName !== '' ? $middleName : null), $lastName, $sex, ($contactNumber !== '' ? $contactNumber : null), $userGradeLevel, $userSection, $userTrack, $userId]);
         } elseif ($hasUserGradeSection && $hasUserSex && $hasUserTrack) {
-            $userGradeLevel = null;
-            $userSection = null;
-            if ($userRole === 'teacher') {
-                $userGradeLevel = ($gradeLevel !== '') ? (int)$gradeLevel : null;
-                $userSection = ($section !== '') ? $section : null;
-            }
-            $stmt = $db->prepare("UPDATE users SET first_name = ?, middle_name = ?, last_name = ?, sex = ?, grade_level = ?, section = ? WHERE id = ?");
-            $stmt->execute([$firstName, ($middleName !== '' ? $middleName : null), $lastName, $sex, $userGradeLevel, $userSection, $userId]);
+            $stmt = $db->prepare("UPDATE users SET first_name = ?, middle_name = ?, last_name = ?, sex = ?, grade_level = ?, section = ?, track = ? WHERE id = ?");
+            $stmt->execute([$firstName, ($middleName !== '' ? $middleName : null), $lastName, $sex, $userGradeLevel, $userSection, $userTrack, $userId]);
+        } elseif ($hasUserGradeSection && $hasUserSex && $hasUserContact) {
+            $stmt = $db->prepare("UPDATE users SET first_name = ?, middle_name = ?, last_name = ?, sex = ?, contact_number = ?, grade_level = ?, section = ? WHERE id = ?");
+            $stmt->execute([$firstName, ($middleName !== '' ? $middleName : null), $lastName, $sex, ($contactNumber !== '' ? $contactNumber : null), $userGradeLevel, $userSection, $userId]);
         } elseif ($hasUserSex && $hasUserContact) {
             $stmt = $db->prepare("UPDATE users SET first_name = ?, middle_name = ?, last_name = ?, sex = ?, contact_number = ? WHERE id = ?");
             $stmt->execute([$firstName, ($middleName !== '' ? $middleName : null), $lastName, $sex, ($contactNumber !== '' ? $contactNumber : null), $userId]);

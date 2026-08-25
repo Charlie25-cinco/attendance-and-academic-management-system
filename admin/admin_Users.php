@@ -506,6 +506,19 @@ $page_title = 'Manage Users';
                                             <option value="">Select Sex</option>
                                             <option value="male">Male</option>
                                             <option value="female">Female</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Contact Number (Mobile)</label>
+                                        <input type="text" name="contact_number" id="contactNumber" class="form-control" placeholder="09XXXXXXXXX" maxlength="20" autocomplete="tel">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Class/Subject Selection (Teacher only) -->
+                            <div class="app-modal-panel mb-0" id="classDropdown" style="display: none;">
+                                <div class="app-modal-panel-title"><i class="bi bi-journal-check"></i>Teacher Subject Assignment</div>
+                                <p class="app-modal-panel-copy">Assign subjects now or leave this blank and transfer subjects later from class management.</p>
                                 <div class="class-checklist" id="classChecklist">
                                 <?php
                                 // Fetch classes for checklist - these are the subjects
@@ -612,6 +625,10 @@ $page_title = 'Manage Users';
                             <div class="app-modal-detail-row">
                                 <div class="app-modal-detail-label">Sex</div>
                                 <div class="app-modal-detail-value" id="viewSex"></div>
+                            </div>
+                            <div class="app-modal-detail-row">
+                                <div class="app-modal-detail-label">Contact Number</div>
+                                <div class="app-modal-detail-value" id="viewContactNumber"></div>
                             </div>
                             <div class="app-modal-detail-row">
                                 <div class="app-modal-detail-label">Status</div>
@@ -1625,6 +1642,7 @@ $page_title = 'Manage Users';
                         document.getElementById('viewFullName').textContent = fullName;
                         document.getElementById('viewEmail').textContent = user.email;
                         document.getElementById('viewSex').textContent = user.sex ? (user.sex.charAt(0).toUpperCase() + user.sex.slice(1)) : 'N/A';
+                        document.getElementById('viewContactNumber').textContent = user.contact_number || 'N/A';
                         document.getElementById('viewStatus').textContent = user.status.charAt(0).toUpperCase() + user.status.slice(1);
                         document.getElementById('viewStatus').className = 'status-badge status-' + user.status;
                         document.getElementById('viewCreatedAt').textContent = new Date(user.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
