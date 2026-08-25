@@ -2,6 +2,17 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.96 — 2026-08-25
+
+### Added
+
+- **Parent-Student Linking Search Filter (Admin Users)**:
+  - Added real-time client-side search inputs (`#parentStudentSearch` and `#editParentStudentSearch`) with `filterParentStudentList()` in [`admin/admin_Users.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Users.php) for instant filtering of students by name or reference code/LRN in Add/Edit Parent modals.
+- **Self-Service Contact Number in Profile & Settings Modal**:
+  - Added editable `Contact Number (Mobile)` input with Philippine mobile format validation to the shared Profile modal ([`includes/modals.php`](file:///c:/laragon/www/attendance-and-academic-management-system/includes/modals.php)), session state ([`includes/header.php`](file:///c:/laragon/www/attendance-and-academic-management-system/includes/header.php)), and Profile API ([`api/routes/03-profile.php`](file:///c:/laragon/www/attendance-and-academic-management-system/api/routes/03-profile.php)) so parents, teachers, and students can update their phone numbers anytime for SMS alerts.
+- **Teacher Report Card Student Search Filter**:
+  - Added real-time student search and instant dropdown selection in Advisory Report Cards ([`teacher/teacher_Advisory.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Advisory.php)) and SF9 Progress Report Card Generator ([`teacher/teacher_SF9_Export.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_SF9_Export.php)).
+
 ## v0.3.95 — 2026-08-25
 
 ### Fixed

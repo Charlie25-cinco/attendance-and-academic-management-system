@@ -287,20 +287,27 @@ $page_title = 'Report Card';
                         Submitted report cards are routed to <strong>Admin Grade Approvals</strong> first. Students can view grades only after admin approval.
                     </div>
 
-                    <form method="GET" class="row g-3 align-items-end mb-3 app-responsive-filter-form">
+                    <form method="GET" class="row g-3 align-items-end mb-3 app-responsive-filter-form" id="advisoryReportCardForm">
+                        <div class="col-md-3">
+                            <label class="form-label">Search Student</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input type="text" id="reportCardStudentSearch" class="form-control" placeholder="Type name or LRN..." oninput="filterAdvisoryStudentDropdown(this.value)">
+                            </div>
+                        </div>
                         <div class="col-md-4">
                             <label class="form-label">Student</label>
-                            <select name="student_id" class="form-select">
+                            <select name="student_id" id="advisoryStudentSelect" class="form-select" onchange="this.form.submit()">
                                 <?php foreach ($students as $s): ?>
-                                    <option value="<?php echo (int)$s['id']; ?>" <?php echo ((int)$s['id'] === $selectedStudentId) ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars(trim(((string)$s['last_name']) . ', ' . ((string)$s['first_name']))); ?>
+                                    <option value="<?php echo (int)$s['id']; ?>" data-search="<?php echo htmlspecialchars(strtolower($s['last_name'] . ' ' . $s['first_name'] . ' ' . ($s['reference_code'] ?? ''))); ?>" <?php echo ((int)$s['id'] === $selectedStudentId) ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars(trim(((string)$s['last_name']) . ', ' . ((string)$s['first_name'])) . (!empty($s['reference_code']) ? ' (' . $s['reference_code'] . ')' : '')); ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Academic Year</label>
-                            <input type="text" name="academic_year" class="form-control" value="<?php echo htmlspecialchars($selectedAcademicYear); ?>" placeholder="YYYY-YYYY">
+                            <input type="text" name="academic_year" class="form-control" value="<?php echo htmlspecialchars($selectedAcademicYear); ?>" placeholder="YYYY-YYYY" onchange="this.form.submit()">
                         </div>
                         <div class="col-md-2">
                             <button type="submit" class="btn btn-secondary-custom w-100"><i class="bi bi-arrow-clockwise me-1"></i>Load</button>
@@ -432,6 +439,23 @@ $page_title = 'Report Card';
 <script src="<?php echo appAssetPath('vendor/bootstrap/bootstrap.bundle.min.js'); ?>"></script>
 <script src="<?php echo appAssetPath('js/main.js'); ?>"></script>
 <script>
+function filterAdvisoryStudentDropdown(query) {
+    const q = (query || '').toLowerCase().trim();
+    const select = document.getElementById('advisoryStudentSelect');
+    if (!select) return;
+    const options = select.options;
+    for (let i = 0; i < options.length; i++) {
+        const opt = options[i];
+        const s = (opt.getAttribute('data-search') || opt.textContent || '').toLowerCase();
+        if (!q || s.includes(q)) {
+            opt.hidden = false;
+            opt.disabled = false;
+        } else {
+            opt.hidden = true;
+            opt.disabled = true;
+        }
+    }
+}
 function submitReportCardToAdmin(academicYear){
     const fd=new FormData();
     fd.append('academic_year',academicYear);

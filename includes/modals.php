@@ -164,6 +164,11 @@
                         <input type="email" class="form-control" id="profileEmail" name="email" value="<?php echo htmlspecialchars($displayEmail); ?>" required>
                     </div>
                     <div class="mb-3">
+                        <label class="form-label">Contact Number (Mobile)</label>
+                        <input type="tel" class="form-control" id="profileContactNumber" name="contact_number" value="<?php echo htmlspecialchars($displayContactNumber ?? ''); ?>" placeholder="e.g. 09171234567" autocomplete="tel">
+                        <div class="form-text text-muted">Used for official school SMS alerts (grades and release notices).</div>
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label">Sex</label>
                         <select class="form-select" id="profileSex" name="sex" required>
                             <option value="">Select Sex</option>

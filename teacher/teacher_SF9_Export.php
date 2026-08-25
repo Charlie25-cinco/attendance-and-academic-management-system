@@ -50,16 +50,30 @@ if ($studentId === 0 && $classId > 0) {
     <a class="back" href="javascript:history.back()">&#8592; Back</a>
     <h2 style="margin:12px 0 8px;">SF9 - Select Student</h2>
     <p style="color:#555;margin-bottom:12px;">Select a student to generate their SF9 Progress Report Card.</p>
-    <ul>
+    <div style="margin-bottom:12px;">
+        <input type="text" id="sf9StudentSearch" placeholder="Type student name or reference code to filter..." style="padding:6px 10px;width:100%;max-width:360px;border:1px solid #ccc;border-radius:4px;" oninput="filterSf9Students(this.value)">
+    </div>
+    <ul id="sf9StudentList">
     <?php foreach ($stuList as $s): ?>
-        <li><a href="?class_id=<?php echo $classId; ?>&student_id=<?php echo $s['id']; ?>&ay=<?php echo urlencode($academicYear); ?>">
-            <?php echo htmlspecialchars($s['last_name'] . ', ' . $s['first_name'] . ' (' . $s['reference_code'] . ')'); ?>
-        </a>
-        <a class="dl-link" href="?class_id=<?php echo $classId; ?>&student_id=<?php echo $s['id']; ?>&ay=<?php echo urlencode($academicYear); ?>&export=xlsx">&#8595; XLSX</a>
+        <li data-search="<?php echo htmlspecialchars(strtolower($s['last_name'] . ' ' . $s['first_name'] . ' ' . ($s['reference_code'] ?? ''))); ?>">
+            <a href="?class_id=<?php echo $classId; ?>&student_id=<?php echo $s['id']; ?>&ay=<?php echo urlencode($academicYear); ?>">
+                <?php echo htmlspecialchars($s['last_name'] . ', ' . $s['first_name'] . ' (' . $s['reference_code'] . ')'); ?>
+            </a>
+            <a class="dl-link" href="?class_id=<?php echo $classId; ?>&student_id=<?php echo $s['id']; ?>&ay=<?php echo urlencode($academicYear); ?>&export=xlsx">&#8595; XLSX</a>
         </li>
     <?php endforeach; ?>
     <?php if (empty($stuList)): ?><li>No enrolled students found.</li><?php endif; ?>
     </ul>
+    <script>
+    function filterSf9Students(q) {
+        var query = (q || '').toLowerCase().trim();
+        var items = document.querySelectorAll('#sf9StudentList li[data-search]');
+        items.forEach(function(li) {
+            var text = li.getAttribute('data-search') || li.textContent.toLowerCase();
+            li.style.display = (!query || text.indexOf(query) !== -1) ? '' : 'none';
+        });
+    }
+    </script>
     </body></html>
     <?php
     exit();

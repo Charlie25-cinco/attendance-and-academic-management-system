@@ -14,6 +14,7 @@ if ($route === 'profile' && $method === 'GET') {
 
     $hasMiddleName = apiHasColumn($db, 'users', 'middle_name');
     $hasSex = apiHasColumn($db, 'users', 'sex');
+    $hasContact = apiHasColumn($db, 'users', 'contact_number');
 
     $columns = ['first_name', 'last_name', 'email', 'reference_code', 'role'];
     if ($hasMiddleName) {
@@ -21,6 +22,9 @@ if ($route === 'profile' && $method === 'GET') {
     }
     if ($hasSex) {
         $columns[] = 'sex';
+    }
+    if ($hasContact) {
+        $columns[] = 'contact_number';
     }
 
     $stmt = $db->prepare("SELECT " . implode(', ', $columns) . " FROM users WHERE id = ? LIMIT 1");
@@ -36,6 +40,9 @@ if ($route === 'profile' && $method === 'GET') {
     if ($hasSex && !isset($row['sex'])) {
         $row['sex'] = '';
     }
+    if ($hasContact && !isset($row['contact_number'])) {
+        $row['contact_number'] = '';
+    }
 
     apiJson(['ok' => true, 'profile' => $row]);
 }
@@ -49,7 +56,7 @@ if ($route === 'profile' && $method === 'POST') {
 
     $body = apiRequestBody();
     $updates = [];
-    $allowedFields = ['first_name', 'last_name', 'middle_name', 'sex', 'email'];
+    $allowedFields = ['first_name', 'last_name', 'middle_name', 'sex', 'email', 'contact_number'];
 
     foreach ($allowedFields as $field) {
         if (array_key_exists($field, $body)) {
@@ -65,6 +72,12 @@ if ($route === 'profile' && $method === 'POST') {
             if ($field === 'middle_name' && $value !== '') {
                 if (!apiValidMiddleName($value)) {
                     apiJson(['ok' => false, 'message' => 'Middle name is invalid'], 422);
+                }
+            }
+            if ($field === 'contact_number' && $value !== '') {
+                $digits = preg_replace('/[^0-9]/', '', $value);
+                if ($digits === null || (strlen($digits) !== 11 && strlen($digits) !== 12 && strlen($digits) !== 10)) {
+                    apiJson(['ok' => false, 'message' => 'Contact number must be a valid 11-digit mobile number (e.g. 09171234567)'], 422);
                 }
             }
             if ($field === 'email') {
@@ -87,6 +100,9 @@ if ($route === 'profile' && $method === 'POST') {
     if (apiHasColumn($db, 'users', 'sex')) {
         $allowedFields[] = 'sex';
     }
+    if (apiHasColumn($db, 'users', 'contact_number')) {
+        $allowedFields[] = 'contact_number';
+    }
 
     $currentPassword = (string)($body['current_password'] ?? '');
     $newPassword = (string)($body['new_password'] ?? '');
@@ -100,6 +116,7 @@ if ($route === 'profile' && $method === 'POST') {
         if ($newPassword !== $confirmPassword) {
             apiJson(['ok' => false, 'message' => 'New passwords do not match'], 422);
         }
+        $passwordError = '';
         if (!validateStrongPassword($newPassword, $passwordError)) {
             apiJson(['ok' => false, 'message' => $passwordError], 422);
         }
@@ -141,7 +158,7 @@ if ($route === 'profile' && $method === 'POST') {
         bumpUserApiTokenVersion($db, (int)$user['id']);
     }
 
-    foreach (['first_name', 'middle_name', 'last_name', 'email', 'sex'] as $sessionField) {
+    foreach (['first_name', 'middle_name', 'last_name', 'email', 'sex', 'contact_number'] as $sessionField) {
         if (array_key_exists($sessionField, $updates)) {
             $_SESSION[$sessionField] = $updates[$sessionField];
         }

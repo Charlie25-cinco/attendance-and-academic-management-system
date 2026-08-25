@@ -534,9 +534,13 @@ $page_title = 'Manage Users';
                             <div class="app-modal-panel mb-0" id="parentStudentDropdown" style="display: none;">
                                 <div class="app-modal-panel-title"><i class="bi bi-people"></i>Parent Link</div>
                                 <label class="form-label">Link Student(s) <span class="text-danger">*</span></label>
-                                <div class="class-checklist">
+                                <div class="input-group input-group-sm mb-2">
+                                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                    <input type="text" class="form-control" id="parentStudentSearch" placeholder="Type student name or reference code to filter..." oninput="filterParentStudentList('parentStudentSearch', '#parentStudentChecklist .class-check-item')">
+                                </div>
+                                <div class="class-checklist" id="parentStudentChecklist">
                                 <?php foreach ($studentsForParent as $student): ?>
-                                <div class="form-check class-check-item">
+                                <div class="form-check class-check-item" data-student-search="<?php echo htmlspecialchars(strtolower($student['last_name'] . ' ' . $student['first_name'] . ' ' . ($student['reference_code'] ?? ''))); ?>">
                                     <input class="form-check-input parent-student-checkbox" type="checkbox" name="linked_student_ids[]" value="<?php echo (int)$student['id']; ?>" id="parent_student_<?php echo (int)$student['id']; ?>">
                                     <label class="form-check-label" for="parent_student_<?php echo (int)$student['id']; ?>">
                                         <strong><?php echo htmlspecialchars($student['last_name'] . ', ' . $student['first_name']); ?></strong>
@@ -731,9 +735,13 @@ $page_title = 'Manage Users';
                             <div class="app-modal-panel mb-0" id="editParentStudentDiv" style="display: none;">
                                 <div class="app-modal-panel-title"><i class="bi bi-people"></i>Parent Link</div>
                                 <label class="form-label">Link Student(s) <span class="text-danger">*</span></label>
-                                <div class="class-checklist">
+                                <div class="input-group input-group-sm mb-2">
+                                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                    <input type="text" class="form-control" id="editParentStudentSearch" placeholder="Type student name or reference code to filter..." oninput="filterParentStudentList('editParentStudentSearch', '#editParentStudentChecklist .class-check-item')">
+                                </div>
+                                <div class="class-checklist" id="editParentStudentChecklist">
                                 <?php foreach ($studentsForParent as $student): ?>
-                                <div class="form-check class-check-item">
+                                <div class="form-check class-check-item" data-student-search="<?php echo htmlspecialchars(strtolower($student['last_name'] . ' ' . $student['first_name'] . ' ' . ($student['reference_code'] ?? ''))); ?>">
                                     <input class="form-check-input edit-parent-student-checkbox" type="checkbox" name="linked_student_ids[]" value="<?php echo (int)$student['id']; ?>" id="edit_parent_student_<?php echo (int)$student['id']; ?>">
                                     <label class="form-check-label" for="edit_parent_student_<?php echo (int)$student['id']; ?>">
                                         <strong><?php echo htmlspecialchars($student['last_name'] . ', ' . $student['first_name']); ?></strong>
@@ -843,6 +851,22 @@ $page_title = 'Manage Users';
                 cb.title = blocked ? 'Already assigned to another teacher' : '';
                 const item = cb.closest('.class-check-item');
                 if (item) item.classList.toggle('opacity-50', blocked);
+            });
+        }
+
+        function filterParentStudentList(inputId, itemSelector) {
+            const input = document.getElementById(inputId);
+            const term = (input?.value || '').trim().toLowerCase();
+            const items = document.querySelectorAll(itemSelector);
+            items.forEach(el => {
+                const text = (el.getAttribute('data-student-search') || el.textContent || '').toLowerCase();
+                const checkbox = el.querySelector('input[type="checkbox"]');
+                const isChecked = checkbox ? checkbox.checked : false;
+                if (!term || text.includes(term) || isChecked) {
+                    el.style.display = '';
+                } else {
+                    el.style.display = 'none';
+                }
             });
         }
         

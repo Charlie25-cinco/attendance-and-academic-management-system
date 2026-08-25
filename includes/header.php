@@ -40,6 +40,7 @@ if ($displayMiddleName === '' && strpos($rawFirstName, ' ') !== false) {
 $displayRole = ucfirst($_SESSION['role'] ?? $current_role);
 $displayEmail = trim((string)($_SESSION['email'] ?? ''));
 $displaySex = strtolower(trim((string)($_SESSION['sex'] ?? '')));
+$displayContactNumber = trim((string)($_SESSION['contact_number'] ?? ''));
 $displayReference = trim((string)($_SESSION['reference_code'] ?? ''));
 $displayInitials = '';
 if ($displayFirstName !== '') {
@@ -123,13 +124,14 @@ if (!function_exists('headerCacheWrite')) {
 }
 
 if (!function_exists('headerApplyProfileRow')) {
-    function headerApplyProfileRow(array $profileRow, string &$displayFirstName, string &$displayMiddleName, string &$displaySex, string &$displayEmail, string &$displayReference): void {
+    function headerApplyProfileRow(array $profileRow, string &$displayFirstName, string &$displayMiddleName, string &$displaySex, string &$displayEmail, string &$displayReference, string &$displayContactNumber): void {
         $dbFirstName = trim((string)($profileRow['first_name'] ?? ''));
         $dbMiddleName = trim((string)($profileRow['middle_name'] ?? ''));
         $dbLastName = trim((string)($profileRow['last_name'] ?? ''));
         $dbSex = strtolower(trim((string)($profileRow['sex'] ?? '')));
         $dbEmail = trim((string)($profileRow['email'] ?? ''));
         $dbReference = trim((string)($profileRow['reference_code'] ?? ''));
+        $dbContact = trim((string)($profileRow['contact_number'] ?? ''));
 
         if ($dbFirstName !== '') {
             $displayFirstName = $dbFirstName;
@@ -152,6 +154,8 @@ if (!function_exists('headerApplyProfileRow')) {
             $displayReference = $dbReference;
             $_SESSION['reference_code'] = $dbReference;
         }
+        $displayContactNumber = $dbContact;
+        $_SESSION['contact_number'] = $dbContact;
     }
 }
 
@@ -200,7 +204,7 @@ if ($headerDb && $sessionUserId > 0) {
     try {
         $profileRow = headerCacheRead('app_header_profile', $sessionUserId, $headerCacheTtl);
         if ($profileRow === null) {
-            $profileStmt = $headerDb->prepare("SELECT first_name, middle_name, last_name, sex, email, reference_code
+            $profileStmt = $headerDb->prepare("SELECT first_name, middle_name, last_name, sex, email, reference_code, contact_number
                                                FROM users
                                                WHERE id = ?
                                                LIMIT 1");
@@ -209,7 +213,7 @@ if ($headerDb && $sessionUserId > 0) {
             headerCacheWrite('app_header_profile', $sessionUserId, $profileRow, $headerCacheTtl);
         }
         if (!empty($profileRow)) {
-            headerApplyProfileRow($profileRow, $displayFirstName, $displayMiddleName, $displaySex, $displayEmail, $displayReference);
+            headerApplyProfileRow($profileRow, $displayFirstName, $displayMiddleName, $displaySex, $displayEmail, $displayReference, $displayContactNumber);
         }
     } catch (Throwable $e) {
         error_log('Header profile query error: ' . $e->getMessage());
