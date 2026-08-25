@@ -151,16 +151,16 @@ $page_title = 'Grade Entry';
                     <h4 class="mb-2">Grade Entry</h4>
                     <p class="mb-0">Load a class by term, review computed percentages and weighted values, then submit only after the grade table is complete and ready for approval.</p>
                     <div class="teacher-chip-row">
-                        <span class="teacher-chip"><i class="bi bi-journal-bookmark"></i><?php echo number_format(count($classes)); ?> subject classes</span>
-                        <span class="teacher-chip"><i class="bi bi-calendar3"></i><?php echo htmlspecialchars($selectedAcademicYear); ?></span>
-                        <span class="teacher-chip"><i class="bi bi-diagram-3"></i><?php echo htmlspecialchars($selectedTerm); ?></span>
+                        <span class="teacher-chip" id="heroClassCount"><i class="bi bi-journal-bookmark"></i><?php echo number_format(count($classes)); ?> subject classes</span>
+                        <span class="teacher-chip" id="heroAyChip"><i class="bi bi-calendar3"></i><?php echo htmlspecialchars($selectedAcademicYear); ?></span>
+                        <span class="teacher-chip" id="heroTermChip"><i class="bi bi-diagram-3"></i><?php echo htmlspecialchars($selectedTerm); ?></span>
                     </div>
                 </div>
                 <div class="teacher-summary-panel">
                     <div class="teacher-summary-grid">
                         <div class="teacher-summary-stat">
                             <span class="teacher-summary-label">Loaded Students</span>
-                            <span class="teacher-summary-value"><?php echo number_format(count($gradeStudents)); ?></span>
+                            <span class="teacher-summary-value" id="heroStudentCount"><?php echo number_format(count($gradeStudents)); ?></span>
                         </div>
                         <div class="teacher-summary-stat">
                             <span class="teacher-summary-label">Grading System</span>
@@ -211,7 +211,7 @@ $page_title = 'Grade Entry';
                         </select>
                     </div>
                     <div class="col-md-2 d-flex align-items-end">
-                        <button class="btn btn-secondary-custom w-100" onclick="loadGradesData()"><i class="bi bi-arrow-clockwise me-1"></i>Load</button>
+                        <button class="btn btn-secondary-custom w-100" id="loadGradesBtn" onclick="loadGradesData()"><i class="bi bi-arrow-clockwise me-1"></i>Load</button>
                     </div>
                     <div class="col-md-2 d-flex align-items-end gap-2">
                         <button class="btn btn-primary-custom" id="ecrPreviewBtn" onclick="openEcrPreview()"><i class="bi bi-file-earmark-excel me-1"></i>ECR</button>
@@ -432,6 +432,12 @@ function loadGradesData(){
     let url=`teacher_Action.php?action=fetch_grades&class_id=${encodeURIComponent(classId)}&term=${encodeURIComponent(term)}&academic_year=${encodeURIComponent(ay)}`;
     if(sex==='male'||sex==='female'){url+=`&sex=${encodeURIComponent(sex)}`;}
 
+    const loadBtn = document.getElementById('loadGradesBtn');
+    if (loadBtn) {
+        loadBtn.disabled = true;
+        loadBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Loading...';
+    }
+
     if(!navigator.onLine){
         if(window.bshsOfflineStorage){
             window.bshsOfflineStorage.getClassRoster(classId).then(students => {
@@ -441,6 +447,11 @@ function loadGradesData(){
                     return;
                 }
                 showNotification('No offline roster stored for this class', 'warning');
+            }).finally(() => {
+                if (loadBtn) {
+                    loadBtn.disabled = false;
+                    loadBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Load';
+                }
             });
         }
         return;
@@ -454,7 +465,35 @@ function loadGradesData(){
             gradingWeights.assessment_weight=parseFloat(d.weights.assessment_weight||25);
         }
         updateWeightsInfo();
-        renderGrades(d.students||[]);
+        const students = d.students || [];
+        renderGrades(students);
+
+        // Dynamically update hero chips and summary values
+        const heroTermEl = document.getElementById('heroTermChip');
+        if (heroTermEl) {
+            heroTermEl.innerHTML = '<i class="bi bi-diagram-3"></i>' + escapeHtml(term);
+        }
+        const heroAyEl = document.getElementById('heroAyChip');
+        if (heroAyEl) {
+            heroAyEl.innerHTML = '<i class="bi bi-calendar3"></i>' + escapeHtml(ay);
+        }
+        const heroCountEl = document.getElementById('heroStudentCount');
+        if (heroCountEl) {
+            heroCountEl.textContent = students.length;
+        }
+
+        // Sync browser URL parameters without reloading
+        try {
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.set('grade_class_id', classId);
+            newUrl.searchParams.set('term', term);
+            newUrl.searchParams.set('academic_year', ay);
+            if (sex) { newUrl.searchParams.set('sex', sex); } else { newUrl.searchParams.delete('sex'); }
+            window.history.replaceState({}, '', newUrl.toString());
+        } catch (e) {}
+
+        const termDisplay = term === 'Term1' ? 'Term 1' : (term === 'Term2' ? 'Term 2' : (term === 'Term3' ? 'Term 3' : term));
+        showNotification('Loaded ' + students.length + ' student records for ' + termDisplay, 'success');
     }).catch(()=>{
         if(window.bshsOfflineStorage){
             window.bshsOfflineStorage.getClassRoster(classId).then(students => {
@@ -466,6 +505,11 @@ function loadGradesData(){
             });
         }
         showNotification('Error loading grades','danger');
+    }).finally(()=>{
+        if (loadBtn) {
+            loadBtn.disabled = false;
+            loadBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Load';
+        }
     });
 }
 function submitGrades(){const classId=parseInt(document.getElementById('gradeClassSelect')?.value||'0',10);const term=(document.getElementById('termSelect')?.value||'').toString().trim();const academicYear=(document.getElementById('academicYearInput')?.value||'').toString().trim();if(!classId||!term||!academicYear){showNotification('Class, term, and academic year are required','warning');return;}const rows=Array.from(document.querySelectorAll('#gradesBody tr[data-student-id]'));if(rows.length===0){showNotification('No students to submit','warning');return;}const records=[];let invalidCount=0;rows.forEach(row=>{const studentId=parseInt(row.getAttribute('data-student-id')||'0',10);const wwText=(row.querySelector('.grade-ww-percent')?.textContent||'').trim();const ptText=(row.querySelector('.grade-pt-percent')?.textContent||'').trim();const asText=(row.querySelector('.grade-assessment-percent')?.textContent||'').trim();const toNum=v=>{if(!v||v.toUpperCase()==='N/A')return null;const n=parseFloat(v);return Number.isFinite(n)?n:null;};const ww=toNum(wwText);const pt=toNum(ptText);const assessment=toNum(asText);if(studentId>0){if(ww===null&&pt===null&&assessment===null){invalidCount++;}records.push({student_id:studentId,ww_score:ww,pt_score:pt,assessment_score:assessment});}});if(records.length===0){showNotification('No valid student records found','warning');return;}if(invalidCount>0){showNotification('Cannot submit yet. '+invalidCount+' student(s) have no computed scores.','warning');return;}const btn=document.getElementById('submitGradesBtn');if(btn){btn.disabled=true;btn.innerHTML='<span class=\"spinner-border spinner-border-sm me-2\"></span>Submitting...';}fetch('teacher_Action.php?action=submit_grades',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrfToken},body:JSON.stringify({class_id:classId,term:term,academic_year:academicYear,records:records})}).then(r=>r.json()).then(d=>{if(d.success){if(btn){btn.disabled=false;btn.innerHTML='<i class=\"bi bi-send-check me-2\"></i>Submit to Admin';}showNotification(d.message||'Grades submitted','success');setTimeout(function(){loadGradesData();},700);}else{showNotification(d.message||'Failed to submit grades','danger');if(btn){btn.disabled=false;btn.innerHTML='<i class=\"bi bi-send-check me-2\"></i>Submit to Admin';}}}).catch(function(){showNotification('Error submitting grades','danger');if(btn){btn.disabled=false;btn.innerHTML='<i class=\"bi bi-send-check me-2\"></i>Submit to Admin';}});}
