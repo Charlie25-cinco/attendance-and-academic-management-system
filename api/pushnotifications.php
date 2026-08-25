@@ -1,25 +1,11 @@
 <?php
 
-function pushEnsureMobileTokensTable(PDO $db): void {
-    $db->exec("CREATE TABLE IF NOT EXISTS mobile_push_tokens (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,
-        token VARCHAR(255) NOT NULL,
-        device VARCHAR(120) NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        UNIQUE KEY uq_mobile_token (token),
-        KEY idx_mobile_user (user_id),
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    )");
-}
 
 function pushSaveMobileToken(PDO $db, int $userId, string $token, string $device = ''): bool {
     $token = trim($token);
     if ($token === '' || $userId <= 0) {
         return false;
     }
-    pushEnsureMobileTokensTable($db);
     $stmt = $db->prepare("INSERT INTO mobile_push_tokens (user_id, token, device, created_at, updated_at)
                           VALUES (?, ?, ?, NOW(), NOW())
                           ON DUPLICATE KEY UPDATE
@@ -44,7 +30,6 @@ function pushDeleteMobileToken(PDO $db, int $userId, string $token = ''): bool {
     if ($userId <= 0) {
         return false;
     }
-    pushEnsureMobileTokensTable($db);
     if ($token !== '') {
         $stmt = $db->prepare("DELETE FROM mobile_push_tokens WHERE user_id = ? AND token = ?");
         return $stmt->execute([(int)$userId, trim($token)]);
@@ -60,7 +45,6 @@ function pushFetchMobileTokens(PDO $db, array $userIds): array {
     if (empty($userIds)) {
         return [];
     }
-    pushEnsureMobileTokensTable($db);
     $placeholders = implode(',', array_fill(0, count($userIds), '?'));
     $hasSettings = dbHasTable($db, 'user_settings');
     if ($hasSettings) {

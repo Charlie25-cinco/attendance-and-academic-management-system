@@ -137,6 +137,10 @@ if ($route === 'profile' && $method === 'POST') {
         $revokeStmt->execute([(int)$user['id']]);
     }
 
+    if ($passwordChanged) {
+        bumpUserApiTokenVersion($db, (int)$user['id']);
+    }
+
     foreach (['first_name', 'middle_name', 'last_name', 'email', 'sex'] as $sessionField) {
         if (array_key_exists($sessionField, $updates)) {
             $_SESSION[$sessionField] = $updates[$sessionField];

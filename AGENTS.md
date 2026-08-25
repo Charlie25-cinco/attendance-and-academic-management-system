@@ -13,6 +13,7 @@ Use "Accept or Reject" before moving from Plan to Build, and before making code 
 ## Project Expectations
 
 - Keep changes small and focused.
+- `database/schema.sql` is the single source of truth for MySQL structure: do not add new runtime `CREATE TABLE` or `ALTER TABLE` statements to application code. Existing exceptions are the SQLite test fixtures (`functions/app-helpers.php`, `config/constants.php`, `src/Notification/SmsService.php`) and the legacy upgrade paths (`ensureAuthLoginLogsTable`, `ensureReportNotesTables`, `ensureStrengthenedShsColumns`). `tests/RuntimeDdlGuardTest.php` enforces this boundary; any new table or column ships in `schema.sql` first.
 - Update `README.md` and `AGENTS.md` when project behavior, setup, security posture, or workflow changes.
 - Prefer existing project patterns over new abstractions.
 - Do not commit local secrets, generated files, `vendor/`, `storage/`, or runtime uploads.
@@ -50,6 +51,9 @@ For local manual testing, `composer run serve` starts the PHP development server
 - Production must set `APP_ENV=production`.
 - Production must provide strong `API_AUTH_SECRET` and `API_SYNC_SECRET` values.
 - Production must set `API_ALLOWED_ORIGIN` to a trusted origin.
+- API bearer tokens carry an `api_token_version` claim matched against `users.api_token_version`; every password change or reset path must call `bumpUserApiTokenVersion()` so old tokens are revoked immediately.
+- The script-to-permission map in `permissionForScript()` must cover every portal page; `tests/RbacScriptCoverageTest.php` and `tests/CsrfHandlerCoverageTest.php` enforce RBAC map and CSRF coverage and must keep passing when adding pages or handlers.
+- Logout validates the session CSRF token from the query string before destroying the session; keep the header logout link tokenized.
 - Stateless production hosts such as Wasmer must set `APP_SESSION_DRIVER=database` so PHP sessions are stored in SQL instead of instance-local files.
 - Installed PWA login persistence depends on database sessions plus `APP_SESSION_LIFETIME` and `APP_SESSION_IDLE_TIMEOUT`; keep the trusted-device remember option available and checked by default unless the user requests stricter login behavior.
 - Hosted MySQL deployments may require `DB_SSL_CA` or `DB_SSL_CA_CONTENT`; keep `DB_SSL_VERIFY_SERVER_CERT` enabled unless a trusted deployment explicitly disables it.

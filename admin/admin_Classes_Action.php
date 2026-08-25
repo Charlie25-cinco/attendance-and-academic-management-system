@@ -20,38 +20,12 @@ if (!$db) {
 
 $action = $_GET['action'] ?? '';
 
-function ensureAdminClassAuditLogTable($db) {
-    static $ready = false;
-    if ($ready) {
-        return;
-    }
-    try {
-        $db->exec("CREATE TABLE IF NOT EXISTS admin_audit_logs (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            admin_user_id INT NOT NULL,
-            action_name VARCHAR(100) NOT NULL,
-            target_type VARCHAR(50) NOT NULL,
-            target_id INT DEFAULT NULL,
-            details_json TEXT DEFAULT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            INDEX idx_admin_audit_logs_admin_user_id (admin_user_id),
-            INDEX idx_admin_audit_logs_action_name (action_name),
-            INDEX idx_admin_audit_logs_target_type (target_type),
-            INDEX idx_admin_audit_logs_created_at (created_at)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-    } catch (Throwable $e) {
-        // Do not block the main action if audit log table creation fails.
-    }
-    $ready = true;
-}
 
 function adminClassAuditLog($db, string $actionName, int $targetId = 0, array $details = []): void {
     $adminUserId = (int)($_SESSION['user_id'] ?? 0);
     if ($adminUserId <= 0) {
         return;
     }
-
-    ensureAdminClassAuditLogTable($db);
 
     try {
         $stmt = $db->prepare("INSERT INTO admin_audit_logs (admin_user_id, action_name, target_type, target_id, details_json, created_at)
@@ -716,19 +690,16 @@ function exportSf2(PDO $db): void {
                              FROM users u
                              INNER JOIN enrollments e ON e.student_id = u.id
                              WHERE e.class_id = ?
-                             AND e.academic_year = ?
-                             AND COALESCE(e.status, 'enrolled') = 'enrolled'
+                             AND (
                              AND u.role = 'student'
                              AND u.status = 'active'
                              ORDER BY u.last_name, u.first_name");
-    $stuStmt->execute([$classId, $sf2AcademicYear]);
+    $stuStmt->execute([$classId, $sf2AcademicYear, $classId]);
     $students = $stuStmt->fetchAll(PDO::FETCH_ASSOC);
-
     $startDate = sprintf('%04d-%02d-01', $year, $month);
-    $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+    $daysInMonth = (int)date('t', mktime(0, 0, 0, $month, 1, $year));
     $endDate = sprintf('%04d-%02d-%02d', $year, $month, $daysInMonth);
     $attStmt = $db->prepare("SELECT student_id, date, status FROM attendance WHERE class_id = ? AND date BETWEEN ? AND ? ORDER BY date");
-    $attStmt->execute([$classId, $startDate, $endDate]);
     $attendance = [];
     foreach ($attStmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
         $attendance[$r['student_id']][$r['date']] = $r['status'];

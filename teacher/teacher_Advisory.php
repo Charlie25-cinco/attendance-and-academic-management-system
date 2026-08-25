@@ -32,31 +32,10 @@ $hasGradeApprovals = false;
 $reportCardSectionStatus = '';
 $termLabels = SshsGradeCalculator::validTerms($gs);
 
-function ensureReportCardApprovalsTableForAdvisory($db) {
-    static $ready = false; if ($ready) return; $ready = true;
-    $db->exec("CREATE TABLE IF NOT EXISTS report_card_approvals (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        student_id INT NOT NULL,
-        academic_year VARCHAR(20) NOT NULL,
-        semester VARCHAR(5) NULL,
-        advisory_teacher_id INT NOT NULL,
-        status ENUM('pending','rejected','submitted_admin','approved') DEFAULT 'pending',
-        submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        reviewed_by INT NULL,
-        reviewed_at TIMESTAMP NULL,
-        remarks VARCHAR(255) NULL,
-        UNIQUE KEY uq_report_card_term (student_id, academic_year, semester),
-        KEY idx_report_card_status (status),
-        FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (advisory_teacher_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL
-    )");
-}
 
 if ($db) {
     $advisoryInfo = trhFetchAdvisoryInfo($db, $teacherId);
     $hasGradeApprovals = (bool)$db->query("SHOW TABLES LIKE 'grade_approvals'")->fetch(PDO::FETCH_NUM);
-    ensureReportCardApprovalsTableForAdvisory($db);
 
     if ($advisoryInfo) {
         $studentStmt = $db->prepare("SELECT u.id, u.reference_code, u.first_name, u.last_name
@@ -64,10 +43,7 @@ if ($db) {
                                      WHERE u.role = 'student'
                                      AND u.status IN ('active', 'pending')
                                      AND u.grade_level = ?
-                                     AND (
-                                         LOWER(TRIM(COALESCE(u.section, ''))) = LOWER(TRIM(COALESCE(?, '')))
-                                         OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(u.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(?, ''), '(', 1)))
-                                     )
+                                     AND " . sectionMatchSql('u.section') . "
                                      ORDER BY u.last_name, u.first_name");
         $studentStmt->execute([
             (int)$advisoryInfo['grade_level'],
@@ -124,10 +100,7 @@ if ($db) {
                                        WHERE c.status = 'active'
                                        AND LOWER(TRIM(COALESCE(c.class_name, ''))) <> 'advisory'
                                        AND c.grade_level = ?
-                                       AND (
-                                           LOWER(TRIM(COALESCE(c.section, ''))) = LOWER(TRIM(COALESCE(?, '')))
-                                           OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(c.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(?, ''), '(', 1)))
-                                       )
+                                       AND " . sectionMatchSql('c.section') . "
                                        GROUP BY c.id, c.class_name, c.subject_category
                                        ORDER BY c.class_name");
             $gradeStmt->execute([
@@ -191,10 +164,7 @@ if ($db) {
                                     WHERE s.role = 'student'
                                     AND s.status IN ('active', 'pending')
                                     AND s.grade_level = ?
-                                    AND (
-                                        LOWER(TRIM(COALESCE(s.section, ''))) = LOWER(TRIM(COALESCE(?, '')))
-                                        OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(s.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(?, ''), '(', 1)))
-                                    )
+                                    AND " . sectionMatchSql('s.section') . "
                                     AND rc.academic_year = ?
                                     AND rc.advisory_teacher_id = ?");
             $rcStmt->execute([
@@ -235,10 +205,7 @@ if ($db) {
                                             WHERE a.student_id = ?
                                             AND LOWER(TRIM(COALESCE(c.class_name, ''))) <> 'advisory'
                                             AND c.grade_level = ?
-                                            AND (
-                                                LOWER(TRIM(COALESCE(c.section, ''))) = LOWER(TRIM(COALESCE(?, '')))
-                                                OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(c.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(?, ''), '(', 1)))
-                                            )
+                                            AND " . sectionMatchSql('c.section') . "
                                             AND a.academic_year = ?");
             $attendanceStmt->execute([
                 $selectedStudentId,

@@ -79,10 +79,7 @@ if (!function_exists('tEnrollFetchStudentsWithAttendance')) {
                     ae.student_id IS NOT NULL
                     OR (
                         u.grade_level = c.grade_level
-                        AND (
-                            LOWER(TRIM(COALESCE(u.section, ''))) = LOWER(TRIM(COALESCE(c.section, '')))
-                            OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(u.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(c.section, ''), '(', 1)))
-                        )
+                        AND " . sectionMatchSql('u.section', 'c.section') . "
                     )
                   )
                   ORDER BY u.last_name, u.first_name";
@@ -117,10 +114,7 @@ if (!function_exists('tEnrollFetchAdvisoryStudentsWithAttendance')) {
                     WHERE a.date = ?
                     AND c.status = 'active'
                     AND c.grade_level = cbase.grade_level
-                    AND (
-                        LOWER(TRIM(COALESCE(c.section, ''))) = LOWER(TRIM(COALESCE(cbase.section, '')))
-                        OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(c.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(cbase.section, ''), '(', 1)))
-                    )
+                    AND " . sectionMatchSql('c.section', 'cbase.section') . "
                     GROUP BY a.student_id
                   ) ar ON ar.student_id = u.id
                   WHERE u.role = 'student'
@@ -129,10 +123,7 @@ if (!function_exists('tEnrollFetchAdvisoryStudentsWithAttendance')) {
                     ae.student_id IS NOT NULL
                     OR (
                         u.grade_level = cb.grade_level
-                        AND (
-                            LOWER(TRIM(COALESCE(u.section, ''))) = LOWER(TRIM(COALESCE(cb.section, '')))
-                            OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(u.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(cb.section, ''), '(', 1)))
-                        )
+                        AND " . sectionMatchSql('u.section', 'cb.section') . "
                     )
                   )
                   ORDER BY u.last_name, u.first_name";

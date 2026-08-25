@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(100) UNIQUE NOT NULL,
     lrn VARCHAR(12) NULL UNIQUE COMMENT 'DepEd Learner Reference Number (9-12 digits)',
     password VARCHAR(255) NOT NULL,
+    api_token_version INT NOT NULL DEFAULT 0 COMMENT 'Bumped on password change to revoke issued API bearer tokens',
     first_name VARCHAR(50) NOT NULL,
     middle_name VARCHAR(50) NULL,
     last_name VARCHAR(50) NOT NULL,
@@ -544,198 +545,19 @@ CREATE TABLE IF NOT EXISTS auth_password_resets (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =============================================================================
--- MOBILE PUSH TOKENS
+-- API FIRST-LOGIN PASSWORD CHANGE TOKENS
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS mobile_push_tokens (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    token VARCHAR(255) NOT NULL,
-    device VARCHAR(120) NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY uq_mobile_token (token),
-    KEY idx_mobile_user (user_id),
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =============================================================================
--- MESSAGES (teacher-parent chat)
--- =============================================================================
-CREATE TABLE IF NOT EXISTS messages (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    from_user_id INT NOT NULL,
-    to_user_id INT NOT NULL,
-    student_id INT NULL COMMENT 'Which student this conversation is about',
-    message TEXT NOT NULL,
-    is_read TINYINT DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (from_user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (to_user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE SET NULL,
-    KEY idx_messages_from_to (from_user_id, to_user_id, created_at),
-    KEY idx_messages_to_read (to_user_id, is_read)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =============================================================================
--- WEBSITE CONTENT
--- =============================================================================
-CREATE TABLE IF NOT EXISTS website_content (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    section_key VARCHAR(50) UNIQUE NOT NULL,
-    title VARCHAR(200) NOT NULL DEFAULT '',
-    content TEXT NOT NULL,
-    updated_by INT NULL,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =============================================================================
--- ATTENDANCE SYNC QUEUE (LAN offline sync)
--- =============================================================================
-CREATE TABLE IF NOT EXISTS attendance_sync_queue (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    student_id INT NOT NULL,
-    class_id INT NOT NULL,
-    date DATE NOT NULL,
-    status ENUM('present', 'absent', 'late') NOT NULL,
-    remarks VARCHAR(255),
-    recorded_by INT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    synced_at TIMESTAMP NULL,
-    KEY idx_sync_pending (synced_at),
-    KEY idx_sync_class_date (class_id, date)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =============================================================================
--- SCHOOL SETTINGS
--- =============================================================================
-CREATE TABLE IF NOT EXISTS school_settings (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    setting_key VARCHAR(50) UNIQUE NOT NULL,
-    setting_value TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =============================================================================
--- ACADEMIC YEAR SETTINGS
--- =============================================================================
-CREATE TABLE IF NOT EXISTS academic_year_settings (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    academic_year VARCHAR(20) NOT NULL UNIQUE,
-    grading_system ENUM('4_quarter','3_term') NOT NULL DEFAULT '3_term',
-    term1_start DATE NULL,
-    term1_end DATE NULL,
-    term2_start DATE NULL,
-    term2_end DATE NULL,
-    term3_start DATE NULL,
-    term3_end DATE NULL,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =============================================================================
--- RBAC ROLES
--- =============================================================================
-CREATE TABLE IF NOT EXISTS rbac_roles (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    role_key VARCHAR(30) UNIQUE NOT NULL COMMENT 'Must match users.role ENUM value',
-    label VARCHAR(50) NOT NULL,
-    description TEXT NULL,
-    is_system TINYINT(1) NOT NULL DEFAULT 1 COMMENT 'System roles cannot be deleted',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- =============================================================================
--- RBAC PERMISSIONS
--- =============================================================================
-CREATE TABLE IF NOT EXISTS rbac_permissions (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    permission_key VARCHAR(50) UNIQUE NOT NULL,
-    label VARCHAR(100) NOT NULL,
-    description TEXT NULL,
-    category VARCHAR(50) NOT NULL DEFAULT 'general',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- =============================================================================
--- RBAC ROLE PERMISSIONS
--- =============================================================================
-CREATE TABLE IF NOT EXISTS rbac_role_permissions (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    role_id INT NOT NULL,
-    permission_id INT NOT NULL,
-    enabled TINYINT(1) NOT NULL DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_admin_audit_logs_created_at (created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =============================================================================
--- RATE LIMITS
--- =============================================================================
-CREATE TABLE IF NOT EXISTS rate_limits (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    context VARCHAR(20) NOT NULL DEFAULT 'web',
-    action_key VARCHAR(128) NOT NULL,
-    identifier_hash CHAR(64) NOT NULL,
-    attempts INT NOT NULL DEFAULT 0,
-    first_attempt INT NULL,
-    lock_until DATETIME NULL,
-    expires_at DATETIME NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY uq_context_action_identifier (context, action_key, identifier_hash),
-    KEY idx_expires (expires_at),
-    KEY idx_lock (context, action_key, lock_until)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =============================================================================
--- REMEMBER-ME TOKENS
--- =============================================================================
-CREATE TABLE IF NOT EXISTS auth_remember_tokens (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    selector VARCHAR(32) NOT NULL,
-    token_hash CHAR(64) NOT NULL,
-    expires_at DATETIME NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_used_at DATETIME NULL,
-    revoked_at DATETIME NULL,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    UNIQUE KEY uq_selector (selector),
-    KEY idx_user_active (user_id, revoked_at, expires_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =============================================================================
--- DATABASE-BACKED PHP SESSIONS
--- =============================================================================
-CREATE TABLE IF NOT EXISTS app_sessions (
-    id VARCHAR(128) PRIMARY KEY,
-    user_id INT NULL,
-    payload MEDIUMBLOB NOT NULL,
-    ip_address VARCHAR(45) NULL,
-    user_agent VARCHAR(255) NULL,
-    expires_at DATETIME NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    KEY idx_app_sessions_user_id (user_id),
-    KEY idx_app_sessions_expires_at (expires_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =============================================================================
--- PASSWORD RESET TOKENS
--- =============================================================================
-CREATE TABLE IF NOT EXISTS auth_password_resets (
+CREATE TABLE IF NOT EXISTS auth_password_change_tokens (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     token_hash CHAR(64) NOT NULL,
     expires_at DATETIME NOT NULL,
-    request_ip VARCHAR(45) NULL,
+    request_ip VARCHAR(64) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     used_at DATETIME NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    UNIQUE KEY uq_reset_token_hash (token_hash),
-    KEY idx_user_active_resets (user_id, used_at, expires_at)
+    INDEX idx_user (user_id),
+    UNIQUE KEY uq_token_hash (token_hash),
+    INDEX idx_expires (expires_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =============================================================================

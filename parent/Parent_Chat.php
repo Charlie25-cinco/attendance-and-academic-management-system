@@ -43,10 +43,7 @@ if ($db) {
             JOIN classes c ON c.status = 'active'
                 AND c.teacher_id IS NOT NULL
                 AND c.grade_level = u_student.grade_level
-                AND (
-                    LOWER(TRIM(COALESCE(c.section, ''))) = LOWER(TRIM(COALESCE(u_student.section, '')))
-                    OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(c.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(u_student.section, ''), '(', 1)))
-                )
+                AND " . sectionMatchSql('c.section', 'u_student.section') . "
             JOIN users u_teacher ON u_teacher.id = c.teacher_id AND u_teacher.role = 'teacher' AND u_teacher.status = 'active'
             WHERE ps.parent_id = ?
             ORDER BY last_message_at DESC, u_teacher.last_name ASC

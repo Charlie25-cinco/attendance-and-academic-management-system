@@ -419,6 +419,7 @@ function resetUserPassword($db) {
         $hashedPassword = password_hash(getDefaultNewUserPassword(), PASSWORD_DEFAULT);
         $stmt = $db->prepare("UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?");
         $stmt->execute([$hashedPassword, $userId]);
+        bumpUserApiTokenVersion($db, $userId);
 
         // Revoke active remember-me tokens for security after admin reset.
         $hasRememberTable = dbHasTable($db, 'auth_remember_tokens');

@@ -13,50 +13,11 @@ if (!$db) {
     exit();
 }
 
-function ensureGradeApprovalsTableForAdminAction($db) {
-    static $ready = false; if ($ready) return; $ready = true;
-    $db->exec("CREATE TABLE IF NOT EXISTS grade_approvals (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        grade_id INT NOT NULL,
-        status ENUM('pending','submitted','admin_verified','rejected','approved') DEFAULT 'pending',
-        submitted_by INT NULL,
-        submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        reviewed_by INT NULL,
-        reviewed_at TIMESTAMP NULL,
-        remarks VARCHAR(255) NULL,
-        UNIQUE KEY uq_grade_approval_grade (grade_id),
-        KEY idx_grade_approval_status (status),
-        FOREIGN KEY (grade_id) REFERENCES grades(id) ON DELETE CASCADE,
-        FOREIGN KEY (submitted_by) REFERENCES users(id) ON DELETE SET NULL,
-        FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL
-    )");
-}
 
-function ensureReportCardApprovalsTableForAdminAction($db) {
-    static $ready = false; if ($ready) return; $ready = true;
-    $db->exec("CREATE TABLE IF NOT EXISTS report_card_approvals (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        student_id INT NOT NULL,
-        academic_year VARCHAR(20) NOT NULL,
-        semester VARCHAR(5) NULL,
-        advisory_teacher_id INT NOT NULL,
-        status ENUM('pending','rejected','submitted_admin','approved') DEFAULT 'pending',
-        submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        reviewed_by INT NULL,
-        reviewed_at TIMESTAMP NULL,
-        remarks VARCHAR(255) NULL,
-        UNIQUE KEY uq_report_card_term (student_id, academic_year, semester),
-        KEY idx_report_card_status (status),
-        FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (advisory_teacher_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL
-    )");
-}
 
 $action = $_GET['action'] ?? '';
 if ($action === 'review') {
     requireCsrfToken();
-    ensureGradeApprovalsTableForAdminAction($db);
     $approvalId = (int)($_POST['approval_id'] ?? 0);
     $status = strtolower(trim((string)($_POST['status'] ?? '')));
     $remarks = trim((string)($_POST['remarks'] ?? ''));
@@ -86,7 +47,6 @@ if ($action === 'review') {
 
 if ($action === 'return_grade') {
     requireCsrfToken();
-    ensureGradeApprovalsTableForAdminAction($db);
     $approvalId = (int)($_POST['approval_id'] ?? 0);
     $remarks = trim((string)($_POST['remarks'] ?? 'Returned to teacher for correction.'));
     $adminId = (int)($_SESSION['user_id'] ?? 0);
@@ -111,7 +71,6 @@ if ($action === 'return_grade') {
 
 if ($action === 'review_grade_batch') {
     requireCsrfToken();
-    ensureGradeApprovalsTableForAdminAction($db);
     $gradeLevel = (int)($_POST['grade_level'] ?? 0);
     $section = trim((string)($_POST['section'] ?? ''));
     $academicYear = trim((string)($_POST['academic_year'] ?? ''));
@@ -145,10 +104,7 @@ if ($action === 'review_grade_batch') {
                           WHERE g.academic_year = ?
                           {$semCondition}
                           AND c.grade_level = ?
-                          AND (
-                            LOWER(TRIM(COALESCE(c.section, ''))) = LOWER(TRIM(COALESCE(?, '')))
-                            OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(c.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(?, ''), '(', 1)))
-                          )
+                          AND " . sectionMatchSql('c.section') . "
                           AND ga.status = 'submitted'");
     $stmt->execute($params);
     if ($stmt->rowCount() <= 0) {
@@ -162,7 +118,6 @@ if ($action === 'review_grade_batch') {
 
 if ($action === 'return_grade_batch') {
     requireCsrfToken();
-    ensureGradeApprovalsTableForAdminAction($db);
     $gradeLevel = (int)($_POST['grade_level'] ?? 0);
     $section = trim((string)($_POST['section'] ?? ''));
     $academicYear = trim((string)($_POST['academic_year'] ?? ''));
@@ -191,10 +146,7 @@ if ($action === 'return_grade_batch') {
                           WHERE g.academic_year = ?
                           {$semCondition}
                           AND c.grade_level = ?
-                          AND (
-                            LOWER(TRIM(COALESCE(c.section, ''))) = LOWER(TRIM(COALESCE(?, '')))
-                            OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(c.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(?, ''), '(', 1)))
-                          )
+                          AND " . sectionMatchSql('c.section') . "
                           AND ga.status = 'admin_verified'");
     $stmt->execute($params);
     if ($stmt->rowCount() <= 0) {
@@ -208,7 +160,6 @@ if ($action === 'return_grade_batch') {
 
 if ($action === 'review_report_card') {
     requireCsrfToken();
-    ensureReportCardApprovalsTableForAdminAction($db);
     $approvalId = (int)($_POST['approval_id'] ?? 0);
     $status = strtolower(trim((string)($_POST['status'] ?? '')));
     $remarks = trim((string)($_POST['remarks'] ?? ''));
@@ -253,7 +204,6 @@ if ($action === 'review_report_card') {
 
 if ($action === 'review_report_card_batch') {
     requireCsrfToken();
-    ensureReportCardApprovalsTableForAdminAction($db);
     $gradeLevel = (int)($_POST['grade_level'] ?? 0);
     $section = trim((string)($_POST['section'] ?? ''));
     $academicYear = trim((string)($_POST['academic_year'] ?? ''));
@@ -284,10 +234,7 @@ if ($action === 'review_report_card_batch') {
                           {$semCondition}
                           AND s.role = 'student'
                           AND s.grade_level = ?
-                          AND (
-                            LOWER(TRIM(COALESCE(s.section, ''))) = LOWER(TRIM(COALESCE(?, '')))
-                            OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(s.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(?, ''), '(', 1)))
-                          )
+                          AND " . sectionMatchSql('s.section') . "
                           AND rc.status = 'submitted_admin'");
     $stmt->execute($params);
     if ($stmt->rowCount() <= 0) {
@@ -296,7 +243,7 @@ if ($action === 'review_report_card_batch') {
     }
 
     if ($status === 'approved') {
-        $cStmt = $db->prepare("SELECT id FROM classes WHERE grade_level = ? AND (LOWER(TRIM(COALESCE(section, ''))) = LOWER(TRIM(COALESCE(?, ''))) OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(?, ''), '(', 1)))) LIMIT 1");
+        $cStmt = $db->prepare("SELECT id FROM classes WHERE grade_level = ? AND " . sectionMatchSql('section') . " LIMIT 1");
         $cStmt->execute([$gradeLevel, $section, $section]);
         $classId = (int)($cStmt->fetchColumn() ?: 0);
         if ($classId > 0 && function_exists('pushNotifyGradePublication')) {
@@ -310,8 +257,6 @@ if ($action === 'review_report_card_batch') {
 
 if ($action === 'return_released_report_card_batch') {
     requireCsrfToken();
-    ensureGradeApprovalsTableForAdminAction($db);
-    ensureReportCardApprovalsTableForAdminAction($db);
     $gradeLevel = (int)($_POST['grade_level'] ?? 0);
     $section = trim((string)($_POST['section'] ?? ''));
     $academicYear = trim((string)($_POST['academic_year'] ?? ''));
@@ -348,10 +293,7 @@ if ($action === 'return_released_report_card_batch') {
                                     {$semReportCondition}
                                     AND s.role = 'student'
                                     AND s.grade_level = ?
-                                    AND (
-                                      LOWER(TRIM(COALESCE(s.section, ''))) = LOWER(TRIM(COALESCE(?, '')))
-                                      OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(s.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(?, ''), '(', 1)))
-                                    )
+                                    AND " . sectionMatchSql('s.section') . "
                                     AND rc.status = 'approved'");
         $reportStmt->execute($reportParams);
         $reportCount = $reportStmt->rowCount();
@@ -372,10 +314,7 @@ if ($action === 'return_released_report_card_batch') {
                                    WHERE g.academic_year = ?
                                    {$semGradeCondition}
                                    AND c.grade_level = ?
-                                   AND (
-                                     LOWER(TRIM(COALESCE(c.section, ''))) = LOWER(TRIM(COALESCE(?, '')))
-                                     OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(c.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(?, ''), '(', 1)))
-                                   )
+                                   AND " . sectionMatchSql('c.section') . "
                                    AND ga.status = 'admin_verified'");
         $gradeStmt->execute($gradeParams);
         $gradeCount = $gradeStmt->rowCount();

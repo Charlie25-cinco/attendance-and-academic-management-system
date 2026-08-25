@@ -269,9 +269,22 @@ final class Sf2ExporterTest extends TestCase
 
         $endpoint = file_get_contents(__DIR__ . '/../teacher/teacher_SF2_Export.php');
         $exporterSource = file_get_contents(__DIR__ . '/../src/Export/Sf2Exporter.php');
+        $adminActionSource = file_get_contents(__DIR__ . '/../admin/admin_Classes_Action.php');
         $this->assertIsString($endpoint);
         $this->assertIsString($exporterSource);
+        $this->assertIsString($adminActionSource);
         $this->assertStringNotContainsString('cal_days_in_month', $endpoint);
         $this->assertStringNotContainsString('cal_days_in_month', $exporterSource);
+        $this->assertStringNotContainsString('cal_days_in_month', $adminActionSource);
+    }
+
+    public function testTeacherSf2ExportPermitsSubjectTeacherAndResilientEnrollments(): void
+    {
+        $endpoint = (string)file_get_contents(__DIR__ . '/../teacher/teacher_SF2_Export.php');
+        $this->assertStringContainsString('class_subjects cs WHERE cs.class_id = c.id AND cs.teacher_id = ?', $endpoint, 'Teacher SF2 export must permit subject teachers assigned via class_subjects.');
+        $this->assertStringContainsString('e.academic_year = (SELECT e2.academic_year FROM enrollments e2', $endpoint, 'Teacher SF2 export must fall back to class enrollments if academic year varies.');
+
+        $adminAction = (string)file_get_contents(__DIR__ . '/../admin/admin_Classes_Action.php');
+        $this->assertStringContainsString('e.academic_year = (SELECT e2.academic_year FROM enrollments e2', $adminAction, 'Admin SF2 export must fall back to class enrollments if academic year varies.');
     }
 }

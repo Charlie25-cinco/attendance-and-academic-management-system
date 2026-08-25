@@ -63,11 +63,8 @@ if ($db) {
                                  WHERE u.role = 'student'
                                    AND u.status IN ('active', 'pending')
                                    AND u.grade_level = ?
-                                   AND (
-                                     LOWER(TRIM(COALESCE(u.section, ''))) = LOWER(TRIM(COALESCE(?, '')))
-                                     OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(u.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(?, ''), '(', 1)))
-                                   )
-                                 ORDER BY u.last_name, u.first_name");
+                                   AND " . sectionMatchSql('u.section') . "
+                                  ORDER BY u.last_name, u.first_name");
     $studentStmt->execute([$gradeLevel, $section, $section]);
     foreach ($studentStmt->fetchAll(PDO::FETCH_ASSOC) as $st) {
         $sid = (int)($st['id'] ?? 0);
@@ -103,10 +100,7 @@ if ($db) {
                                          WHERE c.status = 'active'
                                            AND LOWER(TRIM(COALESCE(c.class_name, ''))) <> 'advisory'
                                            AND c.grade_level = ?
-                                           AND (
-                                             LOWER(TRIM(COALESCE(c.section, ''))) = LOWER(TRIM(COALESCE(?, '')))
-                                             OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(c.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(?, ''), '(', 1)))
-                                           )
+                                           AND " . sectionMatchSql('c.section') . "
                                          GROUP BY c.id, c.class_name, c.subject_category
                                          ORDER BY c.class_name");
             $subjectStmt->execute([$selectedStudentId, $academicYear, $semester, $gradeLevel, $section, $section]);
@@ -149,10 +143,7 @@ if ($db) {
                                          WHERE c.status = 'active'
                                            AND LOWER(TRIM(COALESCE(c.class_name, ''))) <> 'advisory'
                                            AND c.grade_level = ?
-                                           AND (
-                                             LOWER(TRIM(COALESCE(c.section, ''))) = LOWER(TRIM(COALESCE(?, '')))
-                                             OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(c.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(?, ''), '(', 1)))
-                                           )
+                                           AND " . sectionMatchSql('c.section') . "
                                          ORDER BY c.class_name, g.{$tc}");
             $subjectStmt->execute([$selectedStudentId, $academicYear, $gradeLevel, $section, $section]);
             $rawRows = $subjectStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -272,10 +263,7 @@ if ($db) {
                            AND g.academic_year = ?"
                          . ($isFourQuarter ? " AND g.semester = ?" : " AND g.semester IS NULL")
                          . " AND c.grade_level = ?
-                           AND (
-                             LOWER(TRIM(COALESCE(c.section, ''))) = LOWER(TRIM(COALESCE(?, '')))
-                             OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(c.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(?, ''), '(', 1)))
-                           )";
+                           AND " . sectionMatchSql('c.section');
             $queueParams = $isFourQuarter
                 ? [$selectedStudentId, $academicYear, $semester, $gradeLevel, $section, $section]
                 : [$selectedStudentId, $academicYear, $gradeLevel, $section, $section];
@@ -299,10 +287,7 @@ if ($db) {
                          AND a.academic_year = ?"
                        . ($isFourQuarter ? " AND a.semester = ?" : "")
                        . " AND c.grade_level = ?
-                         AND (
-                           LOWER(TRIM(COALESCE(c.section, ''))) = LOWER(TRIM(COALESCE(?, '')))
-                           OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(c.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(?, ''), '(', 1)))
-                         )";
+                         AND " . sectionMatchSql('c.section');
             $attParams = $isFourQuarter
                 ? [$selectedStudentId, $academicYear, $semesterNo, $gradeLevel, $section, $section]
                 : [$selectedStudentId, $academicYear, $gradeLevel, $section, $section];

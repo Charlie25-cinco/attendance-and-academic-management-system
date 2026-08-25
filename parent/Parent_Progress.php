@@ -64,29 +64,8 @@ function parentOwnsStudent(array $children, $studentId) {
     return false;
 }
 
-function ensureReportCardApprovalsTableForParent($db) {
-    static $ready = false; if ($ready) return; $ready = true;
-    $db->exec("CREATE TABLE IF NOT EXISTS report_card_approvals (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        student_id INT NOT NULL,
-        academic_year VARCHAR(20) NOT NULL,
-        semester VARCHAR(5) NULL,
-        advisory_teacher_id INT NOT NULL,
-        status ENUM('pending','rejected','submitted_admin','approved') DEFAULT 'pending',
-        submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        reviewed_by INT NULL,
-        reviewed_at TIMESTAMP NULL,
-        remarks VARCHAR(255) NULL,
-        UNIQUE KEY uq_report_card_term (student_id, academic_year, semester),
-        KEY idx_report_card_status (status),
-        FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (advisory_teacher_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL
-    )");
-}
 
 if ($db && $parentId > 0) {
-    ensureReportCardApprovalsTableForParent($db);
     $childrenStmt = $db->prepare("SELECT u.id, u.reference_code, u.lrn, u.first_name, u.last_name, u.grade_level, u.section
                                   FROM parent_students ps
                                   JOIN users u ON u.id = ps.student_id

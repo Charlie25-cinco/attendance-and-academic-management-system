@@ -58,6 +58,30 @@ function requireCsrfToken(): void {
     }
 }
 
+function ensureUserApiTokenVersionColumn(PDO $db): void {
+    static $done = false;
+    if ($done) { return; }
+    try {
+        if (!\BshsAms\Database\SchemaCache::hasColumn($db, 'users', 'api_token_version')) {
+            $db->exec("ALTER TABLE users ADD COLUMN api_token_version INT NOT NULL DEFAULT 0 COMMENT 'Bumped on password change to revoke issued API bearer tokens' AFTER password");
+        }
+        $done = true;
+    } catch (Throwable $e) {
+        error_log('api_token_version column check failed: ' . $e->getMessage());
+    }
+}
+
+function bumpUserApiTokenVersion(PDO $db, int $userId): void {
+    if ($userId <= 0) { return; }
+    try {
+        ensureUserApiTokenVersionColumn($db);
+        $stmt = $db->prepare("UPDATE users SET api_token_version = api_token_version + 1 WHERE id = ?");
+        $stmt->execute([$userId]);
+    } catch (Throwable $e) {
+        error_log('API token version bump failed for user ' . $userId . ': ' . $e->getMessage());
+    }
+}
+
 function normalizeDate($value): string {
     if (!is_string($value)) {
         return '';
@@ -409,6 +433,22 @@ function getTeacherRoles(PDO $db, int $teacherId): array {
     return $roles;
 }
 
+function sectionMatchSql(string $leftColumn = 'section', ?string $rightColumn = null): string {
+    foreach ([$leftColumn, $rightColumn] as $identifier) {
+        if ($identifier !== null && !preg_match('/^[A-Za-z_][A-Za-z0-9_.]*$/', trim($identifier))) {
+            throw new InvalidArgumentException('Invalid SQL identifier for sectionMatchSql.');
+        }
+    }
+    $left = trim($leftColumn);
+    if ($rightColumn === null) {
+        return "(LOWER(TRIM(COALESCE({$left}, ''))) = LOWER(TRIM(COALESCE(?, '')))"
+            . " OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE({$left}, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(?, ''), '(', 1))))";
+    }
+    $right = trim($rightColumn);
+    return "(LOWER(TRIM(COALESCE({$left}, ''))) = LOWER(TRIM(COALESCE({$right}, '')))"
+        . " OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE({$left}, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE({$right}, ''), '(', 1))))";
+}
+
 function appEnsureUserNotificationsTable(PDO $db): void {
     static $readyConnections = [];
     $connectionId = spl_object_id($db);
@@ -733,19 +773,10 @@ function appNotifyAttendanceRecords(PDO $db, int $classId, string $date, array $
     }
 }
 
-function ensureAdminAuditLogTable(PDO $db): void {
-    static $ready = false;
-    if ($ready) { return; }
-    try {
-        $db->exec("CREATE TABLE IF NOT EXISTS admin_audit_logs (id INT AUTO_INCREMENT PRIMARY KEY, admin_user_id INT NOT NULL, action_name VARCHAR(100) NOT NULL, target_type VARCHAR(50) NOT NULL, target_id INT DEFAULT NULL, details_json TEXT DEFAULT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, INDEX idx_admin_audit_logs_admin_user_id (admin_user_id), INDEX idx_admin_audit_logs_action_name (action_name), INDEX idx_admin_audit_logs_target_type (target_type), INDEX idx_admin_audit_logs_created_at (created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-    } catch (Throwable $e) { error_log('Admin audit log table check failed: ' . $e->getMessage()); }
-    $ready = true;
-}
 
 function recordAdminAuditLog(PDO $db, string $actionName, string $targetType, ?int $targetId = null, array $details = [], ?int $adminUserId = null): void {
     $adminUserId = $adminUserId ?? (int)($_SESSION['user_id'] ?? 0);
     if ($adminUserId <= 0) { return; }
-    ensureAdminAuditLogTable($db);
     try {
         $stmt = $db->prepare("INSERT INTO admin_audit_logs (admin_user_id, action_name, target_type, target_id, details_json, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
         $stmt->execute([$adminUserId, substr($actionName, 0, 100), substr($targetType, 0, 50), $targetId && $targetId > 0 ? $targetId : null, !empty($details) ? json_encode($details, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : null]);
@@ -773,17 +804,8 @@ function recordAuthLoginLog(PDO $db, string $referenceCode, ?int $userId, bool $
     } catch (Throwable $e) { error_log('Auth login log insert failed: ' . $e->getMessage()); }
 }
 
-function ensureSchoolSettingsTable(PDO $db): void {
-    static $ready = false;
-    if ($ready) return;
-    try {
-        $db->exec("CREATE TABLE IF NOT EXISTS school_settings (id INT AUTO_INCREMENT PRIMARY KEY, setting_key VARCHAR(50) UNIQUE NOT NULL, setting_value TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-    } catch (Throwable $e) { error_log('School settings table check failed: ' . $e->getMessage()); }
-    $ready = true;
-}
 
 function getSchoolSetting(PDO $db, string $key, string $default = ''): string {
-    ensureSchoolSettingsTable($db);
     try {
         $stmt = $db->prepare("SELECT setting_value FROM school_settings WHERE setting_key = ?");
         $stmt->execute([$key]);
@@ -793,7 +815,6 @@ function getSchoolSetting(PDO $db, string $key, string $default = ''): string {
 }
 
 function getSchoolSettings(PDO $db): array {
-    ensureSchoolSettingsTable($db);
     try {
         $stmt = $db->query("SELECT setting_key, setting_value FROM school_settings");
         $settings = [];
@@ -803,7 +824,6 @@ function getSchoolSettings(PDO $db): array {
 }
 
 function setSchoolSetting(PDO $db, string $key, string $value): bool {
-    ensureSchoolSettingsTable($db);
     try {
         $stmt = $db->prepare("INSERT INTO school_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)");
         return $stmt->execute([$key, $value]);
@@ -1009,6 +1029,7 @@ function requirePagePermission(string $permissionKey): void {
 function permissionForScript(string $scriptName): string {
     $scriptName = strtolower($scriptName);
     $map = [
+        'admin.php' => 'users.view',
         'admin_users.php' => 'users.view',
         'admin_users_action.php' => 'users.view',
         'admin_enrollments.php' => 'users.view',
@@ -1034,6 +1055,7 @@ function permissionForScript(string $scriptName): string {
         'admin_audit_logs.php' => 'settings.view',
         'admin_rbac.php' => 'settings.manage',
         'admin_rbac_action.php' => 'settings.manage',
+        'teacher.php' => 'attendance.view',
         'teacher_attendance.php' => 'attendance.view',
         'teacher_classes.php' => 'classes.view',
         'teacher_grades.php' => 'grades.view',
@@ -1045,6 +1067,9 @@ function permissionForScript(string $scriptName): string {
         'teacher_chat.php' => 'messages.view',
         'teacher_chat_action.php' => 'messages.send',
         'teacher_sf2_export.php' => 'reports.export',
+        'teacher_sf5_export.php' => 'reports.export',
+        'teacher_sf9_export.php' => 'reports.export',
+        'student_qr.php' => 'attendance.view',
         'teacher_action.php' => 'classes.view',
         'student.php' => 'classes.view',
         'student_attendance.php' => 'attendance.view',

@@ -7,6 +7,13 @@ require_once $__appRoot . '/functions/bootstrap.php';
 unset($__appRoot);
 // Logout handler - Attendance and Academic Management System
 
+$sessionToken = (string)($_SESSION['csrf_token'] ?? '');
+$requestToken = trim((string)($_GET['csrf_token'] ?? ''));
+if ($sessionToken === '' || $requestToken === '' || !hash_equals($sessionToken, $requestToken)) {
+    header("Location: login.php");
+    exit();
+}
+
 const REMEMBER_COOKIE_NAME = 'remember_token';
 
 function logoutRevokeRememberToken() {

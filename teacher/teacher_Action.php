@@ -268,10 +268,7 @@ function teacherCanViewClass($db, $teacherId, $classId, $mode = 'subject') {
                           WHERE id = ?
                           AND status = 'active'
                           AND grade_level = ?
-                          AND (
-                            LOWER(TRIM(COALESCE(section, ''))) = LOWER(TRIM(COALESCE(?, '')))
-                            OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(?, ''), '(', 1)))
-                          )
+                          AND " . sectionMatchSql('section') . "
                           LIMIT 1");
     $stmt->execute([
         $classId,
@@ -883,24 +880,6 @@ function gradesHasRawComponentColumns($db) {
     return $hasRaw;
 }
 
-function ensureGradeApprovalsTable($db) {
-    static $ready = false; if ($ready) return; $ready = true;
-    $db->exec("CREATE TABLE IF NOT EXISTS grade_approvals (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        grade_id INT NOT NULL,
-        status ENUM('pending','submitted','admin_verified','rejected','approved') DEFAULT 'pending',
-        submitted_by INT NULL,
-        submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        reviewed_by INT NULL,
-        reviewed_at TIMESTAMP NULL,
-        remarks VARCHAR(255) NULL,
-        UNIQUE KEY uq_grade_approval_grade (grade_id),
-        KEY idx_grade_approval_status (status),
-        FOREIGN KEY (grade_id) REFERENCES grades(id) ON DELETE CASCADE,
-        FOREIGN KEY (submitted_by) REFERENCES users(id) ON DELETE SET NULL,
-        FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL
-    )");
-}
 
 function markGradePendingApproval($db, $gradeId, $teacherId) {
     $stmt = $db->prepare("INSERT INTO grade_approvals (grade_id, status, submitted_by, submitted_at, reviewed_by, reviewed_at, remarks)
@@ -1000,26 +979,6 @@ function notifyGradeItemVerificationParents($db, $teacherId, array $item, array 
     );
 }
 
-function ensureReportCardApprovalsTable($db) {
-    static $ready = false; if ($ready) return; $ready = true;
-    $db->exec("CREATE TABLE IF NOT EXISTS report_card_approvals (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        student_id INT NOT NULL,
-        academic_year VARCHAR(20) NOT NULL,
-        semester VARCHAR(5) NULL,
-        advisory_teacher_id INT NOT NULL,
-        status ENUM('pending','rejected','submitted_admin','approved') DEFAULT 'pending',
-        submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        reviewed_by INT NULL,
-        reviewed_at TIMESTAMP NULL,
-        remarks VARCHAR(255) NULL,
-        UNIQUE KEY uq_report_card_term (student_id, academic_year, semester),
-        KEY idx_report_card_status (status),
-        FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (advisory_teacher_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL
-    )");
-}
 
 function teacherHasAdvisoryStudent($db, $teacherId, $studentId) {
     $advisory = getTeacherAdvisoryClassInfo($db, $teacherId);
@@ -1032,10 +991,7 @@ function teacherHasAdvisoryStudent($db, $teacherId, $studentId) {
                           AND u.role = 'student'
                           AND u.status IN ('active', 'pending')
                           AND u.grade_level = ?
-                          AND (
-                            LOWER(TRIM(COALESCE(u.section, ''))) = LOWER(TRIM(COALESCE(?, '')))
-                            OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(u.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(?, ''), '(', 1)))
-                          )
+                          AND " . sectionMatchSql('u.section') . "
                           LIMIT 1");
     $stmt->execute([
         (int)$studentId,
@@ -1056,10 +1012,7 @@ function fetchTeacherAdvisoryStudents($db, $teacherId) {
                           WHERE u.role = 'student'
                           AND u.status IN ('active', 'pending')
                           AND u.grade_level = ?
-                          AND (
-                            LOWER(TRIM(COALESCE(u.section, ''))) = LOWER(TRIM(COALESCE(?, '')))
-                            OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(u.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(?, ''), '(', 1)))
-                          )
+                          AND " . sectionMatchSql('u.section') . "
                           ORDER BY u.last_name, u.first_name");
     $stmt->execute([
         (int)$advisory['grade_level'],
@@ -1147,7 +1100,6 @@ function gradeActivityPeriodLockMessage($db, $teacherId, $classId, $activityDate
     if (!gradesHasTermColumn($db)) {
         return null;
     }
-    ensureGradeApprovalsTable($db);
     [$academicYear, $term, $semester] = gradePeriodFromActivityDate($activityDate);
     $tc = getTermColumnName($db);
     $sql = "SELECT ga.status
@@ -1261,10 +1213,7 @@ function getActiveEnrollmentStudentIds($db, $classId) {
                                   WHERE u.role = 'student'
                                   AND u.status IN ('active', 'pending')
                                   AND u.grade_level = c.grade_level
-                                  AND (
-                                    LOWER(TRIM(COALESCE(u.section, ''))) = LOWER(TRIM(COALESCE(c.section, '')))
-                                    OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(u.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(c.section, ''), '(', 1)))
-                                  )");
+                                  AND " . sectionMatchSql('u.section', 'c.section'));
     $fallbackStmt->execute([(int)$classId]);
     $fallbackIds = array_map('intval', $fallbackStmt->fetchAll(PDO::FETCH_COLUMN));
 
@@ -1763,8 +1712,6 @@ function submitGrades($db, $teacherId) {
             echo json_encode(['success' => false, 'message' => "Database update required: add grades.term column first"]);
             return;
         }
-        ensureGradeApprovalsTable($db);
-        ensureReportCardApprovalsTable($db);
 
         $lockedSql = "SELECT ga.status
                       FROM grade_approvals ga
@@ -1970,7 +1917,6 @@ function submitGrades($db, $teacherId) {
 
 function recallGrades($db, $teacherId) {
     try {
-        ensureGradeApprovalsTable($db);
         $rawBody = file_get_contents('php://input');
         $payload = json_decode($rawBody, true);
         if (!is_array($payload)) {
@@ -2765,7 +2711,6 @@ function restoreGradeItem($db, $teacherId) {
 
 function submitReportCard($db, $teacherId) {
     try {
-        ensureReportCardApprovalsTable($db);
         $academicYear = trim((string)($_POST['academic_year'] ?? ''));
         $semester = trim((string)($_POST['semester'] ?? ''));
         $gs = gradingSystemFromYear($academicYear);
@@ -2903,7 +2848,6 @@ function submitReportCard($db, $teacherId) {
 
 function recallReportCard($db, $teacherId) {
     try {
-        ensureReportCardApprovalsTable($db);
         $academicYear = trim((string)($_POST['academic_year'] ?? ''));
         $semester = trim((string)($_POST['semester'] ?? ''));
         $gs = gradingSystemFromYear($academicYear);

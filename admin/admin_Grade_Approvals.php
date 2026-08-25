@@ -14,45 +14,7 @@ if ((bool)$quarterCheck->fetch(PDO::FETCH_ASSOC)) {
     $tc = (bool)$termCols->fetch(PDO::FETCH_ASSOC) ? 'term' : 'quarter';
 }
 
-function ensureGradeApprovalsTableForAdmin($db) {
-    static $ready = false; if ($ready) return; $ready = true;
-    $db->exec("CREATE TABLE IF NOT EXISTS grade_approvals (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        grade_id INT NOT NULL,
-        status ENUM('pending','submitted','admin_verified','rejected','approved') DEFAULT 'pending',
-        submitted_by INT NULL,
-        submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        reviewed_by INT NULL,
-        reviewed_at TIMESTAMP NULL,
-        remarks VARCHAR(255) NULL,
-        UNIQUE KEY uq_grade_approval_grade (grade_id),
-        KEY idx_grade_approval_status (status),
-        FOREIGN KEY (grade_id) REFERENCES grades(id) ON DELETE CASCADE,
-        FOREIGN KEY (submitted_by) REFERENCES users(id) ON DELETE SET NULL,
-        FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL
-    )");
-}
 
-function ensureReportCardApprovalsTableForAdmin($db) {
-    static $ready = false; if ($ready) return; $ready = true;
-    $db->exec("CREATE TABLE IF NOT EXISTS report_card_approvals (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        student_id INT NOT NULL,
-        academic_year VARCHAR(20) NOT NULL,
-        semester VARCHAR(5) NULL,
-        advisory_teacher_id INT NOT NULL,
-        status ENUM('pending','rejected','submitted_admin','approved') DEFAULT 'pending',
-        submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        reviewed_by INT NULL,
-        reviewed_at TIMESTAMP NULL,
-        remarks VARCHAR(255) NULL,
-        UNIQUE KEY uq_report_card_term (student_id, academic_year, semester),
-        KEY idx_report_card_status (status),
-        FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (advisory_teacher_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL
-    )");
-}
 
 $selectedStatus = strtolower(trim((string)($_GET['status'] ?? 'all')));
 if (!in_array($selectedStatus, ['pending', 'approved', 'rejected', 'all'], true)) {
@@ -74,8 +36,6 @@ function normalizeSectionKey($value) {
 }
 
 if ($db) {
-    ensureGradeApprovalsTableForAdmin($db);
-    ensureReportCardApprovalsTableForAdmin($db);
     $where = [];
     $params = [];
     if ($selectedStatus !== 'all') {

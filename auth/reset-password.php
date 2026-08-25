@@ -85,6 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $updUser = $db->prepare("UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?");
             $updUser->execute([$hashed, $resetUserId]);
+            bumpUserApiTokenVersion($db, $resetUserId);
 
             $markToken = $db->prepare("UPDATE auth_password_resets
                                        SET used_at = NOW()

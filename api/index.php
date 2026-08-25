@@ -49,75 +49,12 @@ function apiHasTable(PDO $db, string $table): bool {
     return apiTableExists($db, $table);
 }
 
-function apiEnsurePasswordResetsTable(PDO $db): void {
-    $db->exec("CREATE TABLE IF NOT EXISTS auth_password_resets (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,
-        token_hash CHAR(64) NOT NULL,
-        expires_at DATETIME NOT NULL,
-        request_ip VARCHAR(64) NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        used_at DATETIME NULL,
-        INDEX idx_user (user_id),
-        INDEX idx_token (token_hash),
-        INDEX idx_expires (expires_at)
-    )");
-}
-
-function apiEnsurePasswordChangeTokensTable(PDO $db): void {
-    $db->exec("CREATE TABLE IF NOT EXISTS auth_password_change_tokens (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,
-        token_hash CHAR(64) NOT NULL,
-        expires_at DATETIME NOT NULL,
-        request_ip VARCHAR(64) NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        used_at DATETIME NULL,
-        INDEX idx_user (user_id),
-        UNIQUE KEY uq_token_hash (token_hash),
-        INDEX idx_expires (expires_at)
-    )");
-}
-
-function apiEnsureRateLimitsTable(PDO $db): void {
-    $db->exec("CREATE TABLE IF NOT EXISTS rate_limits (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        context VARCHAR(20) NOT NULL DEFAULT 'web',
-        action_key VARCHAR(128) NOT NULL,
-        identifier_hash CHAR(64) NOT NULL,
-        attempts INT NOT NULL DEFAULT 0,
-        first_attempt INT NULL,
-        lock_until DATETIME NULL,
-        expires_at DATETIME NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        UNIQUE KEY uq_context_action_identifier (context, action_key, identifier_hash),
-        KEY idx_expires (expires_at),
-        KEY idx_lock (context, action_key, lock_until)
-    )");
-}
-
 function apiValidPersonName(string $value, bool $allowEmpty = false): bool {
-    $value = trim($value);
-    if ($value === '') {
-        return $allowEmpty;
-    }
-    if (!preg_match("/^[\\p{L}][\\p{L}\\s'.-]*$/u", $value)) {
-        return false;
-    }
-    if (preg_match("/['.-]{2,}/", $value)) {
-        return false;
-    }
-    return true;
+    return isValidPersonName($value, $allowEmpty);
 }
 
 function apiHasMinimumLetters(string $value, int $minimum = 2): bool {
-    $value = trim($value);
-    if ($value === '') {
-        return false;
-    }
-    preg_match_all('/\p{L}/u', $value, $matches);
-    return count($matches[0] ?? []) >= $minimum;
+    return hasMinimumLetters($value, $minimum);
 }
 
 function apiValidMiddleName(string $value): bool {
@@ -129,20 +66,6 @@ function apiValidMiddleName(string $value): bool {
         return false;
     }
     return apiHasMinimumLetters($value, 2);
-}
-
-function apiEnsureUserSettingsTable(PDO $db): void {
-    $db->exec("CREATE TABLE IF NOT EXISTS user_settings (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,
-        dark_mode TINYINT DEFAULT 0,
-        email_notifications TINYINT DEFAULT 1,
-        push_notifications TINYINT DEFAULT 1,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-        UNIQUE KEY uq_user_settings (user_id)
-    )");
 }
 
 function apiHasNotificationsTable(PDO $db): bool {
@@ -189,14 +112,7 @@ require __DIR__ . '/routes/11-sync.php';
 require __DIR__ . '/routes/12-ecr.php';
 
 function apiNormalizeDate(string $value): string {
-    $value = trim($value);
-    if ($value === '') {
-        return '';
-    }
-    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
-        return '';
-    }
-    return $value;
+    return normalizeDate($value);
 }
 
 function apiNormalizeDateRange(string &$from, string &$to): void {
@@ -277,10 +193,7 @@ function apiTeacherAdvisoryStudents(PDO $db, array $advisory): array {
                           WHERE role = 'student'
                           AND status IN ('active', 'pending')
                           AND grade_level = ?
-                          AND (
-                              LOWER(TRIM(COALESCE(section, ''))) = LOWER(TRIM(COALESCE(?, '')))
-                              OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(?, ''), '(', 1)))
-                          )
+                          AND " . sectionMatchSql('section') . "
                           ORDER BY last_name, first_name");
     $stmt->execute([
         (int)$advisory['grade_level'],
@@ -297,10 +210,7 @@ function apiTeacherAdvisoryHasStudent(PDO $db, array $advisory, int $studentId):
                           AND role = 'student'
                           AND status IN ('active', 'pending')
                           AND grade_level = ?
-                          AND (
-                              LOWER(TRIM(COALESCE(section, ''))) = LOWER(TRIM(COALESCE(?, '')))
-                              OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(?, ''), '(', 1)))
-                          )
+                          AND " . sectionMatchSql('section') . "
                           LIMIT 1");
     $stmt->execute([
         $studentId,
@@ -341,10 +251,7 @@ function apiAdvisoryAttendanceSummary(PDO $db, int $studentId, array $advisory, 
                                     WHERE a.student_id = ?
                                     AND LOWER(TRIM(COALESCE(c.class_name, ''))) <> 'advisory'
                                     AND c.grade_level = ?
-                                    AND (
-                                        LOWER(TRIM(COALESCE(c.section, ''))) = LOWER(TRIM(COALESCE(?, '')))
-                                        OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(c.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(?, ''), '(', 1)))
-                                    )
+                                    AND " . sectionMatchSql('c.section') . "
                                     $attendanceWhere");
     $attendanceStmt->execute(array_merge([
         $studentId,
@@ -367,28 +274,7 @@ function apiAdvisoryAttendanceSummary(PDO $db, int $studentId, array $advisory, 
     ];
 }
 
-function apiEnsureReportCardApprovalsTable(PDO $db): void {
-    $db->exec("CREATE TABLE IF NOT EXISTS report_card_approvals (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        student_id INT NOT NULL,
-        academic_year VARCHAR(20) NOT NULL,
-        semester VARCHAR(5) NULL,
-        advisory_teacher_id INT NOT NULL,
-        status ENUM('pending','rejected','submitted_admin','approved') DEFAULT 'pending',
-        submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        reviewed_by INT NULL,
-        reviewed_at TIMESTAMP NULL,
-        remarks VARCHAR(255) NULL,
-        UNIQUE KEY uq_report_card_term (student_id, academic_year, semester),
-        KEY idx_report_card_status (status),
-        FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (advisory_teacher_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL
-    )");
-}
-
 function apiAdvisorySectionStatus(PDO $db, array $advisory, string $academicYear, string $semester, int $teacherId): string {
-    apiEnsureReportCardApprovalsTable($db);
     $semesterCondition = $semester !== ''
         ? "AND rc.semester = ?"
         : "AND rc.semester IS NULL";
@@ -402,10 +288,7 @@ function apiAdvisorySectionStatus(PDO $db, array $advisory, string $academicYear
                             WHERE s.role = 'student'
                             AND s.status IN ('active', 'pending')
                             AND s.grade_level = ?
-                            AND (
-                                LOWER(TRIM(COALESCE(s.section, ''))) = LOWER(TRIM(COALESCE(?, '')))
-                                OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(s.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(?, ''), '(', 1)))
-                            )
+                            AND " . sectionMatchSql('s.section') . "
                             AND rc.academic_year = ?
                             {$semesterCondition}
                             AND rc.advisory_teacher_id = ?");
@@ -438,24 +321,6 @@ function apiAdvisorySectionStatus(PDO $db, array $advisory, string $academicYear
         return 'rejected';
     }
     return 'mixed';
-}
-
-function apiEnsureGradeApprovalsTable(PDO $db): void {
-    $db->exec("CREATE TABLE IF NOT EXISTS grade_approvals (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        grade_id INT NOT NULL,
-        status ENUM('pending','submitted','admin_verified','rejected','approved') DEFAULT 'pending',
-        submitted_by INT NULL,
-        submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        reviewed_by INT NULL,
-        reviewed_at TIMESTAMP NULL,
-        remarks VARCHAR(255) NULL,
-        UNIQUE KEY uq_grade_approval_grade (grade_id),
-        KEY idx_grade_approval_status (status),
-        FOREIGN KEY (grade_id) REFERENCES grades(id) ON DELETE CASCADE,
-        FOREIGN KEY (submitted_by) REFERENCES users(id) ON DELETE SET NULL,
-        FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL
-    )");
 }
 
 function apiMarkGradePendingApproval(PDO $db, int $gradeId, int $teacherId): void {

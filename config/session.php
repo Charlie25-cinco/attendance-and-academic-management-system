@@ -80,25 +80,6 @@ if (!class_exists('AppDatabaseSessionHandler')) {
     class_alias(\BshsAms\Database\SessionHandler::class, 'AppDatabaseSessionHandler');
 }
 
-if (!function_exists('appEnsureSessionsTable')) {
-    function appEnsureSessionsTable(PDO $db): void {
-        $db->exec(
-            "CREATE TABLE IF NOT EXISTS app_sessions (
-                id VARCHAR(128) PRIMARY KEY,
-                user_id INT NULL,
-                payload MEDIUMBLOB NOT NULL,
-                ip_address VARCHAR(45) NULL,
-                user_agent VARCHAR(255) NULL,
-                expires_at DATETIME NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                INDEX idx_app_sessions_user_id (user_id),
-                INDEX idx_app_sessions_expires_at (expires_at)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
-        );
-    }
-}
-
 if (!function_exists('appConfigureSessionStorage')) {
     function appConfigureSessionStorage(): void {
         if (!appDatabaseSessionsEnabled() || session_status() === PHP_SESSION_ACTIVE || !class_exists('Database')) {
@@ -110,7 +91,6 @@ if (!function_exists('appConfigureSessionStorage')) {
                 error_log('Database session storage requested but database connection is unavailable; using PHP default sessions.');
                 return;
             }
-            appEnsureSessionsTable($db);
             session_set_save_handler(new AppDatabaseSessionHandler($db), true);
         } catch (Throwable $e) {
             error_log('Database session storage setup failed: ' . $e->getMessage());

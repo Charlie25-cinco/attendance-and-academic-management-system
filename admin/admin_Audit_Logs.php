@@ -84,7 +84,6 @@ function auditLogDateIsValid(string $value): bool
 
 if ($db) {
     try {
-        ensureAdminAuditLogTable($db);
         ensureAuthLoginLogsTable($db);
 
         if (!auditLogDateIsValid($dateFrom)) {

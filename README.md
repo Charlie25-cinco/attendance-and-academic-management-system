@@ -58,7 +58,8 @@ Open `http://localhost:5000`.
 
 - Web requests load `functions/bootstrap.php`, which loads Composer and starts sessions through `config/session.php`.
 - Web forms use a session CSRF token.
-- API bearer tokens are signed with `API_AUTH_SECRET`.
+- API bearer tokens are signed with `API_AUTH_SECRET` and carry an `api_token_version` claim; password changes bump that version, so previously issued tokens stop working immediately on all devices.
+- Logout requires the session CSRF token, preventing cross-site drive-by logout links.
 - API sync routes use `API_SYNC_SECRET`.
 - Admin Audit Logs show important admin changes from `admin_audit_logs` and recent sign-in attempts from `auth_login_logs`.
 - In production, set `APP_ENV=production`, `API_AUTH_SECRET`, `API_SYNC_SECRET`, and a trusted `API_ALLOWED_ORIGIN`.

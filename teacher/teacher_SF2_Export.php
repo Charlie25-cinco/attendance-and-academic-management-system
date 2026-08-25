@@ -37,9 +37,9 @@ $classStmt = $db->prepare(
     "SELECT c.*, u.first_name, u.last_name
      FROM classes c
      LEFT JOIN users u ON c.teacher_id = u.id
-     WHERE c.id = ?" . ($role === 'teacher' ? " AND c.teacher_id = ?" : "")
+     WHERE c.id = ?" . ($role === 'teacher' ? " AND (c.teacher_id = ? OR EXISTS (SELECT 1 FROM class_subjects cs WHERE cs.class_id = c.id AND cs.teacher_id = ?))" : "")
 );
-$params = $role === 'teacher' ? [$classId, $teacherId] : [$classId];
+$params = $role === 'teacher' ? [$classId, $teacherId, $teacherId] : [$classId];
 $classStmt->execute($params);
 $class = $classStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -54,13 +54,18 @@ $stuStmt = $db->prepare(
      FROM users u
      INNER JOIN enrollments e ON e.student_id = u.id
      WHERE e.class_id = ?
-     AND e.academic_year = ?
+     AND (
+         e.academic_year = ?
+         OR e.academic_year = (SELECT e2.academic_year FROM enrollments e2 WHERE e2.class_id = ? AND e2.academic_year IS NOT NULL AND TRIM(e2.academic_year) <> '' LIMIT 1)
+         OR e.academic_year IS NULL
+         OR TRIM(e.academic_year) = ''
+     )
      AND COALESCE(e.status, 'enrolled') = 'enrolled'
      AND u.role = 'student'
      AND u.status = 'active'
      ORDER BY u.last_name, u.first_name"
 );
-$stuStmt->execute([$classId, $sf2AcademicYear]);
+$stuStmt->execute([$classId, $sf2AcademicYear, $classId]);
 $students = $stuStmt->fetchAll(PDO::FETCH_ASSOC);
 
 $startDate = sprintf('%04d-%02d-01', $year, $month);

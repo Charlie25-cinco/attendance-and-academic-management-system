@@ -35,10 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             JOIN classes c ON c.teacher_id = ?
                 AND c.status = 'active'
                 AND c.grade_level = st.grade_level
-                AND (
-                    LOWER(TRIM(COALESCE(c.section, ''))) = LOWER(TRIM(COALESCE(st.section, '')))
-                    OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(c.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(st.section, ''), '(', 1)))
-                )
+                AND " . sectionMatchSql('c.section', 'st.section') . "
             WHERE ps.parent_id = ?
             LIMIT 1
         ");
@@ -106,10 +103,7 @@ if ($action === 'send_message') {
         JOIN classes c ON c.teacher_id = ?
             AND c.status = 'active'
             AND c.grade_level = st.grade_level
-            AND (
-                LOWER(TRIM(COALESCE(c.section, ''))) = LOWER(TRIM(COALESCE(st.section, '')))
-                OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(c.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(st.section, ''), '(', 1)))
-            )
+            AND " . sectionMatchSql('c.section', 'st.section') . "
         WHERE ps.parent_id = ?
           AND (? <= 0 OR ps.student_id = ?)
         LIMIT 1

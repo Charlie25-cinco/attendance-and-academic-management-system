@@ -11,8 +11,6 @@ if ($route === 'settings' && $method === 'GET') {
     if (!$db) {
         apiJson(['ok' => false, 'message' => 'Database connection failed'], 500);
     }
-
-    apiEnsureUserSettingsTable($db);
     $stmt = $db->prepare("SELECT dark_mode, email_notifications, push_notifications
                           FROM user_settings WHERE user_id = ? LIMIT 1");
     $stmt->execute([(int)$user['id']]);
@@ -50,8 +48,6 @@ if ($route === 'settings' && $method === 'POST') {
     if ($darkMode === null && $emailNotif === null && $pushNotif === null) {
         apiJson(['ok' => false, 'message' => 'No settings to update'], 422);
     }
-
-    apiEnsureUserSettingsTable($db);
 
     $existing = $db->prepare("SELECT id FROM user_settings WHERE user_id = ? LIMIT 1");
     $existing->execute([(int)$user['id']]);

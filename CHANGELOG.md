@@ -2,6 +2,89 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.93 — 2026-08-25
+
+### Fixed
+
+- **DepEd SF2 Export Subject-Teacher Access & Enrollment Resolution**:
+  - Expanded class access authorization in [`teacher/teacher_SF2_Export.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_SF2_Export.php) to permit subject teachers assigned via `class_subjects` in addition to section advisers (`classes.teacher_id`), resolving unauthorized export errors on subject classes.
+  - Made student enrollment lookups in [`teacher/teacher_SF2_Export.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_SF2_Export.php) and [`admin/admin_Classes_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Classes_Action.php) resilient to academic year variations, preventing empty roster exports when filtering across different calendar months.
+  - Replaced `cal_days_in_month()` with standard `date('t')` in [`admin/admin_Classes_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Classes_Action.php) to remove `ext-calendar` runtime dependency.
+  - Added automated test assertions in [`tests/Sf2ExporterTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/Sf2ExporterTest.php).
+
+## v0.3.92 — 2026-08-24
+
+### Changed
+
+- **Single Source of Truth for MySQL Schema (Runtime DDL Cleanup)**:
+  - Removed 20 pure-duplicate runtime `CREATE TABLE` definitions and their call sites across 11 files (API auth/settings/notifications routes, teacher attendance actions, admin grade-approval pages, parent/student report-card pages, teacher advisory, class audit-log helper, push notifications, and the database-session bootstrap).
+  - `database/schema.sql` is now the only place defining MySQL structure outside three documented exceptions.
+- **Kept deliberately**:
+  - SQLite test fixtures (`functions/app-helpers.php`, `config/constants.php`, `src/Notification/SmsService.php`) used by the PHPUnit suite.
+  - The RBAC auto-create/seed bootstrap, which README documents as intended behavior.
+  - Legacy upgrade paths with side effects: `ensureAuthLoginLogsTable` (column migrations), `ensureReportNotesTables` (ENUM widening), `ensureStrengthenedShsColumns` (curriculum backfills).
+- **Note**: deployments that skip importing `database/schema.sql` after this release must import it; runtime self-creation no longer covers removed duplicates.
+
+### Added
+
+- **Guard Test**:
+  - [`tests/RuntimeDdlGuardTest.php`](tests/RuntimeDdlGuardTest.php) fails when any non-allowlisted file contains runtime `CREATE TABLE` statements and verifies every runtime-created table exists in `schema.sql`.
+- **Convention**: `AGENTS.md` now states that new tables/columns ship in `schema.sql` first.
+
+## v0.3.91 — 2026-08-24
+
+### Changed
+
+- **Single Source of Truth for Section Matching**:
+  - Added `sectionMatchSql()` in [`functions/app-helpers.php`](functions/app-helpers.php), generating the exact-match OR fuzzy-substring clause for both placeholder and column-comparison (JOIN) modes, with SQL identifier validation.
+  - Replaced all 34 copy-pasted occurrences of the fuzzy section-matching SQL fragment across 13 files (API advisory/report helpers, teacher attendance/advisory/enrollment/reports helpers, admin grade approval pages, and adviser-parent chat matching).
+- **De-duplicated API Validation Helpers**:
+  - `apiValidPersonName`, `apiHasMinimumLetters`, `apiNormalizeDate` ([`api/index.php`](api/index.php)) and `apiGetTeacherRoles` ([`api/apisupport.php`](api/apisupport.php)) now delegate to their canonical global implementations instead of duplicating logic. No behavior change.
+
+### Added
+
+- **Guard Test**:
+  - [`tests/SectionMatchSqlTest.php`](tests/SectionMatchSqlTest.php) verifies clause generation for both modes, rejects invalid identifiers, enforces that the raw SQL fragment exists only inside `functions/app-helpers.php`, and asserts the API helpers remain thin delegators.
+
+## v0.3.90 — 2026-08-24
+
+### Fixed
+
+- **Deduplicated `database/schema.sql`**:
+  - Removed a duplicated block of 13 table definitions (`rate_limits`, `auth_remember_tokens`, `app_sessions`, `auth_password_resets`, `mobile_push_tokens`, `messages`, `website_content`, `attendance_sync_queue`, `school_settings`, `academic_year_settings`, and the three RBAC tables).
+  - Kept the correct `rbac_role_permissions` definition, which also repairs a latent defect where the first copy carried a stray `idx_admin_audit_logs_created_at` index instead of its UNIQUE KEY and foreign keys.
+- **RBAC Fail-Open Gaps Closed**:
+  - Added missing entries to the script-to-permission map in [`functions/app-helpers.php`](functions/app-helpers.php): `admin.php`, `teacher.php`, `Student_QR.php` (learner PII page), plus the dead `teacher_SF5_Export.php` / `teacher_SF9_Export.php` stubs.
+- **Logout CSRF Protection**:
+  - The logout link in [`includes/header.php`](includes/header.php) now appends the session CSRF token, and [`auth/logout.php`](auth/logout.php) validates it before revoking remember-tokens or destroying the session, preventing cross-site drive-by logout.
+
+### Added
+
+- **API Bearer Token Revocation**:
+  - New `users.api_token_version` column (in schema and via runtime ensure-column) embedded as the `ver` claim in API tokens; [`api/apisupport.php`](api/apisupport.php) rejects tokens whose version no longer matches the database, so changing a password instantly invalidates previously issued tokens on all devices.
+- **Guard Tests**:
+  - `tests/RbacScriptCoverageTest.php` fails when any portal page lacks an RBAC mapping or the map contains stale keys.
+  - `tests/CsrfHandlerCoverageTest.php` fails when any portal action handler or auth POST handler lacks CSRF enforcement.
+- **Rate-Limit Visibility**:
+  - Web login now logs a `[SECURITY WARNING]` to the PHP error log when the `rate_limits` table is missing instead of silently disabling lockout.
+
+### Changed
+
+- **Lint Scope**:
+  - `phpcs.xml` now runs PHP syntax checks across all runtime source directories instead of only four files; mixed-line-endings tokenizer warnings are silenced so exit status reflects real syntax errors.
+
+### Documentation
+
+- Updated [`docs/PROJECT_REVIEW_2026-08-24.md`](docs/PROJECT_REVIEW_2026-08-24.md) with remediation statuses and a correction to Issue #4 (role/status were already re-validated per API request).
+
+## v0.3.89 — 2026-08-24
+
+### Added
+
+- **Project Review Document**:
+  - Added [`docs/PROJECT_REVIEW_2026-08-24.md`](docs/PROJECT_REVIEW_2026-08-24.md), a read-only full-project review covering architecture, security, tests, database schema, CI/CD, and documentation, with a prioritized issues list and recommended follow-ups.
+  - Documentation only; no runtime behavior changed.
+
 ## v0.3.88 — 2026-08-24
 
 ### Fixed
@@ -686,7 +769,7 @@ Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR fo
 
 ### Added
 
-- Updated `src/Export/Sf9Exporter.php` to format official DepEd SF9-SHS 2-page / 4-panel booklet layout matching official DepEd guidelines (`depedph.com`), including 11-month attendance grid, parent signature blocks, Certificate of Transfer, Semester 1 & 2 subject tables, Observed Values ratings (*Maka-Diyos*, *Makatao*, *Makakalikasan*, *Makabansa*), and Grading Scale legend.
+- Updated `src/Export/Sf9Exporter.php` to format official DepEd SF9-SHS 2-page / 4-panel booklet layout matching official DepEd guidelines (`depedph.com`), including 11-month attendance grid, parent signature blocks, Certificate of Transfer, Semester 1 & 2 subject tables, Observed Values ratings (_Maka-Diyos_, _Makatao_, _Makakalikasan_, _Makabansa_), and Grading Scale legend.
 - Regenerated `deped/SF9_Senior_High_School_Template.xlsx` workbook.
 
 ## v0.3.1 — 2026-08-05
@@ -723,7 +806,6 @@ Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR fo
 
 ## v0.1.39 — 2026-08-04
 
-
 ### Added
 
 - Added 32x32 (`favicon.png`) and 16x16 (`favicon-16.png`) browser favicon generation to `scripts/generate_pwa_icons.php`.
@@ -732,14 +814,12 @@ Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR fo
 
 ## v0.1.38 — 2026-08-04
 
-
 ### Fixed
 
 - Updated top loading progress bar to use `100vw` (viewport width) so it physically sweeps across the full screen and touches the right display edge before fading out.
 - Adjusted completion animation timing (`320ms` width sweep + `320ms` hold at `100vw`) to ensure the bar remains visible touching the right screen border before triggering fade out.
 
 ## v0.1.37 — 2026-08-04
-
 
 ### Fixed
 
@@ -748,7 +828,6 @@ Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR fo
 
 ## v0.1.36 — 2026-08-04
 
-
 ### Fixed
 
 - Resolved top loading progress bar flickering by ensuring 0ms instant click/submit response and guaranteed 100% full progress hold before fading out.
@@ -756,13 +835,11 @@ Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR fo
 
 ## v0.1.35 — 2026-08-04
 
-
 ### Added
 
 - Added single merged 1-click database setup script `database/wasmer_full_setup.sql` combining complete schema definitions, performance composite indexes, system RBAC roles/permissions, and first admin account seed (`A341227-1` / `password`).
 
 ## v0.1.34 — 2026-08-04
-
 
 ### Fixed
 
@@ -771,7 +848,6 @@ Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR fo
 
 ## v0.1.33 — 2026-08-04
 
-
 ### Fixed
 
 - Made `database/performance_indexes.sql` idempotent using `DROP INDEX IF EXISTS` statements before creating indexes to resolve MySQL Error 1061 (`Duplicate key name`).
@@ -779,13 +855,11 @@ Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR fo
 
 ## v0.1.32 — 2026-08-04
 
-
 ### Fixed
 
 - Corrected column reference `class_id` on `grade_items` and target table `grade_item_scores` in `database/performance_indexes.sql` and `database/schema_tidb.sql` to resolve MySQL Error 1072.
 
 ## v0.1.31 — 2026-08-04
-
 
 ### Added
 
@@ -794,7 +868,6 @@ Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR fo
 - Added `PerformanceIndexTest.php` to validate database index definitions and `SchemaCache` memory operations.
 
 ## v0.1.30 — 2026-08-04
-
 
 ### Added
 
@@ -812,9 +885,7 @@ Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR fo
 - Updated default database name fallback in `config/db.php` and `.env.example` to `balingasagshs`.
 - Resolved dynamic asset URL resolution in `pwaHeadHtml()` using `appAssetPath()`.
 
-
 ## v0.1.29 — 2026-08-04
-
 
 ### Changed
 

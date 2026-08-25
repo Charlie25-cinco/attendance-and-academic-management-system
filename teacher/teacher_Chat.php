@@ -44,10 +44,7 @@ if ($db) {
             JOIN classes c ON c.teacher_id = ?
                 AND c.status = 'active'
                 AND c.grade_level = u_student.grade_level
-                AND (
-                    LOWER(TRIM(COALESCE(c.section, ''))) = LOWER(TRIM(COALESCE(u_student.section, '')))
-                    OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(c.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(u_student.section, ''), '(', 1)))
-                )
+                AND " . sectionMatchSql('c.section', 'u_student.section') . "
             ORDER BY last_message_at DESC, u_student.last_name ASC
         ");
         $stmt->execute([$teacherId, $teacherId, $teacherId, $teacherId, $teacherId, $teacherId]);

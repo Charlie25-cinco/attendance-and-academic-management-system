@@ -71,6 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $db) {
         $hash = password_hash($newPassword, PASSWORD_DEFAULT);
         $stmt = $db->prepare("UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?");
         $stmt->execute([$hash, $userId]);
+        bumpUserApiTokenVersion($db, $userId);
 
         $userStmt = $db->prepare("SELECT id, reference_code, email, first_name, last_name, role
                                   FROM users WHERE id = ? LIMIT 1");

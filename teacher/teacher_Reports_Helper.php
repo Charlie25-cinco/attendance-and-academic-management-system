@@ -74,10 +74,7 @@ if (!function_exists('trhFetchClassesForFilter')) {
                                   FROM classes c
                                   WHERE c.status = 'active'
                                   AND c.grade_level = ?
-                                  AND (
-                                    LOWER(TRIM(COALESCE(c.section, ''))) = LOWER(TRIM(COALESCE(?, '')))
-                                    OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(c.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(?, ''), '(', 1)))
-                                  )
+                                  AND " . sectionMatchSql('c.section') . "
                                   ORDER BY c.class_name");
             $stmt->execute([(int)$advisoryInfo['grade_level'], (string)$advisoryInfo['section'], (string)$advisoryInfo['section']]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -119,10 +116,7 @@ if (!function_exists('trhBuildAttendanceScope')) {
                     WHERE cscope.id = a.class_id
                     AND cscope.status = 'active'
                     AND cscope.grade_level = ?
-                    AND (
-                        LOWER(TRIM(COALESCE(cscope.section, ''))) = LOWER(TRIM(COALESCE(?, '')))
-                        OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE(cscope.section, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE(?, ''), '(', 1)))
-                    )
+                    AND " . sectionMatchSql('cscope.section') . "
                 )";
                 $params[] = (int)$advisoryInfo['grade_level'];
                 $params[] = (string)$advisoryInfo['section'];

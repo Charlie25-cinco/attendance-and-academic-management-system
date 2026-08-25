@@ -19,8 +19,6 @@ if ($route === 'login' && $method === 'POST') {
         apiJson(['ok' => false, 'message' => 'Reference code and password are required'], 422);
     }
 
-    apiEnsureRateLimitsTable($db);
-
     $identifierHash = hash('sha256', $referenceCode . '|' . ($_SERVER['REMOTE_ADDR'] ?? ''));
     $now = time();
     $maxAttempts = 5;
@@ -60,7 +58,8 @@ if ($route === 'login' && $method === 'POST') {
                     updated_at = NOW()")
         ->execute([$identifierHash, $lockSeconds, $maxAttempts, $lockSeconds]);
 
-    $stmt = $db->prepare("SELECT id, reference_code, email, password, first_name, last_name, role, status
+    ensureUserApiTokenVersionColumn($db);
+    $stmt = $db->prepare("SELECT id, reference_code, email, password, first_name, last_name, role, status, api_token_version
                           FROM users
                           WHERE reference_code = ? AND status = 'active'
                           LIMIT 1");
@@ -75,7 +74,6 @@ if ($route === 'login' && $method === 'POST') {
         $token = bin2hex(random_bytes(32));
         $db->prepare("DELETE FROM rate_limits WHERE context = 'api' AND action_key = 'login' AND identifier_hash = ?")
             ->execute([$identifierHash]);
-        apiEnsurePasswordChangeTokensTable($db);
         $db->prepare("UPDATE auth_password_change_tokens SET used_at = NOW() WHERE user_id = ? AND used_at IS NULL")
             ->execute([(int)$user['id']]);
         $db->prepare("INSERT INTO auth_password_change_tokens (user_id, token_hash, expires_at, request_ip, created_at)
@@ -149,8 +147,6 @@ if ($route === 'change-password' && $method === 'POST') {
         apiJson(['ok' => false, 'message' => $errorMsg], 422);
     }
 
-    apiEnsurePasswordChangeTokensTable($db);
-
     $stmt = $db->prepare("SELECT id, reference_code, email, first_name, last_name, role FROM users WHERE reference_code = ? AND status = 'active' LIMIT 1");
     $stmt->execute([$referenceCode]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -178,6 +174,7 @@ if ($route === 'change-password' && $method === 'POST') {
 
         $updateStmt = $db->prepare("UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?");
         $updateStmt->execute([$hashed, $userId]);
+        bumpUserApiTokenVersion($db, $userId);
 
         $markToken = $db->prepare("UPDATE auth_password_change_tokens SET used_at = NOW() WHERE id = ?");
         $markToken->execute([$tokenId]);
@@ -193,6 +190,11 @@ if ($route === 'change-password' && $method === 'POST') {
         }
         apiJson(['ok' => false, 'message' => 'Unable to change password. Please try again.'], 500);
     }
+
+    $refreshed = $db->prepare("SELECT id, reference_code, email, first_name, last_name, role, status, api_token_version
+                               FROM users WHERE id = ? AND status = 'active' LIMIT 1");
+    $refreshed->execute([$userId]);
+    $user = $refreshed->fetch(PDO::FETCH_ASSOC) ?: $user;
 
     $token = apiIssueToken($user);
     apiJson([
@@ -219,9 +221,6 @@ if ($route === 'forgot-password' && $method === 'POST') {
     if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         apiJson(['ok' => false, 'message' => 'Valid email is required'], 422);
     }
-
-    apiEnsureRateLimitsTable($db);
-    apiEnsurePasswordResetsTable($db);
 
     $identifierHash = hash('sha256', $email . '|' . ($_SERVER['REMOTE_ADDR'] ?? ''));
     $maxAttempts = 3;
@@ -301,9 +300,6 @@ if ($route === 'reset-password' && $method === 'POST') {
         apiJson(['ok' => false, 'message' => $errorMsg], 422);
     }
 
-    apiEnsureRateLimitsTable($db);
-    apiEnsurePasswordResetsTable($db);
-
     $identifierHash = hash('sha256', $email . '|' . ($_SERVER['REMOTE_ADDR'] ?? ''));
     $maxAttempts = 5;
     $lockSeconds = 900;
@@ -354,6 +350,7 @@ if ($route === 'reset-password' && $method === 'POST') {
 
         $updUser = $db->prepare("UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?");
         $updUser->execute([$hashed, $resetUserId]);
+        bumpUserApiTokenVersion($db, $resetUserId);
 
         $markToken = $db->prepare("UPDATE auth_password_resets SET used_at = NOW() WHERE id = ?");
         $markToken->execute([(int)$tokenRow['id']]);

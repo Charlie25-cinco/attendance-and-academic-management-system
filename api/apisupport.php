@@ -218,6 +218,7 @@ function apiIssueToken(array $user): string {
     $payload = [
         'sub' => (int)$user['id'],
         'role' => (string)$user['role'],
+        'ver' => (int)($user['api_token_version'] ?? 0),
         'exp' => time() + 86400 * 7,
     ];
     $json = json_encode($payload);
@@ -312,13 +313,27 @@ function apiAuthUser(): ?array {
         return null;
     }
 
-    $stmt = $db->prepare("SELECT id, reference_code, email, first_name, last_name, role, status, grade_level, section
+    ensureUserApiTokenVersionColumn($db);
+    $stmt = $db->prepare("SELECT id, reference_code, email, first_name, last_name, role, status, grade_level, section, api_token_version
                           FROM users
                           WHERE id = ? AND role = ? AND status = 'active'
                           LIMIT 1");
     $stmt->execute([(int)$payload['sub'], (string)$payload['role']]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
-    return $user ?: null;
+    if (!$user) {
+        return null;
+    }
+
+    if (!\BshsAms\Database\SchemaCache::hasColumn($db, 'users', 'api_token_version')) {
+        return $user;
+    }
+
+    $tokenVersion = isset($payload['ver']) ? (int)$payload['ver'] : 0;
+    if ($tokenVersion !== (int)$user['api_token_version']) {
+        return null;
+    }
+
+    return $user;
 }
 
 function apiRequireUser(): array {
@@ -595,46 +610,5 @@ function gradePeriodBounds($academicYear, $semester, $quarter = null) {
 }
 
 function apiGetTeacherRoles(PDO $db, int $teacherId): array {
-    $roles = ['adviser' => false, 'subject_teacher' => false, 'sections' => [], 'classes' => []];
-    
-    $adviserStmt = $db->prepare("SELECT id, class_name, grade_level, section 
-                                 FROM classes 
-                                 WHERE teacher_id = ? AND status = 'active'");
-    $adviserStmt->execute([$teacherId]);
-    $adviserClasses = $adviserStmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    if (!empty($adviserClasses)) {
-        $roles['adviser'] = true;
-        $roles['sections'] = array_map(function($c) {
-            return [
-                'class_id' => (int)$c['id'],
-                'class_name' => (string)$c['class_name'],
-                'grade_level' => (int)$c['grade_level'],
-                'section' => (string)$c['section']
-            ];
-        }, $adviserClasses);
-    }
-    
-    $subjectStmt = $db->prepare("SELECT cs.class_id, c.class_name, c.grade_level, c.section, s.subject_name
-                                 FROM class_subjects cs
-                                 JOIN classes c ON c.id = cs.class_id
-                                 LEFT JOIN subjects s ON s.id = cs.subject_id
-                                 WHERE cs.teacher_id = ? AND c.status = 'active'");
-    $subjectStmt->execute([$teacherId]);
-    $subjectClasses = $subjectStmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    if (!empty($subjectClasses)) {
-        $roles['subject_teacher'] = true;
-        $roles['classes'] = array_map(function($c) {
-            return [
-                'class_id' => (int)$c['class_id'],
-                'class_name' => (string)$c['class_name'],
-                'grade_level' => (int)$c['grade_level'],
-                'section' => (string)$c['section'],
-                'subject_name' => (string)($c['subject_name'] ?? '')
-            ];
-        }, $subjectClasses);
-    }
-    
-    return $roles;
+    return getTeacherRoles($db, $teacherId);
 }

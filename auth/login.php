@@ -25,6 +25,7 @@ const REMEMBER_TTL_SECONDS = 2592000;
 
 function authHasTable($db, $table) {
     static $cache = [];
+    static $warned = [];
     if (isset($cache[$table])) return $cache[$table];
     try {
         $stmt = $db->prepare("SHOW TABLES LIKE ?");
@@ -32,6 +33,13 @@ function authHasTable($db, $table) {
         $cache[$table] = (bool)$stmt->fetch(PDO::FETCH_NUM);
     } catch (Throwable $e) {
         $cache[$table] = false;
+    }
+    if (!$cache[$table] && empty($warned[$table])) {
+        $warned[$table] = true;
+        $impact = $table === 'rate_limits'
+            ? 'Login rate limiting and lockout are disabled.'
+            : 'Related security checks are degraded.';
+        error_log('[SECURITY WARNING] Required table "' . $table . '" is missing. ' . $impact . ' Import database/schema.sql.');
     }
     return $cache[$table];
 }

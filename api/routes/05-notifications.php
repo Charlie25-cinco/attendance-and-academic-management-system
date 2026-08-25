@@ -400,8 +400,7 @@ if ($route === 'web-push-subscription' && $method === 'POST') {
         $subscription,
         (string)($_SERVER['HTTP_USER_AGENT'] ?? '')
     );
-    if ($saved && function_exists('apiEnsureUserSettingsTable')) {
-        apiEnsureUserSettingsTable($db);
+    if ($saved) {
         $stmt = $db->prepare("INSERT INTO user_settings (user_id, push_notifications)
                               VALUES (?, 1)
                               ON DUPLICATE KEY UPDATE push_notifications = 1");
