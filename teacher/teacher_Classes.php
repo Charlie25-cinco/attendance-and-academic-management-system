@@ -492,8 +492,10 @@ $page_title = 'Classes';
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body app-modal-body">
-            <div class="mb-3">
-                <input type="text" class="form-control" id="classStudentsSearch" placeholder="Search students...">
+            <div class="input-group mb-3">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control" id="classStudentsSearch" placeholder="Search students by name or reference code...">
+                <button class="btn btn-outline-secondary" type="button" id="clearClassStudentsSearchBtn" title="Clear" style="display: none;"><i class="bi bi-x-lg"></i></button>
             </div>
             <div class="table-responsive">
                 <table class="table custom-table">
@@ -602,7 +604,26 @@ let classStudentsCache = [];
 function openClassStudents(classId, className){resetClassStudentsModal();const titleEl=document.getElementById('classStudentsTitle');if(titleEl){titleEl.textContent=className?`${className} - Students`:'Class Students';}if(classStudentsModal)classStudentsModal.show();fetch('teacher_Action.php?action=fetch_class_students&class_id='+encodeURIComponent(classId)).then(r=>r.json()).then(d=>{if(!d.success){showNotification(d.message||'Failed to load students','danger');const body=document.getElementById('classStudentsBody');if(body)body.innerHTML='<tr><td colspan=\"3\" class=\"text-center text-muted py-3\">No students found.</td></tr>';return;}classStudentsCache=d.students||[];renderClassStudents(classStudentsCache);}).catch(()=>{showNotification('Error loading students','danger');const body=document.getElementById('classStudentsBody');if(body)body.innerHTML='<tr><td colspan=\"3\" class=\"text-center text-muted py-3\">Failed to load students.</td></tr>';});}
 function renderClassStudents(students){const body=document.getElementById('classStudentsBody');if(!body)return;if(!students||students.length===0){body.innerHTML='<tr><td colspan=\"3\" class=\"text-center text-muted py-3\">No students found.</td></tr>';return;}body.innerHTML=students.map((s,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(`${s.last_name}, ${s.first_name}`)}</td><td>${escapeHtml(s.reference_code||'')}</td></tr>`).join('');}
 const classStudentsSearchEl=document.getElementById('classStudentsSearch');
-if(classStudentsSearchEl){classStudentsSearchEl.addEventListener('input',()=>{const q=classStudentsSearchEl.value.trim().toLowerCase();if(!q){renderClassStudents(classStudentsCache);return;}const filtered=classStudentsCache.filter(s=>`${s.last_name} ${s.first_name} ${s.reference_code||''}`.toLowerCase().includes(q));renderClassStudents(filtered);});}
+const clearClassStudentsSearchBtn=document.getElementById('clearClassStudentsSearchBtn');
+if(classStudentsSearchEl){
+    classStudentsSearchEl.addEventListener('input',()=>{
+        const q=classStudentsSearchEl.value.trim().toLowerCase();
+        if(clearClassStudentsSearchBtn) clearClassStudentsSearchBtn.style.display = q ? 'block' : 'none';
+        if(!q){renderClassStudents(classStudentsCache);return;}
+        const filtered=classStudentsCache.filter(s=>`${s.last_name} ${s.first_name} ${s.reference_code||''}`.toLowerCase().includes(q));
+        renderClassStudents(filtered);
+    });
+}
+if(clearClassStudentsSearchBtn){
+    clearClassStudentsSearchBtn.addEventListener('click', ()=>{
+        if(classStudentsSearchEl){
+            classStudentsSearchEl.value = '';
+            classStudentsSearchEl.focus();
+            if(clearClassStudentsSearchBtn) clearClassStudentsSearchBtn.style.display = 'none';
+            renderClassStudents(classStudentsCache);
+        }
+    });
+}
 function createGradeItem(){
     const form=document.getElementById('createGradeItemForm');
     const fd=new FormData(form);

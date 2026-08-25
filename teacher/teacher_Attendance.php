@@ -154,9 +154,10 @@ $page_title = 'Attendance';
                         <option value="male" <?php echo $selectedSex === 'male' ? 'selected' : ''; ?>>Male</option>
                         <option value="female" <?php echo $selectedSex === 'female' ? 'selected' : ''; ?>>Female</option>
                     </select>
-                    <div class="input-group" style="max-width: 260px;">
+                    <div class="input-group" style="max-width: 280px;">
                         <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
                         <input type="text" id="attendanceSearch" class="form-control" placeholder="Search student or reference">
+                        <button class="btn btn-outline-secondary" type="button" id="clearAttendanceSearchBtn" title="Clear" style="display: none;"><i class="bi bi-x-lg"></i></button>
                     </div>
                     <button class="btn btn-secondary-custom" onclick="loadAttendanceData()"><i class="bi bi-arrow-clockwise me-1"></i>Load</button>
                     <button class="btn btn-outline-success" type="button" onclick="exportAttendanceSf2('xlsx')" <?php echo empty($classes) ? 'disabled' : ''; ?>><i class="bi bi-filetype-xlsx me-1"></i>SF2 XLSX</button>
@@ -318,7 +319,36 @@ const statusTemplate={
 function updateEditState(){const btn=document.getElementById('submitAttendanceBtn');if(!btn)return;if(canEditAttendance){btn.disabled=false;btn.title='';btn.innerHTML='<i class=\"bi bi-save me-2\"></i>Save Attendance';}else{btn.disabled=true;btn.title=editBlockedReason||'Attendance is unavailable for this class on the selected date';btn.innerHTML='<i class=\"bi bi-eye me-2\"></i>Attendance Unavailable';}}
 function cycleStatus(button){if(!canEditAttendance){return;}const current=button.dataset.status||'present';const next=statusCycle[(statusCycle.indexOf(current)+1)%statusCycle.length];button.dataset.status=next;button.classList.remove('present','absent','late','cutting');button.classList.add(next);button.innerHTML=statusTemplate[next];updateSummaryCounts();}
 function updateSummaryCounts(summary){if(summary){document.getElementById('presentCount').textContent=summary.present||0;document.getElementById('absentCount').textContent=summary.absent||0;document.getElementById('lateCount').textContent=summary.late||0;if(document.getElementById('cuttingCount'))document.getElementById('cuttingCount').textContent=summary.cutting||0;return;}let p=0,a=0,l=0,c=0;document.querySelectorAll('#attendanceBody tr[data-student-id]').forEach(r=>{const s=r.querySelector('.teacher-status')?.dataset.status;if(s==='present')p++;if(s==='absent')a++;if(s==='late')l++;if(s==='cutting')c++;});document.getElementById('presentCount').textContent=p;document.getElementById('absentCount').textContent=a;document.getElementById('lateCount').textContent=l;if(document.getElementById('cuttingCount'))document.getElementById('cuttingCount').textContent=c;}
-function applySearchFilter(){const input=document.getElementById('attendanceSearch');const q=(input?.value||'').trim().toLowerCase();const tbody=document.getElementById('attendanceBody');if(!tbody){return;}const rows=Array.from(tbody.querySelectorAll('tr[data-student-id]'));if(rows.length===0){return;}let visible=0;rows.forEach(r=>{const name=r.querySelector('.student-name')?.textContent?.toLowerCase()||'';const code=r.children?.[1]?.textContent?.toLowerCase()||'';const match=!q||name.includes(q)||code.includes(q);r.style.display=match?'':'none';if(match){visible++;}});let emptyRow=document.getElementById('attendanceSearchEmpty');if(visible===0){if(!emptyRow){emptyRow=document.createElement('tr');emptyRow.id='attendanceSearchEmpty';emptyRow.innerHTML='<td colspan="4" class="text-center text-muted py-4">No students match your search.</td>';tbody.appendChild(emptyRow);}emptyRow.style.display='';}else if(emptyRow){emptyRow.style.display='none';}}
+function applySearchFilter(){
+    const input = document.getElementById('attendanceSearch');
+    const clearBtn = document.getElementById('clearAttendanceSearchBtn');
+    const q = (input?.value || '').trim().toLowerCase();
+    if (clearBtn) clearBtn.style.display = q ? 'block' : 'none';
+    const tbody = document.getElementById('attendanceBody');
+    if (!tbody) return;
+    const rows = Array.from(tbody.querySelectorAll('tr[data-student-id]'));
+    if (rows.length === 0) return;
+    let visible = 0;
+    rows.forEach(r => {
+        const name = r.querySelector('.student-name')?.textContent?.toLowerCase() || '';
+        const code = r.children?.[1]?.textContent?.toLowerCase() || '';
+        const match = !q || name.includes(q) || code.includes(q);
+        r.style.display = match ? '' : 'none';
+        if (match) visible++;
+    });
+    let emptyRow = document.getElementById('attendanceSearchEmpty');
+    if (visible === 0) {
+        if (!emptyRow) {
+            emptyRow = document.createElement('tr');
+            emptyRow.id = 'attendanceSearchEmpty';
+            emptyRow.innerHTML = '<td colspan="4" class="text-center text-muted py-4">No students match your search.</td>';
+            tbody.appendChild(emptyRow);
+        }
+        emptyRow.style.display = '';
+    } else if (emptyRow) {
+        emptyRow.style.display = 'none';
+    }
+}
 function renderStudents(students){const tbody=document.getElementById('attendanceBody');if(!students||students.length===0){tbody.innerHTML='<tr><td colspan="4" class="text-center text-muted py-4">No enrolled students for this class.</td></tr>';updateSummaryCounts({present:0,absent:0,late:0});return;}tbody.innerHTML=students.map(s=>{const fn=`${s.first_name} ${s.last_name}`;const inits=`${s.first_name[0]||''}${s.last_name[0]||''}`.toUpperCase();const st=s.attendance_status||'present';return `<tr data-student-id="${s.id}"><td><div class="student-info"><div class="user-avatar-small">${inits}</div><span class="student-name">${escapeHtml(fn)}</span></div></td><td>${escapeHtml(s.reference_code)}</td><td><button type="button" class="teacher-status ${st}" data-status="${st}" onclick="cycleStatus(this)">${statusTemplate[st]||statusTemplate.present}</button></td><td><input type="text" class="form-control form-control-sm attendance-remarks" value="${escapeHtml(s.remarks||'')}" placeholder="Add remarks..."></td></tr>`;}).join('');updateSummaryCounts();applySearchFilter();}
 function loadAttendanceData(){
     const classId=(document.getElementById('classSelect')?.value||'').trim();
@@ -438,8 +468,15 @@ function submitAttendance(){
     });
 }
 updateEditState();
-applySearchFilter();
 document.getElementById('attendanceSearch')?.addEventListener('input', applySearchFilter);
+document.getElementById('clearAttendanceSearchBtn')?.addEventListener('click', () => {
+    const input = document.getElementById('attendanceSearch');
+    if (input) {
+        input.value = '';
+        input.focus();
+        applySearchFilter();
+    }
+});
 
 // On load, if offline or class options missing, hydrate from IndexedDB
 if (!navigator.onLine || !initialTeacherClasses || initialTeacherClasses.length === 0) {

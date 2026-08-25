@@ -2,6 +2,25 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.99 — 2026-08-25
+
+### Fixed
+
+- **Grade Term Isolation & Normalization Bug**:
+  - Fixed `normalizeTerm()` in [`teacher/teacher_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Action.php) by delegating to `SshsGradeCalculator::normalizeTerm()`, eliminating strict casing mismatch where `Term2`, `Term3`, and quarters defaulted to `Term1`.
+  - Prevents Term 1 grades and activities from bleeding into or overwriting Term 2 and Term 3.
+- **Transmuted Quarterly Grade Storage in Submissions**:
+  - Updated `submitGrades()` in [`teacher/teacher_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Action.php) to apply `transmuteQuarterlyGrade()` before saving to `grades.final_grade`, ensuring Report Cards, ECR exports, and student/parent portals display official transmuted DepEd grades (e.g. `64`) instead of raw initial weighted scores (e.g. `17.50`).
+- **Parent Account Linking & Student Checklist Activation**:
+  - Restored `onRoleChange()` and `filterParentStudentList()` in [`admin/admin_Users.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Users.php) so selecting Role = "Parent" immediately opens the Parent Link checklist with searchable students upon account creation.
+- **Contact Number (Mobile) in User Creation & Editing**:
+  - Added `Contact Number (Mobile)` input fields to Add and Edit User modals in [`admin/admin_Users.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Users.php) and implemented backend persistence in `getUser()`, `createUser()`, and `updateUser()` in [`admin/admin_Users_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Users_Action.php).
+
+### Added
+
+- **Global Search Bar Upgrades Across Portals**:
+  - Added enhanced search UI with real-time keyword highlighting and quick-clear (`x`) buttons across **SF9 Progress Report Card Generator** ([`teacher/teacher_SF9_Export.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_SF9_Export.php)), **Teacher Attendance** ([`teacher/teacher_Attendance.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Attendance.php)), and **Enrolled Class Students** modal ([`teacher/teacher_Classes.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Classes.php) and [`teacher/teacher_Advisory.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Advisory.php)).
+
 ## v0.3.98 — 2026-08-25
 
 ### Added

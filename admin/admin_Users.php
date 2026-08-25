@@ -496,20 +496,13 @@ $page_title = 'Manage Users';
                                         <input type="text" name="last_name" id="lastName" class="form-control" required oninput="capitalizeWords(this)">
                                     </div>
                                 </div>
-                                <div class="mb-0">
-                                    <label class="form-label">Sex <span class="text-danger">*</span></label>
-                                    <select name="sex" id="sex" class="form-select" required>
-                                        <option value="">Select Sex</option>
-                                        <option value="male">Male</option>
-                                        <option value="female">Female</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <!-- Class/Subject Selection (Teacher only) -->
-                            <div class="app-modal-panel mb-0" id="classDropdown" style="display: none;">
-                                <div class="app-modal-panel-title"><i class="bi bi-journal-check"></i>Teacher Subject Assignment</div>
-                                <p class="app-modal-panel-copy">Assign subjects now or leave this blank and transfer subjects later from class management.</p>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Sex <span class="text-danger">*</span></label>
+                                        <select name="sex" id="sex" class="form-select" required>
+                                            <option value="">Select Sex</option>
+                                            <option value="male">Male</option>
+                                            <option value="female">Female</option>
                                 <div class="class-checklist" id="classChecklist">
                                 <?php
                                 // Fetch classes for checklist - these are the subjects
@@ -769,27 +762,20 @@ $page_title = 'Manage Users';
                                         <input type="text" name="last_name" id="editLastName" class="form-control" required oninput="capitalizeWords(this)">
                                     </div>
                                 </div>
-                                <div class="mb-0">
-                                    <label class="form-label">Sex <span class="text-danger">*</span></label>
-                                    <select name="sex" id="editSex" class="form-select" required>
-                                        <option value="">Select Sex</option>
-                                        <option value="male">Male</option>
-                                        <option value="female">Female</option>
-                                    </select>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Sex <span class="text-danger">*</span></label>
+                                        <select name="sex" id="editSex" class="form-select" required>
+                                            <option value="">Select Sex</option>
+                                            <option value="male">Male</option>
+                                            <option value="female">Female</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Contact Number (Mobile)</label>
+                                        <input type="text" name="contact_number" id="editContactNumber" class="form-control" placeholder="09XXXXXXXXX" maxlength="20" autocomplete="tel">
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="app-modal-note d-none" id="editClassAvailabilityWarning">
-                                <i class="bi bi-exclamation-triangle-fill"></i>
-                                <div>
-                                    <strong>No matching classes yet</strong>
-                                    <p>No active class was found for the selected grade level and section.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer app-modal-footer">
-                    <button type="button" class="btn btn-warning" onclick="resetUserPassword()">
                         <i class="bi bi-key me-2"></i>Reset Password
                     </button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -854,9 +840,9 @@ $page_title = 'Manage Users';
             });
         }
 
-        function filterParentStudentList(inputId, itemSelector) {
-            const input = document.getElementById(inputId);
-            const term = (input?.value || '').trim().toLowerCase();
+        function onRoleChange(roleSelect) {
+            const role = roleSelect?.value || '';
+            const gradeLevelDropdown = document.getElementById('gradeLevelDropdown');
             const sectionDropdown = document.getElementById('sectionDropdown');
             const classDropdown = document.getElementById('classDropdown');
             const parentStudentDropdown = document.getElementById('parentStudentDropdown');
@@ -871,9 +857,6 @@ $page_title = 'Manage Users';
             const trackDropdownCreate = document.getElementById('trackDropdownCreate');
             const trackCreate = document.getElementById('trackCreate');
             const trackLabelCreate = document.getElementById('trackLabelCreate');
-            
-            // Show fields for teachers
-            if (role === 'teacher') {
                 if (gradeLevelDropdown) gradeLevelDropdown.style.display = 'block';
                 if (sectionDropdown) sectionDropdown.style.display = 'block';
                 if (trackDropdownCreate) trackDropdownCreate.style.display = 'none';
@@ -918,6 +901,15 @@ $page_title = 'Manage Users';
             updateClassAvailabilityWarning();
         }
 
+        function filterParentStudentList(inputId, itemSelector) {
+            const input = document.getElementById(inputId);
+            const term = (input?.value || '').trim().toLowerCase();
+            document.querySelectorAll(itemSelector).forEach(item => {
+                const searchData = (item.getAttribute('data-student-search') || item.textContent || '').toLowerCase();
+                item.style.display = (!term || searchData.includes(term)) ? '' : 'none';
+            });
+        }
+
         function hydrateSectionsCache(sections) {
             const nextCache = {};
             (sections || []).forEach(s => {
@@ -926,15 +918,6 @@ $page_title = 'Manage Users';
                 const track = (s.track || '').toString().trim();
 
                 if (!name || !gradeLevel) {
-                    return;
-                }
-
-                const key = gradeLevel + '_' + track;
-                if (!nextCache[key]) {
-                    nextCache[key] = [];
-                }
-                nextCache[key].push({ value: name, label: name });
-            });
 
             sectionsCache = nextCache;
             return sectionsCache;
@@ -1178,6 +1161,7 @@ $page_title = 'Manage Users';
                         const editMiddleName = document.getElementById('editMiddleName');
                         const editLastName = document.getElementById('editLastName');
                         const editSex = document.getElementById('editSex');
+                        const editContactNumber = document.getElementById('editContactNumber');
                         const editGradeLevel = document.getElementById('editGradeLevel');
                         const editSection = document.getElementById('editSection');
 
@@ -1188,12 +1172,12 @@ $page_title = 'Manage Users';
                         if (editMiddleName) editMiddleName.value = user.middle_name || '';
                         if (editLastName) editLastName.value = user.last_name || '';
                         if (editSex) editSex.value = (user.sex || '').toString().toLowerCase();
+                        if (editContactNumber) editContactNumber.value = user.contact_number || '';
 
                         if (user.grade_level && editGradeLevel) {
                             editGradeLevel.value = user.grade_level;
                             editUpdateSections();
                             if (user.section && editSection) {
-                                editSection.value = user.section;
                                 editUpdateClassAvailabilityWarning();
                             }
                         }
@@ -1204,7 +1188,6 @@ $page_title = 'Manage Users';
                         const classDiv = document.getElementById('editClassDiv');
                         const parentStudentDiv = document.getElementById('editParentStudentDiv');
                         const editTrackDiv = document.getElementById('editTrackDiv');
-                        const editTrack = document.getElementById('editTrack');
                         const editTrackLabel = document.getElementById('editTrackLabel');
                         const editGradeLevelLabel = document.getElementById('editGradeLevelLabel');
                         const editSectionLabel = document.getElementById('editSectionLabel');

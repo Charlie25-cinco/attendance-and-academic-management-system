@@ -45,32 +45,85 @@ if ($studentId === 0 && $classId > 0) {
     $stuList = $stuStmt->fetchAll(PDO::FETCH_ASSOC);
     ?>
     <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>SF9 - Select Student</title>
-    <style>body{font-family:Arial,sans-serif;padding:24px;} a{color:#1a237e;} li{margin:4px 0;} .back{background:#1a237e;color:#fff;padding:6px 14px;text-decoration:none;border-radius:4px;} .dl-link{background:#2e7d32;color:#fff;padding:2px 8px;border-radius:3px;text-decoration:none;font-size:11px;margin-left:8px;}</style>
+    <link rel="stylesheet" href="../assets/vendor/bootstrap-icons/bootstrap-icons.css">
+    <style>
+        body{font-family:system-ui,-apple-system,sans-serif;padding:24px;background:#f8fafc;color:#1e293b;}
+        .sf9-card{background:#fff;border-radius:10px;border:1px solid #e2e8f0;padding:24px;max-width:720px;margin:0 auto;box-shadow:0 1px 3px rgba(0,0,0,0.05);}
+        .back{display:inline-flex;align-items:center;gap:6px;color:#475569;text-decoration:none;font-size:14px;margin-bottom:16px;}
+        .back:hover{color:#0f172a;}
+        .search-wrap{position:relative;margin-bottom:16px;max-width:440px;}
+        .search-wrap input{width:100%;box-sizing:border-box;padding:9px 36px 9px 34px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;outline:none;transition:border-color .15s;}
+        .search-wrap input:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.15);}
+        .search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:14px;}
+        .clear-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;cursor:pointer;font-size:14px;padding:2px 4px;display:none;}
+        .clear-btn:hover{color:#475569;}
+        .student-item{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:8px;background:#fff;transition:background-color .15s;}
+        .student-item:hover{background:#f1f5f9;}
+        .student-link{color:#1e293b;text-decoration:none;font-weight:500;font-size:14px;flex-grow:1;}
+        .dl-btn{display:inline-flex;align-items:center;gap:4px;background:#10b981;color:#fff;padding:4px 10px;border-radius:4px;text-decoration:none;font-size:12px;font-weight:600;transition:background-color .15s;}
+        .dl-btn:hover{background:#059669;}
+        mark{background:#fef08a;padding:0;font-weight:600;}
+    </style>
     </head><body>
-    <a class="back" href="javascript:history.back()">&#8592; Back</a>
-    <h2 style="margin:12px 0 8px;">SF9 - Select Student</h2>
-    <p style="color:#555;margin-bottom:12px;">Select a student to generate their SF9 Progress Report Card.</p>
-    <div style="margin-bottom:12px;">
-        <input type="text" id="sf9StudentSearch" placeholder="Type student name or reference code to filter..." style="padding:6px 10px;width:100%;max-width:360px;border:1px solid #ccc;border-radius:4px;" oninput="filterSf9Students(this.value)">
+    <div class="sf9-card">
+        <a class="back" href="javascript:history.back()"><i class="bi bi-arrow-left"></i> Back</a>
+        <h2 style="margin:0 0 6px;font-size:20px;font-weight:700;">SF9 Progress Report Card — Select Student</h2>
+        <p style="color:#64748b;font-size:13px;margin:0 0 16px;">Class: <strong><?php echo htmlspecialchars((string)($class['class_name'] ?? '')); ?></strong> (Grade <?php echo htmlspecialchars((string)($class['grade_level'] ?? '')); ?> - <?php echo htmlspecialchars((string)($class['section'] ?? '')); ?>)</p>
+        <div class="search-wrap">
+            <i class="bi bi-search search-icon"></i>
+            <input type="text" id="sf9StudentSearch" placeholder="Search student name or reference code..." autocomplete="off">
+            <button type="button" class="clear-btn" id="sf9ClearBtn" title="Clear"><i class="bi bi-x-circle-fill"></i></button>
+        </div>
+        <div id="sf9StudentList">
+        <?php foreach ($stuList as $s): ?>
+            <div class="student-item" data-search="<?php echo htmlspecialchars(strtolower($s['last_name'] . ' ' . $s['first_name'] . ' ' . ($s['reference_code'] ?? ''))); ?>" data-name="<?php echo htmlspecialchars($s['last_name'] . ', ' . $s['first_name']); ?>" data-code="<?php echo htmlspecialchars((string)($s['reference_code'] ?? '')); ?>">
+                <a class="student-link" href="?class_id=<?php echo $classId; ?>&student_id=<?php echo $s['id']; ?>&ay=<?php echo urlencode($academicYear); ?>">
+                    <span class="s-name"><?php echo htmlspecialchars($s['last_name'] . ', ' . $s['first_name']); ?></span>
+                    <small style="color:#64748b;font-weight:400;margin-left:6px;" class="s-code">(<?php echo htmlspecialchars((string)($s['reference_code'] ?? '')); ?>)</small>
+                </a>
+                <a class="dl-btn" href="?class_id=<?php echo $classId; ?>&student_id=<?php echo $s['id']; ?>&ay=<?php echo urlencode($academicYear); ?>&export=xlsx"><i class="bi bi-file-earmark-excel"></i> XLSX</a>
+            </div>
+        <?php endforeach; ?>
+        <?php if (empty($stuList)): ?><p style="color:#94a3b8;font-size:14px;text-align:center;padding:24px 0;">No enrolled students found.</p><?php endif; ?>
+        </div>
     </div>
-    <ul id="sf9StudentList">
-    <?php foreach ($stuList as $s): ?>
-        <li data-search="<?php echo htmlspecialchars(strtolower($s['last_name'] . ' ' . $s['first_name'] . ' ' . ($s['reference_code'] ?? ''))); ?>">
-            <a href="?class_id=<?php echo $classId; ?>&student_id=<?php echo $s['id']; ?>&ay=<?php echo urlencode($academicYear); ?>">
-                <?php echo htmlspecialchars($s['last_name'] . ', ' . $s['first_name'] . ' (' . $s['reference_code'] . ')'); ?>
-            </a>
-            <a class="dl-link" href="?class_id=<?php echo $classId; ?>&student_id=<?php echo $s['id']; ?>&ay=<?php echo urlencode($academicYear); ?>&export=xlsx">&#8595; XLSX</a>
-        </li>
-    <?php endforeach; ?>
-    <?php if (empty($stuList)): ?><li>No enrolled students found.</li><?php endif; ?>
-    </ul>
     <script>
-    function filterSf9Students(q) {
-        var query = (q || '').toLowerCase().trim();
-        var items = document.querySelectorAll('#sf9StudentList li[data-search]');
-        items.forEach(function(li) {
-            var text = li.getAttribute('data-search') || li.textContent.toLowerCase();
-            li.style.display = (!query || text.indexOf(query) !== -1) ? '' : 'none';
+    const searchInput = document.getElementById('sf9StudentSearch');
+    const clearBtn = document.getElementById('sf9ClearBtn');
+    const items = document.querySelectorAll('#sf9StudentList .student-item');
+
+    function highlightText(text, query) {
+        if (!query) return text;
+        const reg = new RegExp('(' + query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+        return text.replace(reg, '<mark>$1</mark>');
+    }
+
+    function runFilter() {
+        const q = (searchInput?.value || '').trim().toLowerCase();
+        if (clearBtn) clearBtn.style.display = q ? 'block' : 'none';
+        items.forEach(function(item) {
+            const rawSearch = item.getAttribute('data-search') || '';
+            const match = !q || rawSearch.includes(q);
+            item.style.display = match ? 'flex' : 'none';
+            const nameEl = item.querySelector('.s-name');
+            const codeEl = item.querySelector('.s-code');
+            const rawName = item.getAttribute('data-name') || '';
+            const rawCode = item.getAttribute('data-code') || '';
+            if (nameEl) nameEl.innerHTML = match && q ? highlightText(rawName, q) : rawName;
+            if (codeEl) codeEl.innerHTML = '(' + (match && q ? highlightText(rawCode, q) : rawCode) + ')';
+        });
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', runFilter);
+    }
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function() {
+            if (searchInput) {
+                searchInput.value = '';
+                searchInput.focus();
+                runFilter();
+            }
         });
     }
     </script>

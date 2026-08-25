@@ -829,11 +829,7 @@ function getClassWeights($db, $classId) {
 }
 
 function normalizeTerm($value) {
-    $v = strtoupper(trim((string)$value));
-    if (in_array($v, ['Term1', 'Term2', 'Term3', 'Q1', 'Q2', 'Q3', 'Q4'], true)) {
-        return $v;
-    }
-    return 'Term1';
+    return \BshsAms\Grade\SshsGradeCalculator::normalizeTerm((string)$value);
 }
 
 function gradingSystemFromYear($academicYear) {
@@ -1844,6 +1840,7 @@ function submitGrades($db, $teacherId) {
                 $weightBase += (float)$weights['assessment_weight'];
             }
             $final = $weightBase > 0 ? round($weightedTotal / $weightBase, 2) : null;
+            $transmutedGrade = ($final !== null) ? transmuteQuarterlyGrade($final) : null;
 
             if ($gs === '4_quarter') {
                 $selectStmt->execute([$studentId, $classSubjectId, $semester, $term, $academicYear]);
@@ -1854,22 +1851,22 @@ function submitGrades($db, $teacherId) {
 
             if ($gradeId > 0) {
                 if ($hasRaw) {
-                    $updateStmt->execute([$wwRaw, $wwTotal, $ptRaw, $ptTotal, $assessmentRaw, $assessmentTotal, $ww, $assessment, $pt, $final, $teacherId, $gradeId]);
+                    $updateStmt->execute([$wwRaw, $wwTotal, $ptRaw, $ptTotal, $assessmentRaw, $assessmentTotal, $ww, $assessment, $pt, $transmutedGrade, $teacherId, $gradeId]);
                 } else {
-                    $updateStmt->execute([$ww, $assessment, $pt, $final, $teacherId, $gradeId]);
+                    $updateStmt->execute([$ww, $assessment, $pt, $transmutedGrade, $teacherId, $gradeId]);
                 }
             } else {
                 if ($hasRaw) {
                     if ($gs === '4_quarter') {
-                        $insertStmt->execute([$studentId, $classSubjectId, $wwRaw, $wwTotal, $ptRaw, $ptTotal, $assessmentRaw, $assessmentTotal, $ww, $assessment, $pt, $final, $semester, $term, $academicYear, $teacherId]);
+                        $insertStmt->execute([$studentId, $classSubjectId, $wwRaw, $wwTotal, $ptRaw, $ptTotal, $assessmentRaw, $assessmentTotal, $ww, $assessment, $pt, $transmutedGrade, $semester, $term, $academicYear, $teacherId]);
                     } else {
-                        $insertStmt->execute([$studentId, $classSubjectId, $wwRaw, $wwTotal, $ptRaw, $ptTotal, $assessmentRaw, $assessmentTotal, $ww, $assessment, $pt, $final, $term, $academicYear, $teacherId]);
+                        $insertStmt->execute([$studentId, $classSubjectId, $wwRaw, $wwTotal, $ptRaw, $ptTotal, $assessmentRaw, $assessmentTotal, $ww, $assessment, $pt, $transmutedGrade, $term, $academicYear, $teacherId]);
                     }
                 } else {
                     if ($gs === '4_quarter') {
-                        $insertStmt->execute([$studentId, $classSubjectId, $ww, $assessment, $pt, $final, $semester, $term, $academicYear, $teacherId]);
+                        $insertStmt->execute([$studentId, $classSubjectId, $ww, $assessment, $pt, $transmutedGrade, $semester, $term, $academicYear, $teacherId]);
                     } else {
-                        $insertStmt->execute([$studentId, $classSubjectId, $ww, $assessment, $pt, $final, $term, $academicYear, $teacherId]);
+                        $insertStmt->execute([$studentId, $classSubjectId, $ww, $assessment, $pt, $transmutedGrade, $term, $academicYear, $teacherId]);
                     }
                 }
                 $gradeId = (int)$db->lastInsertId();

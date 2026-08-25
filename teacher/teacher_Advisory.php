@@ -437,8 +437,10 @@ $page_title = 'Report Card';
             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body app-modal-body">
-            <div class="mb-3">
-                <input type="text" class="form-control" id="advisoryStudentsSearch" placeholder="Search students...">
+            <div class="input-group mb-3">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control" id="advisoryStudentsSearch" placeholder="Search students by name or reference code...">
+                <button class="btn btn-outline-secondary" type="button" id="clearAdvisoryStudentsSearchBtn" title="Clear" style="display: none;"><i class="bi bi-x-lg"></i></button>
             </div>
             <div class="table-responsive">
                 <table class="table custom-table">
@@ -638,13 +640,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const searchEl = document.getElementById('advisoryStudentsSearch');
+    const clearAdvBtn = document.getElementById('clearAdvisoryStudentsSearchBtn');
     if (searchEl) {
         searchEl.addEventListener('input', () => {
             const q = searchEl.value.trim().toLowerCase();
+            if (clearAdvBtn) clearAdvBtn.style.display = q ? 'block' : 'none';
             document.querySelectorAll('#advisoryStudentsBody tr[data-student-row]').forEach(row => {
                 const text = row.textContent.toLowerCase();
                 row.style.display = text.includes(q) ? '' : 'none';
             });
+        });
+    }
+    if (clearAdvBtn) {
+        clearAdvBtn.addEventListener('click', () => {
+            if (searchEl) {
+                searchEl.value = '';
+                searchEl.focus();
+                if (clearAdvBtn) clearAdvBtn.style.display = 'none';
+                document.querySelectorAll('#advisoryStudentsBody tr[data-student-row]').forEach(row => {
+                    row.style.display = '';
+                });
+            }
         });
     }
 });
