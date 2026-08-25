@@ -304,7 +304,13 @@ $page_title = 'Archived Records';
                 <div class="content-card-body">
                     <form method="GET" class="row g-3 mb-4">
                         <div class="col-md-4">
-                            <input type="text" class="form-control" name="search" placeholder="Search title/content..." value="<?php echo htmlspecialchars($search); ?>">
+                            <div class="input-group">
+                                <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                                <input type="text" class="form-control" name="search" placeholder="Search title/content..." value="<?php echo htmlspecialchars($search); ?>">
+                                <?php if ($search !== ''): ?>
+                                    <a href="admin_Archives.php<?php echo ($categoryFilter || $yearFilter) ? '?' . http_build_query(array_filter(['category' => $categoryFilter, 'year' => $yearFilter])) : ''; ?>" class="btn btn-outline-secondary" title="Clear Search"><i class="bi bi-x-lg"></i></a>
+                                <?php endif; ?>
+                            </div>
                         </div>
                         <div class="col-md-3">
                             <select name="category" class="form-select">

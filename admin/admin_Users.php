@@ -270,9 +270,12 @@ $page_title = 'Manage Users';
                 <div class="content-card-body">
                     <form method="GET" class="row g-3">
                         <div class="col-md-4">
-                            <div class="search-box">
-                                <i class="bi bi-search"></i>
-                                <input type="text" name="search" class="form-control" placeholder="Search users..." value="<?php echo htmlspecialchars($search); ?>">
+                            <div class="input-group">
+                                <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                                <input type="text" name="search" id="userSearchInput" class="form-control" placeholder="Search users by name, reference code, email..." value="<?php echo htmlspecialchars($search); ?>">
+                                <?php if ($search !== ''): ?>
+                                    <a href="admin_Users.php<?php echo ($role_filter || $status_filter || $sex_filter) ? '?' . http_build_query(array_filter(['role' => $role_filter, 'status' => $status_filter, 'sex' => $sex_filter])) : ''; ?>" class="btn btn-outline-secondary" title="Clear Search"><i class="bi bi-x-lg"></i></a>
+                                <?php endif; ?>
                             </div>
                         </div>
                         <div class="col-md-2">
@@ -530,6 +533,7 @@ $page_title = 'Manage Users';
                                 <div class="input-group input-group-sm mb-2">
                                     <span class="input-group-text"><i class="bi bi-search"></i></span>
                                     <input type="text" class="form-control" id="parentStudentSearch" placeholder="Type student name or reference code to filter..." oninput="filterParentStudentList('parentStudentSearch', '#parentStudentChecklist .class-check-item')">
+                                    <button class="btn btn-outline-secondary" type="button" id="clearParentStudentSearchBtn" style="display:none;" onclick="clearParentSearch('parentStudentSearch', '#parentStudentChecklist .class-check-item', 'clearParentStudentSearchBtn')"><i class="bi bi-x-lg"></i></button>
                                 </div>
                                 <div class="class-checklist" id="parentStudentChecklist">
                                 <?php foreach ($studentsForParent as $student): ?>
@@ -731,6 +735,7 @@ $page_title = 'Manage Users';
                                 <div class="input-group input-group-sm mb-2">
                                     <span class="input-group-text"><i class="bi bi-search"></i></span>
                                     <input type="text" class="form-control" id="editParentStudentSearch" placeholder="Type student name or reference code to filter..." oninput="filterParentStudentList('editParentStudentSearch', '#editParentStudentChecklist .class-check-item')">
+                                    <button class="btn btn-outline-secondary" type="button" id="clearEditParentStudentSearchBtn" style="display:none;" onclick="clearParentSearch('editParentStudentSearch', '#editParentStudentChecklist .class-check-item', 'clearEditParentStudentSearchBtn')"><i class="bi bi-x-lg"></i></button>
                                 </div>
                                 <div class="class-checklist" id="editParentStudentChecklist">
                                 <?php foreach ($studentsForParent as $student): ?>
@@ -776,6 +781,19 @@ $page_title = 'Manage Users';
                                         <input type="text" name="contact_number" id="editContactNumber" class="form-control" placeholder="09XXXXXXXXX" maxlength="20" autocomplete="tel">
                                     </div>
                                 </div>
+                            </div>
+                            <div class="app-modal-note d-none" id="editClassAvailabilityWarning">
+                                <i class="bi bi-exclamation-triangle-fill"></i>
+                                <div>
+                                    <strong>No matching classes yet</strong>
+                                    <p>No active class was found for the selected grade level and section.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer app-modal-footer">
+                    <button type="button" class="btn btn-warning" onclick="resetUserPassword()">
                         <i class="bi bi-key me-2"></i>Reset Password
                     </button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -857,6 +875,9 @@ $page_title = 'Manage Users';
             const trackDropdownCreate = document.getElementById('trackDropdownCreate');
             const trackCreate = document.getElementById('trackCreate');
             const trackLabelCreate = document.getElementById('trackLabelCreate');
+            
+            // Show fields for teachers
+            if (role === 'teacher') {
                 if (gradeLevelDropdown) gradeLevelDropdown.style.display = 'block';
                 if (sectionDropdown) sectionDropdown.style.display = 'block';
                 if (trackDropdownCreate) trackDropdownCreate.style.display = 'none';
@@ -904,9 +925,25 @@ $page_title = 'Manage Users';
         function filterParentStudentList(inputId, itemSelector) {
             const input = document.getElementById(inputId);
             const term = (input?.value || '').trim().toLowerCase();
+            const btnId = inputId === 'parentStudentSearch' ? 'clearParentStudentSearchBtn' : 'clearEditParentStudentSearchBtn';
+            const clearBtn = document.getElementById(btnId);
+            if (clearBtn) clearBtn.style.display = term ? 'block' : 'none';
             document.querySelectorAll(itemSelector).forEach(item => {
                 const searchData = (item.getAttribute('data-student-search') || item.textContent || '').toLowerCase();
                 item.style.display = (!term || searchData.includes(term)) ? '' : 'none';
+            });
+        }
+
+        function clearParentSearch(inputId, itemSelector, btnId) {
+            const input = document.getElementById(inputId);
+            if (input) {
+                input.value = '';
+                input.focus();
+            }
+            const btn = document.getElementById(btnId);
+            if (btn) btn.style.display = 'none';
+            document.querySelectorAll(itemSelector).forEach(item => {
+                item.style.display = '';
             });
         }
 
@@ -918,6 +955,15 @@ $page_title = 'Manage Users';
                 const track = (s.track || '').toString().trim();
 
                 if (!name || !gradeLevel) {
+                    return;
+                }
+
+                const key = gradeLevel + '_' + track;
+                if (!nextCache[key]) {
+                    nextCache[key] = [];
+                }
+                nextCache[key].push({ value: name, label: name });
+            });
 
             sectionsCache = nextCache;
             return sectionsCache;

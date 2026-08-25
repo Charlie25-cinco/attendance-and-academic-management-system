@@ -2,6 +2,25 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.101 — 2026-08-25
+
+### Fixed
+
+- **Admin Manage Users Modal & Buttons JavaScript Restoration**:
+  - Repaired the Edit User modal markup and JavaScript syntax in [`admin/admin_Users.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Users.php) (`onRoleChange`, `hydrateSectionsCache`, `filterParentStudentList`, `clearParentSearch`).
+  - Restored full functionality to "Add User", "Edit User", "Delete User", and "Reset Password" buttons and fixed dynamic form controls for Teacher and Parent role selection.
+  - Kept mobile `contact_number` field and instant student linking fully operational during parent account creation.
+
+### Added
+
+- **Universal Search Bar Enhancements Across ALL Portals**:
+  - Upgraded search bars across Admin, Teacher, Parent, and Student portals with modern search icons, dynamic quick-clear (`x`) buttons, and live filtering / instant reset:
+    - **Admin**: `admin_Users.php` (User table + Add/Edit Parent link student searches), `admin_Enrollments.php` (debounced live search), `admin_Attendance.php`, `admin_Announcements.php`, `admin_Audit_Logs.php`, `admin_Archives.php`.
+    - **Teacher**: `teacher_Announcements.php`, `teacher_Attendance.php`, `teacher_Advisory.php`, `teacher_Classes.php`, `teacher_SF9_Export.php`.
+    - **Parent**: `Parent_Announcements.php`.
+    - **Student**: `Student_Announcements.php`.
+
+
 ## v0.3.100 — 2026-08-25
 
 ### Added

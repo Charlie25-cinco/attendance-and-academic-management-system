@@ -161,8 +161,14 @@ function buildPageUrl($page) {
                         </div>
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label class="form-label"><i class="bi bi-search me-1"></i>Search Student</label>
-                                <input type="text" name="search" class="form-control" value="<?php echo htmlspecialchars($searchQuery); ?>" placeholder="Enter student name or reference code...">
+                                <label class="form-label"><i class="bi bi-person-bounding-box me-1"></i>Search Student</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                                    <input type="text" name="search" id="adminAttendanceSearch" class="form-control" value="<?php echo htmlspecialchars($searchQuery); ?>" placeholder="Enter student name or reference code...">
+                                    <?php if ($searchQuery !== ''): ?>
+                                        <a href="admin_Attendance.php<?php echo ($selectedClass || $selectedStatus || $selectedDate != date('Y-m-d')) ? '?' . http_build_query(array_filter(['class_id' => $selectedClass, 'status' => $selectedStatus, 'date' => $selectedDate])) : ''; ?>" class="btn btn-outline-secondary" title="Clear Search"><i class="bi bi-x-lg"></i></a>
+                                    <?php endif; ?>
+                                </div>
                             </div>
                             <div class="col-md-2 d-flex align-items-end">
                                 <button type="submit" class="btn btn-secondary-custom w-100">

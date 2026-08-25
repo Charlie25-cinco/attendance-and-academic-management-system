@@ -246,7 +246,13 @@ if ($db) {
                     <form method="GET" class="row g-3 align-items-end mb-4 app-responsive-filter-form">
                         <div class="col-12 col-lg-4">
                             <label class="form-label">Search</label>
-                            <input type="text" class="form-control" name="search" placeholder="Admin, action, target, details..." value="<?php echo htmlspecialchars($search); ?>">
+                            <div class="input-group">
+                                <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                                <input type="text" class="form-control" name="search" placeholder="Admin, action, target, details..." value="<?php echo htmlspecialchars($search); ?>">
+                                <?php if ($search !== ''): ?>
+                                    <a href="admin_Audit_Logs.php<?php echo ($actionFilter || $dateFrom || $dateTo) ? '?' . http_build_query(array_filter(['action_name' => $actionFilter, 'date_from' => $dateFrom, 'date_to' => $dateTo])) : ''; ?>" class="btn btn-outline-secondary" title="Clear Search"><i class="bi bi-x-lg"></i></a>
+                                <?php endif; ?>
+                            </div>
                         </div>
                         <div class="col-6 col-lg-2">
                             <label class="form-label">Action</label>

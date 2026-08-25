@@ -108,7 +108,11 @@ if (isset($_GET['download_template'])) {
                     <form id="filterForm" class="row g-2 align-items-end app-responsive-filter-form" onsubmit="return loadStudents()" data-skip-loader="true">
                         <div class="col-md-3">
                             <label class="form-label small" for="filterSearch">Search</label>
-                            <input type="text" name="search" id="filterSearch" class="form-control form-control-sm" placeholder="Name, LRN, or Code" autocomplete="off">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                                <input type="text" name="search" id="filterSearch" class="form-control form-control-sm" placeholder="Name, LRN, or Code" autocomplete="off">
+                                <button class="btn btn-outline-secondary" type="button" id="clearFilterSearchBtn" style="display:none;" title="Clear"><i class="bi bi-x-lg"></i></button>
+                            </div>
                         </div>
                         <div class="col-md-2">
                             <label class="form-label small" for="filterGradeLevel">Grade Level</label>
@@ -532,6 +536,28 @@ if (isset($_GET['download_template'])) {
         document.addEventListener('DOMContentLoaded', () => {
             loadStudents();
             loadSectionsCache();
+
+            let searchDebounceTimer = null;
+            const searchEl = document.getElementById('filterSearch');
+            const clearSearchBtn = document.getElementById('clearFilterSearchBtn');
+            if (searchEl) {
+                searchEl.addEventListener('input', () => {
+                    const val = searchEl.value.trim();
+                    if (clearSearchBtn) clearSearchBtn.style.display = val ? 'block' : 'none';
+                    clearTimeout(searchDebounceTimer);
+                    searchDebounceTimer = setTimeout(() => loadStudents(1), 300);
+                });
+            }
+            if (clearSearchBtn) {
+                clearSearchBtn.addEventListener('click', () => {
+                    if (searchEl) {
+                        searchEl.value = '';
+                        searchEl.focus();
+                        clearSearchBtn.style.display = 'none';
+                        loadStudents(1);
+                    }
+                });
+            }
         });
 
         function loadStudents(page) {

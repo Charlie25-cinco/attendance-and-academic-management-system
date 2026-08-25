@@ -165,7 +165,11 @@ $selectedStudentRef = trim((string)($selectedStudent['reference_code'] ?? ''));
             <div class="content-card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
                 <h5 class="content-card-title mb-0">Latest Updates</h5>
                 <div class="app-announcement-toolbar">
-                    <input type="text" id="announcementSearch" class="form-control form-control-sm app-announcement-search" placeholder="Search announcements">
+                    <div class="input-group input-group-sm app-announcement-search">
+                        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                        <input type="text" id="announcementSearch" class="form-control form-control-sm" placeholder="Search announcements">
+                        <button class="btn btn-outline-secondary" type="button" id="clearParentAnnSearchBtn" style="display:none;" title="Clear"><i class="bi bi-x-lg"></i></button>
+                    </div>
                     <select id="announcementSourceFilter" class="form-select form-select-sm app-announcement-select">
                         <option value="all">All Sources</option>
                         <option value="school">School</option>
@@ -227,7 +231,10 @@ function normalizeFilterValue(value){return (value||'').toString().trim().toLowe
 function filterParentAnnouncements(){
     const list=document.getElementById('announcementList');
     if(!list)return;
-    const search=normalizeFilterValue(document.getElementById('announcementSearch')?.value);
+    const searchRaw = document.getElementById('announcementSearch')?.value || '';
+    const search=normalizeFilterValue(searchRaw);
+    const clearBtn=document.getElementById('clearParentAnnSearchBtn');
+    if(clearBtn){clearBtn.style.display=searchRaw.trim()?'block':'none';}
     const source=normalizeFilterValue(document.getElementById('announcementSourceFilter')?.value||'all');
     const category=normalizeFilterValue(document.getElementById('announcementCategoryFilter')?.value||'all');
     const cards=list.querySelectorAll('.announcement-card');
@@ -249,9 +256,17 @@ function filterParentAnnouncements(){
     const emptyState=document.getElementById('announcementEmptyState');
     if(emptyState){emptyState.classList.toggle('d-none',visible>0);}
 }
-document.getElementById('announcementSearch')?.addEventListener('input', filterParentAnnouncements);
+const parentAnnSearch = document.getElementById('announcementSearch');
+parentAnnSearch?.addEventListener('input', filterParentAnnouncements);
 document.getElementById('announcementSourceFilter')?.addEventListener('change', filterParentAnnouncements);
 document.getElementById('announcementCategoryFilter')?.addEventListener('change', filterParentAnnouncements);
+document.getElementById('clearParentAnnSearchBtn')?.addEventListener('click', ()=>{
+    if(parentAnnSearch){
+        parentAnnSearch.value='';
+        parentAnnSearch.focus();
+        filterParentAnnouncements();
+    }
+});
 </script>
 </body>
 </html>

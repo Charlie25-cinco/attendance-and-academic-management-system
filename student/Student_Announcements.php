@@ -145,7 +145,11 @@ foreach ($classes as $class) {
                             <?php endforeach; ?>
                         </select>
                     </form>
-                    <input type="text" id="announcementSearch" class="form-control form-control-sm app-announcement-search" placeholder="Search announcements">
+                    <div class="input-group input-group-sm app-announcement-search">
+                        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                        <input type="text" id="announcementSearch" class="form-control form-control-sm" placeholder="Search announcements">
+                        <button class="btn btn-outline-secondary" type="button" id="clearStudentAnnSearchBtn" style="display:none;" title="Clear"><i class="bi bi-x-lg"></i></button>
+                    </div>
                     <select id="announcementSourceFilter" class="form-select form-select-sm app-announcement-select">
                         <option value="all">All Sources</option>
                         <option value="school">School</option>
@@ -206,7 +210,10 @@ function normalizeFilterValue(value){return (value||'').toString().trim().toLowe
 function filterStudentAnnouncements(){
     const list=document.getElementById('announcementList');
     if(!list)return;
-    const search=normalizeFilterValue(document.getElementById('announcementSearch')?.value);
+    const searchRaw = document.getElementById('announcementSearch')?.value || '';
+    const search=normalizeFilterValue(searchRaw);
+    const clearBtn=document.getElementById('clearStudentAnnSearchBtn');
+    if(clearBtn){clearBtn.style.display=searchRaw.trim()?'block':'none';}
     const source=normalizeFilterValue(document.getElementById('announcementSourceFilter')?.value||'all');
     const category=normalizeFilterValue(document.getElementById('announcementCategoryFilter')?.value||'all');
     const cards=list.querySelectorAll('.announcement-card');
@@ -227,9 +234,17 @@ function filterStudentAnnouncements(){
     const emptyState=document.getElementById('announcementEmptyState');
     if(emptyState){emptyState.classList.toggle('d-none',visible>0);}
 }
-document.getElementById('announcementSearch')?.addEventListener('input', filterStudentAnnouncements);
+const studentAnnSearch = document.getElementById('announcementSearch');
+studentAnnSearch?.addEventListener('input', filterStudentAnnouncements);
 document.getElementById('announcementSourceFilter')?.addEventListener('change', filterStudentAnnouncements);
 document.getElementById('announcementCategoryFilter')?.addEventListener('change', filterStudentAnnouncements);
+document.getElementById('clearStudentAnnSearchBtn')?.addEventListener('click', ()=>{
+    if(studentAnnSearch){
+        studentAnnSearch.value='';
+        studentAnnSearch.focus();
+        filterStudentAnnouncements();
+    }
+});
 </script>
 </body>
 </html>

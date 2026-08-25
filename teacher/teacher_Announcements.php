@@ -91,7 +91,11 @@ $page_title = 'Announcements';
                     <div class="teacher-section-note">Filter by category or search by title and content to narrow the current notice board.</div>
                 </div>
                 <div class="d-flex flex-wrap gap-2 align-items-center">
-                    <input type="text" id="announcementSearch" class="form-control form-control-sm" style="width: 220px;" placeholder="Search announcements">
+                    <div class="input-group input-group-sm" style="width: 240px;">
+                        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                        <input type="text" id="announcementSearch" class="form-control form-control-sm" placeholder="Search announcements">
+                        <button class="btn btn-outline-secondary" type="button" id="clearAnnouncementSearchBtn" style="display:none;" title="Clear"><i class="bi bi-x-lg"></i></button>
+                    </div>
                     <select id="announcementCategoryFilter" class="form-select form-select-sm" style="width: 160px;">
                         <option value="all">All Categories</option>
                         <option value="general">General</option>
@@ -138,7 +142,10 @@ function normalizeFilterValue(value){return (value||'').toString().trim().toLowe
 function filterTeacherAnnouncements(){
     const list=document.getElementById('announcementList');
     if(!list)return;
-    const search=normalizeFilterValue(document.getElementById('announcementSearch')?.value);
+    const searchRaw = document.getElementById('announcementSearch')?.value || '';
+    const search=normalizeFilterValue(searchRaw);
+    const clearBtn=document.getElementById('clearAnnouncementSearchBtn');
+    if(clearBtn){clearBtn.style.display=searchRaw.trim()?'block':'none';}
     const category=normalizeFilterValue(document.getElementById('announcementCategoryFilter')?.value||'all');
     const cards=list.querySelectorAll('.announcement-card');
     let visible=0;
@@ -155,8 +162,16 @@ function filterTeacherAnnouncements(){
     const emptyState=document.getElementById('announcementEmptyState');
     if(emptyState){emptyState.classList.toggle('d-none',visible>0);}
 }
-document.getElementById('announcementSearch')?.addEventListener('input', filterTeacherAnnouncements);
+const teacherAnnSearch = document.getElementById('announcementSearch');
+teacherAnnSearch?.addEventListener('input', filterTeacherAnnouncements);
 document.getElementById('announcementCategoryFilter')?.addEventListener('change', filterTeacherAnnouncements);
+document.getElementById('clearAnnouncementSearchBtn')?.addEventListener('click', ()=>{
+    if(teacherAnnSearch){
+        teacherAnnSearch.value='';
+        teacherAnnSearch.focus();
+        filterTeacherAnnouncements();
+    }
+});
 </script>
 </body>
 </html>
