@@ -423,19 +423,23 @@ function updateSubmitButtons(students){
   else{if(submitBtn)submitBtn.style.display='';if(recallBtn)recallBtn.style.display='none';if(lockNote)lockNote.style.display='none';}
 }
 function renderGrades(students){const tbody=document.getElementById('gradesBody');if(!students||students.length===0){tbody.innerHTML='<tr><td colspan="7" class="text-center text-muted py-4">No students found for selected class.</td></tr>';updateSubmitButtons([]);return;}tbody.innerHTML=students.map(s=>{const ww=(s.ww_score!==null&&s.ww_score!==undefined&&s.ww_score!=='')?parseFloat(s.ww_score):null;const pt=(s.pt_score!==null&&s.pt_score!==undefined&&s.pt_score!=='')?parseFloat(s.pt_score):null;const as=(s.assessment_score!==null&&s.assessment_score!==undefined&&s.assessment_score!=='')?parseFloat(s.assessment_score):null;const qg=(s.quarter_final_grade!==null&&s.quarter_final_grade!==undefined&&s.quarter_final_grade!=='')?parseFloat(s.quarter_final_grade):null;const statusLabel=qg===null?'No Grade':(qg>=75?'Passed':'Failed');const statusBadge=qg===null?'bg-secondary':(qg>=75?'bg-success':'bg-danger');const wwW=ww===null?'':`<small class="text-muted d-block">| ${((ww*gradingWeights.ww_weight)/100).toFixed(2)}</small>`;const ptW=pt===null?'':`<small class="text-muted d-block">| ${((pt*gradingWeights.pt_weight)/100).toFixed(2)}</small>`;const asW=as===null?'':`<small class="text-muted d-block">| ${((as*gradingWeights.assessment_weight)/100).toFixed(2)}</small>`;const appBadge=approvalBadge(s.approval_status||'pending');return '<tr data-student-id="'+s.id+'"><td>'+escapeHtml(s.first_name+' '+s.last_name)+'</td><td><span class="grade-ww-percent">'+(ww===null?'N/A':ww)+'</span>'+wwW+'</td><td><span class="grade-pt-percent">'+(pt===null?'N/A':pt)+'</span>'+ptW+'</td><td><span class="grade-assessment-percent">'+(as===null?'N/A':as)+'</span>'+asW+'</td><td><span class="fw-semibold grade-final">'+(qg===null?'N/A':qg)+'</span></td><td><span class="badge '+statusBadge+'">'+statusLabel+'</span></td><td>'+appBadge+'</td></tr>';}).join('');updateSubmitButtons(students);}
-function loadGradesData(){
+function loadGradesData(isUserAction = true){
     const classId=document.getElementById('gradeClassSelect')?.value;
     const term=document.getElementById('termSelect')?.value;
     const ay=document.getElementById('academicYearInput')?.value.trim();
     const sex=(document.getElementById('gradeSexFilter')?.value||'').trim().toLowerCase();
-    if(!classId||!term||!ay){showNotification('Class, term, and academic year are required','warning');return;}
+    if(!classId||!term||!ay){
+        if(isUserAction){showNotification('Class, term, and academic year are required','warning');}
+        return;
+    }
     let url=`teacher_Action.php?action=fetch_grades&class_id=${encodeURIComponent(classId)}&term=${encodeURIComponent(term)}&academic_year=${encodeURIComponent(ay)}`;
     if(sex==='male'||sex==='female'){url+=`&sex=${encodeURIComponent(sex)}`;}
 
     const loadBtn = document.getElementById('loadGradesBtn');
-    if (loadBtn) {
+    const loadIcon = loadBtn?.querySelector('i');
+    if (loadBtn && isUserAction) {
         loadBtn.disabled = true;
-        loadBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Loading...';
+        if (loadIcon) loadIcon.classList.add('spin');
     }
 
     if(!navigator.onLine){
@@ -443,14 +447,14 @@ function loadGradesData(){
             window.bshsOfflineStorage.getClassRoster(classId).then(students => {
                 if(students && students.length > 0){
                     renderGrades(students);
-                    showNotification('Loaded offline class roster from device storage', 'info');
+                    if(isUserAction){showNotification('Loaded offline class roster from device storage', 'info');}
                     return;
                 }
-                showNotification('No offline roster stored for this class', 'warning');
+                if(isUserAction){showNotification('No offline roster stored for this class', 'warning');}
             }).finally(() => {
                 if (loadBtn) {
                     loadBtn.disabled = false;
-                    loadBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Load';
+                    if (loadIcon) loadIcon.classList.remove('spin');
                 }
             });
         }
@@ -458,7 +462,10 @@ function loadGradesData(){
     }
 
     fetch(url).then(r=>r.json()).then(d=>{
-        if(!d.success){showNotification(d.message||'Failed to load grades','danger');return;}
+        if(!d.success){
+            if(isUserAction){showNotification(d.message||'Failed to load grades','danger');}
+            return;
+        }
         if(d.weights){
             gradingWeights.ww_weight=parseFloat(d.weights.ww_weight||25);
             gradingWeights.pt_weight=parseFloat(d.weights.pt_weight||50);
@@ -492,28 +499,30 @@ function loadGradesData(){
             window.history.replaceState({}, '', newUrl.toString());
         } catch (e) {}
 
-        const termDisplay = term === 'Term1' ? 'Term 1' : (term === 'Term2' ? 'Term 2' : (term === 'Term3' ? 'Term 3' : term));
-        showNotification('Loaded ' + students.length + ' student records for ' + termDisplay, 'success');
+        if(isUserAction){
+            const termDisplay = term === 'Term1' ? 'Term 1' : (term === 'Term2' ? 'Term 2' : (term === 'Term3' ? 'Term 3' : term));
+            showNotification('Loaded ' + students.length + ' student records for ' + termDisplay, 'success');
+        }
     }).catch(()=>{
         if(window.bshsOfflineStorage){
             window.bshsOfflineStorage.getClassRoster(classId).then(students => {
                 if(students && students.length > 0){
                     renderGrades(students);
-                    showNotification('Loaded offline class roster from device storage', 'info');
+                    if(isUserAction){showNotification('Loaded offline class roster from device storage', 'info');}
                     return;
                 }
             });
         }
-        showNotification('Error loading grades','danger');
+        if(isUserAction){showNotification('Error loading grades','danger');}
     }).finally(()=>{
         if (loadBtn) {
             loadBtn.disabled = false;
-            loadBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Load';
+            if (loadIcon) loadIcon.classList.remove('spin');
         }
     });
 }
-function submitGrades(){const classId=parseInt(document.getElementById('gradeClassSelect')?.value||'0',10);const term=(document.getElementById('termSelect')?.value||'').toString().trim();const academicYear=(document.getElementById('academicYearInput')?.value||'').toString().trim();if(!classId||!term||!academicYear){showNotification('Class, term, and academic year are required','warning');return;}const rows=Array.from(document.querySelectorAll('#gradesBody tr[data-student-id]'));if(rows.length===0){showNotification('No students to submit','warning');return;}const records=[];let invalidCount=0;rows.forEach(row=>{const studentId=parseInt(row.getAttribute('data-student-id')||'0',10);const wwText=(row.querySelector('.grade-ww-percent')?.textContent||'').trim();const ptText=(row.querySelector('.grade-pt-percent')?.textContent||'').trim();const asText=(row.querySelector('.grade-assessment-percent')?.textContent||'').trim();const toNum=v=>{if(!v||v.toUpperCase()==='N/A')return null;const n=parseFloat(v);return Number.isFinite(n)?n:null;};const ww=toNum(wwText);const pt=toNum(ptText);const assessment=toNum(asText);if(studentId>0){if(ww===null&&pt===null&&assessment===null){invalidCount++;}records.push({student_id:studentId,ww_score:ww,pt_score:pt,assessment_score:assessment});}});if(records.length===0){showNotification('No valid student records found','warning');return;}if(invalidCount>0){showNotification('Cannot submit yet. '+invalidCount+' student(s) have no computed scores.','warning');return;}const btn=document.getElementById('submitGradesBtn');if(btn){btn.disabled=true;btn.innerHTML='<span class=\"spinner-border spinner-border-sm me-2\"></span>Submitting...';}fetch('teacher_Action.php?action=submit_grades',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrfToken},body:JSON.stringify({class_id:classId,term:term,academic_year:academicYear,records:records})}).then(r=>r.json()).then(d=>{if(d.success){if(btn){btn.disabled=false;btn.innerHTML='<i class=\"bi bi-send-check me-2\"></i>Submit to Admin';}showNotification(d.message||'Grades submitted','success');setTimeout(function(){loadGradesData();},700);}else{showNotification(d.message||'Failed to submit grades','danger');if(btn){btn.disabled=false;btn.innerHTML='<i class=\"bi bi-send-check me-2\"></i>Submit to Admin';}}}).catch(function(){showNotification('Error submitting grades','danger');if(btn){btn.disabled=false;btn.innerHTML='<i class=\"bi bi-send-check me-2\"></i>Submit to Admin';}});}
-function recallGrades(){const classId=document.getElementById('gradeClassSelect')?.value;const term=document.getElementById('termSelect')?.value;const academicYear=document.getElementById('academicYearInput')?.value.trim();if(!classId||!term||!academicYear){showNotification('Class, term, and academic year are required','warning');return;}const runRecall=function(){const btn=document.getElementById('recallGradesBtn');if(btn){btn.disabled=true;btn.innerHTML='<span class=\"spinner-border spinner-border-sm me-2\"></span>Recalling...';}return fetch('teacher_Action.php?action=recall_grades',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrfToken},body:JSON.stringify({class_id:classId,term:term,academic_year:academicYear})}).then(r=>r.json()).then(d=>{if(d.success){if(btn){btn.disabled=false;btn.innerHTML='<i class=\"bi bi-arrow-return-left me-2\"></i>Recall Submission';}showNotification(d.message||'Grades recalled','success');loadGradesData();}else{showNotification(d.message||'Failed','danger');if(btn){btn.disabled=false;btn.innerHTML='<i class=\"bi bi-arrow-return-left me-2\"></i>Recall Submission';}}}).catch(function(){showNotification('Error','danger');if(btn){btn.disabled=false;btn.innerHTML='<i class=\"bi bi-arrow-return-left me-2\"></i>Recall Submission';}});};if(typeof showAppConfirm!=='function'){runRecall();return;}showAppConfirm({title:'Recall submitted grades?',subtitle:'Teachers can edit and resubmit after recall.',message:'This will pull the current grade submission back into your editable state.',confirmText:'Recall grades',cancelText:'Cancel',tone:'danger',icon:'bi-arrow-counterclockwise'}).then((confirmed)=>{if(confirmed)runRecall();});}
+function submitGrades(){const classId=parseInt(document.getElementById('gradeClassSelect')?.value||'0',10);const term=(document.getElementById('termSelect')?.value||'').toString().trim();const academicYear=(document.getElementById('academicYearInput')?.value||'').toString().trim();if(!classId||!term||!academicYear){showNotification('Class, term, and academic year are required','warning');return;}const rows=Array.from(document.querySelectorAll('#gradesBody tr[data-student-id]'));if(rows.length===0){showNotification('No students to submit','warning');return;}const records=[];let invalidCount=0;rows.forEach(row=>{const studentId=parseInt(row.getAttribute('data-student-id')||'0',10);const wwText=(row.querySelector('.grade-ww-percent')?.textContent||'').trim();const ptText=(row.querySelector('.grade-pt-percent')?.textContent||'').trim();const asText=(row.querySelector('.grade-assessment-percent')?.textContent||'').trim();const toNum=v=>{if(!v||v.toUpperCase()==='N/A')return null;const n=parseFloat(v);return Number.isFinite(n)?n:null;};const ww=toNum(wwText);const pt=toNum(ptText);const assessment=toNum(asText);if(studentId>0){if(ww===null&&pt===null&&assessment===null){invalidCount++;}records.push({student_id:studentId,ww_score:ww,pt_score:pt,assessment_score:assessment});}});if(records.length===0){showNotification('No valid student records found','warning');return;}if(invalidCount>0){showNotification('Cannot submit yet. '+invalidCount+' student(s) have no computed scores.','warning');return;}const btn=document.getElementById('submitGradesBtn');if(btn){btn.disabled=true;btn.innerHTML='<span class=\"spinner-border spinner-border-sm me-2\"></span>Submitting...';}fetch('teacher_Action.php?action=submit_grades',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrfToken},body:JSON.stringify({class_id:classId,term:term,academic_year:academicYear,records:records})}).then(r=>r.json()).then(d=>{if(d.success){if(btn){btn.disabled=false;btn.innerHTML='<i class=\"bi bi-send-check me-2\"></i>Submit to Admin';}showNotification(d.message||'Grades submitted','success');setTimeout(function(){loadGradesData(false);},700);}else{showNotification(d.message||'Failed to submit grades','danger');if(btn){btn.disabled=false;btn.innerHTML='<i class=\"bi bi-send-check me-2\"></i>Submit to Admin';}}}).catch(function(){showNotification('Error submitting grades','danger');if(btn){btn.disabled=false;btn.innerHTML='<i class=\"bi bi-send-check me-2\"></i>Submit to Admin';}});}
+function recallGrades(){const classId=document.getElementById('gradeClassSelect')?.value;const term=document.getElementById('termSelect')?.value;const academicYear=document.getElementById('academicYearInput')?.value.trim();if(!classId||!term||!academicYear){showNotification('Class, term, and academic year are required','warning');return;}const runRecall=function(){const btn=document.getElementById('recallGradesBtn');if(btn){btn.disabled=true;btn.innerHTML='<span class=\"spinner-border spinner-border-sm me-2\"></span>Recalling...';}return fetch('teacher_Action.php?action=recall_grades',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrfToken},body:JSON.stringify({class_id:classId,term:term,academic_year:academicYear})}).then(r=>r.json()).then(d=>{if(d.success){if(btn){btn.disabled=false;btn.innerHTML='<i class=\"bi bi-arrow-return-left me-2\"></i>Recall Submission';}showNotification(d.message||'Grades recalled','success');loadGradesData(false);}else{showNotification(d.message||'Failed','danger');if(btn){btn.disabled=false;btn.innerHTML='<i class=\"bi bi-arrow-return-left me-2\"></i>Recall Submission';}}}).catch(function(){showNotification('Error','danger');if(btn){btn.disabled=false;btn.innerHTML='<i class=\"bi bi-arrow-return-left me-2\"></i>Recall Submission';}});};if(typeof showAppConfirm!=='function'){runRecall();return;}showAppConfirm({title:'Recall submitted grades?',subtitle:'Teachers can edit and resubmit after recall.',message:'This will pull the current grade submission back into your editable state.',confirmText:'Recall grades',cancelText:'Cancel',tone:'danger',icon:'bi-arrow-counterclockwise'}).then((confirmed)=>{if(confirmed)runRecall();});}
 function exportGradesCsv(){const classId=document.getElementById('gradeClassSelect')?.value;const term=document.getElementById('termSelect')?.value||'Term1';const academicYear=document.getElementById('academicYearInput')?.value.trim();const sex=document.getElementById('gradeSexFilter')?.value||'';if(!classId||!academicYear){showNotification('Please select a class and academic year','warning');return;}const isFourQuarter=academicYear<='2025-2026';const semester=isFourQuarter?(term==='Term1'||term==='Term2'?'S1':'S2'):'';let url='teacher_Action.php?action=export_grades&class_id='+encodeURIComponent(classId)+'&academic_year='+encodeURIComponent(academicYear)+'&term='+encodeURIComponent(term);if(isFourQuarter){url+='&semester='+encodeURIComponent(semester);}if(sex){url+='&sex='+encodeURIComponent(sex);}window.open(url,'_blank');}
 
 document.addEventListener('DOMContentLoaded',()=>{
@@ -536,13 +545,13 @@ document.addEventListener('DOMContentLoaded',()=>{
                     if (sel && sel.options.length <= 1) {
                         sel.innerHTML = cachedClasses.map(c => `<option value="${c.id}">${escapeHtml(c.name || '')} (Grade ${c.grade_level || ''} - ${escapeHtml(c.section || '')})</option>`).join('');
                     }
-                    loadGradesData();
+                    loadGradesData(false);
                 }
             });
         }
     } else {
         const classEl=document.getElementById('gradeClassSelect');
-        if(classEl&&classEl.value){loadGradesData();}
+        if(classEl&&classEl.value){loadGradesData(false);}
     }
 });
 document.addEventListener('DOMContentLoaded', () => {

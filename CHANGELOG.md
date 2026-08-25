@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.94 — 2026-08-25
+
+### Fixed
+
+- **Service Worker Offline Fallback Icon**:
+  - Replaced corrupted SVG vector path in [`sw.js`](file:///c:/laragon/www/attendance-and-academic-management-system/sw.js) with clean Bootstrap `bi-wifi-off` SVG icon, removing distorted crossing lines on the offline notice page.
+- **Grade Entry Load Animation & Layout Stability**:
+  - Replaced button text replacement with CSS in-place rotation (`.spin`) on the reload icon in [`teacher/teacher_Grades.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Grades.php) and [`assets/css/main.css`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/css/main.css), eliminating button resizing and layout shifts.
+  - Suppressed toast notification flash during initial automated page load on `DOMContentLoaded`.
+
 ## v0.3.93 — 2026-08-25
 
 ### Fixed
