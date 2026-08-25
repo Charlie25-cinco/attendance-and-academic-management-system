@@ -10,6 +10,7 @@ Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR fo
   - Expanded class access authorization in [`teacher/teacher_SF2_Export.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_SF2_Export.php) to permit subject teachers assigned via `class_subjects` in addition to section advisers (`classes.teacher_id`), resolving unauthorized export errors on subject classes.
   - Made student enrollment lookups in [`teacher/teacher_SF2_Export.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_SF2_Export.php) and [`admin/admin_Classes_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Classes_Action.php) resilient to academic year variations, preventing empty roster exports when filtering across different calendar months.
   - Replaced `cal_days_in_month()` with standard `date('t')` in [`admin/admin_Classes_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Classes_Action.php) to remove `ext-calendar` runtime dependency.
+  - Removed duplicate `const statusCycle` declaration in [`teacher/teacher_Attendance.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Attendance.php), fixing the JavaScript SyntaxError that prevented `exportAttendanceSf2()` from loading.
   - Added automated test assertions in [`tests/Sf2ExporterTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/Sf2ExporterTest.php).
 
 ## v0.3.92 — 2026-08-24

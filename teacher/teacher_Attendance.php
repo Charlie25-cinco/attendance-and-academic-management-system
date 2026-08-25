@@ -227,13 +227,12 @@ $page_title = 'Attendance';
 <script src="<?php echo appAssetPath('js/networkSync.js'); ?>"></script>
 <script src="<?php echo appAssetPath('js/main.js'); ?>"></script>
 <script>
-const statusCycle=['present','absent','late'];
 let canEditAttendance=<?php echo $canEditSelectedClass ? 'true' : 'false'; ?>;
 let editBlockedReason=<?php echo json_encode($editBlockedReason); ?>;
 const serverToday=<?php echo json_encode(date('Y-m-d')); ?>;
 const csrfToken=(window.APP_CSRF_TOKEN||'').toString();
-const initialTeacherClasses=<?php echo json_encode(array_map(function($c) { return ['id' => (int)$c['id'], 'name' => $c['name'], 'subject_title' => $c['subject_title'] ?? '', 'schedule' => $c['schedule'] ?? '']; }, $classes)); ?>;
-const initialStudents=<?php echo json_encode(array_map(function($s) { return ['id' => (int)$s['id'], 'first_name' => $s['first_name'], 'last_name' => $s['last_name'], 'reference_code' => $s['reference_code'] ?? '', 'lrn' => $s['lrn'] ?? '', 'gender' => $s['gender'] ?? '', 'attendance_status' => $s['attendance_status'] ?? 'present', 'remarks' => $s['remarks'] ?? '']; }, $students)); ?>;
+const initialTeacherClasses=<?php echo json_encode(array_map(function($c) { return ['id' => (int)$c['id'], 'name' => $c['class_name'] ?? $c['name'] ?? '', 'grade_level' => $c['grade_level'] ?? '', 'section' => $c['section'] ?? '', 'subject_title' => $c['subject_title'] ?? '', 'schedule' => $c['schedule'] ?? '']; }, $classes)); ?>;
+const initialStudents=<?php echo json_encode(array_map(function($s) { return ['id' => (int)$s['id'], 'first_name' => $s['first_name'] ?? '', 'last_name' => $s['last_name'] ?? '', 'reference_code' => $s['reference_code'] ?? '', 'lrn' => $s['lrn'] ?? '', 'sex' => $s['sex'] ?? $s['gender'] ?? '', 'attendance_status' => $s['attendance_status'] ?? 'present', 'remarks' => $s['remarks'] ?? '']; }, $students)); ?>;
 const currentSelectedClassId=<?php echo json_encode($selectedClassId); ?>;
 
 function persistOfflineRoster(classId, students) {
