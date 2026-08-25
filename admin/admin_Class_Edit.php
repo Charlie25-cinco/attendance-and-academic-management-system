@@ -115,21 +115,15 @@ $page_title = 'Edit Class - ' . $class['class_name'];
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Subject Category <span class="text-danger">*</span></label>
-                            <select name="subject_category" class="form-select" onchange="onSubjectCategoryChange(this)">
-                                <option value="">Select Category (DepEd DO 8, s. 2015)</option>
-                                <optgroup label="Academic Track">
-                                    <option value="core" <?php echo (($class['subject_category'] ?? '') === 'core') ? 'selected' : ''; ?>>Core Subjects (WW 25%, PT 50%, QA 25%)</option>
-                                    <option value="academic_elective" <?php echo (($class['subject_category'] ?? '') === 'academic_elective') ? 'selected' : ''; ?>>Academic Electives / Specialized (STEM, ABM, HUMSS) (WW 25%, PT 45%, QA 30%)</option>
-                                    <option value="research" <?php echo (($class['subject_category'] ?? '') === 'research') ? 'selected' : ''; ?>>Research Electives, Design & Innovation (WW 40%, PT 60%, QA 0%)</option>
-                                    <option value="work_immersion" <?php echo (($class['subject_category'] ?? '') === 'work_immersion') ? 'selected' : ''; ?>>Work Immersion / Business Simulation / Culminating (WW 20%, PT 60%, QA 20%)</option>
-                                </optgroup>
-                                <optgroup label="Technical-Professional (TechPro / TVL) Track">
-                                    <option value="techpro_elective" <?php echo (($class['subject_category'] ?? '') === 'techpro_elective') ? 'selected' : ''; ?>>TechPro Electives / Specialized TVL (ICT, IA, AFA, HE) (WW 20%, PT 60%, QA 20%)</option>
-                                    <option value="tvl_immersion" <?php echo (($class['subject_category'] ?? '') === 'tvl_immersion') ? 'selected' : ''; ?>>TechPro Immersion / Apprenticeship / Research (WW 20%, PT 80%, QA 0%)</option>
-                                </optgroup>
-                                <optgroup label="Other DepEd Categories">
-                                    <option value="field_experience_elective" <?php echo (($class['subject_category'] ?? '') === 'field_experience_elective') ? 'selected' : ''; ?>>Field Experience / Sports & Arts (WW 15%, PT 65%, QA 20%)</option>
-                                </optgroup>
+                            <select name="subject_category" class="form-select" onchange="onSubjectCategoryChange(this)" required>
+                                <option value="">Select Category</option>
+                                <option value="core" <?php echo (($class['subject_category'] ?? '') === 'core') ? 'selected' : ''; ?>>Core Subject</option>
+                                <option value="academic_elective" <?php echo (($class['subject_category'] ?? '') === 'academic_elective') ? 'selected' : ''; ?>>Academic Elective / Specialized</option>
+                                <option value="research" <?php echo (($class['subject_category'] ?? '') === 'research') ? 'selected' : ''; ?>>Research / Innovation</option>
+                                <option value="work_immersion" <?php echo (($class['subject_category'] ?? '') === 'work_immersion') ? 'selected' : ''; ?>>Work Immersion / Culminating</option>
+                                <option value="techpro_elective" <?php echo (($class['subject_category'] ?? '') === 'techpro_elective') ? 'selected' : ''; ?>>TechPro Elective</option>
+                                <option value="tvl_immersion" <?php echo (($class['subject_category'] ?? '') === 'tvl_immersion') ? 'selected' : ''; ?>>Apprenticeship / TechPro Immersion</option>
+                                <option value="field_experience_elective" <?php echo (($class['subject_category'] ?? '') === 'field_experience_elective') ? 'selected' : ''; ?>>Field Experience / Sports & Arts</option>
                             </select>
                             <small class="text-muted">Auto-configures default weights per DepEd Order No. 8, s. 2015.</small>
                         </div>

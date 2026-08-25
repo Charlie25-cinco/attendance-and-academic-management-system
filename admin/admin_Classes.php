@@ -341,20 +341,14 @@ $page_title = 'Manage Classes';
                                     <div class="col-lg-6 mb-3">
                                         <label class="form-label">Subject Category <span class="text-danger">*</span></label>
                                         <select name="subject_category" id="subjectCategorySelect" class="form-select" onchange="onSubjectCategoryChange(this)" required>
-                                            <option value="">Select Category (DepEd DO 8, s. 2015)</option>
-                                            <optgroup label="Academic Track">
-                                                <option value="core">Core Subjects (WW 25%, PT 50%, QA 25%)</option>
-                                                <option value="academic_elective">Academic Electives / Specialized (STEM, ABM, HUMSS) (WW 25%, PT 45%, QA 30%)</option>
-                                                <option value="research">Research Electives, Design & Innovation (WW 40%, PT 60%, QA 0%)</option>
-                                                <option value="work_immersion">Work Immersion / Business Simulation / Culminating (WW 20%, PT 60%, QA 20%)</option>
-                                            </optgroup>
-                                            <optgroup label="Technical-Professional (TechPro / TVL) Track">
-                                                <option value="techpro_elective">TechPro Electives / Specialized TVL (ICT, IA, AFA, HE) (WW 20%, PT 60%, QA 20%)</option>
-                                                <option value="tvl_immersion">TechPro Immersion / Apprenticeship / Research (WW 20%, PT 80%, QA 0%)</option>
-                                            </optgroup>
-                                            <optgroup label="Other DepEd Categories">
-                                                <option value="field_experience_elective">Field Experience / Sports & Arts (WW 15%, PT 65%, QA 20%)</option>
-                                            </optgroup>
+                                            <option value="">Select Category</option>
+                                            <option value="core">Core Subject</option>
+                                            <option value="academic_elective">Academic Elective / Specialized</option>
+                                            <option value="research">Research / Innovation</option>
+                                            <option value="work_immersion">Work Immersion / Culminating</option>
+                                            <option value="techpro_elective">TechPro Elective</option>
+                                            <option value="tvl_immersion">Apprenticeship / TechPro Immersion</option>
+                                            <option value="field_experience_elective">Field Experience / Sports & Arts</option>
                                         </select>
                                         <small class="text-muted">Auto-configures default weights per DepEd Order No. 8, s. 2015.</small>
                                     </div>

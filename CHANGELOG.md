@@ -2,6 +2,20 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.98 — 2026-08-25
+
+### Added
+
+- **YouTube-Style Live Student Autocomplete Search (Teacher Advisory)**:
+  - Implemented interactive floating suggestions dropdown in [`teacher/teacher_Advisory.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Advisory.php) that live-filters students by name or LRN as you type, highlights matching query terms, supports Arrow Up/Down keyboard navigation, and automatically loads report cards upon 1-click or Enter selection.
+
+### Changed
+
+- **Compact Subject Category Dropdown**:
+  - Simplified Subject Category dropdown options across [`admin/admin_Classes.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Classes.php) and [`admin/admin_Class_Edit.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Class_Edit.php) to clean, concise labels without verbose track or percentage clutter.
+- **Fixed Student Card Left Alignment Gap**:
+  - Wrapped KPI card elements in `.card-icon` and `.dashboard-card-info` in [`teacher/teacher_Advisory.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Advisory.php), eliminating the empty grid column gap on the left of student names.
+
 ## v0.3.97 — 2026-08-25
 
 ### Added

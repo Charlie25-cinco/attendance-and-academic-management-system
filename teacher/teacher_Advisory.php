@@ -288,22 +288,23 @@ $page_title = 'Report Card';
                     </div>
 
                     <form method="GET" class="row g-3 align-items-end mb-3 app-responsive-filter-form" id="advisoryReportCardForm">
-                        <div class="col-md-3">
-                            <label class="form-label">Search Student</label>
+                        <div class="col-md-7 position-relative">
+                            <label class="form-label fw-semibold"><i class="bi bi-search me-1"></i>Search Student</label>
                             <div class="input-group">
-                                <span class="input-group-text"><i class="bi bi-search"></i></span>
-                                <input type="text" id="reportCardStudentSearch" class="form-control" placeholder="Type name or LRN..." oninput="filterAdvisoryStudentDropdown(this.value)">
+                                <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+                                <input type="text" 
+                                       id="reportCardStudentSearch" 
+                                       class="form-control" 
+                                       placeholder="Type name or LRN (e.g. Abellana, Carlo)..." 
+                                       value="<?php echo $selectedStudent ? htmlspecialchars(trim(((string)$selectedStudent['last_name']) . ', ' . ((string)$selectedStudent['first_name'])) . (!empty($selectedStudent['reference_code']) ? ' (' . $selectedStudent['reference_code'] . ')' : '')) : ''; ?>"
+                                       autocomplete="off">
+                                <?php if ($selectedStudent): ?>
+                                    <button class="btn btn-outline-secondary" type="button" id="clearStudentSearchBtn" title="Clear search"><i class="bi bi-x-lg"></i></button>
+                                <?php endif; ?>
                             </div>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Student</label>
-                            <select name="student_id" id="advisoryStudentSelect" class="form-select" onchange="this.form.submit()">
-                                <?php foreach ($students as $s): ?>
-                                    <option value="<?php echo (int)$s['id']; ?>" data-search="<?php echo htmlspecialchars(strtolower($s['last_name'] . ' ' . $s['first_name'] . ' ' . ($s['reference_code'] ?? ''))); ?>" <?php echo ((int)$s['id'] === $selectedStudentId) ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars(trim(((string)$s['last_name']) . ', ' . ((string)$s['first_name'])) . (!empty($s['reference_code']) ? ' (' . $s['reference_code'] . ')' : '')); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
+                            <input type="hidden" name="student_id" id="advisoryStudentIdInput" value="<?php echo (int)$selectedStudentId; ?>">
+                            <div id="studentSuggestionsMenu" class="dropdown-menu shadow-lg w-100 p-1 border-0" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:1060; max-height:280px; overflow-y:auto; border-radius:10px; margin-top:4px; box-shadow:0 10px 25px rgba(0,0,0,0.15)!important;">
+                            </div>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Academic Year</label>
@@ -316,9 +317,34 @@ $page_title = 'Report Card';
 
                     <?php if ($selectedStudent): ?>
                         <div class="row g-3 mb-3">
-                            <div class="col-md-4"><div class="dashboard-card"><div class="card-title">Student</div><div class="card-value" style="font-size:1.2rem;"><?php echo htmlspecialchars(trim(((string)$selectedStudent['first_name']) . ' ' . ((string)$selectedStudent['last_name']))); ?></div><div class="text-muted"><?php echo htmlspecialchars((string)$selectedStudent['reference_code']); ?></div></div></div>
-                            <div class="col-md-4"><div class="dashboard-card"><div class="card-title">Subjects</div><div class="card-value"><?php echo number_format((int)$reportSummary['subject_count']); ?></div></div></div>
-                            <div class="col-md-4"><div class="dashboard-card"><div class="card-title">GWA</div><div class="card-value"><?php echo $reportSummary['gwa'] !== null ? number_format((float)$reportSummary['gwa'], 2) : 'N/A'; ?></div></div></div>
+                            <div class="col-md-4">
+                                <div class="dashboard-card">
+                                    <div class="card-icon bg-primary-subtle text-primary"><i class="bi bi-person-badge fs-4"></i></div>
+                                    <div class="dashboard-card-info">
+                                        <div class="card-title">Student</div>
+                                        <div class="card-value" style="font-size:1.2rem;"><?php echo htmlspecialchars(trim(((string)$selectedStudent['first_name']) . ' ' . ((string)$selectedStudent['last_name']))); ?></div>
+                                        <small class="text-muted d-block"><?php echo htmlspecialchars((string)$selectedStudent['reference_code']); ?></small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="dashboard-card">
+                                    <div class="card-icon bg-info-subtle text-info"><i class="bi bi-journal-text fs-4"></i></div>
+                                    <div class="dashboard-card-info">
+                                        <div class="card-title">Subjects</div>
+                                        <div class="card-value"><?php echo number_format((int)$reportSummary['subject_count']); ?></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="dashboard-card">
+                                    <div class="card-icon bg-success-subtle text-success"><i class="bi bi-award fs-4"></i></div>
+                                    <div class="dashboard-card-info">
+                                        <div class="card-title">GWA</div>
+                                        <div class="card-value"><?php echo $reportSummary['gwa'] !== null ? number_format((float)$reportSummary['gwa'], 2) : 'N/A'; ?></div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
                             <?php
@@ -439,23 +465,94 @@ $page_title = 'Report Card';
 <script src="<?php echo appAssetPath('vendor/bootstrap/bootstrap.bundle.min.js'); ?>"></script>
 <script src="<?php echo appAssetPath('js/main.js'); ?>"></script>
 <script>
-function filterAdvisoryStudentDropdown(query) {
-    const q = (query || '').toLowerCase().trim();
-    const select = document.getElementById('advisoryStudentSelect');
-    if (!select) return;
-    const options = select.options;
-    for (let i = 0; i < options.length; i++) {
-        const opt = options[i];
-        const s = (opt.getAttribute('data-search') || opt.textContent || '').toLowerCase();
-        if (!q || s.includes(q)) {
-            opt.hidden = false;
-            opt.disabled = false;
-        } else {
-            opt.hidden = true;
-            opt.disabled = true;
-        }
-    }
+const advisoryStudentsList = <?php echo json_encode(array_map(function($s) {
+    return [
+        'id' => (int)$s['id'],
+        'last_name' => (string)($s['last_name'] ?? ''),
+        'first_name' => (string)($s['first_name'] ?? ''),
+        'reference_code' => (string)($s['reference_code'] ?? ''),
+        'full_name' => trim(((string)$s['last_name']) . ', ' . ((string)$s['first_name'])),
+        'display_label' => trim(((string)$s['last_name']) . ', ' . ((string)$s['first_name'])) . (!empty($s['reference_code']) ? ' (' . $s['reference_code'] . ')' : '')
+    ];
+}, $students), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
+
+let activeSuggestionIdx = -1;
+
+function escapeHtml(str) {
+    return (str || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
 }
+
+function highlightMatch(text, query) {
+    if (!query) return escapeHtml(text);
+    const escapedText = escapeHtml(text);
+    const escapedQuery = escapeHtml(query);
+    const reg = new RegExp('(' + escapedQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+    return escapedText.replace(reg, '<mark class="bg-warning-subtle text-dark fw-bold px-0">$1</mark>');
+}
+
+function renderStudentSuggestions(query) {
+    const menu = document.getElementById('studentSuggestionsMenu');
+    if (!menu) return;
+    const q = (query || '').trim().toLowerCase();
+    
+    let matches = [];
+    if (!q) {
+        matches = advisoryStudentsList.slice(0, 15);
+    } else {
+        matches = advisoryStudentsList.filter(s => 
+            s.full_name.toLowerCase().includes(q) || 
+            s.first_name.toLowerCase().includes(q) || 
+            s.last_name.toLowerCase().includes(q) || 
+            s.reference_code.toLowerCase().includes(q)
+        );
+    }
+    
+    activeSuggestionIdx = -1;
+    if (matches.length === 0) {
+        menu.innerHTML = '<div class="p-3 text-center text-muted small"><i class="bi bi-person-x me-1"></i>No students found matching "<strong>' + escapeHtml(q) + '</strong>"</div>';
+        menu.style.display = 'block';
+        return;
+    }
+    
+    let html = '';
+    matches.forEach((s, idx) => {
+        const highlightedName = highlightMatch(s.full_name, q);
+        const highlightedCode = s.reference_code ? highlightMatch(s.reference_code, q) : '';
+        html += `<div class="dropdown-item d-flex align-items-center justify-content-between py-2 px-3 student-suggestion-item border-bottom border-light" style="cursor:pointer;" data-idx="${idx}" data-id="${s.id}" data-label="${escapeHtml(s.display_label)}">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-person-circle text-primary fs-5"></i>
+                <div>
+                    <div class="fw-semibold text-dark suggestion-name">${highlightedName}</div>
+                    ${s.reference_code ? '<small class="text-muted">LRN: ' + highlightedCode + '</small>' : ''}
+                </div>
+            </div>
+            <i class="bi bi-arrow-right-short text-muted fs-5"></i>
+        </div>`;
+    });
+    
+    menu.innerHTML = html;
+    menu.style.display = 'block';
+    
+    menu.querySelectorAll('.student-suggestion-item').forEach(item => {
+        item.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            selectStudentSuggestion(item.getAttribute('data-id'), item.getAttribute('data-label'));
+        });
+    });
+}
+
+function selectStudentSuggestion(studentId, displayLabel) {
+    const searchInput = document.getElementById('reportCardStudentSearch');
+    const idInput = document.getElementById('advisoryStudentIdInput');
+    const menu = document.getElementById('studentSuggestionsMenu');
+    const form = document.getElementById('advisoryReportCardForm');
+    
+    if (searchInput) searchInput.value = displayLabel;
+    if (idInput) idInput.value = studentId;
+    if (menu) menu.style.display = 'none';
+    if (form) form.submit();
+}
+
 function submitReportCardToAdmin(academicYear){
     const fd=new FormData();
     fd.append('academic_year',academicYear);
@@ -475,15 +572,81 @@ function recallReportCard(academicYear){
       .catch(()=>showNotification('Error recalling report cards','danger'));
 }
 document.addEventListener('DOMContentLoaded', () => {
-    const searchEl = document.getElementById('advisoryStudentsSearch');
-    if (!searchEl) return;
-    searchEl.addEventListener('input', () => {
-        const q = searchEl.value.trim().toLowerCase();
-        document.querySelectorAll('#advisoryStudentsBody tr[data-student-row]').forEach(row => {
-            const text = row.textContent.toLowerCase();
-            row.style.display = text.includes(q) ? '' : 'none';
+    const searchInput = document.getElementById('reportCardStudentSearch');
+    const menu = document.getElementById('studentSuggestionsMenu');
+    const clearBtn = document.getElementById('clearStudentSearchBtn');
+    
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            renderStudentSuggestions(searchInput.value);
         });
-    });
+        
+        searchInput.addEventListener('focus', () => {
+            renderStudentSuggestions(searchInput.value);
+        });
+        
+        searchInput.addEventListener('keydown', (e) => {
+            if (!menu || menu.style.display === 'none') return;
+            const items = menu.querySelectorAll('.student-suggestion-item');
+            if (!items.length) return;
+            
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                activeSuggestionIdx = (activeSuggestionIdx + 1) % items.length;
+                updateActiveSuggestion(items);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                activeSuggestionIdx = (activeSuggestionIdx - 1 + items.length) % items.length;
+                updateActiveSuggestion(items);
+            } else if (e.key === 'Enter') {
+                if (activeSuggestionIdx >= 0 && items[activeSuggestionIdx]) {
+                    e.preventDefault();
+                    const activeItem = items[activeSuggestionIdx];
+                    selectStudentSuggestion(activeItem.getAttribute('data-id'), activeItem.getAttribute('data-label'));
+                }
+            } else if (e.key === 'Escape') {
+                menu.style.display = 'none';
+            }
+        });
+        
+        document.addEventListener('click', (e) => {
+            if (!searchInput.contains(e.target) && (!menu || !menu.contains(e.target))) {
+                if (menu) menu.style.display = 'none';
+            }
+        });
+    }
+    
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            if (searchInput) {
+                searchInput.value = '';
+                searchInput.focus();
+                renderStudentSuggestions('');
+            }
+        });
+    }
+
+    function updateActiveSuggestion(items) {
+        items.forEach((item, idx) => {
+            if (idx === activeSuggestionIdx) {
+                item.classList.add('bg-primary-subtle');
+                item.scrollIntoView({ block: 'nearest' });
+            } else {
+                item.classList.remove('bg-primary-subtle');
+            }
+        });
+    }
+
+    const searchEl = document.getElementById('advisoryStudentsSearch');
+    if (searchEl) {
+        searchEl.addEventListener('input', () => {
+            const q = searchEl.value.trim().toLowerCase();
+            document.querySelectorAll('#advisoryStudentsBody tr[data-student-row]').forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(q) ? '' : 'none';
+            });
+        });
+    }
 });
 </script>
 </body>
