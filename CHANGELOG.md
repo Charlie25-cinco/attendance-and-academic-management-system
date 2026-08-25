@@ -20,7 +20,6 @@ Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR fo
     - **Parent**: `Parent_Announcements.php`.
     - **Student**: `Student_Announcements.php`.
 
-
 ## v0.3.100 — 2026-08-25
 
 ### Added
