@@ -8,6 +8,7 @@
 
 SET FOREIGN_KEY_CHECKS = 0;
 
+DROP TABLE IF EXISTS sms_logs;
 DROP TABLE IF EXISTS rbac_role_permissions;
 DROP TABLE IF EXISTS rbac_permissions;
 DROP TABLE IF EXISTS rbac_roles;
@@ -17,6 +18,7 @@ DROP TABLE IF EXISTS attendance_sync_queue;
 DROP TABLE IF EXISTS website_content;
 DROP TABLE IF EXISTS messages;
 DROP TABLE IF EXISTS mobile_push_tokens;
+DROP TABLE IF EXISTS auth_password_change_tokens;
 DROP TABLE IF EXISTS auth_password_resets;
 DROP TABLE IF EXISTS app_sessions;
 DROP TABLE IF EXISTS auth_remember_tokens;
