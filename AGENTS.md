@@ -30,6 +30,7 @@ This document acts as the primary entry point for AI agents and developers. Dedi
 - [README.md](file:///c:/laragon/www/attendance-and-academic-management-system/README.md) — Standard project documentation, environment setup, and CLI usage.
 - [AGENTS.md](file:///c:/laragon/www/attendance-and-academic-management-system/AGENTS.md) — Operational guidelines, coding standards, and security constraints.
 - [docs/PRODUCT_SPEC.md](file:///c:/laragon/www/attendance-and-academic-management-system/docs/PRODUCT_SPEC.md) — Product specifications, functional requirements (REQ-001..REQ-010), and user persona workflows.
+- [docs/SYSTEM_FEATURES.md](file:///c:/laragon/www/attendance-and-academic-management-system/docs/SYSTEM_FEATURES.md) — Comprehensive system features, DepEd compliance breakdown, and research paper technical specifications.
 - [docs/ARCHITECTURE.md](file:///c:/laragon/www/attendance-and-academic-management-system/docs/ARCHITECTURE.md) — Technical architecture, PSR-4 namespaces, security model, RBAC matrix, and Wasmer deployment setup.
 - [CHANGELOG.md](file:///c:/laragon/www/attendance-and-academic-management-system/CHANGELOG.md) — Semantic versioning changelog history.
 
