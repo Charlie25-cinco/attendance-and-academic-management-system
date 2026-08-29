@@ -1082,12 +1082,17 @@ if (isset($_GET['download_template'])) {
                     const created = data.created || 0;
                     const skipped = data.skipped || 0;
                     const errors = data.errors || 0;
-                    document.getElementById('importSummary').innerHTML =
-                        '<div class="d-flex gap-3 flex-wrap">' +
-                        '<span class="badge bg-success fs-6"><i class="bi bi-person-plus me-1"></i>' + created + ' Created</span>' +
-                        '<span class="badge bg-warning text-dark fs-6"><i class="bi bi-skip-forward me-1"></i>' + skipped + ' Skipped</span>' +
-                        '<span class="badge bg-danger fs-6"><i class="bi bi-exclamation-triangle me-1"></i>' + errors + ' Errors</span>' +
-                        '</div>';
+                    const parentsCreated = data.parents_created || 0;
+                    const parentsLinked = data.parents_linked || 0;
+
+                    let summaryBadges = '<span class="badge bg-success fs-6"><i class="bi bi-person-plus me-1"></i>' + created + ' Students Created</span>';
+                    if (parentsCreated > 0 || parentsLinked > 0) {
+                        summaryBadges += '<span class="badge bg-info text-dark fs-6"><i class="bi bi-people me-1"></i>' + parentsCreated + ' Parents Created (' + parentsLinked + ' Linked)</span>';
+                    }
+                    summaryBadges += '<span class="badge bg-warning text-dark fs-6"><i class="bi bi-skip-forward me-1"></i>' + skipped + ' Skipped</span>';
+                    summaryBadges += '<span class="badge bg-danger fs-6"><i class="bi bi-exclamation-triangle me-1"></i>' + errors + ' Errors</span>';
+
+                    document.getElementById('importSummary').innerHTML = '<div class="d-flex gap-3 flex-wrap">' + summaryBadges + '</div>';
 
                     const log = document.getElementById('importLog');
                     const rows = data.rows || [];

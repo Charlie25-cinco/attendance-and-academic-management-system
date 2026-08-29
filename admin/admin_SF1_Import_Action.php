@@ -60,7 +60,7 @@ if ($isXlsx) {
     }
 }
 
-$results = ['success' => true, 'created' => 0, 'sections_created' => 0, 'skipped' => 0, 'errors' => 0, 'rows' => []];
+$results = ['success' => true, 'created' => 0, 'sections_created' => 0, 'parents_created' => 0, 'parents_linked' => 0, 'skipped' => 0, 'errors' => 0, 'rows' => []];
 $importRows = [];
 $headerInfo = [];
 
@@ -336,12 +336,21 @@ foreach ($importRows as $row) {
             $gradeLevel, $section, $track, $curriculum, $program
         ]);
 
-        $newUserId = $db->lastInsertId();
-        if ($newUserId) {
-            syncStudentEnrollments($db, (int)$newUserId, $gradeLevel, $section, $track, $academicYear);
+        $newUserId = (int)$db->lastInsertId();
+        $parentInfoMsg = '';
+        if ($newUserId > 0) {
+            syncStudentEnrollments($db, $newUserId, $gradeLevel, $section, $track, $academicYear);
+            $parentLink = autoLinkSf1Parent($db, $newUserId, $row, $academicYear, $hashedPassword);
+            if ($parentLink !== null) {
+                if ($parentLink['is_new']) {
+                    $results['parents_created']++;
+                }
+                $results['parents_linked']++;
+                $parentInfoMsg = ' | Parent linked (' . $parentLink['parent_ref_code'] . ')';
+            }
         }
 
-        $results['rows'][] = ['row' => $rowNum, 'lrn' => $lrn, 'name' => "$firstName $lastName", 'status' => 'created', 'message' => "Created with ref code: $refCode"];
+        $results['rows'][] = ['row' => $rowNum, 'lrn' => $lrn, 'name' => "$firstName $lastName", 'status' => 'created', 'message' => "Created with ref code: $refCode" . $parentInfoMsg];
         $results['created']++;
     } catch (Throwable $e) {
         $errMsg = str_contains($e->getMessage(), 'Duplicate') ? 'Email or reference code already exists.' : 'Database error.';
@@ -365,6 +374,9 @@ if ($results['created'] === 0 && $results['errors'] === 0 && $results['skipped']
     if ($results['sections_created'] > 0) {
         $results['message'] .= ' ' . $results['sections_created'] . ' section(s) created.';
     }
+    if ($results['parents_created'] > 0 || $results['parents_linked'] > 0) {
+        $results['message'] .= ' ' . $results['parents_created'] . ' parent account(s) created (' . $results['parents_linked'] . ' linked).';
+    }
 }
 
 recordAdminAuditLog($db, 'sf1.import', 'student_import', null, [
@@ -372,6 +384,8 @@ recordAdminAuditLog($db, 'sf1.import', 'student_import', null, [
     'academic_year' => $academicYear,
     'created' => (int)$results['created'],
     'sections_created' => (int)$results['sections_created'],
+    'parents_created' => (int)$results['parents_created'],
+    'parents_linked' => (int)$results['parents_linked'],
     'skipped' => (int)$results['skipped'],
     'errors' => (int)$results['errors'],
     'success' => (bool)$results['success'],

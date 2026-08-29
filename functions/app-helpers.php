@@ -175,6 +175,21 @@ function referenceCodeYearPart(?string $academicYear = null): string {
 }
 
 function nextReferenceSuffix(PDO $db, string $prefix): int {
+    $driver = (string)$db->getAttribute(PDO::ATTR_DRIVER_NAME);
+    if ($driver === 'sqlite') {
+        $stmt = $db->prepare("SELECT reference_code FROM users WHERE reference_code LIKE ?");
+        $stmt->execute([$prefix . '%']);
+        $codes = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+        $max = 0;
+        foreach ($codes as $code) {
+            if (preg_match('/-(\d+)$/', (string)$code, $m)) {
+                $num = (int)$m[1];
+                if ($num > $max) { $max = $num; }
+            }
+        }
+        return $max + 1;
+    }
+
     $stmt = $db->prepare("SELECT reference_code FROM users WHERE reference_code LIKE ? ORDER BY CAST(SUBSTRING_INDEX(reference_code, '-', -1) AS UNSIGNED) DESC LIMIT 1");
     $stmt->execute([$prefix . '%']);
     $last = (string)$stmt->fetchColumn();
@@ -390,6 +405,116 @@ function syncStudentEnrollments(PDO $db, int $studentId, int $gradeLevel, string
     foreach ($classIds as $classId) {
         $insertStmt->execute([$studentId, $classId, $academicYear, $semester, $curriculum, $program]);
     }
+}
+
+function autoLinkSf1Parent(PDO $db, int $studentId, array $row, string $academicYear, ?string $hashedPassword = null): ?array {
+    $guardianName = trim((string)($row['guardian_name'] ?? ''));
+    $fatherName = trim((string)($row['father_name'] ?? ''));
+    $motherName = trim((string)($row['mother_name'] ?? ''));
+    $guardianRelationship = trim((string)($row['relationship'] ?? ''));
+    $contactNumber = trim((string)($row['contact_number'] ?? ''));
+
+    $parentRawName = '';
+    $relationship = 'Parent';
+
+    if ($guardianName !== '') {
+        $parentRawName = $guardianName;
+        $relationship = $guardianRelationship !== '' ? $guardianRelationship : 'Guardian';
+    } elseif ($fatherName !== '') {
+        $parentRawName = $fatherName;
+        $relationship = 'Father';
+    } elseif ($motherName !== '') {
+        $parentRawName = $motherName;
+        $relationship = 'Mother';
+    }
+
+    if ($parentRawName === '') {
+        return null;
+    }
+
+    $parsed = \BshsAms\Export\Sf1Parser::parseLearnerName($parentRawName);
+    $firstName = trim((string)($parsed['first_name'] ?? ''));
+    $middleName = trim((string)($parsed['middle_name'] ?? ''));
+    $lastName = trim((string)($parsed['last_name'] ?? ''));
+
+    if ($firstName === '' || $lastName === '') {
+        return null;
+    }
+
+    $parentSex = match (strtolower($relationship)) {
+        'father' => 'male',
+        'mother' => 'female',
+        default => null,
+    };
+
+    $parentId = null;
+    $isNewParent = false;
+    $parentRefCode = '';
+
+    if ($contactNumber !== '') {
+        $checkStmt = $db->prepare("SELECT id, reference_code FROM users WHERE role = 'parent' AND (
+            (LOWER(first_name) = LOWER(?) AND LOWER(last_name) = LOWER(?))
+            OR contact_number = ?
+        ) LIMIT 1");
+        $checkStmt->execute([$firstName, $lastName, $contactNumber]);
+        $existingParent = $checkStmt->fetch(PDO::FETCH_ASSOC);
+        if ($existingParent) {
+            $parentId = (int)$existingParent['id'];
+            $parentRefCode = (string)$existingParent['reference_code'];
+        }
+    } else {
+        $checkStmt = $db->prepare("SELECT id, reference_code FROM users WHERE role = 'parent' AND LOWER(first_name) = LOWER(?) AND LOWER(last_name) = LOWER(?) LIMIT 1");
+        $checkStmt->execute([$firstName, $lastName]);
+        $existingParent = $checkStmt->fetch(PDO::FETCH_ASSOC);
+        if ($existingParent) {
+            $parentId = (int)$existingParent['id'];
+            $parentRefCode = (string)$existingParent['reference_code'];
+        }
+    }
+
+    if (!$parentId) {
+        $parentRefCode = generateReferenceCode('parent', $db, $academicYear);
+        $parentEmail = strtolower($parentRefCode) . '@balingasag.edu.ph';
+        $pwHash = $hashedPassword ?: password_hash(getDefaultNewUserPassword(), PASSWORD_BCRYPT);
+
+        $insertParent = $db->prepare("INSERT INTO users
+            (reference_code, email, password, first_name, middle_name, last_name, sex, contact_number, role, status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'parent', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)");
+        $insertParent->execute([
+            $parentRefCode,
+            $parentEmail,
+            $pwHash,
+            $firstName,
+            ($middleName !== '' ? $middleName : null),
+            $lastName,
+            $parentSex,
+            ($contactNumber !== '' ? $contactNumber : null),
+        ]);
+        $parentId = (int)$db->lastInsertId();
+        $isNewParent = true;
+    } elseif ($contactNumber !== '') {
+        $updContact = $db->prepare("UPDATE users SET contact_number = ? WHERE id = ? AND (contact_number IS NULL OR contact_number = '')");
+        $updContact->execute([$contactNumber, $parentId]);
+    }
+
+    $driver = (string)$db->getAttribute(PDO::ATTR_DRIVER_NAME);
+    if ($driver === 'sqlite') {
+        $linkStmt = $db->prepare("INSERT INTO parent_students (parent_id, student_id, relationship)
+            VALUES (?, ?, ?)
+            ON CONFLICT(student_id) DO UPDATE SET parent_id = excluded.parent_id, relationship = excluded.relationship");
+    } else {
+        $linkStmt = $db->prepare("INSERT INTO parent_students (parent_id, student_id, relationship)
+            VALUES (?, ?, ?)
+            ON DUPLICATE KEY UPDATE parent_id = VALUES(parent_id), relationship = VALUES(relationship)");
+    }
+    $linkStmt->execute([$parentId, $studentId, $relationship]);
+
+    return [
+        'parent_id' => $parentId,
+        'parent_ref_code' => $parentRefCode,
+        'is_new' => $isNewParent,
+        'relationship' => $relationship,
+    ];
 }
 
 function parseSchedule(string $scheduleStr): ?array {

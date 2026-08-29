@@ -2,6 +2,17 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.102 — 2026-08-29
+
+### Added
+
+- **Automatic Parent Account Creation and Student Linking on SF1 Import**:
+  - Implemented `autoLinkSf1Parent()` in [`admin/admin_SF1_Import_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_SF1_Import_Action.php) to automatically create parent user accounts (`role = 'parent'`) from Father, Mother, or Guardian information in imported SF1 spreadsheets.
+  - Automatically links each newly enrolled learner to their parent/guardian record in the `parent_students` table.
+  - Reuses existing parent accounts for enrolled siblings sharing the same parent name or mobile contact number, avoiding duplicate parent account proliferation.
+  - Updated the SF1 Import Results summary dialog in [`admin/admin_Enrollments.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Enrollments.php) to display real-time parent creation and linking counts alongside student enrollments.
+  - Added automated unit and integration tests in [`tests/Sf1ParentAutoCreationTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/Sf1ParentAutoCreationTest.php).
+
 ## v0.3.101 — 2026-08-25
 
 ### Fixed
