@@ -23,3 +23,4 @@ api/.api_secret
 api/.api_sync_secret
 config/push_keys.php
 config/push_keys.json
+docs/DEMO_TEMP_SETUP.md

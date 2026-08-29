@@ -58,14 +58,7 @@ function apiHasMinimumLetters(string $value, int $minimum = 2): bool {
 }
 
 function apiValidMiddleName(string $value): bool {
-    $value = trim($value);
-    if ($value === '') {
-        return true;
-    }
-    if (!apiValidPersonName($value, true)) {
-        return false;
-    }
-    return apiHasMinimumLetters($value, 2);
+    return isValidMiddleName($value);
 }
 
 function apiHasNotificationsTable(PDO $db): bool {

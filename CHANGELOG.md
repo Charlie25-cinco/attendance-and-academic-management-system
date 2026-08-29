@@ -2,6 +2,19 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.103 — 2026-08-29
+
+### Added
+
+- **Teacher Assignment Option in Add & Edit Class Forms**:
+  - Added an "Assigned Teacher" selector dropdown to the "Add New Class" modal in [`admin/admin_Classes.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Classes.php) populated with active teachers from the system.
+  - Added the same "Assigned Teacher" selector to [`admin/admin_Class_Edit.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Class_Edit.php) so administrators can reassign or change teachers when modifying class records.
+  - Enhanced `createClass()` and `updateClass()` in [`admin/admin_Classes_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Classes_Action.php) to store `classes.teacher_id` and automatically sync the `class_subjects` mapping for immediate visibility in the assigned teacher's portal.
+  - Added automated unit tests in [`tests/ClassTeacherAssignmentTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/ClassTeacherAssignmentTest.php).
+- **Single-Letter Middle Initial Support**:
+  - Enhanced `isValidMiddleName()` in [`functions/app-helpers.php`](file:///c:/laragon/www/attendance-and-academic-management-system/functions/app-helpers.php) and [`api/index.php`](file:///c:/laragon/www/attendance-and-academic-management-system/api/index.php) to accept single-letter middle names/initials (e.g., `"M"`, `"M."`, `"D"`, `"D."`) in addition to full middle names and blank entries.
+  - Added automated unit tests in [`tests/MiddleNameValidationTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/MiddleNameValidationTest.php).
+
 ## v0.3.102 — 2026-08-29
 
 ### Added

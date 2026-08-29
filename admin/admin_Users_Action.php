@@ -202,7 +202,7 @@ function createUser($db) {
             return;
         }
         if (!isValidMiddleName($middleName)) {
-            echo json_encode(['success' => false, 'message' => 'Middle name must have at least 2 letters.']);
+            echo json_encode(['success' => false, 'message' => 'Middle name is invalid.']);
             return;
         }
         if (!in_array($sex, ['male', 'female'], true)) {
@@ -560,7 +560,7 @@ function updateUser($db) {
             return;
         }
         if (!isValidMiddleName($middleName)) {
-            echo json_encode(['success' => false, 'message' => 'Middle name must have at least 2 letters.']);
+            echo json_encode(['success' => false, 'message' => 'Middle name is invalid.']);
             return;
         }
         if (!in_array($sex, ['male', 'female'], true)) {

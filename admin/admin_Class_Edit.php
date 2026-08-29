@@ -28,7 +28,7 @@ $hasCurriculum = dbHasColumn($db, 'classes', 'curriculum');
 $curriculumSelect = $hasCurriculum ? ", curriculum" : ", NULL AS curriculum";
 $hasProgram = dbHasColumn($db, 'classes', 'program');
 $programSelect = $hasProgram ? ", program" : ", NULL AS program";
-$classQuery = "SELECT id, class_name, grade_level, section, schedule, room, ww_weight, pt_weight, assessment_weight, status
+$classQuery = "SELECT id, class_name, grade_level, section, teacher_id, schedule, room, ww_weight, pt_weight, assessment_weight, status
                $subjectCategorySelect
                $trackSelect
                $curriculumSelect
@@ -42,6 +42,19 @@ $class = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$class) {
     header("Location: admin_Classes.php");
     exit();
+}
+
+$availableTeachers = [];
+$teacherStmt = $db->query("SELECT id, first_name, last_name, email FROM users WHERE role = 'teacher' AND status = 'active' ORDER BY last_name ASC, first_name ASC");
+if ($teacherStmt) {
+    $availableTeachers = $teacherStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
+
+$assignedTeacherId = (int)($class['teacher_id'] ?? 0);
+if ($assignedTeacherId <= 0) {
+    $csCheck = $db->prepare("SELECT teacher_id FROM class_subjects WHERE class_id = ? LIMIT 1");
+    $csCheck->execute([(int)$classId]);
+    $assignedTeacherId = (int)$csCheck->fetchColumn();
 }
 
 $scheduleRows = [];
@@ -152,6 +165,19 @@ $page_title = 'Edit Class - ' . $class['class_name'];
                                     <option value="">Select Grade & Track First</option>
                                 </select>
                             </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Assigned Teacher</label>
+                            <select name="teacher_id" id="editTeacherSelect" class="form-select">
+                                <option value="">-- No Teacher Assigned --</option>
+                                <?php foreach ($availableTeachers as $t): ?>
+                                    <option value="<?php echo (int)$t['id']; ?>" <?php echo $assignedTeacherId === (int)$t['id'] ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($t['last_name'] . ', ' . $t['first_name'] . ($t['email'] ? ' (' . $t['email'] . ')' : '')); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <small class="text-muted">Select an active teacher to assign to this subject class (optional).</small>
                         </div>
                         
                         <div class="mb-3">

@@ -231,7 +231,7 @@ function hasMinimumLetters(string $value, int $minimum = 2): bool {
 function isValidMiddleName(string $value): bool {
     $value = trim($value);
     if ($value === '') { return true; }
-    return isValidPersonName($value, true) && hasMinimumLetters($value, 2);
+    return isValidPersonName($value, true) && hasMinimumLetters($value, 1);
 }
 
 function normalizeIdArray($values): array {

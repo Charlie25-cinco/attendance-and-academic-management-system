@@ -359,8 +359,17 @@ function createClass($db) {
         
         // Insert class
         ensureClassTrackColumn($db);
-        $columns = ['class_name', 'grade_level', 'section', 'schedule', 'room', 'ww_weight', 'pt_weight', 'assessment_weight', 'status', 'created_at'];
-        $values = [$className, $gradeLevel, $section, $schedule, $room, $wwWeight, $ptWeight, $assessmentWeight, 'active', date('Y-m-d H:i:s')];
+        $teacherId = isset($_POST['teacher_id']) && (int)$_POST['teacher_id'] > 0 ? (int)$_POST['teacher_id'] : null;
+        if ($teacherId !== null) {
+            $tCheck = $db->prepare("SELECT id FROM users WHERE id = ? AND role = 'teacher' AND status = 'active' LIMIT 1");
+            $tCheck->execute([$teacherId]);
+            if (!$tCheck->fetch()) {
+                $teacherId = null;
+            }
+        }
+
+        $columns = ['class_name', 'grade_level', 'section', 'teacher_id', 'schedule', 'room', 'ww_weight', 'pt_weight', 'assessment_weight', 'status', 'created_at'];
+        $values = [$className, $gradeLevel, $section, $teacherId, $schedule, $room, $wwWeight, $ptWeight, $assessmentWeight, 'active', date('Y-m-d H:i:s')];
         $placeholders = array_fill(0, count($values), '?');
 
         $hasSubjectCategory = dbHasColumn($db, 'classes', 'subject_category');
@@ -394,13 +403,18 @@ function createClass($db) {
         $stmt = $db->prepare("INSERT INTO classes ($columnList) VALUES ($placeholderList)");
         $stmt->execute($values);
         
-        $classId = $db->lastInsertId();
+        $classId = (int)$db->lastInsertId();
+        if ($teacherId !== null) {
+            $csStmt = $db->prepare("INSERT INTO class_subjects (class_id, teacher_id, created_at) VALUES (?, ?, NOW())");
+            $csStmt->execute([$classId, $teacherId]);
+        }
         syncClassSchedules($db, $classId, $segments);
         syncClassEnrollmentsByGradeSection($db, $classId, $gradeLevel, $section, $normalizedTrack);
-        adminClassAuditLog($db, 'create_class', (int)$classId, [
+        adminClassAuditLog($db, 'create_class', $classId, [
             'class_name' => $className,
             'grade_level' => $gradeLevel,
             'section' => $section,
+            'teacher_id' => $teacherId,
         ]);
         
         echo json_encode(['success' => true, 'message' => 'Class created successfully', 'class_id' => $classId]);
@@ -484,8 +498,17 @@ function updateClass($db) {
         
         // Update class
         ensureClassTrackColumn($db);
-        $setCols = ['class_name = ?', 'grade_level = ?', 'section = ?', 'schedule = ?', 'room = ?', 'ww_weight = ?', 'pt_weight = ?', 'assessment_weight = ?'];
-        $updateValues = [$className, $gradeLevel, $section, $schedule, $room, $wwWeight, $ptWeight, $assessmentWeight];
+        $teacherId = isset($_POST['teacher_id']) && (int)$_POST['teacher_id'] > 0 ? (int)$_POST['teacher_id'] : null;
+        if ($teacherId !== null) {
+            $tCheck = $db->prepare("SELECT id FROM users WHERE id = ? AND role = 'teacher' AND status = 'active' LIMIT 1");
+            $tCheck->execute([$teacherId]);
+            if (!$tCheck->fetch()) {
+                $teacherId = null;
+            }
+        }
+
+        $setCols = ['class_name = ?', 'grade_level = ?', 'section = ?', 'teacher_id = ?', 'schedule = ?', 'room = ?', 'ww_weight = ?', 'pt_weight = ?', 'assessment_weight = ?'];
+        $updateValues = [$className, $gradeLevel, $section, $teacherId, $schedule, $room, $wwWeight, $ptWeight, $assessmentWeight];
 
         $hasSubjectCategory = dbHasColumn($db, 'classes', 'subject_category');
         if ($hasSubjectCategory) {
@@ -517,19 +540,23 @@ function updateClass($db) {
         $setClause = implode(', ', $setCols);
         $stmt = $db->prepare("UPDATE classes SET $setClause WHERE id = ?");
         $stmt->execute($updateValues);
+        
+        $db->prepare("DELETE FROM class_subjects WHERE class_id = ?")->execute([(int)$classId]);
+        if ($teacherId !== null) {
+            $csStmt = $db->prepare("INSERT INTO class_subjects (class_id, teacher_id, created_at) VALUES (?, ?, NOW())");
+            $csStmt->execute([(int)$classId, $teacherId]);
+        }
+
         syncClassSchedules($db, $classId, $segments);
         syncClassEnrollmentsByGradeSection($db, $classId, $gradeLevel, $section, $normalizedTrack);
         
-        if ($stmt->rowCount() > 0) {
-            adminClassAuditLog($db, 'update_class', (int)$classId, [
-                'class_name' => $className,
-                'grade_level' => $gradeLevel,
-                'section' => $section,
-            ]);
-            echo json_encode(['success' => true, 'message' => 'Class updated successfully']);
-        } else {
-            echo json_encode(['success' => true, 'message' => 'No changes made']);
-        }
+        adminClassAuditLog($db, 'update_class', (int)$classId, [
+            'class_name' => $className,
+            'grade_level' => $gradeLevel,
+            'section' => $section,
+            'teacher_id' => $teacherId,
+        ]);
+        echo json_encode(['success' => true, 'message' => 'Class updated successfully']);
         
     } catch (PDOException $e) {
         error_log("Admin_Classes_Action update error: " . $e->getMessage());

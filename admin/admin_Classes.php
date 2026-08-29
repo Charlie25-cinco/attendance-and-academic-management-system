@@ -18,6 +18,7 @@ $sectionFilter = trim((string)($_GET['section'] ?? ''));
 $statusFilter = trim((string)($_GET['status'] ?? 'active'));
 $availableSections = [];
 $classFormSections = [];
+$availableTeachers = [];
 
 if (!in_array($gradeFilter, ['11', '12'], true)) {
     $gradeFilter = '';
@@ -47,6 +48,11 @@ if ($db) {
                 'program' => trim((string)($row['program'] ?? '')),
             ];
         }
+    }
+
+    $teacherStmt = $db->query("SELECT id, first_name, last_name, email FROM users WHERE role = 'teacher' AND status = 'active' ORDER BY last_name ASC, first_name ASC");
+    if ($teacherStmt) {
+        $availableTeachers = $teacherStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
     $sectionRows = $db->query("SELECT DISTINCT grade_level, section
@@ -376,6 +382,20 @@ $page_title = 'Manage Classes';
                                         <select name="section" id="sectionSelect" class="form-select" required disabled>
                                             <option value="">Select Grade Level First</option>
                                         </select>
+                                    </div>
+                                </div>
+                                <div class="row mt-3">
+                                    <div class="col-12 mb-0">
+                                        <label class="form-label">Assigned Teacher</label>
+                                        <select name="teacher_id" id="teacherSelect" class="form-select">
+                                            <option value="">-- No Teacher Assigned --</option>
+                                            <?php foreach ($availableTeachers as $t): ?>
+                                                <option value="<?php echo (int)$t['id']; ?>">
+                                                    <?php echo htmlspecialchars($t['last_name'] . ', ' . $t['first_name'] . ($t['email'] ? ' (' . $t['email'] . ')' : '')); ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <small class="text-muted">Select an active teacher to assign to this subject class (optional).</small>
                                     </div>
                                 </div>
                             </div>
