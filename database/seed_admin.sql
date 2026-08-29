@@ -6,7 +6,7 @@
 --
 -- Temporary admin login:
 --   Reference Code: A341227-1
---   Password: password
+--   Password: Bshsams_341227
 --
 -- IMPORTANT:
 -- Change this password immediately after login. This file intentionally resets
@@ -27,7 +27,7 @@ INSERT IGNORE INTO users (
 ) VALUES (
     'A341227-1',
     'A341227-1@balingasag.edu.ph',
-    '$2y$10$8eXTl75GxU3W0RFAHqUgi.BFdGfbU8U4sZzJ7xdoIW2ey3ZEoTJA6',
+    '$2y$10$WElty8dLDYBeQ0k5Di.Tt.gYXatazNrNgjF1RStXQ93Q5F5cfrNaG',
     'System',
     'Administrator',
     'admin',
