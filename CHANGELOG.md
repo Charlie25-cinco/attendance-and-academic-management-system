@@ -13,6 +13,15 @@ Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR fo
   - Hardened Settings push notifications save handling in [`assets/js/main.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/main.js) to avoid false-positive error alerts when subscribing.
   - Added automated unit tests in [`tests/PwaNotificationPromptTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/PwaNotificationPromptTest.php) and updated [`tests/PwaAssetFreshnessTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/PwaAssetFreshnessTest.php).
 
+### Fixed
+
+- **PWA Offline Navigation & Interactive Workspace Access**:
+  - Incremented Service Worker cache to `bshs-ams-v30` in [`sw.js`](file:///c:/laragon/www/attendance-and-academic-management-system/sw.js) and included core teacher subpages (`/teacher/teacher.php`, `/teacher/teacher_Attendance.php`, `/teacher/teacher_Classes.php`, `/teacher/teacher_Grades.php`) in `APP_SHELL_URLS` for reliable offline availability.
+  - Upgraded Service Worker offline fallback notice from a dead-end "Go Back" link to an interactive Offline Workspaces card with direct launch links to **Offline Attendance**, **Offline Classes & Grades**, and **Teacher Dashboard**.
+  - Synchronized cache name resolution and teacher session caching (`bshs_cached_teacher`) in [`assets/js/offlineStorage.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/offlineStorage.js).
+  - Enhanced [`auth/login.php`](file:///c:/laragon/www/attendance-and-academic-management-system/auth/login.php) with an immediate, interactive **Teacher Offline Workspace** launchpad when the app is opened offline.
+  - Added automated test suite in [`tests/PwaOfflineModeTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/PwaOfflineModeTest.php).
+
 ## v0.3.103 — 2026-08-29
 
 ### Added

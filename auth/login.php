@@ -313,9 +313,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <script>
     (function() {
         try {
-            if (!navigator.onLine && localStorage.getItem('bshs_cached_teacher') === '1') {
+            var hasCachedTeacher = localStorage.getItem('bshs_cached_teacher') === '1' || localStorage.getItem('bshs_teacher_session');
+            if (!navigator.onLine && hasCachedTeacher) {
                 document.documentElement.classList.add('offline-launching');
-                window.location.replace('../teacher/teacher.php');
+                window.location.replace('../teacher/teacher_Attendance.php');
             }
         } catch (e) {}
     })();
@@ -459,10 +460,33 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if (!navigator.onLine && window.bshsOfflineStorage) {
                 const session = await window.bshsOfflineStorage.getTeacherSession();
                 const card = document.querySelector('.auth-card');
+                if (!card) return;
 
                 if (session && session.teacher_id) {
-                    window.location.replace('../teacher/teacher.php');
-                } else if (!session && card && !document.getElementById('offlineNoSessionBanner')) {
+                    let launchpad = document.getElementById('offlineTeacherLaunchpad');
+                    if (!launchpad) {
+                        launchpad = document.createElement('div');
+                        launchpad.id = 'offlineTeacherLaunchpad';
+                        launchpad.className = 'alert alert-info border-0 shadow-sm mb-4 text-start';
+                        const teacherName = [(session.first_name || ''), (session.last_name || '')].filter(Boolean).join(' ') || 'Teacher';
+                        launchpad.innerHTML = '<div class="d-flex align-items-center mb-2">'
+                            + '<i class="bi bi-person-workspace fs-4 text-primary me-2"></i>'
+                            + '<div><strong class="d-block text-dark">Teacher Offline Workspace</strong>'
+                            + '<small class="text-muted">Welcome, ' + teacherName + '</small></div></div>'
+                            + '<p class="small text-muted mb-3">You are offline. You can record attendance and enter grade activities offline.</p>'
+                            + '<div class="d-grid gap-2">'
+                            + '<a href="../teacher/teacher_Attendance.php" class="btn btn-primary btn-sm fw-semibold">'
+                            + '<i class="bi bi-calendar-check-fill me-1"></i>Open Offline Attendance</a>'
+                            + '<a href="../teacher/teacher_Classes.php" class="btn btn-outline-primary btn-sm fw-semibold">'
+                            + '<i class="bi bi-journal-check me-1"></i>Open Offline Classes & Grades</a>'
+                            + '<a href="../teacher/teacher.php" class="btn btn-outline-secondary btn-sm">'
+                            + '<i class="bi bi-speedometer2 me-1"></i>Teacher Dashboard</a>'
+                            + '</div>';
+                        const form = document.querySelector('form');
+                        if (form) form.style.display = 'none';
+                        card.insertBefore(launchpad, card.firstChild);
+                    }
+                } else if (!session && !document.getElementById('offlineNoSessionBanner')) {
                     const b = document.createElement('div');
                     b.id = 'offlineNoSessionBanner';
                     b.className = 'alert alert-warning mb-3';

@@ -1127,7 +1127,6 @@ function initSettingsControls() {
   document
     .getElementById("settingsModal")
     ?.addEventListener("shown.bs.modal", updatePwaPushStatus);
-
   const darkMode = document.getElementById("darkModeSwitch");
   if (darkMode) {
     darkMode.addEventListener("change", function () {
@@ -1471,9 +1470,8 @@ if ("serviceWorker" in navigator && navigator.onLine) {
       .keys()
       .then((keys) => {
         keys.forEach((key) => {
-          if (key !== "bshs-ams-v28") {
+          if (key.startsWith("bshs-ams-v") && key !== "bshs-ams-v30") {
             caches.delete(key);
-          }
         });
       })
       .catch(() => {});
@@ -1486,8 +1484,8 @@ document.addEventListener("click", function (e) {
   if (link) {
     try {
       localStorage.removeItem("bshs_cached_teacher");
+      localStorage.removeItem("bshs_teacher_session");
     } catch (e) {}
-  }
 });
 
 // ============================================
@@ -1509,16 +1507,13 @@ function showOfflineModal(featureName) {
               <i class="bi bi-wifi-off fs-2"></i>
             </div>
             <h5 class="fw-bold mb-2 text-dark">Connection Required</h5>
-            <p class="text-muted small mb-4" id="bshsOfflineModalMessage">
+            <p class="text-muted small mb-3" id="bshsOfflineModalMessage">
               This feature requires an active internet connection. Offline attendance and grade activities remain available.
             </p>
-            <button type="button" class="btn btn-primary w-100 py-2 rounded-3 fw-semibold" data-bs-dismiss="modal">
-              Got It
-            </button>
-          </div>
-        </div>
-      </div>
-    `;
+              <a href="../teacher/teacher_Attendance.php" class="btn btn-primary btn-sm fw-semibold">
+                <i class="bi bi-calendar-check-fill me-1"></i>Take Offline Attendance
+              </a>
+              <a href="../teacher/teacher_Classes.php" class="btn btn-outline-primary btn-sm fw-semibold">
     document.body.appendChild(modalEl);
   }
 
