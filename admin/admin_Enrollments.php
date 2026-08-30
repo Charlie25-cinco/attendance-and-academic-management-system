@@ -457,51 +457,169 @@ if (isset($_GET['download_template'])) {
     </div>
 
     <!-- Bulk Import Modal -->
-    <div class="modal fade" id="importModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+    <!-- SF1 Import Modal with Interactive Preview -->
+    <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
             <div class="modal-content app-modal-content">
                 <div class="modal-header app-modal-header">
                     <div>
-                        <div class="app-modal-kicker"><i class="bi bi-file-earmark-spreadsheet"></i>SF1 Import</div>
-                        <h5 class="modal-title mb-0">Bulk Student Import</h5>
-                        <p class="app-modal-subtitle">Upload a CSV file following the SF1 format to register multiple students at once.</p>
+                        <div class="app-modal-kicker"><i class="bi bi-file-earmark-spreadsheet"></i>SF1 Import & Verification</div>
+                        <h5 class="modal-title mb-0" id="importModalLabel">Bulk Student Import</h5>
+                        <p class="app-modal-subtitle" id="importModalSubtitle">Upload, review, edit, and verify official DepEd SF1 learner data before committing to the system.</p>
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body app-modal-body">
                     <div class="app-modal-stack">
-                        <div class="app-modal-note">
-                            <i class="bi bi-file-earmark-check-fill"></i>
-                            <div>
-                                <strong>Before importing</strong>
-                                <p>The system generates reference codes, applies the default password, and skips duplicate LRNs automatically. Supports both the official DepEd SF1 XLSX template and CSV format.</p>
+                        <!-- STAGE 1: UPLOAD -->
+                        <div id="importUploadStage">
+                            <div class="app-modal-note mb-3">
+                                <i class="bi bi-file-earmark-check-fill"></i>
+                                <div>
+                                    <strong>Interactive SF1 Verification</strong>
+                                    <p class="mb-0">After selecting an SF1 file (XLSX or CSV), click <strong>"Preview & Verify Data"</strong> to review learner records, edit individual fields, or exclude rows before importing.</p>
+                                </div>
                             </div>
+
+                            <form id="importForm" enctype="multipart/form-data">
+                                <input type="hidden" name="csrf_token" id="importCsrfToken" value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
+                                <input type="hidden" name="action" value="preview">
+                                <div class="app-modal-panel">
+                                    <div class="app-modal-panel-title"><i class="bi bi-upload"></i>Select Official SF1 File</div>
+                                    <div class="row g-3 align-items-end mb-0">
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold" for="sf1File">SF1 File <span class="text-danger">*</span></label>
+                                            <input type="file" name="sf1_file" id="sf1File" class="form-control" accept=".csv,.xlsx" required>
+                                            <div class="form-text">Official DepEd SF1 (.xlsx) or formatted (.csv) spreadsheet. Max 10MB.</div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold" for="importAcademicYear">Academic Year</label>
+                                            <input type="text" name="academic_year" id="importAcademicYear" class="form-control" value="<?php echo date('Y') . '-' . (date('Y') + 1); ?>" placeholder="e.g. 2025-2026">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <a href="?download_template=1" class="btn btn-outline-primary btn-sm w-100 mb-2">
+                                                <i class="bi bi-download me-1"></i>Download CSV Template
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
                         </div>
 
-                        <form id="importForm" enctype="multipart/form-data">
-                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
-                            <div class="app-modal-panel">
-                                <div class="app-modal-panel-title"><i class="bi bi-upload"></i>Import Source</div>
-                                <div class="row g-3 align-items-end mb-0">
-                                    <div class="col-md-6">
-                                        <label class="form-label fw-bold" for="sf1File">SF1 File <span class="text-danger">*</span></label>
-                                        <input type="file" name="sf1_file" id="sf1File" class="form-control" accept=".csv,.xlsx" required>
-                                        <div class="form-text">XLSX (official DepEd SF1 template) or CSV format only. Max 10MB.</div>
+                        <!-- STAGE 2: EDITABLE PREVIEW GRID -->
+                        <div id="importPreviewStage" style="display: none;">
+                            <!-- Header Meta Configuration Card -->
+                            <div class="app-modal-panel mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div class="app-modal-panel-title mb-0"><i class="bi bi-gear-wide-connected"></i>SF1 Classification & Section Settings</div>
+                                    <span class="badge bg-primary px-3 py-2 fs-6" id="previewFileName">SF1 File</span>
+                                </div>
+                                <div class="row g-3 align-items-end">
+                                    <div class="col-md-3 col-sm-6">
+                                        <label class="form-label small fw-bold">Grade Level</label>
+                                        <select id="previewGradeLevel" class="form-select form-select-sm" onchange="syncPreviewMetadata()">
+                                            <option value="11">Grade 11</option>
+                                            <option value="12">Grade 12</option>
+                                        </select>
                                     </div>
-                                    <div class="col-md-3">
-                                        <label class="form-label fw-bold" for="importAcademicYear">Academic Year</label>
-                                        <input type="text" name="academic_year" id="importAcademicYear" class="form-control" value="<?php echo date('Y') . '-' . (date('Y') + 1); ?>" placeholder="e.g. 2025-2026">
+                                    <div class="col-md-3 col-sm-6">
+                                        <label class="form-label small fw-bold">Section Name</label>
+                                        <input type="text" id="previewSection" class="form-control form-control-sm text-uppercase" placeholder="e.g. STEM-A" oninput="syncPreviewMetadata()">
                                     </div>
-                                    <div class="col-md-3">
-                                        <a href="?download_template=1" class="btn btn-outline-primary btn-sm w-100 mb-2">
-                                            <i class="bi bi-download me-1"></i>Download CSV Template
-                                        </a>
+                                    <div class="col-md-3 col-sm-6">
+                                        <label class="form-label small fw-bold">Track / Strand</label>
+                                        <select id="previewTrack" class="form-select form-select-sm" onchange="syncPreviewMetadata()">
+                                            <option value="academic">Academic</option>
+                                            <option value="techpro">TechPro / TVL</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3 col-sm-6">
+                                        <label class="form-label small fw-bold">School Year</label>
+                                        <input type="text" id="previewSchoolYear" class="form-control form-control-sm" placeholder="2025-2026">
                                     </div>
                                 </div>
                             </div>
-                        </form>
 
-                        <!-- Progress -->
+                            <!-- KPI Summary Badges -->
+                            <div class="row g-2 mb-3">
+                                <div class="col-6 col-md-2">
+                                    <div class="p-2 border rounded text-center bg-light">
+                                        <div class="text-muted small">Total Learners</div>
+                                        <div class="fs-5 fw-bold" id="previewStatTotal">0</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-2">
+                                    <div class="p-2 border rounded text-center bg-light">
+                                        <div class="text-muted small">Male / Female</div>
+                                        <div class="fs-5 fw-bold"><span id="previewStatMale">0</span> / <span id="previewStatFemale">0</span></div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="p-2 border rounded text-center bg-light">
+                                        <div class="text-muted small">New Registrations</div>
+                                        <div class="fs-5 fw-bold text-success" id="previewStatNew">0</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="p-2 border rounded text-center bg-light">
+                                        <div class="text-muted small">Already in System</div>
+                                        <div class="fs-5 fw-bold text-warning" id="previewStatExisting">0</div>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md-2">
+                                    <div class="p-2 border rounded text-center bg-light">
+                                        <div class="text-muted small">Format Issues</div>
+                                        <div class="fs-5 fw-bold text-danger" id="previewStatInvalid">0</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Search Filter & Add Row Toolbar -->
+                            <div class="d-flex justify-content-between align-items-center gap-2 mb-2 flex-wrap">
+                                <div class="d-flex align-items-center gap-2 flex-grow-1" style="max-width: 400px;">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                        <input type="text" id="previewSearchFilter" class="form-control" placeholder="Search learner name or LRN in preview..." oninput="filterPreviewRows()">
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="addPreviewRow()">
+                                        <i class="bi bi-person-plus me-1"></i>Add Learner Row
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Interactive Spreadsheet Grid -->
+                            <div class="table-responsive border rounded" style="max-height: 420px; overflow-y: auto;">
+                                <table class="table table-sm table-hover align-middle mb-0" id="previewTable" style="min-width: 1400px; font-size: 0.85rem;">
+                                    <thead class="table-light sticky-top" style="z-index: 2;">
+                                        <tr>
+                                            <th style="width: 40px;" class="text-center">#</th>
+                                            <th style="width: 100px;">Status</th>
+                                            <th style="width: 130px;">LRN (12 Digits) <span class="text-danger">*</span></th>
+                                            <th style="width: 130px;">Last Name <span class="text-danger">*</span></th>
+                                            <th style="width: 130px;">First Name <span class="text-danger">*</span></th>
+                                            <th style="width: 110px;">Middle Name</th>
+                                            <th style="width: 60px;">Ext</th>
+                                            <th style="width: 90px;">Sex</th>
+                                            <th style="width: 120px;">Birthdate</th>
+                                            <th style="width: 130px;">House / Street</th>
+                                            <th style="width: 120px;">Barangay</th>
+                                            <th style="width: 120px;">Municipality</th>
+                                            <th style="width: 120px;">Province</th>
+                                            <th style="width: 110px;">Contact #</th>
+                                            <th style="width: 140px;">Parent / Guardian</th>
+                                            <th style="width: 60px;" class="text-center">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="previewTableBody">
+                                        <!-- Rows rendered dynamically by JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- STAGE 3: PROGRESS & RESULTS -->
                         <div id="importProgress" style="display:none;" class="mt-0">
                             <div class="progress mb-2" style="height:8px;">
                                 <div class="progress-bar progress-bar-striped progress-bar-animated" id="importProgressBar" style="width:0%;"></div>
@@ -509,7 +627,6 @@ if (isset($_GET['download_template'])) {
                             <div id="importStatus" class="text-muted small">Processing...</div>
                         </div>
 
-                        <!-- Results -->
                         <div id="importResults" style="display:none;" class="mt-0">
                             <div id="importSummary" class="mb-3"></div>
                             <div id="importLog" style="max-height:400px;overflow-y:auto;"></div>
@@ -517,10 +634,31 @@ if (isset($_GET['download_template'])) {
                     </div>
                 </div>
                 <div class="modal-footer app-modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary" id="importBtn" onclick="submitImport()">
-                        <i class="bi bi-upload me-1"></i>Import Students
-                    </button>
+                    <!-- Upload Stage Buttons -->
+                    <div id="uploadStageButtons" class="d-flex gap-2 w-100 justify-content-end">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="previewBtn" onclick="previewImport()">
+                            <i class="bi bi-eye me-1"></i>Preview & Verify Data
+                        </button>
+                    </div>
+
+                    <!-- Preview Stage Buttons -->
+                    <div id="previewStageButtons" class="d-flex gap-2 w-100 justify-content-between" style="display: none !important;">
+                        <button type="button" class="btn btn-outline-secondary" onclick="backToUploadStage()">
+                            <i class="bi bi-arrow-left me-1"></i>Back to Upload
+                        </button>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-success" id="commitBtn" onclick="commitImport()">
+                                <i class="bi bi-check-circle me-1"></i>Confirm & Import (<span id="commitCount">0</span>) Learners
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Results Stage Buttons -->
+                    <div id="resultsStageButtons" class="d-flex gap-2 w-100 justify-content-end" style="display: none !important;">
+                        <button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="loadStudents(1)">Done</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1044,85 +1182,423 @@ if (isset($_GET['download_template'])) {
             });
         }
 
-        // Import modal
+        // -------------------------------------------------------------
+        // SF1 TWO-STAGE IMPORT & EDITABLE PREVIEW JAVASCRIPT
+        // -------------------------------------------------------------
+        let previewState = {
+            students: [],
+            header: {},
+            fileName: ''
+        };
+
         function openImportModal() {
             const form = document.getElementById('importForm');
             if (form) form.reset();
+
+            previewState.students = [];
+            previewState.header = {};
+            previewState.fileName = '';
+
+            document.getElementById('importUploadStage').style.display = '';
+            document.getElementById('importPreviewStage').style.display = 'none';
             document.getElementById('importProgress').style.display = 'none';
             document.getElementById('importResults').style.display = 'none';
-            document.getElementById('importBtn').disabled = false;
-            document.getElementById('importBtn').innerHTML = '<i class="bi bi-upload me-1"></i>Import Students';
+
+            document.getElementById('uploadStageButtons').style.setProperty('display', 'flex', 'important');
+            document.getElementById('previewStageButtons').style.setProperty('display', 'none', 'important');
+            document.getElementById('resultsStageButtons').style.setProperty('display', 'none', 'important');
+
+            const previewBtn = document.getElementById('previewBtn');
+            if (previewBtn) {
+                previewBtn.disabled = false;
+                previewBtn.innerHTML = '<i class="bi bi-eye me-1"></i>Preview & Verify Data';
+            }
+
+            document.getElementById('importModalSubtitle').textContent = 'Upload, review, edit, and verify official DepEd SF1 learner data before committing to the system.';
             new bootstrap.Modal(document.getElementById('importModal')).show();
         }
 
-        function submitImport() {
-            const file = document.getElementById('sf1File').files[0];
-            if (!file) { showNotification('Please select a file.', 'warning'); return; }
-            const ext = file.name.toLowerCase().split('.').pop();
-            if (!['csv', 'xlsx'].includes(ext)) { showNotification('Only CSV and XLSX files are supported.', 'warning'); return; }
-            if (file.size > 10 * 1024 * 1024) { showNotification('File too large. Max 10MB.', 'warning'); return; }
-
-            const btn = document.getElementById('importBtn');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Importing...';
-            document.getElementById('importProgress').style.display = '';
+        function backToUploadStage() {
+            document.getElementById('importUploadStage').style.display = '';
+            document.getElementById('importPreviewStage').style.display = 'none';
+            document.getElementById('importProgress').style.display = 'none';
             document.getElementById('importResults').style.display = 'none';
-            document.getElementById('importProgressBar').style.width = '30%';
-            document.getElementById('importStatus').textContent = 'Uploading and processing...';
+
+            document.getElementById('uploadStageButtons').style.setProperty('display', 'flex', 'important');
+            document.getElementById('previewStageButtons').style.setProperty('display', 'none', 'important');
+            document.getElementById('resultsStageButtons').style.setProperty('display', 'none', 'important');
+            document.getElementById('importModalSubtitle').textContent = 'Upload, review, edit, and verify official DepEd SF1 learner data before committing to the system.';
+        }
+
+        function previewImport() {
+            const fileInput = document.getElementById('sf1File');
+            const file = fileInput.files[0];
+            if (!file) {
+                showNotification('Please select an SF1 file to preview.', 'warning');
+                return;
+            }
+            const ext = file.name.toLowerCase().split('.').pop();
+            if (!['csv', 'xlsx'].includes(ext)) {
+                showNotification('Only CSV and XLSX files are supported.', 'warning');
+                return;
+            }
+            if (file.size > 10 * 1024 * 1024) {
+                showNotification('File too large. Max 10MB.', 'warning');
+                return;
+            }
+
+            const btn = document.getElementById('previewBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Reading & Parsing SF1...';
 
             const formData = new FormData(document.getElementById('importForm'));
+            formData.set('action', 'preview');
+
             fetch('admin_SF1_Import_Action.php', { method: 'POST', body: formData })
                 .then(r => r.json())
                 .then(data => {
-                    document.getElementById('importProgressBar').style.width = '100%';
-                    document.getElementById('importProgressBar').classList.remove('progress-bar-animated');
-                    document.getElementById('importStatus').textContent = 'Done.';
-
-                    document.getElementById('importResults').style.display = '';
-                    const created = data.created || 0;
-                    const skipped = data.skipped || 0;
-                    const errors = data.errors || 0;
-                    const parentsCreated = data.parents_created || 0;
-                    const parentsLinked = data.parents_linked || 0;
-
-                    let summaryBadges = '<span class="badge bg-success fs-6"><i class="bi bi-person-plus me-1"></i>' + created + ' Students Created</span>';
-                    if (parentsCreated > 0 || parentsLinked > 0) {
-                        summaryBadges += '<span class="badge bg-info text-dark fs-6"><i class="bi bi-people me-1"></i>' + parentsCreated + ' Parents Created (' + parentsLinked + ' Linked)</span>';
-                    }
-                    summaryBadges += '<span class="badge bg-warning text-dark fs-6"><i class="bi bi-skip-forward me-1"></i>' + skipped + ' Skipped</span>';
-                    summaryBadges += '<span class="badge bg-danger fs-6"><i class="bi bi-exclamation-triangle me-1"></i>' + errors + ' Errors</span>';
-
-                    document.getElementById('importSummary').innerHTML = '<div class="d-flex gap-3 flex-wrap">' + summaryBadges + '</div>';
-
-                    const log = document.getElementById('importLog');
-                    const rows = data.rows || [];
-                    if (rows.length === 0) {
-                        log.innerHTML = '<p class="text-muted">No row details available.</p>';
-                    } else {
-                        log.innerHTML = '<table class="table table-sm table-bordered"><thead class="table-light"><tr><th>Row</th><th>Name</th><th>LRN</th><th>Status</th><th>Message</th></tr></thead><tbody>' +
-                            rows.map(r => '<tr class="' + (r.status === 'created' ? 'table-success' : r.status === 'skipped' ? 'table-warning' : 'table-danger') + '">' +
-                                '<td>' + r.row + '</td><td>' + escHtml(r.name || '') + '</td><td>' + escHtml(r.lrn || '') + '</td>' +
-                                '<td><span class="badge bg-' + (r.status === 'created' ? 'success' : r.status === 'skipped' ? 'warning text-dark' : 'danger') + '">' + r.status + '</span></td>' +
-                                '<td>' + escHtml(r.message || '') + '</td></tr>').join('') +
-                            '</tbody></table>';
+                    if (!data.success) {
+                        showNotification(data.message || 'Failed to parse SF1 file.', 'danger');
+                        return;
                     }
 
-                    if (data.success) {
-                        showNotification(created + ' students imported successfully!', 'success');
-                        loadStudents(1);
-                    } else {
-                        showNotification(data.message || 'Import completed with errors.', 'warning');
+                    previewState.students = data.students || [];
+                    previewState.header = data.header || {};
+                    previewState.fileName = data.file_name || file.name;
+
+                    if (previewState.students.length === 0) {
+                        showNotification('No student records found in the uploaded file.', 'warning');
+                        return;
                     }
+
+                    // Populate metadata controls
+                    document.getElementById('previewFileName').textContent = previewState.fileName;
+                    document.getElementById('previewGradeLevel').value = previewState.header.grade_level || '11';
+                    document.getElementById('previewSection').value = previewState.header.section || '';
+                    document.getElementById('previewTrack').value = previewState.header.track || 'academic';
+                    document.getElementById('previewSchoolYear').value = previewState.header.school_year || document.getElementById('importAcademicYear').value;
+
+                    // Switch view to Stage 2
+                    document.getElementById('importUploadStage').style.display = 'none';
+                    document.getElementById('importPreviewStage').style.display = '';
+                    document.getElementById('uploadStageButtons').style.setProperty('display', 'none', 'important');
+                    document.getElementById('previewStageButtons').style.setProperty('display', 'flex', 'important');
+                    document.getElementById('importModalSubtitle').textContent = 'Review and edit learner details directly below. Click Confirm & Import when ready.';
+
+                    renderPreviewTable();
+                    recalculateStats();
                 })
                 .catch(err => {
-                    document.getElementById('importStatus').textContent = 'Error.';
-                    showNotification('Import failed. Please try again.', 'danger');
+                    showNotification('Error processing SF1 file preview.', 'danger');
                     console.error(err);
                 })
                 .finally(() => {
                     btn.disabled = false;
-                    btn.innerHTML = '<i class="bi bi-upload me-1"></i>Import Students';
+                    btn.innerHTML = '<i class="bi bi-eye me-1"></i>Preview & Verify Data';
                 });
+        }
+
+        function renderPreviewTable() {
+            const tbody = document.getElementById('previewTableBody');
+            if (!tbody) return;
+
+            const filter = (document.getElementById('previewSearchFilter')?.value || '').toLowerCase().trim();
+
+            let html = '';
+            previewState.students.forEach((s, idx) => {
+                const fullName = `${s.first_name} ${s.middle_name} ${s.last_name} ${s.name_extension}`.toLowerCase();
+                const lrn = (s.lrn || '').toLowerCase();
+                if (filter && !fullName.includes(filter) && !lrn.includes(filter)) {
+                    return;
+                }
+
+                const isValidLrn = s.lrn && s.lrn.length === 12 && /^\d+$/.test(s.lrn);
+                let statusBadge = '<span class="badge bg-success">New</span>';
+                if (s.is_existing) {
+                    statusBadge = '<span class="badge bg-warning text-dark" title="LRN matches existing student: ' + escHtml(s.existing_name || '') + '">In DB</span>';
+                } else if (!isValidLrn) {
+                    statusBadge = '<span class="badge bg-danger" title="LRN must be 12 digits">Invalid LRN</span>';
+                }
+
+                html += `<tr data-index="${idx}" class="${s.is_existing ? 'table-warning-subtle' : ''}">
+                    <td class="text-center fw-bold text-muted">${idx + 1}</td>
+                    <td>${statusBadge}</td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm font-monospace ${!isValidLrn ? 'is-invalid' : ''}" 
+                            value="${escHtml(s.lrn || '')}" maxlength="12" 
+                            oninput="updateStudentField(${idx}, 'lrn', this.value)" placeholder="12-digit LRN">
+                    </td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm" 
+                            value="${escHtml(s.last_name || '')}" 
+                            oninput="updateStudentField(${idx}, 'last_name', this.value)" placeholder="Last Name">
+                    </td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm" 
+                            value="${escHtml(s.first_name || '')}" 
+                            oninput="updateStudentField(${idx}, 'first_name', this.value)" placeholder="First Name">
+                    </td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm" 
+                            value="${escHtml(s.middle_name || '')}" 
+                            oninput="updateStudentField(${idx}, 'middle_name', this.value)" placeholder="Middle Name">
+                    </td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm" style="width: 55px;" 
+                            value="${escHtml(s.name_extension || '')}" 
+                            oninput="updateStudentField(${idx}, 'name_extension', this.value)" placeholder="Jr/III">
+                    </td>
+                    <td>
+                        <select class="form-select form-select-sm" onchange="updateStudentField(${idx}, 'sex', this.value)">
+                            <option value="male" ${s.sex === 'male' ? 'selected' : ''}>Male</option>
+                            <option value="female" ${s.sex === 'female' ? 'selected' : ''}>Female</option>
+                        </select>
+                    </td>
+                    <td>
+                        <input type="date" class="form-control form-control-sm" 
+                            value="${escHtml(s.birthdate || '')}" 
+                            onchange="updateStudentField(${idx}, 'birthdate', this.value)">
+                    </td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm" 
+                            value="${escHtml(s.house_street || '')}" 
+                            oninput="updateStudentField(${idx}, 'house_street', this.value)" placeholder="Street">
+                    </td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm" 
+                            value="${escHtml(s.barangay || '')}" 
+                            oninput="updateStudentField(${idx}, 'barangay', this.value)" placeholder="Barangay">
+                    </td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm" 
+                            value="${escHtml(s.municipality || '')}" 
+                            oninput="updateStudentField(${idx}, 'municipality', this.value)" placeholder="Municipality">
+                    </td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm" 
+                            value="${escHtml(s.province || '')}" 
+                            oninput="updateStudentField(${idx}, 'province', this.value)" placeholder="Province">
+                    </td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm" 
+                            value="${escHtml(s.contact_number || '')}" 
+                            oninput="updateStudentField(${idx}, 'contact_number', this.value)" placeholder="09xxxxxxxxx">
+                    </td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm" 
+                            value="${escHtml(s.parent_name || '')}" 
+                            oninput="updateStudentField(${idx}, 'parent_name', this.value)" placeholder="Parent/Guardian">
+                    </td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-sm btn-outline-danger p-1" onclick="removePreviewRow(${idx})" title="Exclude this learner">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>`;
+            });
+
+            if (previewState.students.length === 0) {
+                html = '<tr><td colspan="16" class="text-center text-muted py-4">No learners in list. Click "Add Learner Row" to add one.</td></tr>';
+            }
+
+            tbody.innerHTML = html;
+        }
+
+        function updateStudentField(idx, field, value) {
+            if (!previewState.students[idx]) return;
+            previewState.students[idx][field] = value;
+            if (field === 'sex' || field === 'lrn') {
+                recalculateStats();
+            }
+        }
+
+        function addPreviewRow() {
+            const defaultGrade = parseInt(document.getElementById('previewGradeLevel').value) || 11;
+            const defaultSection = document.getElementById('previewSection').value || '';
+            const defaultTrack = document.getElementById('previewTrack').value || 'academic';
+
+            previewState.students.unshift({
+                temp_id: Date.now(),
+                lrn: '',
+                last_name: '',
+                first_name: '',
+                middle_name: '',
+                name_extension: '',
+                sex: 'male',
+                grade_level: defaultGrade,
+                section: defaultSection,
+                track: defaultTrack,
+                birthdate: '',
+                house_street: '',
+                barangay: '',
+                municipality: 'Balingasag',
+                province: 'Misamis Oriental',
+                contact_number: '',
+                parent_name: '',
+                is_existing: false,
+                is_valid_lrn: false
+            });
+
+            renderPreviewTable();
+            recalculateStats();
+        }
+
+        function removePreviewRow(idx) {
+            previewState.students.splice(idx, 1);
+            renderPreviewTable();
+            recalculateStats();
+        }
+
+        function filterPreviewRows() {
+            renderPreviewTable();
+        }
+
+        function syncPreviewMetadata() {
+            const grade = parseInt(document.getElementById('previewGradeLevel').value) || 11;
+            const section = document.getElementById('previewSection').value || '';
+            const track = document.getElementById('previewTrack').value || 'academic';
+
+            previewState.students.forEach(s => {
+                s.grade_level = grade;
+                s.section = section;
+                s.track = track;
+            });
+        }
+
+        function recalculateStats() {
+            let total = previewState.students.length;
+            let male = 0;
+            let female = 0;
+            let existing = 0;
+            let invalid = 0;
+
+            previewState.students.forEach(s => {
+                if (s.sex === 'female') female++;
+                else male++;
+
+                if (s.is_existing) existing++;
+                const isLrnValid = s.lrn && s.lrn.length === 12 && /^\d+$/.test(s.lrn);
+                if (!isLrnValid) invalid++;
+            });
+
+            document.getElementById('previewStatTotal').textContent = total;
+            document.getElementById('previewStatMale').textContent = male;
+            document.getElementById('previewStatFemale').textContent = female;
+            document.getElementById('previewStatNew').textContent = total - existing;
+            document.getElementById('previewStatExisting').textContent = existing;
+            document.getElementById('previewStatInvalid').textContent = invalid;
+            document.getElementById('commitCount').textContent = total;
+        }
+
+        function commitImport() {
+            if (previewState.students.length === 0) {
+                showNotification('No learners available to import.', 'warning');
+                return;
+            }
+
+            // Sync latest metadata
+            const grade = parseInt(document.getElementById('previewGradeLevel').value) || 11;
+            const section = (document.getElementById('previewSection').value || '').trim();
+            const track = document.getElementById('previewTrack').value || 'academic';
+            const academicYear = (document.getElementById('previewSchoolYear').value || '').trim();
+
+            if (!section) {
+                showNotification('Please provide a Section Name before importing.', 'warning');
+                document.getElementById('previewSection').focus();
+                return;
+            }
+
+            // Apply section & grade to all rows
+            previewState.students.forEach(s => {
+                if (!s.section) s.section = section;
+                if (!s.grade_level) s.grade_level = grade;
+                if (!s.track) s.track = track;
+            });
+
+            const btn = document.getElementById('commitBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Importing to Database...';
+
+            document.getElementById('importPreviewStage').style.display = 'none';
+            document.getElementById('importProgress').style.display = '';
+            document.getElementById('importProgressBar').style.width = '40%';
+            document.getElementById('importStatus').textContent = 'Creating student records and parent accounts...';
+
+            const csrfToken = document.getElementById('importCsrfToken').value;
+
+            const postData = new URLSearchParams();
+            postData.set('action', 'commit');
+            postData.set('csrf_token', csrfToken);
+            postData.set('academic_year', academicYear);
+            postData.set('students', JSON.stringify(previewState.students));
+
+            fetch('admin_SF1_Import_Action.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: postData.toString()
+            })
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('importProgressBar').style.width = '100%';
+                document.getElementById('importProgressBar').classList.remove('progress-bar-animated');
+                document.getElementById('importStatus').textContent = 'Import Complete.';
+
+                document.getElementById('previewStageButtons').style.setProperty('display', 'none', 'important');
+                document.getElementById('resultsStageButtons').style.setProperty('display', 'flex', 'important');
+                document.getElementById('importResults').style.display = '';
+
+                const created = data.created || 0;
+                const skipped = data.skipped || 0;
+                const errors = data.errors || 0;
+                const parentsCreated = data.parents_created || 0;
+                const parentsLinked = data.parents_linked || 0;
+                const sectionsCreated = data.sections_created || 0;
+
+                let summaryBadges = '<span class="badge bg-success fs-6"><i class="bi bi-person-plus me-1"></i>' + created + ' Students Created</span>';
+                if (sectionsCreated > 0) {
+                    summaryBadges += '<span class="badge bg-primary fs-6"><i class="bi bi-diagram-3 me-1"></i>' + sectionsCreated + ' Sections Created</span>';
+                }
+                if (parentsCreated > 0 || parentsLinked > 0) {
+                    summaryBadges += '<span class="badge bg-info text-dark fs-6"><i class="bi bi-people me-1"></i>' + parentsCreated + ' Parents Created (' + parentsLinked + ' Linked)</span>';
+                }
+                if (skipped > 0) {
+                    summaryBadges += '<span class="badge bg-warning text-dark fs-6"><i class="bi bi-skip-forward me-1"></i>' + skipped + ' Skipped (Duplicate LRN)</span>';
+                }
+                if (errors > 0) {
+                    summaryBadges += '<span class="badge bg-danger fs-6"><i class="bi bi-exclamation-triangle me-1"></i>' + errors + ' Errors</span>';
+                }
+
+                document.getElementById('importSummary').innerHTML = '<div class="d-flex gap-2 flex-wrap">' + summaryBadges + '</div>';
+
+                const log = document.getElementById('importLog');
+                const rows = data.rows || [];
+                if (rows.length === 0) {
+                    log.innerHTML = '<p class="text-muted">No row details available.</p>';
+                } else {
+                    log.innerHTML = '<table class="table table-sm table-bordered"><thead class="table-light"><tr><th>#</th><th>Name</th><th>LRN</th><th>Status</th><th>Details</th></tr></thead><tbody>' +
+                        rows.map(r => '<tr class="' + (r.status === 'created' ? 'table-success' : r.status === 'skipped' ? 'table-warning' : 'table-danger') + '">' +
+                            '<td>' + r.row + '</td><td>' + escHtml(r.name || '') + '</td><td>' + escHtml(r.lrn || '') + '</td>' +
+                            '<td><span class="badge bg-' + (r.status === 'created' ? 'success' : r.status === 'skipped' ? 'warning text-dark' : 'danger') + '">' + r.status + '</span></td>' +
+                            '<td>' + escHtml(r.message || '') + '</td></tr>').join('') +
+                        '</tbody></table>';
+                }
+
+                if (data.success) {
+                    showNotification(created + ' learner(s) successfully registered!', 'success');
+                    loadStudents(1);
+                } else {
+                    showNotification(data.message || 'Import finished with errors.', 'warning');
+                }
+            })
+            .catch(err => {
+                document.getElementById('importStatus').textContent = 'Error during import.';
+                showNotification('Import failed. Please try again.', 'danger');
+                console.error(err);
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Confirm & Import Learners';
+            });
         }
     </script>
 <?php include '../includes/footer.php'; ?>

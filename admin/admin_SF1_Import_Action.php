@@ -24,128 +24,7 @@ if (!$db) {
 }
 ensureStrengthenedShsColumns($db);
 
-$file = $_FILES['sf1_csv'] ?? $_FILES['sf1_file'] ?? null;
-if (!$file) {
-    echo json_encode(['success' => false, 'message' => 'No SF1 file was uploaded.']);
-    exit();
-}
-if ((int)$file['error'] !== UPLOAD_ERR_OK) {
-    echo json_encode(['success' => false, 'message' => sf1UploadErrorMessage((int)$file['error'])]);
-    exit();
-}
-if ($file['size'] > 10 * 1024 * 1024) {
-    echo json_encode(['success' => false, 'message' => 'File too large. Max 10MB.']);
-    exit();
-}
-
-$academicYear = trim((string)($_POST['academic_year'] ?? date('Y') . '-' . (date('Y') + 1)));
-if (!preg_match('/^\d{4}-\d{4}$/', $academicYear)) {
-    $academicYear = date('Y') . '-' . (date('Y') + 1);
-}
-
-$fileExt = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-$isXlsx = $fileExt === 'xlsx';
-if (!in_array($fileExt, ['csv', 'xlsx'], true)) {
-    echo json_encode(['success' => false, 'message' => 'Invalid file type. Please upload a CSV or XLSX file.']);
-    exit();
-}
-if ($isXlsx) {
-    if (!class_exists('ZipArchive') && !function_exists('zip_open') && !function_exists('gzinflate')) {
-        echo json_encode(['success' => false, 'message' => 'XLSX import requires ZIP support on the server. Upload CSV instead or enable zip/zlib in PHP.']);
-        exit();
-    }
-    if (!class_exists('SimpleXMLElement')) {
-        echo json_encode(['success' => false, 'message' => 'XLSX import requires the PHP SimpleXML extension on the server. Upload CSV instead or enable SimpleXML in PHP.']);
-        exit();
-    }
-}
-
-$results = ['success' => true, 'created' => 0, 'sections_created' => 0, 'parents_created' => 0, 'parents_linked' => 0, 'skipped' => 0, 'errors' => 0, 'rows' => []];
-$importRows = [];
-$headerInfo = [];
-
-if ($isXlsx) {
-    try {
-        $sf1 = new Sf1Parser($file['tmp_name']);
-        $parsed = $sf1->parse();
-        if (!empty($parsed['errors'])) {
-            echo json_encode(['success' => false, 'message' => implode(' ', $parsed['errors'])]);
-            exit();
-        }
-        $headerInfo = $parsed['header'];
-        $importRows = $parsed['students'];
-        $results['_header'] = $headerInfo;
-        if (isset($headerInfo['school_year']) && $headerInfo['school_year'] !== '') {
-            $syFromTemplate = preg_replace('/\s+/', '', $headerInfo['school_year']);
-            if (preg_match('/^\d{4}-\d{4}$/', $syFromTemplate)) {
-                $academicYear = $syFromTemplate;
-            }
-        }
-    } catch (Throwable $e) {
-        error_log('SF1 XLSX parse failed: ' . $e->getMessage());
-        echo json_encode(['success' => false, 'message' => 'Failed to parse the XLSX file. Please confirm it uses the official DepEd SF1 template or upload CSV instead.']);
-        exit();
-    }
-} else {
-    $handle = fopen($file['tmp_name'], 'r');
-    if (!$handle) {
-        echo json_encode(['success' => false, 'message' => 'Cannot read CSV file.']);
-        exit();
-    }
-    $firstChunk = fread($handle, 3);
-    if ($firstChunk !== "\xEF\xBB\xBF") {
-        rewind($handle);
-    }
-    $headers = fgetcsv($handle);
-    if (!$headers) {
-        fclose($handle);
-        echo json_encode(['success' => false, 'message' => 'Empty CSV file.']);
-        exit();
-    }
-    $headers = array_map(function($h) { return strtolower(trim(preg_replace('/\s+/', ' ', (string)$h))); }, $headers);
-
-    $colMap = [
-        'lrn' => false, 'last_name' => false, 'first_name' => false, 'middle_name' => false,
-        'sex' => false, 'grade_level' => false, 'section' => false, 'date_of_birth' => false,
-        'address' => false, 'contact_number' => false, 'parent_name' => false, 'track' => false,
-    ];
-    foreach ($headers as $idx => $h) {
-        if (str_contains($h, 'lrn')) $colMap['lrn'] = $idx;
-        elseif (str_contains($h, 'last')) $colMap['last_name'] = $idx;
-        elseif (str_contains($h, 'first')) $colMap['first_name'] = $idx;
-        elseif (str_contains($h, 'middle')) $colMap['middle_name'] = $idx;
-        elseif (str_contains($h, 'sex') || str_contains($h, 'gender')) $colMap['sex'] = $idx;
-        elseif (str_contains($h, 'grade')) $colMap['grade_level'] = $idx;
-        elseif (str_contains($h, 'section')) $colMap['section'] = $idx;
-        elseif (str_contains($h, 'birth') || str_contains($h, 'dob')) $colMap['date_of_birth'] = $idx;
-        elseif (str_contains($h, 'address')) $colMap['address'] = $idx;
-        elseif (str_contains($h, 'contact')) $colMap['contact_number'] = $idx;
-        elseif (str_contains($h, 'parent') || str_contains($h, 'guardian')) $colMap['parent_name'] = $idx;
-        elseif (str_contains($h, 'track') || str_contains($h, 'program')) $colMap['track'] = $idx;
-    }
-    if ($colMap['lrn'] === false || $colMap['last_name'] === false || $colMap['first_name'] === false) {
-        fclose($handle);
-        echo json_encode(['success' => false, 'message' => 'Required columns (LRN, Last Name, First Name) not found.']);
-        exit();
-    }
-    while (($row = fgetcsv($handle)) !== false) {
-        if (count(array_filter($row, function($v) { return trim($v) !== ''; })) === 0) continue;
-        $importRows[] = [
-            'lrn'              => preg_replace('/\D/', '', (string)($row[$colMap['lrn']] ?? '')),
-            'last_name'        => trim((string)($row[$colMap['last_name']] ?? '')),
-            'first_name'       => trim((string)($row[$colMap['first_name']] ?? '')),
-            'middle_name'      => trim((string)($row[$colMap['middle_name']] ?? '')),
-            'sex'              => trim((string)($row[$colMap['sex']] ?? '')),
-            'grade_level'      => (int)($row[$colMap['grade_level']] ?? 0),
-            'section'          => trim((string)($row[$colMap['section']] ?? '')),
-            'birthdate'        => trim((string)($row[$colMap['date_of_birth']] ?? '')),
-            'address'          => trim((string)($row[$colMap['address']] ?? '')),
-            'contact_number'   => trim((string)($row[$colMap['contact_number']] ?? '')),
-            'track'            => trim((string)($row[$colMap['track']] ?? '')),
-        ];
-    }
-    fclose($handle);
-}
+$action = trim((string)($_POST['action'] ?? ''));
 
 function sf1UploadErrorMessage(int $errorCode): string {
     switch ($errorCode) {
@@ -166,10 +45,6 @@ function sf1UploadErrorMessage(int $errorCode): string {
             return 'The SF1 upload failed. Please try again.';
     }
 }
-
-$defaultPassword = getDefaultNewUserPassword();
-$hashedPassword = password_hash($defaultPassword, PASSWORD_BCRYPT);
-$rowNum = 1;
 
 function sf1GetTrack(array $row): string {
     $raw = $row['track'] ?? '';
@@ -231,166 +106,505 @@ function ensureSf1Section(PDO $db, string $section, int $gradeLevel, string $tra
     return true;
 }
 
-foreach ($importRows as $row) {
-    $rowNum++;
-    $lrn = preg_replace('/\D/', '', (string)($row['lrn'] ?? ''));
-    $lastName = trim((string)($row['last_name'] ?? ''));
-    $firstName = trim((string)($row['first_name'] ?? ''));
-    $middleName = trim((string)($row['middle_name'] ?? ''));
-    $sex = strtolower(trim((string)(Sf1Parser::normalizeSex($row['sex'] ?? '') ?? '')));
-    $gradeLevel = (int)($row['grade_level'] ?? 0);
-    if ($gradeLevel <= 0) {
-        $gradeLevel = sf1GradeFromHeader($headerInfo);
-    }
-    $section = trim((string)($row['section'] ?? ''));
-    if ($section === '') {
-        $section = trim((string)($headerInfo['section'] ?? ''));
-    }
-    $track = sf1GetTrack($row);
-    if (empty($row['track']) && !empty($headerInfo['track_strand'])) {
-        $track = sf1GetTrack(['track' => (string)$headerInfo['track_strand']]);
-    }
-    $dateOfBirth = trim((string)($row['birthdate'] ?? ''));
-    $address = trim((string)($row['address'] ?? ''));
-    $contactNumber = trim((string)($row['contact_number'] ?? ''));
-    $houseStreet = trim((string)($row['house_street'] ?? ''));
-    $barangay = trim((string)($row['barangay'] ?? ''));
-    $municipality = trim((string)($row['municipality'] ?? ''));
-    $province = trim((string)($row['province'] ?? ''));
-    if ($address === '') {
-        $address = implode(', ', array_filter([$houseStreet, $barangay, $municipality, $province]));
+function parseSf1UploadedFile(array $file): array {
+    $fileExt = strtolower(pathinfo((string)$file['name'], PATHINFO_EXTENSION));
+    $isXlsx = $fileExt === 'xlsx';
+    if (!in_array($fileExt, ['csv', 'xlsx'], true)) {
+        throw new InvalidArgumentException('Invalid file type. Please upload a CSV or XLSX file.');
     }
 
-    if ($lrn === '' || $lastName === '' || $firstName === '') {
-        $results['rows'][] = ['row' => $rowNum, 'lrn' => $lrn, 'name' => "$firstName $lastName", 'status' => 'error', 'message' => 'Missing required fields (LRN, Last Name, First Name).'];
-        $results['errors']++;
-        continue;
+    $headerInfo = [];
+    $importRows = [];
+
+    if ($isXlsx) {
+        if (!class_exists('ZipArchive') && !function_exists('zip_open') && !function_exists('gzinflate')) {
+            throw new RuntimeException('XLSX import requires ZIP support on the server. Upload CSV instead or enable zip/zlib in PHP.');
+        }
+        if (!class_exists('SimpleXMLElement')) {
+            throw new RuntimeException('XLSX import requires SimpleXML extension on the server. Upload CSV instead.');
+        }
+
+        $sf1 = new Sf1Parser($file['tmp_name']);
+        $parsed = $sf1->parse();
+        if (!empty($parsed['errors'])) {
+            throw new RuntimeException(implode(' ', $parsed['errors']));
+        }
+        $headerInfo = $parsed['header'] ?? [];
+        $importRows = $parsed['students'] ?? [];
+    } else {
+        $handle = fopen($file['tmp_name'], 'r');
+        if (!$handle) {
+            throw new RuntimeException('Cannot read CSV file.');
+        }
+        $firstChunk = fread($handle, 3);
+        if ($firstChunk !== "\xEF\xBB\xBF") {
+            rewind($handle);
+        }
+        $headers = fgetcsv($handle);
+        if (!$headers) {
+            fclose($handle);
+            throw new RuntimeException('Empty CSV file.');
+        }
+        $headers = array_map(function($h) { return strtolower(trim(preg_replace('/\s+/', ' ', (string)$h))); }, $headers);
+
+        $colMap = [
+            'lrn' => false, 'last_name' => false, 'first_name' => false, 'middle_name' => false,
+            'name_extension' => false, 'sex' => false, 'grade_level' => false, 'section' => false,
+            'date_of_birth' => false, 'address' => false, 'house_street' => false, 'barangay' => false,
+            'municipality' => false, 'province' => false, 'contact_number' => false, 'parent_name' => false,
+            'father_name' => false, 'mother_name' => false, 'guardian_name' => false, 'relationship' => false,
+            'track' => false,
+        ];
+        foreach ($headers as $idx => $h) {
+            if (str_contains($h, 'lrn')) $colMap['lrn'] = $idx;
+            elseif (str_contains($h, 'last')) $colMap['last_name'] = $idx;
+            elseif (str_contains($h, 'first')) $colMap['first_name'] = $idx;
+            elseif (str_contains($h, 'middle')) $colMap['middle_name'] = $idx;
+            elseif (str_contains($h, 'ext')) $colMap['name_extension'] = $idx;
+            elseif (str_contains($h, 'sex') || str_contains($h, 'gender')) $colMap['sex'] = $idx;
+            elseif (str_contains($h, 'grade')) $colMap['grade_level'] = $idx;
+            elseif (str_contains($h, 'section')) $colMap['section'] = $idx;
+            elseif (str_contains($h, 'birth') || str_contains($h, 'dob')) $colMap['date_of_birth'] = $idx;
+            elseif (str_contains($h, 'street')) $colMap['house_street'] = $idx;
+            elseif (str_contains($h, 'barangay')) $colMap['barangay'] = $idx;
+            elseif (str_contains($h, 'municipality') || str_contains($h, 'city')) $colMap['municipality'] = $idx;
+            elseif (str_contains($h, 'province')) $colMap['province'] = $idx;
+            elseif (str_contains($h, 'address')) $colMap['address'] = $idx;
+            elseif (str_contains($h, 'contact') || str_contains($h, 'phone')) $colMap['contact_number'] = $idx;
+            elseif (str_contains($h, 'father')) $colMap['father_name'] = $idx;
+            elseif (str_contains($h, 'mother')) $colMap['mother_name'] = $idx;
+            elseif (str_contains($h, 'guardian')) $colMap['guardian_name'] = $idx;
+            elseif (str_contains($h, 'parent')) $colMap['parent_name'] = $idx;
+            elseif (str_contains($h, 'relation')) $colMap['relationship'] = $idx;
+            elseif (str_contains($h, 'track') || str_contains($h, 'program')) $colMap['track'] = $idx;
+        }
+
+        if ($colMap['lrn'] === false || $colMap['last_name'] === false || $colMap['first_name'] === false) {
+            fclose($handle);
+            throw new RuntimeException('Required columns (LRN, Last Name, First Name) not found in CSV.');
+        }
+
+        while (($row = fgetcsv($handle)) !== false) {
+            if (count(array_filter($row, function($v) { return trim($v) !== ''; })) === 0) continue;
+            $importRows[] = [
+                'lrn'              => preg_replace('/\D/', '', (string)($row[$colMap['lrn']] ?? '')),
+                'last_name'        => trim((string)($row[$colMap['last_name']] ?? '')),
+                'first_name'       => trim((string)($row[$colMap['first_name']] ?? '')),
+                'middle_name'      => $colMap['middle_name'] !== false ? trim((string)($row[$colMap['middle_name']] ?? '')) : '',
+                'name_extension'   => $colMap['name_extension'] !== false ? trim((string)($row[$colMap['name_extension']] ?? '')) : '',
+                'sex'              => $colMap['sex'] !== false ? trim((string)($row[$colMap['sex']] ?? '')) : '',
+                'grade_level'      => $colMap['grade_level'] !== false ? (int)($row[$colMap['grade_level']] ?? 0) : 0,
+                'section'          => $colMap['section'] !== false ? trim((string)($row[$colMap['section']] ?? '')) : '',
+                'birthdate'        => $colMap['date_of_birth'] !== false ? trim((string)($row[$colMap['date_of_birth']] ?? '')) : '',
+                'address'          => $colMap['address'] !== false ? trim((string)($row[$colMap['address']] ?? '')) : '',
+                'house_street'     => $colMap['house_street'] !== false ? trim((string)($row[$colMap['house_street']] ?? '')) : '',
+                'barangay'         => $colMap['barangay'] !== false ? trim((string)($row[$colMap['barangay']] ?? '')) : '',
+                'municipality'     => $colMap['municipality'] !== false ? trim((string)($row[$colMap['municipality']] ?? '')) : '',
+                'province'         => $colMap['province'] !== false ? trim((string)($row[$colMap['province']] ?? '')) : '',
+                'contact_number'   => $colMap['contact_number'] !== false ? trim((string)($row[$colMap['contact_number']] ?? '')) : '',
+                'parent_name'      => $colMap['parent_name'] !== false ? trim((string)($row[$colMap['parent_name']] ?? '')) : '',
+                'father_name'      => $colMap['father_name'] !== false ? trim((string)($row[$colMap['father_name']] ?? '')) : '',
+                'mother_name'      => $colMap['mother_name'] !== false ? trim((string)($row[$colMap['mother_name']] ?? '')) : '',
+                'guardian_name'    => $colMap['guardian_name'] !== false ? trim((string)($row[$colMap['guardian_name']] ?? '')) : '',
+                'relationship'     => $colMap['relationship'] !== false ? trim((string)($row[$colMap['relationship']] ?? '')) : '',
+                'track'            => $colMap['track'] !== false ? trim((string)($row[$colMap['track']] ?? '')) : '',
+            ];
+        }
+        fclose($handle);
     }
-    if (strlen($lrn) !== 12) {
-        $results['rows'][] = ['row' => $rowNum, 'lrn' => $lrn, 'name' => "$firstName $lastName", 'status' => 'error', 'message' => 'LRN must be exactly 12 digits.'];
-        $results['errors']++;
-        continue;
+
+    return ['header' => $headerInfo, 'students' => $importRows];
+}
+
+// -------------------------------------------------------------
+// 1. ACTION: PREVIEW (Parse and Return Editable Learner Grid)
+// -------------------------------------------------------------
+if ($action === 'preview' || (isset($_FILES['sf1_file']) && $action !== 'commit')) {
+    $file = $_FILES['sf1_csv'] ?? $_FILES['sf1_file'] ?? null;
+    if (!$file) {
+        echo json_encode(['success' => false, 'message' => 'No SF1 file was uploaded.']);
+        exit();
     }
-    if (!in_array($gradeLevel, [11, 12], true)) {
-        $results['rows'][] = ['row' => $rowNum, 'lrn' => $lrn, 'name' => "$firstName $lastName", 'status' => 'error', 'message' => 'Grade level must be 11 or 12.'];
-        $results['errors']++;
-        continue;
+    if ((int)$file['error'] !== UPLOAD_ERR_OK) {
+        echo json_encode(['success' => false, 'message' => sf1UploadErrorMessage((int)$file['error'])]);
+        exit();
     }
-    if (!in_array($sex, ['male', 'female'], true)) $sex = '';
-    if ($section === '') {
-        $results['rows'][] = ['row' => $rowNum, 'lrn' => $lrn, 'name' => "$firstName $lastName", 'status' => 'error', 'message' => 'Section is required.'];
-        $results['errors']++;
-        continue;
+    if ($file['size'] > 10 * 1024 * 1024) {
+        echo json_encode(['success' => false, 'message' => 'File too large. Max 10MB.']);
+        exit();
     }
-    if (!in_array($track, ['academic', 'techpro'], true)) {
-        $results['rows'][] = ['row' => $rowNum, 'lrn' => $lrn, 'name' => "$firstName $lastName", 'status' => 'error', 'message' => 'Track must be "academic" or "techpro".'];
-        $results['errors']++;
-        continue;
+
+    $academicYear = trim((string)($_POST['academic_year'] ?? date('Y') . '-' . (date('Y') + 1)));
+    if (!preg_match('/^\d{4}-\d{4}$/', $academicYear)) {
+        $academicYear = date('Y') . '-' . (date('Y') + 1);
     }
 
     try {
-        $lrnCheck = $db->prepare("SELECT id FROM users WHERE lrn = ? LIMIT 1");
-        $lrnCheck->execute([$lrn]);
-        if ($lrnCheck->fetch()) {
-            $results['rows'][] = ['row' => $rowNum, 'lrn' => $lrn, 'name' => "$firstName $lastName", 'status' => 'skipped', 'message' => 'LRN already exists in the system.'];
-            $results['skipped']++;
-            continue;
-        }
-    } catch (Throwable $e) {}
+        $parsed = parseSf1UploadedFile($file);
+        $headerInfo = $parsed['header'];
+        $rawStudents = $parsed['students'];
 
-    $refCode = generateReferenceCode('student', $db, $academicYear);
-    $emailBase = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $firstName . '.' . $lastName));
-    $email = $emailBase . '.' . $lrn . '@students.balingasag.edu.ph';
-    $curriculum = strengthenedShsCurriculum($gradeLevel, $academicYear);
-    $program = strengthenedShsProgram($gradeLevel, $track, $academicYear);
-
-    $nameExtension = trim((string)($row['name_extension'] ?? ''));
-    $religion = trim((string)($row['religion'] ?? ''));
-    $fatherName = trim((string)($row['father_name'] ?? ''));
-    $motherName = trim((string)($row['mother_name'] ?? ''));
-    $guardianName = trim((string)($row['guardian_name'] ?? ''));
-    $guardianRelationship = trim((string)($row['relationship'] ?? ''));
-
-    if ($dateOfBirth !== '') {
-        $parsedDate = Sf1Parser::parseBirthdate($dateOfBirth);
-        if ($parsedDate !== null) $dateOfBirth = $parsedDate;
-    }
-
-    try {
-        if (ensureSf1Section($db, $section, $gradeLevel, $track, $academicYear)) {
-            $results['sections_created']++;
-        }
-
-        $insertStmt = $db->prepare("INSERT INTO users
-            (reference_code, email, lrn, password, first_name, middle_name, last_name, name_extension, sex, date_of_birth, religion, contact_number, address, house_street, barangay, municipality, province, father_name, mother_name, guardian_name, guardian_relationship, grade_level, section, track, curriculum, program, role, status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'student', 'active', NOW(), NOW())");
-        $insertStmt->execute([
-            $refCode, $email, $lrn, $hashedPassword,
-            $firstName, $middleName ?: null, $lastName,
-            $nameExtension ?: null,
-            $sex ?: null, $dateOfBirth ?: null, $religion ?: null,
-            $contactNumber ?: null, $address ?: null,
-            $houseStreet ?: null, $barangay ?: null, $municipality ?: null, $province ?: null,
-            $fatherName ?: null, $motherName ?: null,
-            $guardianName ?: null, $guardianRelationship ?: null,
-            $gradeLevel, $section, $track, $curriculum, $program
-        ]);
-
-        $newUserId = (int)$db->lastInsertId();
-        $parentInfoMsg = '';
-        if ($newUserId > 0) {
-            syncStudentEnrollments($db, $newUserId, $gradeLevel, $section, $track, $academicYear);
-            $parentLink = autoLinkSf1Parent($db, $newUserId, $row, $academicYear, $hashedPassword);
-            if ($parentLink !== null) {
-                if ($parentLink['is_new']) {
-                    $results['parents_created']++;
-                }
-                $results['parents_linked']++;
-                $parentInfoMsg = ' | Parent linked (' . $parentLink['parent_ref_code'] . ')';
+        if (isset($headerInfo['school_year']) && $headerInfo['school_year'] !== '') {
+            $syFromTemplate = preg_replace('/\s+/', '', (string)$headerInfo['school_year']);
+            if (preg_match('/^\d{4}-\d{4}$/', $syFromTemplate)) {
+                $academicYear = $syFromTemplate;
             }
         }
 
-        $results['rows'][] = ['row' => $rowNum, 'lrn' => $lrn, 'name' => "$firstName $lastName", 'status' => 'created', 'message' => "Created with ref code: $refCode" . $parentInfoMsg];
-        $results['created']++;
+        $detectedGrade = sf1GradeFromHeader($headerInfo);
+        $detectedSection = trim((string)($headerInfo['section'] ?? ''));
+        $detectedTrack = sf1GetTrack(['track' => (string)($headerInfo['track_strand'] ?? '')]);
+
+        // Preload existing LRNs in a single query
+        $existingMap = [];
+        if (!empty($rawStudents)) {
+            $lrnList = array_values(array_filter(array_map(function($r) {
+                return preg_replace('/\D/', '', (string)($r['lrn'] ?? ''));
+            }, $rawStudents)));
+
+            if (!empty($lrnList)) {
+                $placeholders = implode(',', array_fill(0, count($lrnList), '?'));
+                $existStmt = $db->prepare("SELECT id, lrn, first_name, last_name, section, grade_level FROM users WHERE lrn IN ($placeholders)");
+                $existStmt->execute($lrnList);
+                while ($ex = $existStmt->fetch(PDO::FETCH_ASSOC)) {
+                    $existingMap[$ex['lrn']] = $ex;
+                }
+            }
+        }
+
+        $previewStudents = [];
+        $summary = [
+            'total' => 0,
+            'male' => 0,
+            'female' => 0,
+            'new' => 0,
+            'existing' => 0,
+            'invalid_lrn' => 0,
+        ];
+
+        $idx = 0;
+        foreach ($rawStudents as $row) {
+            $idx++;
+            $lrn = preg_replace('/\D/', '', (string)($row['lrn'] ?? ''));
+            $lastName = trim((string)($row['last_name'] ?? ''));
+            $firstName = trim((string)($row['first_name'] ?? ''));
+            $middleName = trim((string)($row['middle_name'] ?? ''));
+            $nameExtension = trim((string)($row['name_extension'] ?? ''));
+            $sex = strtolower(trim((string)(Sf1Parser::normalizeSex($row['sex'] ?? '') ?? '')));
+
+            $gradeLevel = (int)($row['grade_level'] ?? 0);
+            if ($gradeLevel <= 0) $gradeLevel = $detectedGrade > 0 ? $detectedGrade : 11;
+
+            $section = trim((string)($row['section'] ?? ''));
+            if ($section === '') $section = $detectedSection;
+
+            $track = sf1GetTrack($row);
+            if (empty($row['track']) && !empty($headerInfo['track_strand'])) {
+                $track = $detectedTrack;
+            }
+
+            $dateOfBirth = trim((string)($row['birthdate'] ?? ''));
+            if ($dateOfBirth !== '') {
+                $parsedDate = Sf1Parser::parseBirthdate($dateOfBirth);
+                if ($parsedDate !== null) $dateOfBirth = $parsedDate;
+            }
+
+            $houseStreet = trim((string)($row['house_street'] ?? ''));
+            $barangay = trim((string)($row['barangay'] ?? ''));
+            $municipality = trim((string)($row['municipality'] ?? ''));
+            $province = trim((string)($row['province'] ?? ''));
+            $address = trim((string)($row['address'] ?? ''));
+            if ($address === '') {
+                $address = implode(', ', array_filter([$houseStreet, $barangay, $municipality, $province]));
+            }
+
+            $contactNumber = trim((string)($row['contact_number'] ?? ''));
+            $parentName = trim((string)($row['parent_name'] ?? ''));
+            $fatherName = trim((string)($row['father_name'] ?? ''));
+            $motherName = trim((string)($row['mother_name'] ?? ''));
+            $guardianName = trim((string)($row['guardian_name'] ?? ''));
+            $relationship = trim((string)($row['relationship'] ?? ''));
+
+            if ($parentName === '') {
+                if ($fatherName !== '') $parentName = $fatherName;
+                elseif ($motherName !== '') $parentName = $motherName;
+                elseif ($guardianName !== '') $parentName = $guardianName;
+            }
+
+            $isExisting = isset($existingMap[$lrn]);
+            $isValidLrn = strlen($lrn) === 12;
+
+            $summary['total']++;
+            if ($sex === 'male') $summary['male']++;
+            elseif ($sex === 'female') $summary['female']++;
+
+            if ($isExisting) $summary['existing']++;
+            else $summary['new']++;
+
+            if (!$isValidLrn) $summary['invalid_lrn']++;
+
+            $previewStudents[] = [
+                'temp_id'        => $idx,
+                'lrn'            => $lrn,
+                'last_name'      => $lastName,
+                'first_name'     => $firstName,
+                'middle_name'    => $middleName,
+                'name_extension' => $nameExtension,
+                'sex'            => $sex ?: 'male',
+                'grade_level'    => $gradeLevel,
+                'section'        => $section,
+                'track'          => $track,
+                'birthdate'      => $dateOfBirth,
+                'house_street'   => $houseStreet,
+                'barangay'       => $barangay,
+                'municipality'   => $municipality,
+                'province'       => $province,
+                'address'        => $address,
+                'contact_number' => $contactNumber,
+                'parent_name'    => $parentName,
+                'father_name'    => $fatherName,
+                'mother_name'    => $motherName,
+                'guardian_name'  => $guardianName,
+                'relationship'   => $relationship,
+                'is_existing'    => $isExisting,
+                'is_valid_lrn'   => $isValidLrn,
+                'existing_name'  => $isExisting ? ($existingMap[$lrn]['first_name'] . ' ' . $existingMap[$lrn]['last_name']) : null,
+            ];
+        }
+
+        echo json_encode([
+            'success'       => true,
+            'mode'          => 'preview',
+            'header'        => [
+                'school_name'   => $headerInfo['school_name'] ?? '',
+                'school_id'     => $headerInfo['school_id'] ?? '',
+                'district'      => $headerInfo['district'] ?? '',
+                'division'      => $headerInfo['division'] ?? '',
+                'region'        => $headerInfo['region'] ?? '',
+                'school_year'   => $academicYear,
+                'grade_level'   => $detectedGrade > 0 ? $detectedGrade : 11,
+                'section'       => $detectedSection,
+                'track'         => $detectedTrack,
+            ],
+            'students'      => $previewStudents,
+            'summary'       => $summary,
+            'file_name'     => (string)$file['name'],
+        ]);
+        exit();
+
     } catch (Throwable $e) {
-        $errMsg = str_contains($e->getMessage(), 'Duplicate') ? 'Email or reference code already exists.' : 'Database error.';
-        $results['rows'][] = ['row' => $rowNum, 'lrn' => $lrn, 'name' => "$firstName $lastName", 'status' => 'error', 'message' => $errMsg];
-        $results['errors']++;
+        error_log('SF1 preview parse error: ' . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        exit();
     }
 }
 
-if (isset($handle)) {
-    fclose($handle);
+// -------------------------------------------------------------
+// 2. ACTION: COMMIT (Insert Reviewed/Edited Students into DB)
+// -------------------------------------------------------------
+if ($action === 'commit') {
+    $studentsRaw = $_POST['students'] ?? [];
+    if (is_string($studentsRaw)) {
+        $students = json_decode($studentsRaw, true) ?: [];
+    } else {
+        $students = is_array($studentsRaw) ? $studentsRaw : [];
+    }
+
+    if (empty($students)) {
+        echo json_encode(['success' => false, 'message' => 'No student data provided to commit.']);
+        exit();
+    }
+
+    $academicYear = trim((string)($_POST['academic_year'] ?? date('Y') . '-' . (date('Y') + 1)));
+    if (!preg_match('/^\d{4}-\d{4}$/', $academicYear)) {
+        $academicYear = date('Y') . '-' . (date('Y') + 1);
+    }
+
+    $defaultPassword = getDefaultNewUserPassword();
+    $hashedPassword = password_hash($defaultPassword, PASSWORD_BCRYPT);
+    $rowNum = 0;
+
+    $results = [
+        'success'          => true,
+        'mode'             => 'commit',
+        'created'          => 0,
+        'sections_created' => 0,
+        'parents_created'  => 0,
+        'parents_linked'   => 0,
+        'skipped'          => 0,
+        'errors'           => 0,
+        'rows'             => []
+    ];
+
+    foreach ($students as $row) {
+        $rowNum++;
+        $lrn = preg_replace('/\D/', '', (string)($row['lrn'] ?? ''));
+        $lastName = trim((string)($row['last_name'] ?? ''));
+        $firstName = trim((string)($row['first_name'] ?? ''));
+        $middleName = trim((string)($row['middle_name'] ?? ''));
+        $nameExtension = trim((string)($row['name_extension'] ?? ''));
+        $sex = strtolower(trim((string)($row['sex'] ?? '')));
+        if (!in_array($sex, ['male', 'female'], true)) $sex = '';
+
+        $gradeLevel = (int)($row['grade_level'] ?? 0);
+        $section = trim((string)($row['section'] ?? ''));
+        $track = sf1GetTrack($row);
+
+        $dateOfBirth = trim((string)($row['birthdate'] ?? ''));
+        if ($dateOfBirth !== '') {
+            $parsedDate = Sf1Parser::parseBirthdate($dateOfBirth);
+            if ($parsedDate !== null) $dateOfBirth = $parsedDate;
+        }
+
+        $houseStreet = trim((string)($row['house_street'] ?? ''));
+        $barangay = trim((string)($row['barangay'] ?? ''));
+        $municipality = trim((string)($row['municipality'] ?? ''));
+        $province = trim((string)($row['province'] ?? ''));
+        $address = trim((string)($row['address'] ?? ''));
+        if ($address === '') {
+            $address = implode(', ', array_filter([$houseStreet, $barangay, $municipality, $province]));
+        }
+
+        $contactNumber = trim((string)($row['contact_number'] ?? ''));
+        $fatherName = trim((string)($row['father_name'] ?? ''));
+        $motherName = trim((string)($row['mother_name'] ?? ''));
+        $guardianName = trim((string)($row['guardian_name'] ?? ''));
+        $guardianRelationship = trim((string)($row['relationship'] ?? ''));
+        $parentName = trim((string)($row['parent_name'] ?? ''));
+        if ($parentName === '') {
+            if ($fatherName !== '') $parentName = $fatherName;
+            elseif ($motherName !== '') $parentName = $motherName;
+            elseif ($guardianName !== '') $parentName = $guardianName;
+        }
+
+        if ($lrn === '' || $lastName === '' || $firstName === '') {
+            $results['rows'][] = ['row' => $rowNum, 'lrn' => $lrn, 'name' => "$firstName $lastName", 'status' => 'error', 'message' => 'Missing required fields (LRN, Last Name, First Name).'];
+            $results['errors']++;
+            continue;
+        }
+        if (strlen($lrn) !== 12) {
+            $results['rows'][] = ['row' => $rowNum, 'lrn' => $lrn, 'name' => "$firstName $lastName", 'status' => 'error', 'message' => 'LRN must be exactly 12 digits.'];
+            $results['errors']++;
+            continue;
+        }
+        if (!in_array($gradeLevel, [11, 12], true)) {
+            $results['rows'][] = ['row' => $rowNum, 'lrn' => $lrn, 'name' => "$firstName $lastName", 'status' => 'error', 'message' => 'Grade level must be 11 or 12.'];
+            $results['errors']++;
+            continue;
+        }
+        if ($section === '') {
+            $results['rows'][] = ['row' => $rowNum, 'lrn' => $lrn, 'name' => "$firstName $lastName", 'status' => 'error', 'message' => 'Section is required.'];
+            $results['errors']++;
+            continue;
+        }
+        if (!in_array($track, ['academic', 'techpro'], true)) {
+            $track = 'academic';
+        }
+
+        // Check if LRN already exists
+        try {
+            $lrnCheck = $db->prepare("SELECT id, first_name, last_name FROM users WHERE lrn = ? LIMIT 1");
+            $lrnCheck->execute([$lrn]);
+            if ($existingUser = $lrnCheck->fetch(PDO::FETCH_ASSOC)) {
+                $results['rows'][] = [
+                    'row'     => $rowNum,
+                    'lrn'     => $lrn,
+                    'name'    => "$firstName $lastName",
+                    'status'  => 'skipped',
+                    'message' => 'LRN already registered in system (' . $existingUser['first_name'] . ' ' . $existingUser['last_name'] . ').'
+                ];
+                $results['skipped']++;
+                continue;
+            }
+        } catch (Throwable $e) {}
+
+        $refCode = generateReferenceCode('student', $db, $academicYear);
+        $emailBase = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $firstName . '.' . $lastName));
+        $email = $emailBase . '.' . $lrn . '@students.balingasag.edu.ph';
+        $curriculum = strengthenedShsCurriculum($gradeLevel, $academicYear);
+        $program = strengthenedShsProgram($gradeLevel, $track, $academicYear);
+
+        try {
+            if (ensureSf1Section($db, $section, $gradeLevel, $track, $academicYear)) {
+                $results['sections_created']++;
+            }
+
+            $insertStmt = $db->prepare("INSERT INTO users
+                (reference_code, email, lrn, password, first_name, middle_name, last_name, name_extension, sex, date_of_birth, religion, contact_number, address, house_street, barangay, municipality, province, father_name, mother_name, guardian_name, guardian_relationship, grade_level, section, track, curriculum, program, role, status, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'student', 'active', NOW(), NOW())");
+            $insertStmt->execute([
+                $refCode, $email, $lrn, $hashedPassword,
+                $firstName, $middleName ?: null, $lastName,
+                $nameExtension ?: null,
+                $sex ?: null, $dateOfBirth ?: null, null,
+                $contactNumber ?: null, $address ?: null,
+                $houseStreet ?: null, $barangay ?: null, $municipality ?: null, $province ?: null,
+                $fatherName ?: null, $motherName ?: null,
+                $guardianName ?: null, $guardianRelationship ?: null,
+                $gradeLevel, $section, $track, $curriculum, $program
+            ]);
+
+            $newUserId = (int)$db->lastInsertId();
+            $parentInfoMsg = '';
+            if ($newUserId > 0) {
+                syncStudentEnrollments($db, $newUserId, $gradeLevel, $section, $track, $academicYear);
+                $parentLink = autoLinkSf1Parent($db, $newUserId, $row, $academicYear, $hashedPassword);
+                if ($parentLink !== null) {
+                    if ($parentLink['is_new']) {
+                        $results['parents_created']++;
+                    }
+                    $results['parents_linked']++;
+                    $parentInfoMsg = ' | Parent account linked (' . $parentLink['parent_ref_code'] . ')';
+                }
+            }
+
+            $results['rows'][] = [
+                'row'     => $rowNum,
+                'lrn'     => $lrn,
+                'name'    => "$firstName $lastName",
+                'status'  => 'created',
+                'message' => "Created ($refCode)$parentInfoMsg"
+            ];
+            $results['created']++;
+        } catch (Throwable $e) {
+            $errMsg = str_contains($e->getMessage(), 'Duplicate') ? 'Duplicate entry for email/reference code.' : 'Database error.';
+            $results['rows'][] = ['row' => $rowNum, 'lrn' => $lrn, 'name' => "$firstName $lastName", 'status' => 'error', 'message' => $errMsg];
+            $results['errors']++;
+        }
+    }
+
+    if ($results['created'] === 0 && $results['errors'] === 0 && $results['skipped'] === 0) {
+        $results['message'] = 'No learners processed.';
+        $results['success'] = false;
+    } elseif ($results['errors'] > 0 && $results['created'] === 0) {
+        $results['success'] = false;
+        $results['message'] = 'Import failed. Please review errors.';
+    } else {
+        $results['message'] = $results['created'] . ' learner(s) successfully imported.';
+        if ($results['sections_created'] > 0) {
+            $results['message'] .= ' ' . $results['sections_created'] . ' new section(s) created.';
+        }
+        if ($results['parents_created'] > 0 || $results['parents_linked'] > 0) {
+            $results['message'] .= ' ' . $results['parents_created'] . ' parent account(s) generated (' . $results['parents_linked'] . ' linked).';
+        }
+    }
+
+    recordAdminAuditLog($db, 'sf1.import_commit', 'student_import', null, [
+        'academic_year'    => $academicYear,
+        'created'          => (int)$results['created'],
+        'sections_created' => (int)$results['sections_created'],
+        'parents_created'  => (int)$results['parents_created'],
+        'parents_linked'   => (int)$results['parents_linked'],
+        'skipped'          => (int)$results['skipped'],
+        'errors'           => (int)$results['errors'],
+        'success'          => (bool)$results['success'],
+    ]);
+
+    echo json_encode($results);
+    exit();
 }
 
-if ($results['created'] === 0 && $results['errors'] === 0 && $results['skipped'] === 0) {
-    $results['message'] = 'No valid data rows found in the CSV.';
-    $results['success'] = false;
-} elseif ($results['errors'] > 0 && $results['created'] === 0) {
-    $results['success'] = false;
-    $results['message'] = 'Import failed. Please check the errors above.';
-} else {
-    $results['message'] = $results['created'] . ' students imported successfully.';
-    if ($results['sections_created'] > 0) {
-        $results['message'] .= ' ' . $results['sections_created'] . ' section(s) created.';
-    }
-    if ($results['parents_created'] > 0 || $results['parents_linked'] > 0) {
-        $results['message'] .= ' ' . $results['parents_created'] . ' parent account(s) created (' . $results['parents_linked'] . ' linked).';
-    }
-}
-
-recordAdminAuditLog($db, 'sf1.import', 'student_import', null, [
-    'file_name' => (string)($file['name'] ?? ''),
-    'academic_year' => $academicYear,
-    'created' => (int)$results['created'],
-    'sections_created' => (int)$results['sections_created'],
-    'parents_created' => (int)$results['parents_created'],
-    'parents_linked' => (int)$results['parents_linked'],
-    'skipped' => (int)$results['skipped'],
-    'errors' => (int)$results['errors'],
-    'success' => (bool)$results['success'],
-]);
-
-echo json_encode($results);
+echo json_encode(['success' => false, 'message' => 'Invalid action requested.']);
+exit();
 
 
