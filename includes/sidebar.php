@@ -83,7 +83,7 @@ if (!empty($_SESSION['logged_in']) && in_array($current_role, ['teacher', 'paren
         <div class="sidebar-logo">
             <img src="../assets/images/bshs-logo.jpg" alt="School Logo" class="sidebar-logo-img">
         </div>
-        <span class="sidebar-title"><?php
+        <span class="sidebar-title" title="<?php
             $sidebarSchoolTitle = 'Balingasag SHS';
             $activeDb = $sidebarDb ?? ($db ?? null);
             if (isset($activeDb) && $activeDb instanceof PDO) {
@@ -93,7 +93,7 @@ if (!empty($_SESSION['logged_in']) && in_array($current_role, ['teacher', 'paren
                 }
             }
             echo htmlspecialchars($sidebarSchoolTitle);
-        ?></span>
+        ?>"><?php echo htmlspecialchars($sidebarSchoolTitle); ?></span>
     </div>
 
     <!-- Navigation -->

@@ -9,7 +9,6 @@ if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
 if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'admin') {
     if (str_contains((string)($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json')) {
         http_response_code(403);
-        header('Content-Type: application/json');
         echo json_encode(['success' => false, 'message' => 'Unauthorized access']);
     } else {
         header('Location: ../auth/login.php');
@@ -23,7 +22,6 @@ if (!hasPermission('settings.manage')) {
     if (str_contains((string)($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json')) {
         http_response_code(403);
         header('Content-Type: application/json');
-        echo json_encode(['success' => false, 'message' => 'Insufficient permissions']);
     } else {
         header('Location: admin_School_Settings.php?error=' . urlencode('Insufficient permissions to manage settings'));
     }
@@ -82,24 +80,46 @@ foreach ($fields as $k => $v) {
     setSchoolSetting($db, $k, $v);
 }
 
+$websiteHeroTitle = trim((string)($_POST['website_hero_title'] ?? ''));
+$websiteHeroSubtitle = trim((string)($_POST['website_hero_subtitle'] ?? ''));
+$websiteAnnouncementsTagline = trim((string)($_POST['website_announcements_tagline'] ?? ''));
+$websiteAboutTitle = trim((string)($_POST['website_about_title'] ?? ''));
+$websiteAboutContent = trim((string)($_POST['website_about_content'] ?? ''));
+
 // Sync with website_content table if present
 try {
     if (dbHasTable($db, 'website_content')) {
+        $driver = (string)$db->getAttribute(PDO::ATTR_DRIVER_NAME);
+        $wcUpsertSql = $driver === 'sqlite'
+            ? "INSERT INTO website_content (section_key, title, content, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(section_key) DO UPDATE SET title = excluded.title, content = excluded.content, updated_at = CURRENT_TIMESTAMP"
+            : "INSERT INTO website_content (section_key, title, content, updated_at) VALUES (?, ?, ?, NOW()) ON DUPLICATE KEY UPDATE title = VALUES(title), content = VALUES(content), updated_at = NOW()";
+
+        $wcStmt = $db->prepare($wcUpsertSql);
+
+        if ($websiteHeroTitle !== '' || $websiteHeroSubtitle !== '') {
+            $wcStmt->execute(['hero_title', $websiteHeroTitle !== '' ? $websiteHeroTitle : ('Welcome to ' . $schoolName), $websiteHeroSubtitle]);
+        }
+        if ($websiteAboutTitle !== '' || $websiteAboutContent !== '') {
+            $wcStmt->execute(['about', $websiteAboutTitle !== '' ? $websiteAboutTitle : 'About Our School', $websiteAboutContent]);
+        }
+        if ($websiteAnnouncementsTagline !== '') {
+            $wcStmt->execute(['announcements_heading', 'Announcements & Events', $websiteAnnouncementsTagline]);
+        }
+
         $syncMap = [
-            'contact_address' => $schoolAddress,
-            'contact_email' => $contactEmail,
-            'contact_phone' => $contactNumber,
-            'contact_hours' => $officeHours,
+            'contact_address' => ['title' => 'Address', 'content' => $schoolAddress],
+            'contact_email' => ['title' => 'Email', 'content' => $contactEmail],
+            'contact_phone' => ['title' => 'Phone', 'content' => $contactNumber],
+            'contact_hours' => ['title' => 'Office Hours', 'content' => $officeHours],
         ];
-        $upStmt = $db->prepare("UPDATE website_content SET content = ?, updated_at = NOW() WHERE section_key = ?");
-        foreach ($syncMap as $secKey => $contentVal) {
-            if ($contentVal !== '') {
-                $upStmt->execute([$contentVal, $secKey]);
+        foreach ($syncMap as $secKey => $info) {
+            if ($info['content'] !== '') {
+                $wcStmt->execute([$secKey, $info['title'], $info['content']]);
             }
         }
     }
 } catch (Throwable $e) {
-    // Non-fatal
+    error_log('Website content sync failed: ' . $e->getMessage());
 }
 
 $adminId = (int)($_SESSION['user_id'] ?? 0);

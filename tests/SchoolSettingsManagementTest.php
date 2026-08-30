@@ -72,6 +72,11 @@ final class SchoolSettingsManagementTest extends TestCase
         $this->assertStringContainsString('name="contact_email"', $page);
         $this->assertStringContainsString('name="contact_number"', $page);
         $this->assertStringContainsString('name="office_hours"', $page);
+        $this->assertStringContainsString('name="website_hero_title"', $page);
+        $this->assertStringContainsString('name="website_hero_subtitle"', $page);
+        $this->assertStringContainsString('name="website_announcements_tagline"', $page);
+        $this->assertStringContainsString('name="website_about_title"', $page);
+        $this->assertStringContainsString('name="website_about_content"', $page);
         $this->assertStringContainsString('csrf_token', $page);
     }
 
@@ -85,6 +90,7 @@ final class SchoolSettingsManagementTest extends TestCase
         $this->assertStringContainsString('recordAdminAuditLog(', $action);
         $this->assertStringContainsString('setSchoolSetting(', $action);
         $this->assertStringContainsString("REQUEST_METHOD", $action);
+        $this->assertStringContainsString("website_hero_title", $action);
 
         // Verify recordAdminAuditLog executes without TypeError
         recordAdminAuditLog(
@@ -99,13 +105,20 @@ final class SchoolSettingsManagementTest extends TestCase
         $this->assertSame(1, $logCount);
     }
 
-    public function testPermissionForScriptIncludesSchoolSettings(): void
+    public function testPublicSiteUsesAcademicManagementSystemKickerAndDynamicContent(): void
     {
-        $this->assertSame('settings.view', permissionForScript('admin_school_settings.php'));
-        $this->assertSame('settings.manage', permissionForScript('admin_school_settings_action.php'));
+        $site = file_get_contents(__DIR__ . '/../site/index.php');
+        $this->assertIsString($site);
+
+        $this->assertStringContainsString('<small class="brand-kicker">Academic Management System</small>', $site);
+        $this->assertStringContainsString("wc(\$db, 'hero_title', 'title'", $site);
+        $this->assertStringContainsString("wc(\$db, 'hero_title', 'content'", $site);
+        $this->assertStringContainsString("wc(\$db, 'announcements_heading', 'content'", $site);
+        $this->assertStringContainsString("wc(\$db, 'about', 'title'", $site);
+        $this->assertStringContainsString("wc(\$db, 'about', 'content'", $site);
     }
 
-    public function testSidebarContainsSchoolSettingsMenu(): void
+    public function testSidebarContainsSchoolSettingsMenuAndTitleContainment(): void
     {
         $sidebar = file_get_contents(__DIR__ . '/../includes/sidebar.php');
         $this->assertIsString($sidebar);
@@ -113,5 +126,17 @@ final class SchoolSettingsManagementTest extends TestCase
         $this->assertStringContainsString('admin_School_Settings.php', $sidebar);
         $this->assertStringContainsString('School Settings', $sidebar);
         $this->assertStringContainsString('getSchoolSetting(', $sidebar);
+        $this->assertStringContainsString('title="', $sidebar);
+
+        $css = file_get_contents(__DIR__ . '/../assets/css/main.css');
+        $this->assertIsString($css);
+        $this->assertStringContainsString('-webkit-line-clamp: 2', $css);
+        $this->assertStringContainsString('text-overflow: ellipsis', $css);
+    }
+
+    public function testPermissionForScriptIncludesSchoolSettings(): void
+    {
+        $this->assertSame('settings.view', permissionForScript('admin_school_settings.php'));
+        $this->assertSame('settings.manage', permissionForScript('admin_school_settings_action.php'));
     }
 }

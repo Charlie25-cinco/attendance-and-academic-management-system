@@ -26,6 +26,23 @@ $contactEmail = $schoolSettings['contact_email'] ?? 'balingasagshs@deped.gov.ph'
 $contactNumber = $schoolSettings['contact_number'] ?? '';
 $officeHours = $schoolSettings['office_hours'] ?? 'Monday – Friday: 7:00 AM – 5:00 PM';
 
+$websiteContent = [];
+if ($db instanceof PDO) {
+    try {
+        $wcStmt = $db->query("SELECT section_key, title, content FROM website_content");
+        while ($r = $wcStmt->fetch(PDO::FETCH_ASSOC)) {
+            $websiteContent[$r['section_key']] = $r;
+        }
+    } catch (Throwable $e) {
+    }
+}
+
+$heroTitle = $websiteContent['hero_title']['title'] ?? ('Welcome to ' . $schoolName);
+$heroSubtitle = $websiteContent['hero_title']['content'] ?? ('Nurturing excellence, building futures. A DepEd-accredited Senior High School in ' . $division . ', ' . $region . '.');
+$announcementsTagline = $websiteContent['announcements_heading']['content'] ?? ('Important advisories, activities, and school notices posted for the ' . $schoolName . ' community.');
+$aboutTitle = $websiteContent['about']['title'] ?? 'About Our School';
+$aboutContent = $websiteContent['about']['content'] ?? ($schoolName . ' is committed to providing quality education for Senior High School students in the municipality of ' . $division . '. We offer various tracks and strands aligned with the K to 12 curriculum of the Department of Education.');
+
 $statusMsg = trim((string)($_GET['status'] ?? ''));
 $errorMsg = trim((string)($_GET['error'] ?? ''));
 
@@ -164,6 +181,42 @@ $page_title = 'School Settings';
                                             <label for="office_hours" class="form-label fw-semibold">Office Hours</label>
                                             <input type="text" class="form-control" id="office_hours" name="office_hours" value="<?php echo htmlspecialchars($officeHours); ?>" placeholder="e.g. Monday – Friday: 7:00 AM – 5:00 PM">
                                             <div class="form-text">Displayed on the public website contact section.</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Public Website Presentation Card -->
+                            <div class="content-card mb-4">
+                                <div class="content-card-header d-flex align-items-center gap-2">
+                                    <i class="bi bi-globe2 text-primary fs-5"></i>
+                                    <h5 class="content-card-title mb-0">Public Website Presentation</h5>
+                                </div>
+                                <div class="content-card-body">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label for="website_hero_title" class="form-label fw-semibold">Welcome Headline</label>
+                                            <input type="text" class="form-control" id="website_hero_title" name="website_hero_title" value="<?php echo htmlspecialchars($heroTitle); ?>" placeholder="e.g. Welcome to Balingasag Senior High School">
+                                            <div class="form-text">Main headline on the public homepage hero section.</div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="website_announcements_tagline" class="form-label fw-semibold">Announcements Tagline</label>
+                                            <input type="text" class="form-control" id="website_announcements_tagline" name="website_announcements_tagline" value="<?php echo htmlspecialchars($announcementsTagline); ?>" placeholder="e.g. Important advisories, activities, and school notices...">
+                                            <div class="form-text">Subtitle text above the announcements list.</div>
+                                        </div>
+                                        <div class="col-12">
+                                            <label for="website_hero_subtitle" class="form-label fw-semibold">Hero Subtitle / Mission Tagline</label>
+                                            <textarea class="form-control" id="website_hero_subtitle" name="website_hero_subtitle" rows="2" placeholder="e.g. Nurturing excellence, building futures..."><?php echo htmlspecialchars($heroSubtitle); ?></textarea>
+                                            <div class="form-text">Supporting statement below the welcome headline.</div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="website_about_title" class="form-label fw-semibold">About Section Title</label>
+                                            <input type="text" class="form-control" id="website_about_title" name="website_about_title" value="<?php echo htmlspecialchars($aboutTitle); ?>" placeholder="e.g. About Our School">
+                                        </div>
+                                        <div class="col-12">
+                                            <label for="website_about_content" class="form-label fw-semibold">About the School Overview</label>
+                                            <textarea class="form-control" id="website_about_content" name="website_about_content" rows="3" placeholder="Description of school background, programs, and DepEd alignment..."><?php echo htmlspecialchars($aboutContent); ?></textarea>
+                                            <div class="form-text">Appears in the "About Our School" section of the landing page.</div>
                                         </div>
                                     </div>
                                 </div>

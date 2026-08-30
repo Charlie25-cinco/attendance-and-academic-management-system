@@ -81,7 +81,7 @@ if ($db instanceof PDO && function_exists('getSchoolSetting')) {
             <a class="navbar-brand" href="#top" aria-label="<?php echo htmlspecialchars($siteSchoolName); ?> home">
                 <img src="<?php echo $logoPath; ?>" alt="School Logo">
                 <span>
-                    <small class="brand-kicker"><?php echo htmlspecialchars($siteSchoolName); ?></small>
+                    <small class="brand-kicker">Academic Management System</small>
                     <strong><?php echo htmlspecialchars($siteSchoolName); ?></strong>
                 </span>
             </a>
@@ -106,11 +106,11 @@ if ($db instanceof PDO && function_exists('getSchoolSetting')) {
         <section class="hero-section">
             <div class="container site-container hero-content">
                 <div class="hero-school-mark">
-                    <img src="<?php echo $logoPath; ?>" alt="Balingasag SHS Logo">
+                    <img src="<?php echo $logoPath; ?>" alt="School Logo">
                 </div>
                 <div class="hero-badge"><i class="bi bi-mortarboard-fill me-2"></i>Senior High School Academic Management</div>
-                <h1 class="hero-title"><?php echo wc($db, 'hero_title', 'title', 'Welcome to Balingasag Senior High School'); ?></h1>
-                <p class="hero-subtitle"><?php echo wc($db, 'hero_title', 'content', 'Nurturing excellence, building futures.'); ?></p>
+                <h1 class="hero-title"><?php echo wc($db, 'hero_title', 'title', 'Welcome to ' . $siteSchoolName); ?></h1>
+                <p class="hero-subtitle"><?php echo wc($db, 'hero_title', 'content', 'Nurturing excellence, building futures. A DepEd-accredited Senior High School in ' . $siteDivision . ', ' . $siteRegion . '.'); ?></p>
                 <div class="hero-actions">
                     <a href="<?php echo $loginUrl; ?>" class="btn btn-login btn-lg">
                         <i class="bi bi-grid-1x2-fill me-2"></i>Access Academic Portal
@@ -141,7 +141,7 @@ if ($db instanceof PDO && function_exists('getSchoolSetting')) {
                 <div class="section-heading">
                     <span class="section-kicker">School updates</span>
                     <h2 class="section-title">Announcements & Events</h2>
-                    <p class="section-copy">Important advisories, activities, and school notices posted for the Balingasag SHS community.</p>
+                    <p class="section-copy"><?php echo wc($db, 'announcements_heading', 'content', 'Important advisories, activities, and school notices posted for the ' . $siteSchoolName . ' community.'); ?></p>
                 </div>
                 <?php if (empty($announcements)): ?>
                 <div class="empty-state">
@@ -176,7 +176,7 @@ if ($db instanceof PDO && function_exists('getSchoolSetting')) {
                     <div class="col-lg-5">
                         <span class="section-kicker">About the school</span>
                         <h2 class="section-title"><?php echo wc($db, 'about', 'title', 'About Our School'); ?></h2>
-                        <p class="about-copy"><?php echo nl2br(wc($db, 'about', 'content', "Balingasag Senior High School offers both Academic and TechPro tracks under the SSHS Strengthened Curriculum. We support learners with strong instruction, clear guidance, and school processes aligned to DepEd Order 74, s. 2025.")); ?></p>
+                        <p class="about-copy"><?php echo nl2br(wc($db, 'about', 'content', $siteSchoolName . " is committed to providing quality education for Senior High School students in the municipality of " . $siteDivision . ". We offer various tracks and strands aligned with the K to 12 curriculum of the Department of Education.")); ?></p>
                         <a href="<?php echo $loginUrl; ?>" class="btn btn-login">
                             <i class="bi bi-box-arrow-in-right me-2"></i>Open Portal
                         </a>
