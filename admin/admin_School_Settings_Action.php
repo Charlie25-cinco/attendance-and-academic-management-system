@@ -80,6 +80,83 @@ foreach ($fields as $k => $v) {
     setSchoolSetting($db, $k, $v);
 }
 
+// Process School Logo / Seal upload if provided
+$logoUpdated = false;
+if (isset($_FILES['school_logo']) && is_array($_FILES['school_logo']) && ($_FILES['school_logo']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+    $logoFile = $_FILES['school_logo'];
+    if ($logoFile['error'] === UPLOAD_ERR_OK && is_uploaded_file($logoFile['tmp_name'])) {
+        $maxSizeBytes = 5 * 1024 * 1024; // 5MB limit
+        if ($logoFile['size'] > $maxSizeBytes) {
+            $err = 'School logo image must not exceed 5MB.';
+            if (str_contains((string)($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json')) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => $err]);
+            } else {
+                header('Location: admin_School_Settings.php?error=' . urlencode($err));
+            }
+            exit();
+        }
+
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime = finfo_file($finfo, $logoFile['tmp_name']);
+        finfo_close($finfo);
+
+        $allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+        if (!in_array($mime, $allowedMimes, true)) {
+            $err = 'Invalid logo format. Only PNG, JPG, and WEBP images are allowed.';
+            if (str_contains((string)($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json')) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => $err]);
+            } else {
+                header('Location: admin_School_Settings.php?error=' . urlencode($err));
+            }
+            exit();
+        }
+
+        $destPath = dirname(__DIR__) . '/assets/images/bshs-logo.jpg';
+
+        $srcImage = null;
+        if ($mime === 'image/png') {
+            $srcImage = @imagecreatefrompng($logoFile['tmp_name']);
+        } elseif ($mime === 'image/webp') {
+            $srcImage = @imagecreatefromwebp($logoFile['tmp_name']);
+        } elseif ($mime === 'image/jpeg') {
+            $srcImage = @imagecreatefromjpeg($logoFile['tmp_name']);
+        }
+
+        if ($srcImage) {
+            $srcW = imagesx($srcImage);
+            $srcH = imagesy($srcImage);
+            $canvas = imagecreatetruecolor($srcW, $srcH);
+            $white = imagecolorallocate($canvas, 255, 255, 255);
+            imagefilledrectangle($canvas, 0, 0, $srcW, $srcH, $white);
+            imagecopy($canvas, $srcImage, 0, 0, 0, 0, $srcW, $srcH);
+            imagejpeg($canvas, $destPath, 95);
+            imagedestroy($canvas);
+            imagedestroy($srcImage);
+            $logoUpdated = true;
+        } else {
+            if (move_uploaded_file($logoFile['tmp_name'], $destPath)) {
+                $logoUpdated = true;
+            }
+        }
+
+        // Regenerate PWA and browser favicons if GD is available
+        if ($logoUpdated && extension_loaded('gd')) {
+            $genScript = dirname(__DIR__) . '/scripts/generate_pwa_icons.php';
+            if (is_file($genScript)) {
+                try {
+                    ob_start();
+                    include $genScript;
+                    ob_end_clean();
+                } catch (Throwable $e) {
+                    error_log('PWA icon generation failed: ' . $e->getMessage());
+                }
+            }
+        }
+    }
+}
+
 $websiteHeroTitle = trim((string)($_POST['website_hero_title'] ?? ''));
 $websiteHeroSubtitle = trim((string)($_POST['website_hero_subtitle'] ?? ''));
 $websiteAnnouncementsTagline = trim((string)($_POST['website_announcements_tagline'] ?? ''));

@@ -96,11 +96,36 @@ $page_title = 'School Settings';
                     </div>
                 <?php endif; ?>
 
-                <form method="POST" action="admin_School_Settings_Action.php" id="schoolSettingsForm">
+                <form method="POST" action="admin_School_Settings_Action.php" id="schoolSettingsForm" enctype="multipart/form-data">
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
 
                     <div class="row g-4">
                         <div class="col-lg-8">
+                            <!-- School Seal & Logo Card -->
+                            <div class="content-card mb-4">
+                                <div class="content-card-header d-flex align-items-center gap-2">
+                                    <i class="bi bi-image text-primary fs-5"></i>
+                                    <h5 class="content-card-title mb-0">School Seal & Brand Logo</h5>
+                                </div>
+                                <div class="content-card-body">
+                                    <div class="d-flex flex-column flex-sm-row align-items-center gap-4">
+                                        <div class="position-relative text-center">
+                                            <div class="rounded-circle border p-1 bg-white shadow-sm d-inline-flex align-items-center justify-content-center" style="width: 90px; height: 90px;">
+                                                <img src="../assets/images/bshs-logo.jpg?t=<?php echo time(); ?>" alt="Current School Logo" id="currentLogoPreview" class="rounded-circle" style="width: 80px; height: 80px; object-fit: cover;">
+                                            </div>
+                                            <div class="small text-muted mt-1">Current Logo</div>
+                                        </div>
+                                        <div class="flex-grow-1 w-100">
+                                            <label for="school_logo" class="form-label fw-semibold">Upload New Official Logo / Seal</label>
+                                            <input type="file" class="form-control" id="school_logo" name="school_logo" accept="image/png, image/jpeg, image/webp">
+                                            <div class="form-text mt-2">
+                                                <i class="bi bi-info-circle me-1"></i>Supports <strong>PNG, JPG, or WEBP</strong> up to 5MB. Square aspect ratio (e.g. 512×512) recommended. Automatically updates the portal header, login screens, and regenerates PWA mobile app icons.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- School Identification Card -->
                             <div class="content-card mb-4">
                                 <div class="content-card-header d-flex align-items-center gap-2">
@@ -287,6 +312,21 @@ $page_title = 'School Settings';
                 inp.addEventListener('input', updatePreview);
             }
         });
+
+        const logoInput = document.getElementById('school_logo');
+        const logoPreview = document.getElementById('currentLogoPreview');
+        if (logoInput && logoPreview) {
+            logoInput.addEventListener('change', function () {
+                const file = this.files && this.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        logoPreview.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
     })();
     </script>
 </body>

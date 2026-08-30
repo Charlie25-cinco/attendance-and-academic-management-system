@@ -62,6 +62,8 @@ final class SchoolSettingsManagementTest extends TestCase
         $page = file_get_contents(__DIR__ . '/../admin/admin_School_Settings.php');
         $this->assertIsString($page);
 
+        $this->assertStringContainsString('enctype="multipart/form-data"', $page);
+        $this->assertStringContainsString('name="school_logo"', $page);
         $this->assertStringContainsString('name="school_name"', $page);
         $this->assertStringContainsString('name="school_id"', $page);
         $this->assertStringContainsString('name="school_head"', $page);
@@ -90,6 +92,7 @@ final class SchoolSettingsManagementTest extends TestCase
         $this->assertStringContainsString('recordAdminAuditLog(', $action);
         $this->assertStringContainsString('setSchoolSetting(', $action);
         $this->assertStringContainsString("REQUEST_METHOD", $action);
+        $this->assertStringContainsString("school_logo", $action);
         $this->assertStringContainsString("website_hero_title", $action);
 
         // Verify recordAdminAuditLog executes without TypeError
@@ -127,6 +130,8 @@ final class SchoolSettingsManagementTest extends TestCase
         $this->assertStringContainsString('School Settings', $sidebar);
         $this->assertStringContainsString('getSchoolSetting(', $sidebar);
         $this->assertStringContainsString('title="', $sidebar);
+        $this->assertStringContainsString('id="sidebarToggleBtn"', $sidebar);
+        $this->assertStringNotContainsString('onclick="toggleSidebar()"', $sidebar);
 
         $css = file_get_contents(__DIR__ . '/../assets/css/main.css');
         $this->assertIsString($css);

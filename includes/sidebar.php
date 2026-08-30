@@ -74,7 +74,7 @@ if (!empty($_SESSION['logged_in']) && in_array($current_role, ['teacher', 'paren
 <!-- Sidebar -->
 <aside class="sidebar" id="sidebar">
     <!-- Toggle Button -->
-    <button class="sidebar-toggle" type="button" onclick="toggleSidebar()" aria-label="Toggle sidebar navigation" title="Toggle sidebar navigation">
+    <button class="sidebar-toggle" id="sidebarToggleBtn" type="button" aria-label="Toggle sidebar navigation" title="Toggle sidebar navigation">
         <i class="bi bi-chevron-left" id="toggleIcon"></i>
     </button>
 
