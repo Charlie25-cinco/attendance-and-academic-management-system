@@ -1487,7 +1487,7 @@ if ("serviceWorker" in navigator && navigator.onLine) {
         .keys()
         .then((keys) => {
           keys.forEach((key) => {
-            if (key.startsWith("bshs-ams-v") && key !== "bshs-ams-v32") {
+            if (key.startsWith("bshs-ams-v") && key !== "bshs-ams-v33") {
               caches.delete(key);
             }
           });
@@ -1511,6 +1511,7 @@ document.addEventListener("click", function (e) {
       localStorage.removeItem("bshs_cached_teacher");
       localStorage.removeItem("bshs_teacher_session");
     } catch (e) {}
+  }
 });
 
 // ============================================
@@ -1535,10 +1536,15 @@ function showOfflineModal(featureName) {
             <p class="text-muted small mb-3" id="bshsOfflineModalMessage">
               This feature requires an active internet connection. Offline attendance and grade activities remain available.
             </p>
+            <div class="d-grid gap-2">
               <a href="../teacher/teacher_Attendance.php" class="btn btn-primary btn-sm fw-semibold">
                 <i class="bi bi-calendar-check-fill me-1"></i>Take Offline Attendance
               </a>
-              <a href="../teacher/teacher_Classes.php" class="btn btn-outline-primary btn-sm fw-semibold">
+              <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
     document.body.appendChild(modalEl);
   }
 
