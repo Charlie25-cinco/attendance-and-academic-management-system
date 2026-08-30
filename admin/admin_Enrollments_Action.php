@@ -281,8 +281,14 @@ function createStudent(PDO $db): void {
             return;
         }
         if (empty($track) || !in_array($track, ['academic', 'techpro'], true)) {
-            echo json_encode(['success' => false, 'message' => 'Track is required (academic or techpro)']);
-            return;
+            $secStmt = $db->prepare("SELECT track FROM sections WHERE name = ? LIMIT 1");
+            $secStmt->execute([$section]);
+            $dbTrack = strtolower((string)$secStmt->fetchColumn());
+            if (in_array($dbTrack, ['academic', 'techpro'], true)) {
+                $track = $dbTrack;
+            } else {
+                $track = 'academic';
+            }
         }
         if (empty($lrn)) {
             echo json_encode(['success' => false, 'message' => 'LRN is required']);
@@ -411,8 +417,14 @@ function updateStudent(PDO $db): void {
             return;
         }
         if (empty($track) || !in_array($track, ['academic', 'techpro'], true)) {
-            echo json_encode(['success' => false, 'message' => 'Track is required (academic or techpro)']);
-            return;
+            $secStmt = $db->prepare("SELECT track FROM sections WHERE name = ? LIMIT 1");
+            $secStmt->execute([$section]);
+            $dbTrack = strtolower((string)$secStmt->fetchColumn());
+            if (in_array($dbTrack, ['academic', 'techpro'], true)) {
+                $track = $dbTrack;
+            } else {
+                $track = 'academic';
+            }
         }
 
         $stmt = $db->prepare("SELECT role, lrn FROM users WHERE id = ?");

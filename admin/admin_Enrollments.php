@@ -881,15 +881,20 @@ if (isset($_GET['download_template'])) {
         }
 
         function deriveTrackFromSection(grade, sectionValue) {
-            if (!grade || !sectionValue) return '';
+            if (!grade || !sectionValue) return 'academic';
             for (const key in sectionsCache) {
                 if (key.startsWith(String(grade) + '_')) {
                     if (sectionsCache[key].some(s => s.value === sectionValue)) {
-                        return key.split('_')[1];
+                        return key.split('_')[1] || 'academic';
                     }
                 }
             }
-            return '';
+            for (const key in sectionsCache) {
+                if (sectionsCache[key].some(s => s.value === sectionValue)) {
+                    return key.split('_')[1] || 'academic';
+                }
+            }
+            return 'academic';
         }
 
         function updateAddSections() {
@@ -929,7 +934,12 @@ if (isset($_GET['download_template'])) {
             document.getElementById('addStudentForm').reset();
             document.getElementById('addSection').innerHTML = '<option value="">Select Grade First</option>';
             document.getElementById('addSection').disabled = true;
-            const modal = new bootstrap.Modal(document.getElementById('addStudentModal'));
+            loadSectionsCache().then(() => {
+                const grade = document.getElementById('addGradeLevel').value;
+                if (grade) updateAddSections();
+            });
+            const modalEl = document.getElementById('addStudentModal');
+            const modal = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
             modal.show();
         }
 
@@ -959,12 +969,15 @@ if (isset($_GET['download_template'])) {
                 showNotification('Please select section', 'warning'); return;
             }
 
-            // Auto-derive track from selected section
-            const derivedTrack = deriveTrackFromSection(gradeLevel, section);
-            if (!derivedTrack) {
-                showNotification('No track found for the selected section', 'warning'); return;
-            }
+            // Auto-derive track from selected section with safe fallback
+            const derivedTrack = deriveTrackFromSection(gradeLevel, section) || 'academic';
             fd.set('track', derivedTrack);
+
+            const btn = document.getElementById('createStudentBtn');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Creating...';
+            }
 
             appendCsrfToFormData(fd);
             fetch('admin_Enrollments_Action.php?action=create', {
@@ -975,7 +988,11 @@ if (isset($_GET['download_template'])) {
             .then(data => {
                 if (data.success) {
                     showNotification(data.message || 'Student created', 'success');
-                    bootstrap.Modal.getInstance(document.getElementById('addStudentModal')).hide();
+                    const modalEl = document.getElementById('addStudentModal');
+                    if (modalEl) {
+                        const inst = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+                        if (inst) inst.hide();
+                    }
                     loadStudents(1);
                 } else {
                     showNotification(data.message || 'Failed to create student', 'danger');
@@ -984,6 +1001,12 @@ if (isset($_GET['download_template'])) {
             .catch(err => {
                 showNotification('Error creating student', 'danger');
                 console.error(err);
+            })
+            .finally(() => {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = 'Create & Enroll';
+                }
             });
         }
 
@@ -1007,7 +1030,9 @@ if (isset($_GET['download_template'])) {
                     if (s.section) {
                         document.getElementById('editSection').value = s.section;
                     }
-                    new bootstrap.Modal(document.getElementById('editStudentModal')).show();
+                    const modalEl = document.getElementById('editStudentModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+                    modal.show();
                 })
                 .catch(err => {
                     showNotification('Error loading student', 'danger');
@@ -1035,12 +1060,15 @@ if (isset($_GET['download_template'])) {
                 showNotification('Grade level and section are required', 'warning'); return;
             }
 
-            // Auto-derive track from selected section
-            const derivedTrack = deriveTrackFromSection(gradeLevel, section);
-            if (!derivedTrack) {
-                showNotification('No track found for the selected section', 'warning'); return;
-            }
+            // Auto-derive track from selected section with safe fallback
+            const derivedTrack = deriveTrackFromSection(gradeLevel, section) || 'academic';
             fd.set('track', derivedTrack);
+
+            const btn = document.getElementById('updateStudentBtn');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+            }
 
             appendCsrfToFormData(fd);
             fetch('admin_Enrollments_Action.php?action=update', {
@@ -1051,7 +1079,11 @@ if (isset($_GET['download_template'])) {
             .then(data => {
                 if (data.success) {
                     showNotification('Student updated', 'success');
-                    bootstrap.Modal.getInstance(document.getElementById('editStudentModal')).hide();
+                    const modalEl = document.getElementById('editStudentModal');
+                    if (modalEl) {
+                        const inst = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+                        if (inst) inst.hide();
+                    }
                     loadStudents(currentPage);
                 } else {
                     showNotification(data.message || 'Failed to update student', 'danger');
@@ -1060,6 +1092,12 @@ if (isset($_GET['download_template'])) {
             .catch(err => {
                 showNotification('Error updating student', 'danger');
                 console.error(err);
+            })
+            .finally(() => {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = 'Save Changes';
+                }
             });
         }
 
