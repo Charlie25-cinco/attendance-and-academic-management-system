@@ -796,11 +796,14 @@ document.addEventListener('DOMContentLoaded', () => {
             email: <?php echo json_encode($_SESSION['email'] ?? ''); ?>,
             reference_code: <?php echo json_encode($_SESSION['reference_code'] ?? ''); ?>
         });
-        setTimeout(function () {
+        const scheduleBootstrap = typeof window.requestIdleCallback === 'function'
+            ? function (fn) { window.requestIdleCallback(fn, { timeout: 3500 }); }
+            : function (fn) { setTimeout(fn, 1500); };
+        scheduleBootstrap(function () {
             if (typeof window.bshsOfflineStorage.bootstrapOnline === 'function') {
                 window.bshsOfflineStorage.bootstrapOnline();
             }
-        }, 500);
+        });
     }
 
 

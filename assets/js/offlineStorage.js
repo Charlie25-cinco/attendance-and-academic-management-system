@@ -600,22 +600,32 @@
               "/teacher/teacher_Grades.php",
               "/teacher/teacher_Archives.php",
             ];
-            for (const pageUrl of teacherPages) {
-              try {
-                const pageRes = await fetch(pageUrl, {
-                  credentials: "same-origin",
-                  cache: "no-cache",
-                });
-                if (pageRes && pageRes.status === 200 && !pageRes.redirected) {
-                  await cache.put(pageUrl, pageRes.clone());
-                  if (global.location && global.location.origin) {
-                    await cache.put(
-                      new URL(pageUrl, global.location.origin).href,
-                      pageRes,
-                    );
+            const warmPages = async () => {
+              for (const pageUrl of teacherPages) {
+                try {
+                  const pageRes = await fetch(pageUrl, {
+                    credentials: "same-origin",
+                  });
+                  if (
+                    pageRes &&
+                    pageRes.status === 200 &&
+                    !pageRes.redirected
+                  ) {
+                    await cache.put(pageUrl, pageRes.clone());
+                    if (global.location && global.location.origin) {
+                      await cache.put(
+                        new URL(pageUrl, global.location.origin).href,
+                        pageRes,
+                      );
+                    }
                   }
-                }
-              } catch (e) {}
+                } catch (e) {}
+              }
+            };
+            if (typeof global.requestIdleCallback === "function") {
+              global.requestIdleCallback(() => warmPages(), { timeout: 5000 });
+            } else {
+              setTimeout(warmPages, 2000);
             }
           } catch (e) {}
         }

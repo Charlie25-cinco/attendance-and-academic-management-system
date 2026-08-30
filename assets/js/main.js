@@ -1456,25 +1456,34 @@ function capitalizeFirst(string) {
 // ============================================
 
 if ("serviceWorker" in navigator && navigator.onLine) {
-  navigator.serviceWorker
-    .getRegistrations()
-    .then((regs) => {
-      regs.forEach((reg) => {
-        reg.update().catch(() => {});
-      });
-    })
-    .catch(() => {});
-
-  if ("caches" in window) {
-    caches
-      .keys()
-      .then((keys) => {
-        keys.forEach((key) => {
-          if (key.startsWith("bshs-ams-v") && key !== "bshs-ams-v30") {
-            caches.delete(key);
+  const checkFreshness = () => {
+    navigator.serviceWorker
+      .getRegistrations()
+      .then((regs) => {
+        regs.forEach((reg) => {
+          reg.update().catch(() => {});
         });
       })
       .catch(() => {});
+
+    if ("caches" in window) {
+      caches
+        .keys()
+        .then((keys) => {
+          keys.forEach((key) => {
+            if (key.startsWith("bshs-ams-v") && key !== "bshs-ams-v30") {
+              caches.delete(key);
+            }
+          });
+        })
+        .catch(() => {});
+    }
+  };
+
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(checkFreshness, { timeout: 4000 });
+  } else {
+    setTimeout(checkFreshness, 2000);
   }
 }
 

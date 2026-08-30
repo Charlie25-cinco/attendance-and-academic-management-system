@@ -60,6 +60,21 @@ if (!in_array($action, ['download_material', 'export_grades'], true)) {
     header('Content-Type: application/json');
 }
 
+$readOnlyActions = [
+    'fetch_students',
+    'fetch_class_students',
+    'fetch_grades',
+    'get_material',
+    'fetch_class_announcements',
+    'fetch_grade_items',
+    'fetch_grade_item_students',
+    'offline_bootstrap',
+    'export_grades'
+];
+if (in_array($action, $readOnlyActions, true) && session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
+
 switch ($action) {
     case 'fetch_students':
         fetchStudents($db, $teacherId);
