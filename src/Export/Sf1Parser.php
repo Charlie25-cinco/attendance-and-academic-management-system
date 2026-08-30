@@ -63,29 +63,81 @@ class Sf1Parser {
 
     private function parseStudents(array $data): array {
         $students = [];
-        for ($row = 11; $row <= 100; $row++) {
+        $maxRow = max(200, count($data) + 20);
+        for ($row = 8; $row <= $maxRow; $row++) {
             if (!isset($data[$row])) continue;
             $lrn = $this->sf1Lrn($data, $row);
-            $name = $this->cell($data, $row, 2);
+
+            $col2 = $this->cell($data, $row, 2);
+            $col3 = $this->cell($data, $row, 3);
+            $col4 = $this->cell($data, $row, 4);
+            $col5 = $this->cell($data, $row, 5);
+
+            $name = $this->firstCell($data, $row, range(2, 5));
             if ($lrn === '' && $name === '') continue;
-            $markerText = strtoupper($lrn . ' ' . $name);
-            if (str_contains($markerText, '<===') || str_contains($markerText, 'REQUIRED INFORMATION') || str_contains($markerText, 'NAME OF SCHOOL, DATE')) {
+
+            $markerText = strtoupper($lrn . ' ' . $name . ' ' . $col2 . ' ' . $col3);
+            if (
+                str_contains($markerText, '<===') ||
+                str_contains($markerText, 'REQUIRED INFORMATION') ||
+                str_contains($markerText, 'NAME OF SCHOOL, DATE') ||
+                str_contains($markerText, 'TOTAL MALE') ||
+                str_contains($markerText, 'TOTAL FEMALE') ||
+                str_contains($markerText, 'COMBINED') ||
+                str_contains($markerText, 'REGISTERED LEARNERS') ||
+                str_contains($markerText, 'END OF SCHOOL YEAR') ||
+                str_contains($markerText, 'LIST OF LEARNERS') ||
+                str_contains($markerText, 'SUMMARY TABLE')
+            ) {
                 continue;
             }
-            if ($name === '' && preg_replace('/\D/', '', $lrn) === '') {
+
+            // Skip row if it is a table header row (e.g. "LRN", "NAME", "BIRTHDATE")
+            if (str_contains($markerText, 'LRN') && (str_contains($markerText, 'NAME') || str_contains($markerText, 'LAST NAME') || str_contains($markerText, 'SEX'))) {
                 continue;
             }
-            $parsedName = self::parseLearnerName($name);
+
+            // If name is split across separate columns (e.g. col 2 = Last, col 3 = First, col 4 = Ext, col 5 = Middle)
+            if ($col2 !== '' && $col3 !== '' && !str_contains($col2, ',')) {
+                $parsedName = [
+                    'last_name' => $col2,
+                    'first_name' => $col3,
+                    'name_extension' => self::isNameExtension($col4) ? $col4 : (self::isNameExtension($col5) ? $col5 : ''),
+                    'middle_name' => !self::isNameExtension($col4) ? $col4 : $col5
+                ];
+            } else {
+                $parsedName = self::parseLearnerName($name);
+            }
+
+            $cleanLrn = preg_replace('/\D/', '', $lrn);
+            if (empty($parsedName['last_name']) && empty($parsedName['first_name'])) {
+                continue;
+            }
+
+            $rawSex = $this->firstCell($data, $row, [6, 7, 8]);
+            $sex = self::normalizeSex($rawSex);
+            $birthdate = $this->firstCell($data, $row, [7, 8, 9]);
+
             $student = [
-                'lrn' => $lrn, 'last_name' => $parsedName['last_name'], 'first_name' => $parsedName['first_name'],
-                'name_extension' => $parsedName['name_extension'], 'middle_name' => $parsedName['middle_name'],
-                'sex' => $this->cell($data, $row, 6), 'birthdate' => $this->cell($data, $row, 7),
-                'age' => $this->cell($data, $row, 9), 'religion' => $this->cell($data, $row, 11),
-                'house_street' => $this->cell($data, $row, 12), 'barangay' => $this->cell($data, $row, 13),
-                'municipality' => $this->cell($data, $row, 17), 'province' => $this->cell($data, $row, 20),
-                'father_name' => $this->cell($data, $row, 22), 'mother_name' => $this->cell($data, $row, 23),
-                'guardian_name' => $this->cell($data, $row, 25), 'relationship' => $this->cell($data, $row, 28),
-                'contact_number' => $this->cell($data, $row, 29), 'remarks' => $this->cell($data, $row, 30),
+                'lrn' => $cleanLrn ?: $lrn,
+                'last_name' => $parsedName['last_name'],
+                'first_name' => $parsedName['first_name'],
+                'name_extension' => $parsedName['name_extension'],
+                'middle_name' => $parsedName['middle_name'],
+                'sex' => $sex ?: $rawSex,
+                'birthdate' => $birthdate,
+                'age' => $this->firstCell($data, $row, [9, 10]),
+                'religion' => $this->firstCell($data, $row, [11]),
+                'house_street' => $this->firstCell($data, $row, [12]),
+                'barangay' => $this->firstCell($data, $row, [13, 14, 15, 16]),
+                'municipality' => $this->firstCell($data, $row, [17, 18, 19]),
+                'province' => $this->firstCell($data, $row, [20, 21]),
+                'father_name' => $this->firstCell($data, $row, [22]),
+                'mother_name' => $this->firstCell($data, $row, [23, 24]),
+                'guardian_name' => $this->firstCell($data, $row, [25, 26, 27]),
+                'relationship' => $this->firstCell($data, $row, [28]),
+                'contact_number' => $this->firstCell($data, $row, [29]),
+                'remarks' => $this->firstCell($data, $row, [30]),
             ];
             $student['address'] = implode(', ', array_filter([$student['house_street'], $student['barangay'], $student['municipality'], $student['province']]));
             $students[] = $student;
@@ -96,10 +148,17 @@ class Sf1Parser {
     private function sf1Lrn(array $data, int $row): string {
         $columnA = $this->cell($data, $row, 0);
         $columnB = $this->cell($data, $row, 1);
+        $columnC = $this->cell($data, $row, 2);
         if (preg_match('/^\d{12}$/', preg_replace('/\D/', '', $columnA))) {
             return $columnA;
         }
-        return $columnB;
+        if (preg_match('/^\d{12}$/', preg_replace('/\D/', '', $columnB))) {
+            return $columnB;
+        }
+        if (preg_match('/^\d{12}$/', preg_replace('/\D/', '', $columnC))) {
+            return $columnC;
+        }
+        return $columnA !== '' ? $columnA : $columnB;
     }
 
     public static function parseLearnerName(string $value): array {

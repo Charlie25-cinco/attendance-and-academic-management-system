@@ -46,6 +46,13 @@ function sf1UploadErrorMessage(int $errorCode): string {
     }
 }
 
+function sf1NormalizeSex(string $value): string {
+    $v = strtolower(trim($value));
+    if ($v === 'm' || $v === 'male' || str_starts_with($v, 'm')) return 'male';
+    if ($v === 'f' || $v === 'female' || str_starts_with($v, 'f')) return 'female';
+    return '';
+}
+
 function sf1GetTrack(array $row): string {
     $raw = $row['track'] ?? '';
     if ($raw !== '') {
@@ -290,7 +297,7 @@ if ($action === 'preview' || (isset($_FILES['sf1_file']) && $action !== 'commit'
             $firstName = trim((string)($row['first_name'] ?? ''));
             $middleName = trim((string)($row['middle_name'] ?? ''));
             $nameExtension = trim((string)($row['name_extension'] ?? ''));
-            $sex = strtolower(trim((string)(Sf1Parser::normalizeSex($row['sex'] ?? '') ?? '')));
+            $sex = sf1NormalizeSex((string)($row['sex'] ?? ''));
 
             $gradeLevel = (int)($row['grade_level'] ?? 0);
             if ($gradeLevel <= 0) $gradeLevel = $detectedGrade > 0 ? $detectedGrade : 11;
