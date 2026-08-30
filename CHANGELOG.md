@@ -28,7 +28,9 @@ Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR fo
   - Added auto-capitalization to Announcement Title inputs in [`admin/admin_Announcements.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Announcements.php) and [`teacher/teacher_Classes.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Classes.php).
   - Added auto-capitalization to Grade Activity Titles and Material Titles in [`teacher/teacher_Classes.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Classes.php).
   - Added auto-capitalization to Student Address fields (House/Street, Barangay, Municipality, Province) in [`admin/admin_Enrollments.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Enrollments.php).
-  - Added test suite in [`tests/AutoCapitalizationTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/AutoCapitalizationTest.php).
+- **Parent Portal Student Reference Code Visibility**:
+  - Enhanced [`parent/Parent_Announcements.php`](file:///c:/laragon/www/attendance-and-academic-management-system/parent/Parent_Announcements.php) with explicit `"Student Ref:"` chip labels in the hero banner, active student reference badges in the "Select Student" header, distinct reference code badge pills on each student switcher button, and a subtitle identifying the student in the "Latest Updates" section.
+  - Added automated unit test in [`tests/ParentStudentReferenceTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/ParentStudentReferenceTest.php).
 
 ## v0.3.103 — 2026-08-29
 

@@ -117,7 +117,7 @@ $selectedStudentRef = trim((string)($selectedStudent['reference_code'] ?? ''));
                     <div class="parent-chip-row">
                         <span class="parent-chip"><i class="bi bi-person"></i><?php echo htmlspecialchars($selectedStudentName); ?></span>
                         <?php if ($selectedStudentRef !== ''): ?>
-                            <span class="parent-chip"><i class="bi bi-upc-scan"></i><?php echo htmlspecialchars($selectedStudentRef); ?></span>
+                            <span class="parent-chip"><i class="bi bi-upc-scan"></i>Student Ref: <?php echo htmlspecialchars($selectedStudentRef); ?></span>
                         <?php endif; ?>
                         <span class="parent-chip"><i class="bi bi-bell"></i><?php echo number_format(count($announcements)); ?> updates loaded</span>
                     </div>
@@ -141,18 +141,29 @@ $selectedStudentRef = trim((string)($selectedStudent['reference_code'] ?? ''));
         </section>
 
         <div class="content-card mb-4">
-            <div class="content-card-header"><h5 class="content-card-title">Select Student</h5></div>
+            <div class="content-card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <h5 class="content-card-title mb-0">Select Student</h5>
+                <?php if ($selectedStudent && $selectedStudentRef !== ''): ?>
+                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-1">
+                        <i class="bi bi-upc-scan me-1"></i>Ref: <?php echo htmlspecialchars($selectedStudentRef); ?>
+                    </span>
+                <?php endif; ?>
+            </div>
             <div class="content-card-body">
                 <?php if (empty($children)): ?>
                     <div class="text-muted">No linked student found. Ask admin to link your account.</div>
                 <?php else: ?>
                     <div class="d-flex flex-wrap gap-2 parent-switcher">
                         <?php foreach ($children as $child): ?>
-                            <a href="?student_id=<?php echo (int)$child['id']; ?>" class="btn <?php echo ((int)$child['id'] === $selectedStudentId) ? 'btn-primary-custom' : 'btn-outline-secondary'; ?>">
-                                <?php echo htmlspecialchars($child['first_name'] . ' ' . $child['last_name']); ?>
-                                <?php if (!empty($child['reference_code'])): ?>
-                                    <small class="ms-1">(<?php echo htmlspecialchars((string)$child['reference_code']); ?>)</small>
-                                <?php endif; ?>
+                            <?php 
+                                $childRef = trim((string)($child['reference_code'] ?? ''));
+                                $isSelected = ((int)$child['id'] === $selectedStudentId);
+                            ?>
+                            <a href="?student_id=<?php echo (int)$child['id']; ?>" class="btn <?php echo $isSelected ? 'btn-primary-custom' : 'btn-outline-secondary'; ?>">
+                                <i class="bi bi-person-circle me-1"></i><?php echo htmlspecialchars($child['first_name'] . ' ' . $child['last_name']); ?>
+                                <span class="badge <?php echo $isSelected ? 'bg-light text-primary' : 'bg-secondary bg-opacity-25 text-body'; ?> ms-1">
+                                    <?php echo htmlspecialchars($childRef !== '' ? $childRef : 'ID #' . $child['id']); ?>
+                                </span>
                             </a>
                         <?php endforeach; ?>
                     </div>
@@ -163,7 +174,19 @@ $selectedStudentRef = trim((string)($selectedStudent['reference_code'] ?? ''));
         <?php if ($selectedStudent): ?>
         <div class="content-card">
             <div class="content-card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
-                <h5 class="content-card-title mb-0">Latest Updates</h5>
+                <div>
+                    <h5 class="content-card-title mb-0">Latest Updates</h5>
+                    <?php if ($selectedStudent): ?>
+                        <div class="text-muted small mt-1">
+                            Showing notices for <strong><?php echo htmlspecialchars($selectedStudentName); ?></strong>
+                            <?php if ($selectedStudentRef !== ''): ?>
+                                <span class="badge bg-secondary bg-opacity-10 text-secondary border ms-1">
+                                    <i class="bi bi-upc-scan me-1"></i>Ref: <?php echo htmlspecialchars($selectedStudentRef); ?>
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
                 <div class="app-announcement-toolbar">
                     <div class="input-group input-group-sm app-announcement-search">
                         <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
