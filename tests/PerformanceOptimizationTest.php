@@ -30,18 +30,18 @@ final class PerformanceOptimizationTest extends TestCase
         $swJs = file_get_contents(__DIR__ . '/../sw.js');
         $this->assertIsString($swJs);
 
-        $this->assertStringContainsString('bshs-ams-v31', $swJs);
+        $this->assertStringContainsString('bshs-ams-v32', $swJs);
         $this->assertStringContainsString('return cached || fetchAndCache;', $swJs);
     }
 
-    public function testMainJsAndOfflineStorageTargetV31(): void
+    public function testMainJsAndOfflineStorageTargetV32(): void
     {
         $mainJs = file_get_contents(__DIR__ . '/../assets/js/main.js');
         $this->assertIsString($mainJs);
-        $this->assertStringContainsString('bshs-ams-v31', $mainJs);
+        $this->assertStringContainsString('bshs-ams-v32', $mainJs);
 
         $storageJs = file_get_contents(__DIR__ . '/../assets/js/offlineStorage.js');
         $this->assertIsString($storageJs);
-        $this->assertStringContainsString('bshs-ams-v31', $storageJs);
+        $this->assertStringContainsString('bshs-ams-v32', $storageJs);
     }
 }

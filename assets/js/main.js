@@ -317,20 +317,26 @@ function initLogicalSecurityGuards() {
 function toggleSidebar() {
   const sidebar = document.getElementById("sidebar");
   const toggleIcon = document.getElementById("toggleIcon");
-  if (!sidebar || !toggleIcon) return;
+  if (!sidebar) return;
 
   sidebar.classList.toggle("collapsed");
+  const isCollapsed = sidebar.classList.contains("collapsed");
 
-  if (sidebar.classList.contains("collapsed")) {
-    toggleIcon.classList.remove("bi-chevron-left");
-    toggleIcon.classList.add("bi-chevron-right");
-    localStorage.setItem("sidebarCollapsed", "true");
-  } else {
-    toggleIcon.classList.remove("bi-chevron-right");
-    toggleIcon.classList.add("bi-chevron-left");
-    localStorage.setItem("sidebarCollapsed", "false");
+  if (toggleIcon) {
+    if (isCollapsed) {
+      toggleIcon.classList.remove("bi-chevron-left");
+      toggleIcon.classList.add("bi-chevron-right");
+    } else {
+      toggleIcon.classList.remove("bi-chevron-right");
+      toggleIcon.classList.add("bi-chevron-left");
+    }
   }
+
+  try {
+    localStorage.setItem("sidebarCollapsed", isCollapsed ? "true" : "false");
+  } catch (e) {}
 }
+window.toggleSidebar = toggleSidebar;
 
 // Open mobile sidebar
 function openMobileSidebar() {
@@ -342,6 +348,7 @@ function openMobileSidebar() {
   overlay.classList.add("active");
   document.body.style.overflow = "hidden";
 }
+window.openMobileSidebar = openMobileSidebar;
 
 // Close mobile sidebar
 function closeMobileSidebar() {
@@ -353,11 +360,20 @@ function closeMobileSidebar() {
   overlay.classList.remove("active");
   document.body.style.overflow = "";
 }
+window.closeMobileSidebar = closeMobileSidebar;
 
 // Restore sidebar state on page load
 document.addEventListener("DOMContentLoaded", function () {
   const sidebar = document.getElementById("sidebar");
   const toggleIcon = document.getElementById("toggleIcon");
+  const toggleBtn = document.querySelector(".sidebar-toggle");
+
+  if (toggleBtn) {
+    toggleBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+      toggleSidebar();
+    });
+  }
 
   if (sidebar && toggleIcon) {
     const isCollapsed = localStorage.getItem("sidebarCollapsed") === "true";
@@ -1471,7 +1487,7 @@ if ("serviceWorker" in navigator && navigator.onLine) {
         .keys()
         .then((keys) => {
           keys.forEach((key) => {
-            if (key.startsWith("bshs-ams-v") && key !== "bshs-ams-v31") {
+            if (key.startsWith("bshs-ams-v") && key !== "bshs-ams-v32") {
               caches.delete(key);
             }
           });
