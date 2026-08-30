@@ -1,9 +1,14 @@
 <?php
 require_once __DIR__ . '/../functions/bootstrap.php';
 
+if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+    header('Location: admin_School_Settings.php');
+    exit();
+}
+
 if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'admin') {
-    http_response_code(403);
     if (str_contains((string)($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json')) {
+        http_response_code(403);
         header('Content-Type: application/json');
         echo json_encode(['success' => false, 'message' => 'Unauthorized access']);
     } else {
@@ -15,8 +20,8 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'admin') {
 requireCsrfToken();
 
 if (!hasPermission('settings.manage')) {
-    http_response_code(403);
     if (str_contains((string)($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json')) {
+        http_response_code(403);
         header('Content-Type: application/json');
         echo json_encode(['success' => false, 'message' => 'Insufficient permissions']);
     } else {
@@ -100,11 +105,18 @@ try {
 $adminId = (int)($_SESSION['user_id'] ?? 0);
 recordAdminAuditLog(
     $db,
-    $adminId,
-    'update_school_settings',
+    'school_settings.update',
     'school_settings',
     null,
-    "Updated school info: {$schoolName} (ID: {$schoolId}, Region: {$region}, Division: {$division})"
+    [
+        'school_name' => $schoolName,
+        'school_id' => $schoolId,
+        'region' => $region,
+        'division' => $division,
+        'district' => $district,
+        'school_address' => $schoolAddress,
+    ],
+    $adminId > 0 ? $adminId : null
 );
 
 if (str_contains((string)($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json')) {

@@ -39,6 +39,7 @@ Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR fo
   - Connected dynamic database school settings into DepEd **SF1**, **SF2** ([`src/Export/Sf2Exporter.php`](file:///c:/laragon/www/attendance-and-academic-management-system/src/Export/Sf2Exporter.php)), and **ECR** ([`api/routes/12-ecr.php`](file:///c:/laragon/www/attendance-and-academic-management-system/api/routes/12-ecr.php)) Excel exports.
   - Dynamically synchronized school details, region, division, and contact hours with the public website in [`site/index.php`](file:///c:/laragon/www/attendance-and-academic-management-system/site/index.php).
   - Registered `admin_school_settings.php` and `admin_school_settings_action.php` in `permissionForScript()` in [`functions/app-helpers.php`](file:///c:/laragon/www/attendance-and-academic-management-system/functions/app-helpers.php).
+  - Fixed `recordAdminAuditLog()` invocation signature and cross-driver SQLite/MySQL timestamps, and added a GET method redirect guard in [`admin/admin_School_Settings_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_School_Settings_Action.php).
   - Added automated unit test suite in [`tests/SchoolSettingsManagementTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/SchoolSettingsManagementTest.php).
 
 ## v0.3.103 — 2026-08-29

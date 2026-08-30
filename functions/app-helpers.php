@@ -902,7 +902,9 @@ function recordAdminAuditLog(PDO $db, string $actionName, string $targetType, ?i
     $adminUserId = $adminUserId ?? (int)($_SESSION['user_id'] ?? 0);
     if ($adminUserId <= 0) { return; }
     try {
-        $stmt = $db->prepare("INSERT INTO admin_audit_logs (admin_user_id, action_name, target_type, target_id, details_json, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
+        $driver = (string)$db->getAttribute(PDO::ATTR_DRIVER_NAME);
+        $timeSql = $driver === 'sqlite' ? 'CURRENT_TIMESTAMP' : 'NOW()';
+        $stmt = $db->prepare("INSERT INTO admin_audit_logs (admin_user_id, action_name, target_type, target_id, details_json, created_at) VALUES (?, ?, ?, ?, ?, {$timeSql})");
         $stmt->execute([$adminUserId, substr($actionName, 0, 100), substr($targetType, 0, 50), $targetId && $targetId > 0 ? $targetId : null, !empty($details) ? json_encode($details, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : null]);
     } catch (Throwable $e) { error_log('Admin audit log insert failed: ' . $e->getMessage()); }
 }

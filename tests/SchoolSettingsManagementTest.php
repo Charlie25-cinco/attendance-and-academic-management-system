@@ -21,11 +21,11 @@ final class SchoolSettingsManagementTest extends TestCase
 
         $this->db->exec("CREATE TABLE IF NOT EXISTS admin_audit_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            admin_id INTEGER NOT NULL,
-            action TEXT NOT NULL,
+            admin_user_id INTEGER NOT NULL,
+            action_name TEXT NOT NULL,
             target_type TEXT NOT NULL,
             target_id INTEGER NULL,
-            details TEXT NULL,
+            details_json TEXT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )");
 
@@ -84,6 +84,19 @@ final class SchoolSettingsManagementTest extends TestCase
         $this->assertStringContainsString("hasPermission('settings.manage')", $action);
         $this->assertStringContainsString('recordAdminAuditLog(', $action);
         $this->assertStringContainsString('setSchoolSetting(', $action);
+        $this->assertStringContainsString("REQUEST_METHOD", $action);
+
+        // Verify recordAdminAuditLog executes without TypeError
+        recordAdminAuditLog(
+            $this->db,
+            'school_settings.update',
+            'school_settings',
+            null,
+            ['school_name' => 'Test High School'],
+            1
+        );
+        $logCount = (int)$this->db->query("SELECT COUNT(*) FROM admin_audit_logs WHERE action_name = 'school_settings.update'")->fetchColumn();
+        $this->assertSame(1, $logCount);
     }
 
     public function testPermissionForScriptIncludesSchoolSettings(): void
