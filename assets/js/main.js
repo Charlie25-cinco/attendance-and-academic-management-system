@@ -42,7 +42,7 @@ function isNavigationInProgress() {
   try {
     const isNav = sessionStorage.getItem("app_page_navigating") === "true";
     const navTime = parseInt(sessionStorage.getItem("app_nav_time") || "0", 10);
-    if (isNav && (Date.now() - navTime) < 10000) {
+    if (isNav && Date.now() - navTime < 10000) {
       return true;
     }
   } catch (e) {}
@@ -76,7 +76,10 @@ function showTopProgress(startValue = 35) {
     const remaining = 92 - appTopProgressValue;
     if (remaining <= 0.5) return;
     appTopProgressValue += Math.max(0.4, remaining * 0.12);
-    bar.style.setProperty("--app-progress", Math.min(appTopProgressValue, 92) + "vw");
+    bar.style.setProperty(
+      "--app-progress",
+      Math.min(appTopProgressValue, 92) + "vw",
+    );
     bar.style.width = Math.min(appTopProgressValue, 92) + "vw";
   }, 140);
 }
@@ -145,7 +148,8 @@ function cancelTopProgressSoon() {
 function shouldShowNavigationProgress(link) {
   if (!link) return false;
   const href = link.getAttribute("href");
-  if (!href || href.startsWith("#") || href.startsWith("javascript:")) return false;
+  if (!href || href.startsWith("#") || href.startsWith("javascript:"))
+    return false;
   if (link.hasAttribute("download")) return false;
   if ((link.target || "").toLowerCase() === "_blank") return false;
   if (link.getAttribute("data-skip-loader") === "true") return false;
@@ -153,7 +157,11 @@ function shouldShowNavigationProgress(link) {
   try {
     const targetUrl = new URL(link.href, window.location.href);
     if (targetUrl.origin !== window.location.origin) return false;
-    if (targetUrl.pathname === window.location.pathname && targetUrl.search === window.location.search && targetUrl.hash !== "") {
+    if (
+      targetUrl.pathname === window.location.pathname &&
+      targetUrl.search === window.location.search &&
+      targetUrl.hash !== ""
+    ) {
       return false;
     }
   } catch (error) {
@@ -168,7 +176,10 @@ function initNavigationProgress() {
     finishTopProgress();
   };
 
-  if (document.readyState === "complete" || document.readyState === "interactive") {
+  if (
+    document.readyState === "complete" ||
+    document.readyState === "interactive"
+  ) {
     finishTopProgress();
   } else {
     document.addEventListener("DOMContentLoaded", completeHandler);
@@ -187,7 +198,14 @@ function initNavigationProgress() {
   document.addEventListener("click", function (event) {
     const link = event.target.closest("a[href]");
     if (!shouldShowNavigationProgress(link)) return;
-    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    )
+      return;
     markNavigationStarted();
     showTopProgress(30);
   });
@@ -196,7 +214,8 @@ function initNavigationProgress() {
     const form = event.target;
     if (!(form instanceof HTMLFormElement)) return;
     if (form.getAttribute("data-skip-loader") === "true") return;
-    if ((form.getAttribute("method") || "get").toLowerCase() === "dialog") return;
+    if ((form.getAttribute("method") || "get").toLowerCase() === "dialog")
+      return;
     markNavigationStarted();
     showTopProgress(30);
   });
@@ -214,7 +233,9 @@ function initLogicalSecurityGuards() {
   }
 
   function dirtySensitiveForms() {
-    return Array.from(dirtyForms).filter((form) => form.isConnected && isSensitiveForm(form));
+    return Array.from(dirtyForms).filter(
+      (form) => form.isConnected && isSensitiveForm(form),
+    );
   }
 
   function hasDirtySensitiveForm() {
@@ -222,7 +243,10 @@ function initLogicalSecurityGuards() {
   }
 
   function markFormDirty(target) {
-    const field = target && target.closest ? target.closest("input, select, textarea") : null;
+    const field =
+      target && target.closest
+        ? target.closest("input, select, textarea")
+        : null;
     if (!field || field.type === "hidden") return;
     const form = field.form;
     if (isSensitiveForm(form)) {
@@ -230,19 +254,31 @@ function initLogicalSecurityGuards() {
     }
   }
 
-  document.addEventListener("input", function (event) {
-    markFormDirty(event.target);
-  }, true);
+  document.addEventListener(
+    "input",
+    function (event) {
+      markFormDirty(event.target);
+    },
+    true,
+  );
 
-  document.addEventListener("change", function (event) {
-    markFormDirty(event.target);
-  }, true);
+  document.addEventListener(
+    "change",
+    function (event) {
+      markFormDirty(event.target);
+    },
+    true,
+  );
 
-  document.addEventListener("submit", function (event) {
-    if (event.target instanceof HTMLFormElement) {
-      dirtyForms.delete(event.target);
-    }
-  }, true);
+  document.addEventListener(
+    "submit",
+    function (event) {
+      if (event.target instanceof HTMLFormElement) {
+        dirtyForms.delete(event.target);
+      }
+    },
+    true,
+  );
 
   window.addEventListener("beforeunload", function (event) {
     if (!hasDirtySensitiveForm()) return;
@@ -250,16 +286,24 @@ function initLogicalSecurityGuards() {
     event.returnValue = "";
   });
 
-  document.addEventListener("keydown", function (event) {
-    const key = (event.key || "").toLowerCase();
-    const refreshShortcut = key === "f5" || ((event.ctrlKey || event.metaKey) && key === "r");
-    if (!refreshShortcut || !hasDirtySensitiveForm()) return;
+  document.addEventListener(
+    "keydown",
+    function (event) {
+      const key = (event.key || "").toLowerCase();
+      const refreshShortcut =
+        key === "f5" || ((event.ctrlKey || event.metaKey) && key === "r");
+      if (!refreshShortcut || !hasDirtySensitiveForm()) return;
 
-    event.preventDefault();
-    if (typeof showNotification === "function") {
-      showNotification("Save or clear the form before refreshing this page.", "warning");
-    }
-  }, true);
+      event.preventDefault();
+      if (typeof showNotification === "function") {
+        showNotification(
+          "Save or clear the form before refreshing this page.",
+          "warning",
+        );
+      }
+    },
+    true,
+  );
 
   document.addEventListener("visibilitychange", function () {
     if (!document.hidden || !hasDirtySensitiveForm()) return;
@@ -286,7 +330,6 @@ function toggleSidebar() {
     toggleIcon.classList.add("bi-chevron-left");
     localStorage.setItem("sidebarCollapsed", "false");
   }
-
 }
 
 // Open mobile sidebar
@@ -358,7 +401,6 @@ document.addEventListener("DOMContentLoaded", function () {
   focusNotificationTarget();
   window.setTimeout(initPwaPushAutoRegistration, 1200);
   window.setTimeout(initPwaPushFirstOpenPrompt, 1500);
-
 });
 
 // ============================================
@@ -368,8 +410,14 @@ document.addEventListener("DOMContentLoaded", function () {
 function isFocusableFormField(field) {
   if (!field) return false;
   if (field.disabled || field.readOnly) return false;
-  if (field.matches('[type="hidden"], [tabindex="-1"], [data-autofocus-skip="true"]')) return false;
-  if (field.offsetParent === null && field.getClientRects().length === 0) return false;
+  if (
+    field.matches(
+      '[type="hidden"], [tabindex="-1"], [data-autofocus-skip="true"]',
+    )
+  )
+    return false;
+  if (field.offsetParent === null && field.getClientRects().length === 0)
+    return false;
   return true;
 }
 
@@ -387,7 +435,12 @@ function focusFirstModalField(modalEl) {
 
   window.setTimeout(() => {
     firstField.focus({ preventScroll: true });
-    if (typeof firstField.select === "function" && firstField.matches("input[type='text'], input[type='email'], input[type='tel'], input[type='search'], input:not([type])")) {
+    if (
+      typeof firstField.select === "function" &&
+      firstField.matches(
+        "input[type='text'], input[type='email'], input[type='tel'], input[type='search'], input:not([type])",
+      )
+    ) {
       firstField.select();
     }
   }, 80);
@@ -512,7 +565,8 @@ const escHtml = escapeHtml;
 const esc = escapeHtml;
 
 function programLabel(row) {
-  if (row.program === "academic_strengthened") return "Academic Track (Strengthened)";
+  if (row.program === "academic_strengthened")
+    return "Academic Track (Strengthened)";
   if (row.program === "technical_professional") return "Technical Professional";
   if (row.track === "techpro") return "TechPro";
   if (row.track === "academic") return "Academic";
@@ -528,7 +582,12 @@ function appendCsrfToFormData(fd) {
 
 function withCsrfUrl(url) {
   if (typeof csrfToken === "undefined" || !csrfToken) return url;
-  return url + (url.includes("?") ? "&" : "?") + "csrf_token=" + encodeURIComponent(csrfToken);
+  return (
+    url +
+    (url.includes("?") ? "&" : "?") +
+    "csrf_token=" +
+    encodeURIComponent(csrfToken)
+  );
 }
 
 function getNotificationMeta(type = "info") {
@@ -623,15 +682,20 @@ function appFetchJson(route, options = {}) {
     headers.set("X-CSRF-Token", window.APP_CSRF_TOKEN);
   }
 
-  return fetch(appApiUrl(route), Object.assign({}, options, {
-    headers,
-    credentials: "same-origin",
-  })).then((response) => response.json().then((data) => {
-    if (!response.ok || !data.ok) {
-      throw new Error(data.message || "Request failed");
-    }
-    return data;
-  }));
+  return fetch(
+    appApiUrl(route),
+    Object.assign({}, options, {
+      headers,
+      credentials: "same-origin",
+    }),
+  ).then((response) =>
+    response.json().then((data) => {
+      if (!response.ok || !data.ok) {
+        throw new Error(data.message || "Request failed");
+      }
+      return data;
+    }),
+  );
 }
 
 function updateNotificationState(action, id = 0) {
@@ -679,7 +743,9 @@ function focusNotificationTarget() {
   target.setAttribute("tabindex", "-1");
   window.setTimeout(() => {
     target.scrollIntoView({
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
       block: "center",
     });
     target.focus({ preventScroll: true });
@@ -687,40 +753,52 @@ function focusNotificationTarget() {
 }
 
 function initHeaderNotificationActions() {
-  document.querySelectorAll(".header-notification-item[data-notification-id]").forEach((item) => {
-    item.addEventListener("click", (event) => {
-      const id = Number.parseInt(item.dataset.notificationId || "0", 10);
-      const href = item.getAttribute("href") || "";
-      if (id <= 0) return;
-      event.preventDefault();
-      updateNotificationState("read", id)
-        .then((data) => {
-          setHeaderNotificationCount(data.unread_count);
-          if (href && href !== "#") window.location.href = href;
-          else window.location.reload();
-        })
-        .catch((error) => showNotification(error.message || "Unable to open notification", "danger"));
+  document
+    .querySelectorAll(".header-notification-item[data-notification-id]")
+    .forEach((item) => {
+      item.addEventListener("click", (event) => {
+        const id = Number.parseInt(item.dataset.notificationId || "0", 10);
+        const href = item.getAttribute("href") || "";
+        if (id <= 0) return;
+        event.preventDefault();
+        updateNotificationState("read", id)
+          .then((data) => {
+            setHeaderNotificationCount(data.unread_count);
+            if (href && href !== "#") window.location.href = href;
+            else window.location.reload();
+          })
+          .catch((error) =>
+            showNotification(
+              error.message || "Unable to open notification",
+              "danger",
+            ),
+          );
+      });
     });
-  });
 
-  document.querySelectorAll(".delete-notification-btn[data-notification-id]").forEach((button) => {
-    button.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const id = Number.parseInt(button.dataset.notificationId || "0", 10);
-      if (id <= 0) return;
-      button.disabled = true;
-      updateNotificationState("delete", id)
-        .then((data) => {
-          setHeaderNotificationCount(data.unread_count);
-          button.closest("[data-notification-row]")?.remove();
-        })
-        .catch((error) => {
-          button.disabled = false;
-          showNotification(error.message || "Unable to delete notification", "danger");
-        });
+  document
+    .querySelectorAll(".delete-notification-btn[data-notification-id]")
+    .forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const id = Number.parseInt(button.dataset.notificationId || "0", 10);
+        if (id <= 0) return;
+        button.disabled = true;
+        updateNotificationState("delete", id)
+          .then((data) => {
+            setHeaderNotificationCount(data.unread_count);
+            button.closest("[data-notification-row]")?.remove();
+          })
+          .catch((error) => {
+            button.disabled = false;
+            showNotification(
+              error.message || "Unable to delete notification",
+              "danger",
+            );
+          });
+      });
     });
-  });
 
   const readAll = document.getElementById("markAllNotificationsRead");
   if (readAll) {
@@ -729,11 +807,18 @@ function initHeaderNotificationActions() {
       updateNotificationState("read_all")
         .then((data) => {
           setHeaderNotificationCount(data.unread_count);
-          document.querySelectorAll(".header-notification-item").forEach((item) => {
-            item.closest(".dropdown-item")?.classList.add("opacity-75");
-          });
+          document
+            .querySelectorAll(".header-notification-item")
+            .forEach((item) => {
+              item.closest(".dropdown-item")?.classList.add("opacity-75");
+            });
         })
-        .catch((error) => showNotification(error.message || "Unable to update notifications", "danger"));
+        .catch((error) =>
+          showNotification(
+            error.message || "Unable to update notifications",
+            "danger",
+          ),
+        );
     });
   }
 
@@ -744,9 +829,16 @@ function initHeaderNotificationActions() {
       updateNotificationState("delete_all")
         .then((data) => {
           setHeaderNotificationCount(data.unread_count);
-          document.querySelectorAll("[data-notification-row]").forEach((row) => row.remove());
+          document
+            .querySelectorAll("[data-notification-row]")
+            .forEach((row) => row.remove());
         })
-        .catch((error) => showNotification(error.message || "Unable to delete notifications", "danger"));
+        .catch((error) =>
+          showNotification(
+            error.message || "Unable to delete notifications",
+            "danger",
+          ),
+        );
     });
   }
 }
@@ -788,16 +880,34 @@ function urlBase64ToUint8Array(base64String) {
   return outputArray;
 }
 
+function isInstalledPwa() {
+  if (typeof window === "undefined") return false;
+  return (
+    (window.matchMedia &&
+      (window.matchMedia("(display-mode: standalone)").matches ||
+        window.matchMedia("(display-mode: fullscreen)").matches ||
+        window.matchMedia("(display-mode: minimal-ui)").matches)) ||
+    (typeof navigator !== "undefined" && Boolean(navigator.standalone)) ||
+    (typeof document !== "undefined" &&
+      typeof document.referrer === "string" &&
+      document.referrer.includes("android-app://"))
+  );
+}
+
 function pwaPushSupported() {
-  return "serviceWorker" in navigator
-    && "PushManager" in window
-    && "Notification" in window
-    && !!window.APP_PUSH_PUBLIC_KEY;
+  return (
+    "serviceWorker" in navigator &&
+    "PushManager" in window &&
+    "Notification" in window &&
+    !!window.APP_PUSH_PUBLIC_KEY
+  );
 }
 
 function getPwaServiceWorkerRegistration() {
   if (!("serviceWorker" in navigator)) {
-    return Promise.reject(new Error("Service worker is not supported on this device"));
+    return Promise.reject(
+      new Error("Service worker is not supported on this device"),
+    );
   }
   if (window._swRegistration) {
     return Promise.resolve(window._swRegistration);
@@ -815,26 +925,48 @@ function updatePwaPushStatus() {
       if (!serverStatus.configured || !window.APP_PUSH_PUBLIC_KEY) {
         pushSwitch.disabled = true;
         setPushStatus("Server push keys are not configured.", "danger");
-        setPushPermissionState("server", "Ask the administrator to configure Web Push for this server.");
+        setPushPermissionState(
+          "server",
+          "Ask the administrator to configure Web Push for this server.",
+        );
         return;
       }
-      if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+      if (
+        !("serviceWorker" in navigator) ||
+        !("PushManager" in window) ||
+        !("Notification" in window)
+      ) {
         pushSwitch.disabled = true;
-        setPushStatus("Device notifications are not supported by this browser.", "muted");
-        setPushPermissionState("unsupported", "Use a supported browser or installed PWA on this device.");
+        setPushStatus(
+          "Device notifications are not supported by this browser.",
+          "muted",
+        );
+        setPushPermissionState(
+          "unsupported",
+          "Use a supported browser or installed PWA on this device.",
+        );
         return;
       }
       pushSwitch.disabled = false;
 
       if (Notification.permission === "denied") {
         setPushStatus("Notifications are blocked in this browser.", "danger");
-        setPushPermissionState("blocked", "Open this site's browser or Windows app settings and change Notifications to Allow.");
+        setPushPermissionState(
+          "blocked",
+          "Open this site's browser or Windows app settings and change Notifications to Allow.",
+        );
         return;
       }
 
       if (Notification.permission === "default") {
-        setPushStatus("Permission is required before this device can subscribe.", "muted");
-        setPushPermissionState("prompt", "Choose Allow Notifications, then approve the browser permission dialog.");
+        setPushStatus(
+          "Permission is required before this device can subscribe.",
+          "muted",
+        );
+        setPushPermissionState(
+          "prompt",
+          "Choose Allow Notifications, then approve the browser permission dialog.",
+        );
         return;
       }
 
@@ -842,9 +974,21 @@ function updatePwaPushStatus() {
         return getPwaServiceWorkerRegistration()
           .then((registration) => registration.pushManager.getSubscription())
           .then((subscription) => {
-            const ready = !!subscription && Number(serverStatus.subscription_count || 0) > 0;
-            setPushStatus(ready ? "This device is ready for notifications." : "Save changes to subscribe this device.", ready ? "success" : "muted");
-            setPushPermissionState(ready ? "ready" : "subscribe", ready ? "You can receive notifications while the PWA is closed." : "Keep Push Notifications enabled and save changes to finish subscription.");
+            const ready =
+              !!subscription &&
+              Number(serverStatus.subscription_count || 0) > 0;
+            setPushStatus(
+              ready
+                ? "This device is ready for notifications."
+                : "Save changes to subscribe this device.",
+              ready ? "success" : "muted",
+            );
+            setPushPermissionState(
+              ready ? "ready" : "subscribe",
+              ready
+                ? "You can receive notifications while the PWA is closed."
+                : "Keep Push Notifications enabled and save changes to finish subscription.",
+            );
           });
       }
 
@@ -852,7 +996,10 @@ function updatePwaPushStatus() {
     })
     .catch((error) => {
       setPushStatus(error.message || "Unable to check push status.", "danger");
-      setPushPermissionState("server", "The app could not verify notification readiness. Try reopening Settings.");
+      setPushPermissionState(
+        "server",
+        "The app could not verify notification readiness. Try reopening Settings.",
+      );
     });
 }
 
@@ -863,14 +1010,25 @@ function requestPushPermissionFromSettings() {
   Notification.requestPermission()
     .then((permission) => {
       if (permission !== "granted") {
-        throw new Error(permission === "denied" ? "Notifications were blocked" : "Notification permission was not granted");
+        throw new Error(
+          permission === "denied"
+            ? "Notifications were blocked"
+            : "Notification permission was not granted",
+        );
       }
       const pushSwitch = document.getElementById("pushNotifSwitch");
       if (pushSwitch) pushSwitch.checked = true;
       return enablePwaPushNotifications();
     })
-    .then(() => showNotification("Notifications enabled for this device", "success"))
-    .catch((error) => showNotification(error.message || "Unable to enable notifications", "danger"))
+    .then(() =>
+      showNotification("Notifications enabled for this device", "success"),
+    )
+    .catch((error) =>
+      showNotification(
+        error.message || "Unable to enable notifications",
+        "danger",
+      ),
+    )
     .finally(() => {
       allowButton.disabled = false;
       updatePwaPushStatus();
@@ -894,15 +1052,24 @@ function enablePwaPushNotifications() {
         return registration;
       });
     })
-    .then((registration) => registration.pushManager.getSubscription()
-      .then((existing) => existing || registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(window.APP_PUSH_PUBLIC_KEY),
-      })))
-    .then((subscription) => appFetchJson("web-push-subscription", {
-      method: "POST",
-      body: JSON.stringify({ subscription: subscription.toJSON() }),
-    }));
+    .then((registration) =>
+      registration.pushManager.getSubscription().then(
+        (existing) =>
+          existing ||
+          registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(
+              window.APP_PUSH_PUBLIC_KEY,
+            ),
+          }),
+      ),
+    )
+    .then((subscription) =>
+      appFetchJson("web-push-subscription", {
+        method: "POST",
+        body: JSON.stringify({ subscription: subscription.toJSON() }),
+      }),
+    );
 }
 
 function disablePwaPushNotifications() {
@@ -915,12 +1082,15 @@ function disablePwaPushNotifications() {
     .then((subscription) => {
       if (!subscription) return null;
       const endpoint = subscription.endpoint;
-      return subscription.unsubscribe()
+      return subscription
+        .unsubscribe()
         .catch(() => false)
-        .then(() => appFetchJson("web-push-subscription", {
-          method: "DELETE",
-          body: JSON.stringify({ endpoint }),
-        }).catch(() => null));
+        .then(() =>
+          appFetchJson("web-push-subscription", {
+            method: "DELETE",
+            body: JSON.stringify({ endpoint }),
+          }).catch(() => null),
+        );
     });
 }
 
@@ -930,7 +1100,8 @@ function applyInitialSettingsToControls() {
   const pushNotif = document.getElementById("pushNotifSwitch");
 
   if (darkMode) darkMode.checked = String(settings.dark_mode || "0") === "1";
-  if (pushNotif) pushNotif.checked = String(settings.push_notifications ?? "1") === "1";
+  if (pushNotif)
+    pushNotif.checked = String(settings.push_notifications ?? "1") === "1";
 }
 
 function initSettingsControls() {
@@ -939,14 +1110,23 @@ function initSettingsControls() {
 
   applyInitialSettingsToControls();
   updatePwaPushStatus();
-  document.getElementById("allowPushPermissionBtn")?.addEventListener("click", requestPushPermissionFromSettings);
-  document.getElementById("deferPushPermissionBtn")?.addEventListener("click", () => {
-    const pushSwitch = document.getElementById("pushNotifSwitch");
-    if (pushSwitch) pushSwitch.checked = false;
-    setPushStatus("Notifications are not enabled on this device.", "muted");
-    setPushPermissionState("deferred", "You can enable notifications later from Settings.");
-  });
-  document.getElementById("settingsModal")?.addEventListener("shown.bs.modal", updatePwaPushStatus);
+  document
+    .getElementById("allowPushPermissionBtn")
+    ?.addEventListener("click", requestPushPermissionFromSettings);
+  document
+    .getElementById("deferPushPermissionBtn")
+    ?.addEventListener("click", () => {
+      const pushSwitch = document.getElementById("pushNotifSwitch");
+      if (pushSwitch) pushSwitch.checked = false;
+      setPushStatus("Notifications are not enabled on this device.", "muted");
+      setPushPermissionState(
+        "deferred",
+        "You can enable notifications later from Settings.",
+      );
+    });
+  document
+    .getElementById("settingsModal")
+    ?.addEventListener("shown.bs.modal", updatePwaPushStatus);
 
   const darkMode = document.getElementById("darkModeSwitch");
   if (darkMode) {
@@ -961,26 +1141,33 @@ function initSettingsControls() {
       dark_mode: document.getElementById("darkModeSwitch")?.checked ? 1 : 0,
       push_notifications: pushNotif?.checked ? 1 : 0,
     };
-    const permissionStep = payload.push_notifications && pwaPushSupported() && Notification.permission !== "granted"
-      ? Notification.requestPermission().then((permission) => {
-        if (permission !== "granted") {
-          throw new Error("Notification permission was not granted");
-        }
-        return permission;
-      })
-      : Promise.resolve();
+    const permissionStep =
+      payload.push_notifications &&
+      pwaPushSupported() &&
+      Notification.permission !== "granted"
+        ? Notification.requestPermission().then((permission) => {
+            if (permission !== "granted") {
+              throw new Error("Notification permission was not granted");
+            }
+            return permission;
+          })
+        : Promise.resolve();
 
     setSettingsBusy(true);
     permissionStep
-      .then(() => appFetchJson("settings", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      }))
+      .then(() =>
+        appFetchJson("settings", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        }),
+      )
       .then(() => {
         if (!payload.push_notifications) {
           return disablePwaPushNotifications();
         }
-        return pwaPushSupported() ? enablePwaPushNotifications() : Promise.resolve();
+        return pwaPushSupported()
+          ? enablePwaPushNotifications().catch(() => null)
+          : Promise.resolve();
       })
       .then(() => {
         if (typeof showNotification === "function") {
@@ -990,7 +1177,10 @@ function initSettingsControls() {
       })
       .catch((error) => {
         if (typeof showNotification === "function") {
-          showNotification(error.message || "Failed to save settings", "danger");
+          showNotification(
+            error.message || "Failed to save settings",
+            "danger",
+          );
         }
         updatePwaPushStatus();
       })
@@ -1001,7 +1191,11 @@ function initSettingsControls() {
 function initPwaPushAutoRegistration() {
   const settings = window.APP_INITIAL_SETTINGS || {};
   const pushEnabled = String(settings.push_notifications ?? "1") === "1";
-  if (!pushEnabled || !pwaPushSupported() || Notification.permission !== "granted") {
+  if (
+    !pushEnabled ||
+    !pwaPushSupported() ||
+    Notification.permission !== "granted"
+  ) {
     return;
   }
 
@@ -1013,6 +1207,11 @@ function initPwaPushAutoRegistration() {
 function initPwaPushFirstOpenPrompt() {
   const modalEl = document.getElementById("pushPromptModal");
   if (!modalEl || typeof bootstrap === "undefined" || !bootstrap.Modal) {
+    return;
+  }
+
+  // Only prompt when running as an installed standalone application on the device
+  if (!isInstalledPwa()) {
     return;
   }
 
@@ -1031,6 +1230,7 @@ function initPwaPushFirstOpenPrompt() {
 
   const promptModal = bootstrap.Modal.getOrCreateInstance(modalEl);
   const allowBtn = document.getElementById("pushPromptAllowBtn");
+  const denyBtn = document.getElementById("pushPromptDenyBtn");
   const laterBtn = document.getElementById("pushPromptLaterBtn");
   const closeBtn = document.getElementById("pushPromptCloseBtn");
 
@@ -1047,7 +1247,10 @@ function initPwaPushFirstOpenPrompt() {
       Notification.requestPermission()
         .then((permission) => {
           try {
-            localStorage.setItem("bshs_push_prompt_dismissed", permission === "granted" ? "granted" : "later");
+            localStorage.setItem(
+              "bshs_push_prompt_dismissed",
+              permission === "granted" ? "granted" : "denied",
+            );
           } catch (_) {}
           promptModal.hide();
           if (permission === "granted") {
@@ -1055,15 +1258,21 @@ function initPwaPushFirstOpenPrompt() {
             if (pushSwitch) pushSwitch.checked = true;
             return enablePwaPushNotifications()
               .then(() => {
-                showNotification("Notifications enabled for this device", "success");
+                showNotification(
+                  "Notifications enabled for this device",
+                  "success",
+                );
                 updatePwaPushStatus();
               })
               .catch((err) => {
-                showNotification(err.message || "Failed to subscribe for notifications", "warning");
+                showNotification(
+                  err.message || "Failed to subscribe for notifications",
+                  "warning",
+                );
                 updatePwaPushStatus();
               });
           } else {
-            showNotification("Notifications deferred. You can enable them anytime in Settings.", "muted");
+            showNotification("Notifications denied for this device.", "muted");
             updatePwaPushStatus();
           }
         })
@@ -1073,6 +1282,13 @@ function initPwaPushFirstOpenPrompt() {
         .finally(() => {
           allowBtn.disabled = false;
         });
+    };
+  }
+
+  if (denyBtn) {
+    denyBtn.onclick = function () {
+      handleDismiss("denied");
+      showNotification("Notifications denied for this device.", "muted");
     };
   }
 
@@ -1089,15 +1305,20 @@ function initPwaPushFirstOpenPrompt() {
   }
 
   window.setTimeout(() => {
-    if (Notification.permission === "default" && !localStorage.getItem("bshs_push_prompt_dismissed")) {
+    if (
+      isInstalledPwa() &&
+      Notification.permission === "default" &&
+      !localStorage.getItem("bshs_push_prompt_dismissed")
+    ) {
       promptModal.show();
     }
-  }, 100);
+  }, 300);
 }
 
 function ensureAppConfirmModal() {
   const modalEl = document.getElementById("appConfirmModal");
-  if (!modalEl || typeof bootstrap === "undefined" || !bootstrap.Modal) return null;
+  if (!modalEl || typeof bootstrap === "undefined" || !bootstrap.Modal)
+    return null;
   return bootstrap.Modal.getOrCreateInstance(modalEl);
 }
 
@@ -1105,7 +1326,9 @@ function showAppConfirm(options = {}) {
   const modalEl = document.getElementById("appConfirmModal");
   const modal = ensureAppConfirmModal();
   if (!modalEl || !modal) {
-    return Promise.resolve(window.confirm(String(options.message || "Are you sure?")));
+    return Promise.resolve(
+      window.confirm(String(options.message || "Are you sure?")),
+    );
   }
 
   const opts = Object.assign(
@@ -1171,7 +1394,8 @@ function showAppConfirm(options = {}) {
     };
 
     modalEl.addEventListener("hidden.bs.modal", handleHidden, { once: true });
-    if (confirmBtn) confirmBtn.addEventListener("click", handleConfirm, { once: true });
+    if (confirmBtn)
+      confirmBtn.addEventListener("click", handleConfirm, { once: true });
     modal.show();
   });
 }
@@ -1232,31 +1456,37 @@ function capitalizeFirst(string) {
 // PWA & SERVICE WORKER AUTOMATIC FRESHNESS
 // ============================================
 
-if ('serviceWorker' in navigator && navigator.onLine) {
-  navigator.serviceWorker.getRegistrations().then((regs) => {
-    regs.forEach((reg) => {
-      reg.update().catch(() => {});
-    });
-  }).catch(() => {});
-
-  if ('caches' in window) {
-    caches.keys().then((keys) => {
-      keys.forEach((key) => {
-        if (key !== 'bshs-ams-v28') {
-          caches.delete(key);
-        }
+if ("serviceWorker" in navigator && navigator.onLine) {
+  navigator.serviceWorker
+    .getRegistrations()
+    .then((regs) => {
+      regs.forEach((reg) => {
+        reg.update().catch(() => {});
       });
-    }).catch(() => {});
+    })
+    .catch(() => {});
+
+  if ("caches" in window) {
+    caches
+      .keys()
+      .then((keys) => {
+        keys.forEach((key) => {
+          if (key !== "bshs-ams-v28") {
+            caches.delete(key);
+          }
+        });
+      })
+      .catch(() => {});
   }
 }
 
 // Clear offline cached session on explicit logout
-document.addEventListener('click', function(e) {
+document.addEventListener("click", function (e) {
   const link = e.target.closest('a[href*="logout.php"]');
   if (link) {
     try {
-      localStorage.removeItem('bshs_cached_teacher');
-    } catch(e) {}
+      localStorage.removeItem("bshs_cached_teacher");
+    } catch (e) {}
   }
 });
 
@@ -1264,13 +1494,13 @@ document.addEventListener('click', function(e) {
 // OFFLINE FEATURE MODAL
 // ============================================
 function showOfflineModal(featureName) {
-  let modalEl = document.getElementById('bshsOfflineFeatureModal');
+  let modalEl = document.getElementById("bshsOfflineFeatureModal");
   if (!modalEl) {
-    modalEl = document.createElement('div');
-    modalEl.id = 'bshsOfflineFeatureModal';
-    modalEl.className = 'modal fade';
-    modalEl.setAttribute('tabindex', '-1');
-    modalEl.setAttribute('aria-hidden', 'true');
+    modalEl = document.createElement("div");
+    modalEl.id = "bshsOfflineFeatureModal";
+    modalEl.className = "modal fade";
+    modalEl.setAttribute("tabindex", "-1");
+    modalEl.setAttribute("aria-hidden", "true");
     modalEl.innerHTML = `
       <div class="modal-dialog modal-dialog-centered" style="max-width: 380px;">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
@@ -1292,28 +1522,36 @@ function showOfflineModal(featureName) {
     document.body.appendChild(modalEl);
   }
 
-  const msgEl = document.getElementById('bshsOfflineModalMessage');
+  const msgEl = document.getElementById("bshsOfflineModalMessage");
   if (msgEl) {
     msgEl.textContent = featureName
       ? `"${featureName}" requires an active internet connection. Offline attendance and grade activities remain available.`
-      : 'This feature requires an active internet connection. Offline attendance and grade activities remain available.';
+      : "This feature requires an active internet connection. Offline attendance and grade activities remain available.";
   }
 
   if (window.bootstrap && window.bootstrap.Modal) {
     const modalInstance = window.bootstrap.Modal.getOrCreateInstance(modalEl);
     modalInstance.show();
   } else {
-    alert('This feature requires an active internet connection. Offline attendance and grade activities remain available.');
+    alert(
+      "This feature requires an active internet connection. Offline attendance and grade activities remain available.",
+    );
   }
 }
 
 // Intercept online-only navigation links when offline
-document.addEventListener('click', function (e) {
+document.addEventListener("click", function (e) {
   if (navigator.onLine) return;
-  const link = e.target.closest('a[href]');
+  const link = e.target.closest("a[href]");
   if (!link) return;
-  const href = (link.getAttribute('href') || '').trim();
-  if (!href || href.startsWith('#') || href.startsWith('javascript:') || href === '') return;
+  const href = (link.getAttribute("href") || "").trim();
+  if (
+    !href ||
+    href.startsWith("#") ||
+    href.startsWith("javascript:") ||
+    href === ""
+  )
+    return;
 
   // Only intercept navigation links to distinct online-only pages
   const onlineOnlyPages = [
@@ -1327,14 +1565,14 @@ document.addEventListener('click', function (e) {
     /admin\//i,
     /student\//i,
     /parent\//i,
-    /site\//i
+    /site\//i,
   ];
 
-  const isOnlineOnly = onlineOnlyPages.some(pattern => pattern.test(href));
+  const isOnlineOnly = onlineOnlyPages.some((pattern) => pattern.test(href));
   if (isOnlineOnly) {
     e.preventDefault();
     e.stopPropagation();
-    const linkText = (link.textContent || '').trim().replace(/\s+/g, ' ');
+    const linkText = (link.textContent || "").trim().replace(/\s+/g, " ");
     showOfflineModal(linkText);
   }
 });

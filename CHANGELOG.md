@@ -2,6 +2,17 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.104 — 2026-08-30
+
+### Added
+
+- **Installed-Only PWA Login Device Notification Modal (Allow, Deny, Later)**:
+  - Added `#pushPromptModal` to [`auth/login.php`](file:///c:/laragon/www/attendance-and-academic-management-system/auth/login.php) with three explicit choices: **Allow Notifications**, **Deny**, and **Later**.
+  - Implemented `isInstalledPwa()` in [`assets/js/main.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/main.js) to ensure the onboarding notification prompt appears strictly when running as an installed standalone app on the device and is suppressed in regular browser tabs.
+  - Added the **Deny** (`#pushPromptDenyBtn`) option across [`includes/modals.php`](file:///c:/laragon/www/attendance-and-academic-management-system/includes/modals.php) and [`auth/login.php`](file:///c:/laragon/www/attendance-and-academic-management-system/auth/login.php) to remember user refusal in `localStorage`.
+  - Hardened Settings push notifications save handling in [`assets/js/main.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/main.js) to avoid false-positive error alerts when subscribing.
+  - Added automated unit tests in [`tests/PwaNotificationPromptTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/PwaNotificationPromptTest.php) and updated [`tests/PwaAssetFreshnessTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/PwaAssetFreshnessTest.php).
+
 ## v0.3.103 — 2026-08-29
 
 ### Added

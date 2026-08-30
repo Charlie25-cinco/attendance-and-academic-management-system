@@ -85,10 +85,12 @@ final class PwaAssetFreshnessTest extends TestCase
         $this->assertIsString($modal);
         $this->assertStringContainsString('id="pushPromptModal"', $modal);
         $this->assertStringContainsString('id="pushPromptAllowBtn"', $modal);
+        $this->assertStringContainsString('id="pushPromptDenyBtn"', $modal);
         $this->assertStringContainsString('id="pushPromptLaterBtn"', $modal);
         $this->assertStringContainsString('id="pushPromptCloseBtn"', $modal);
 
         $this->assertIsString($javascript);
+        $this->assertStringContainsString('isInstalledPwa', $javascript);
         $this->assertStringContainsString('initPwaPushFirstOpenPrompt', $javascript);
         $this->assertStringContainsString('bshs_push_prompt_dismissed', $javascript);
     }

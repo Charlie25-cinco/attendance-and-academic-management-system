@@ -62,8 +62,9 @@
                 </div>
             </div>
             <div class="modal-footer app-modal-footer push-prompt-modal-footer d-flex flex-column flex-sm-row justify-content-end gap-2 border-0 pt-0">
-                <button type="button" class="btn btn-outline-secondary w-100 w-sm-auto order-2 order-sm-1" id="pushPromptLaterBtn">Later</button>
-                <button type="button" class="btn btn-primary-custom w-100 w-sm-auto order-1 order-sm-2" id="pushPromptAllowBtn">
+                <button type="button" class="btn btn-outline-secondary w-100 w-sm-auto order-3 order-sm-1" id="pushPromptLaterBtn">Later</button>
+                <button type="button" class="btn btn-outline-danger w-100 w-sm-auto order-2 order-sm-2" id="pushPromptDenyBtn">Deny</button>
+                <button type="button" class="btn btn-primary-custom w-100 w-sm-auto order-1 order-sm-3" id="pushPromptAllowBtn">
                     <i class="bi bi-bell-fill me-1"></i>Allow Notifications
                 </button>
             </div>
