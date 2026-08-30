@@ -389,7 +389,7 @@ $page_title = 'Classes';
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Title <span class="text-danger">*</span></label>
-                            <input type="text" name="title" class="form-control" required>
+                            <input type="text" name="title" class="form-control" oninput="capitalizeWords(this)" required>
                         </div>
                         <div class="mb-0">
                             <label class="form-label">Message <span class="text-danger">*</span></label>
@@ -419,7 +419,7 @@ $page_title = 'Classes';
         <div class="modal-body app-modal-body">
             <form id="editMaterialForm">
                 <input type="hidden" name="material_id" id="editMaterialId">
-                <div class="mb-3"><label class="form-label">Title <span class="text-danger">*</span></label><input type="text" name="title" id="editMaterialTitle" class="form-control" required></div>
+                <div class="mb-3"><label class="form-label">Title <span class="text-danger">*</span></label><input type="text" name="title" id="editMaterialTitle" class="form-control" oninput="capitalizeWords(this)" required></div>
                 <div class="mb-3"><label class="form-label">Class <span class="text-danger">*</span></label><select name="class_id" id="editMaterialClassId" class="form-select" required><option value="">Select class</option><?php foreach ($classes as $class): ?><option value="<?php echo (int)$class['id']; ?>"><?php echo htmlspecialchars($class['class_name'] . ' (G' . $class['grade_level'] . ' - ' . $class['section'] . ')'); ?></option><?php endforeach; ?></select></div>
             </form>
         </div>
@@ -440,7 +440,7 @@ $page_title = 'Classes';
         <div class="modal-body app-modal-body">
             <form id="createGradeItemForm">
                 <div class="mb-3"><label class="form-label">Class <span class="text-danger">*</span></label><select name="class_id" class="form-select" required><option value="">Select class</option><?php foreach ($classes as $class): ?><option value="<?php echo (int)$class['id']; ?>"><?php echo htmlspecialchars($class['class_name'] . ' (G' . $class['grade_level'] . ' - ' . $class['section'] . ')'); ?></option><?php endforeach; ?></select></div>
-                <div class="mb-3"><label class="form-label">Activity Title <span class="text-danger">*</span></label><input type="text" name="title" class="form-control" placeholder="e.g. Quiz 1, Performance Task 2" required></div>
+                <div class="mb-3"><label class="form-label">Activity Title <span class="text-danger">*</span></label><input type="text" name="title" class="form-control" placeholder="e.g. Quiz 1, Performance Task 2" oninput="capitalizeWords(this)" required></div>
                 <div class="row">
                     <div class="col-md-6 mb-3"><label class="form-label">Component <span class="text-danger">*</span></label><select name="component" class="form-select" required><option value="WW">Written Work</option><option value="PT">Performance Task</option><option value="ASSESSMENT">Assessment</option></select></div>
                     <div class="col-md-6 mb-3"><label class="form-label">Total Score <span class="text-danger">*</span></label><input type="number" name="total_score" class="form-control" min="0.01" step="0.01" required></div>
@@ -562,6 +562,11 @@ const materialFileInput = document.getElementById('materialFileInput');
 const materialFileStatus = document.getElementById('materialFileStatus');
 const chooseMaterialFileBtn = document.getElementById('chooseMaterialFileBtn');
 const csrfToken = (window.APP_CSRF_TOKEN || '').toString();
+
+function capitalizeWords(input) {
+    if (!input || !input.value) return;
+    input.value = input.value.replace(/\b\w/g, char => char.toUpperCase());
+}
 
 function setBusy(btn, busyText, idleText, isBusy) {
     if (!btn) return;

@@ -118,10 +118,9 @@ function normalizeSubjectNameValue($name): string {
     if ($name === '') {
         return '';
     }
-    if (function_exists('mb_convert_case')) {
-        return mb_convert_case($name, MB_CASE_TITLE, 'UTF-8');
-    }
-    return ucwords(strtolower($name));
+    return (string)preg_replace_callback('/\b\p{L}/u', function ($matches) {
+        return mb_strtoupper($matches[0], 'UTF-8');
+    }, $name);
 }
 
 function getDefaultNewUserPassword(): string {

@@ -278,19 +278,19 @@ if (isset($_GET['download_template'])) {
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
                                         <label class="form-label" for="addHouseStreet">House No./Street/Sitio/Purok</label>
-                                        <input type="text" name="house_street" id="addHouseStreet" class="form-control" maxlength="120" autocomplete="street-address">
+                                        <input type="text" name="house_street" id="addHouseStreet" class="form-control" maxlength="120" oninput="capitalizeWords(this)" autocomplete="street-address">
                                     </div>
                                     <div class="col-md-6 mb-3">
                                         <label class="form-label" for="addBarangay">Barangay</label>
-                                        <input type="text" name="barangay" id="addBarangay" class="form-control" maxlength="120">
+                                        <input type="text" name="barangay" id="addBarangay" class="form-control" maxlength="120" oninput="capitalizeWords(this)">
                                     </div>
                                     <div class="col-md-6 mb-3">
                                         <label class="form-label" for="addMunicipality">Municipality/City</label>
-                                        <input type="text" name="municipality" id="addMunicipality" class="form-control" maxlength="120">
+                                        <input type="text" name="municipality" id="addMunicipality" class="form-control" maxlength="120" oninput="capitalizeWords(this)">
                                     </div>
                                     <div class="col-md-6 mb-0">
                                         <label class="form-label" for="addProvince">Province</label>
-                                        <input type="text" name="province" id="addProvince" class="form-control" maxlength="120">
+                                        <input type="text" name="province" id="addProvince" class="form-control" maxlength="120" oninput="capitalizeWords(this)">
                                     </div>
                                 </div>
                             </div>

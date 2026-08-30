@@ -271,7 +271,17 @@ $page_title = 'Edit Class - ' . $class['class_name'];
 
         function autoCapitalizeFirstLetter(value) {
             if (!value) return '';
-            return value.charAt(0).toUpperCase() + value.slice(1);
+            return value.replace(/\b\w/g, ch => ch.toUpperCase());
+        }
+
+        const editClassNameInput = document.querySelector('input[name="class_name"]');
+        if (editClassNameInput) {
+            editClassNameInput.addEventListener('input', function () {
+                const start = this.selectionStart;
+                const end = this.selectionEnd;
+                this.value = autoCapitalizeFirstLetter(this.value);
+                this.setSelectionRange(start, end);
+            });
         }
 
         const weightPresets = {

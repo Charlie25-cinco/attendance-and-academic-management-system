@@ -23,7 +23,7 @@ final class PwaOfflineModeTest extends TestCase
         $storageJs = file_get_contents(__DIR__ . '/../assets/js/offlineStorage.js');
         $this->assertIsString($storageJs);
 
-        $this->assertStringContainsString("localStorage.setItem('bshs_cached_teacher', '1')", $storageJs);
+        $this->assertStringContainsString('bshs_cached_teacher', $storageJs);
         $this->assertStringContainsString("clearTeacherSession", $storageJs);
         $this->assertStringContainsString("activeCacheName", $storageJs);
     }

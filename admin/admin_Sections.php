@@ -69,8 +69,7 @@ $page_title = 'Sections';
                     <form id="createSectionForm">
                         <div class="mb-3">
                             <label class="form-label" for="createSectionName">Section Name <span class="text-danger">*</span></label>
-                            <input type="text" id="createSectionName" class="form-control" placeholder="e.g. HUMILITY" required autocomplete="off">
-                            <div class="form-text">Will be automatically uppercased.</div>
+                            <input type="text" id="createSectionName" class="form-control" placeholder="e.g. Diamond, STEM-A" oninput="capitalizeWords(this)" required autocomplete="off">
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
@@ -117,7 +116,7 @@ $page_title = 'Sections';
                         <input type="hidden" id="editSectionId">
                         <div class="mb-3">
                             <label class="form-label" for="editSectionName">Section Name <span class="text-danger">*</span></label>
-                            <input type="text" id="editSectionName" class="form-control" required autocomplete="off">
+                            <input type="text" id="editSectionName" class="form-control" oninput="capitalizeWords(this)" required autocomplete="off">
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
@@ -172,6 +171,11 @@ $page_title = 'Sections';
 
     <script>
         const csrfToken = (window.APP_CSRF_TOKEN || '').toString();
+
+        function capitalizeWords(input) {
+            if (!input || !input.value) return;
+            input.value = input.value.replace(/\b\w/g, char => char.toUpperCase());
+        }
 
         document.addEventListener('DOMContentLoaded', loadSections);
 

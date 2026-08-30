@@ -22,6 +22,14 @@ Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR fo
   - Enhanced [`auth/login.php`](file:///c:/laragon/www/attendance-and-academic-management-system/auth/login.php) with an immediate, interactive **Teacher Offline Workspace** launchpad when the app is opened offline.
   - Added automated test suite in [`tests/PwaOfflineModeTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/PwaOfflineModeTest.php).
 
+- **Acronym Preservation and Extended Auto-Capitalization**:
+  - Fixed subject and room normalization in [`functions/app-helpers.php`](file:///c:/laragon/www/attendance-and-academic-management-system/functions/app-helpers.php), [`admin/admin_Classes.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Classes.php), and [`admin/admin_Class_Edit.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Class_Edit.php) so uppercase acronyms such as `PE`, `MAPEH`, `TVL`, and `STEM` are preserved instead of forcefully lowercased into title case.
+  - Added auto-capitalization to Section Name inputs in [`admin/admin_Sections.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Sections.php).
+  - Added auto-capitalization to Announcement Title inputs in [`admin/admin_Announcements.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Announcements.php) and [`teacher/teacher_Classes.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Classes.php).
+  - Added auto-capitalization to Grade Activity Titles and Material Titles in [`teacher/teacher_Classes.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Classes.php).
+  - Added auto-capitalization to Student Address fields (House/Street, Barangay, Municipality, Province) in [`admin/admin_Enrollments.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Enrollments.php).
+  - Added test suite in [`tests/AutoCapitalizationTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/AutoCapitalizationTest.php).
+
 ## v0.3.103 — 2026-08-29
 
 ### Added

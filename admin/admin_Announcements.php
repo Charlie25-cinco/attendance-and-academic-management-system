@@ -233,7 +233,7 @@ $visibleAnnouncementCount = count($announcements);
                                 <div class="row">
                                     <div class="col-md-8 mb-3">
                                         <label class="form-label">Title <span class="text-danger">*</span></label>
-                                        <input type="text" name="title" class="form-control" required>
+                                        <input type="text" name="title" class="form-control" oninput="capitalizeWords(this)" required>
                                     </div>
                                     <div class="col-md-4 mb-3">
                                         <label class="form-label">Category</label>
@@ -292,7 +292,7 @@ $visibleAnnouncementCount = count($announcements);
                                 <div class="row">
                                     <div class="col-md-8 mb-3">
                                         <label class="form-label">Title <span class="text-danger">*</span></label>
-                                        <input type="text" name="title" id="editAnnouncementTitle" class="form-control" required>
+                                        <input type="text" name="title" id="editAnnouncementTitle" class="form-control" oninput="capitalizeWords(this)" required>
                                     </div>
                                     <div class="col-md-4 mb-3">
                                         <label class="form-label">Category</label>
@@ -338,6 +338,11 @@ $visibleAnnouncementCount = count($announcements);
         const csrfToken = (window.APP_CSRF_TOKEN || '').toString();
         let createAnnouncementModal = null;
         let editAnnouncementModal = null;
+
+        function capitalizeWords(input) {
+            if (!input || !input.value) return;
+            input.value = input.value.replace(/\b\w/g, char => char.toUpperCase());
+        }
 
         function resetCreateAnnouncementModal() {
             const form = document.getElementById('createAnnouncementForm');

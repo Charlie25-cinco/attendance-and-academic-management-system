@@ -624,7 +624,7 @@ $page_title = 'Manage Classes';
 
         function toTitleCaseWords(value) {
             if (!value) return '';
-            return value.toLowerCase().replace(/\b\w/g, ch => ch.toUpperCase());
+            return value.replace(/\b\w/g, ch => ch.toUpperCase());
         }
 
         const addSubjectNameInput = document.getElementById('addSubjectNameInput');
