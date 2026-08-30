@@ -665,15 +665,6 @@ if (isset($_GET['download_template'])) {
     </div>
 
     <script>
-        function escHtml(value) {
-            return String(value ?? "")
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#39;");
-        }
-        function escapeHtml(value) { return escHtml(value); }
         function ucfirst(str) { return (str || '').charAt(0).toUpperCase() + (str || '').slice(1); }
 
         let currentPage = 1;

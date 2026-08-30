@@ -577,8 +577,9 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
-const escHtml = escapeHtml;
-const esc = escapeHtml;
+window.escapeHtml = escapeHtml;
+window.escHtml = escapeHtml;
+window.esc = escapeHtml;
 
 function programLabel(row) {
   if (row.program === "academic_strengthened")
@@ -588,13 +589,16 @@ function programLabel(row) {
   if (row.track === "academic") return "Academic";
   return "";
 }
+window.programLabel = programLabel;
 
 function appendCsrfToFormData(fd) {
-  if (fd && typeof csrfToken !== "undefined" && csrfToken) {
-    fd.set("csrf_token", csrfToken);
+  const token = (typeof csrfToken !== "undefined" && csrfToken) ? csrfToken : (window.APP_CSRF_TOKEN || "");
+  if (fd && token) {
+    fd.set("csrf_token", token);
   }
   return fd;
 }
+window.appendCsrfToFormData = appendCsrfToFormData;
 
 function withCsrfUrl(url) {
   if (typeof csrfToken === "undefined" || !csrfToken) return url;
@@ -1487,7 +1491,7 @@ if ("serviceWorker" in navigator && navigator.onLine) {
         .keys()
         .then((keys) => {
           keys.forEach((key) => {
-            if (key.startsWith("bshs-ams-v") && key !== "bshs-ams-v33") {
+            if (key.startsWith("bshs-ams-v") && key !== "bshs-ams-v34") {
               caches.delete(key);
             }
           });
