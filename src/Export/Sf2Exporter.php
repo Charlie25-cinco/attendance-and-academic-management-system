@@ -33,6 +33,9 @@ class Sf2Exporter {
     private const TARDY_COL = 'AT';
     private const REMARKS_COL = 'AV';
 
+    private ?PDO $db = null;
+
+    public function setDb(?PDO $db): void { $this->db = $db; }
     public function setClass(array $class): void { $this->class = $class; }
     public function setStudents(array $students): void { $this->students = $students; }
     public function setAttendance(array $attendance): void { $this->attendance = $attendance; }
@@ -645,6 +648,10 @@ class Sf2Exporter {
     private function schoolMetaValue(string $localKey, string $envKey, string $fallback = ''): string {
         $value = trim((string)($this->class[$localKey] ?? ''));
         if ($value !== '') return $value;
+        if ($this->db instanceof PDO && function_exists('getSchoolSetting')) {
+            $dbVal = trim(getSchoolSetting($this->db, $localKey, ''));
+            if ($dbVal !== '') return $dbVal;
+        }
         $envValue = trim((string)appEnvValue($envKey, ''));
         if ($envValue !== '') return $envValue;
         $localPath = dirname(__DIR__, 2) . '/config/App.local.php';

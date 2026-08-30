@@ -949,6 +949,11 @@ function getSchoolSettings(PDO $db): array {
 
 function setSchoolSetting(PDO $db, string $key, string $value): bool {
     try {
+        $driver = (string)$db->getAttribute(PDO::ATTR_DRIVER_NAME);
+        if ($driver === 'sqlite') {
+            $stmt = $db->prepare("INSERT INTO school_settings (setting_key, setting_value) VALUES (?, ?) ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value");
+            return $stmt->execute([$key, $value]);
+        }
         $stmt = $db->prepare("INSERT INTO school_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)");
         return $stmt->execute([$key, $value]);
     } catch (Throwable $e) { error_log('School setting update failed: ' . $e->getMessage()); return false; }
@@ -1177,6 +1182,8 @@ function permissionForScript(string $scriptName): string {
         'admin_reports_action.php' => 'reports.view',
         'admin_archives.php' => 'archives.view',
         'admin_audit_logs.php' => 'settings.view',
+        'admin_school_settings.php' => 'settings.view',
+        'admin_school_settings_action.php' => 'settings.manage',
         'admin_rbac.php' => 'settings.manage',
         'admin_rbac_action.php' => 'settings.manage',
         'teacher.php' => 'attendance.view',

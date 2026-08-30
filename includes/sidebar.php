@@ -23,6 +23,7 @@ $sidebar_menus = [
         ['id' => 'reports', 'icon' => 'bi-graph-up', 'label' => 'Reports', 'link' => 'admin_Reports.php'],
         ['id' => 'archives', 'icon' => 'bi-archive', 'label' => 'Archived Records', 'link' => 'admin_Archives.php'],
         ['id' => 'audit_logs', 'icon' => 'bi-shield-check', 'label' => 'Audit Logs', 'link' => 'admin_Audit_Logs.php'],
+        ['id' => 'school_settings', 'icon' => 'bi-building-gear', 'label' => 'School Settings', 'link' => 'admin_School_Settings.php'],
         ['id' => 'rbac', 'icon' => 'bi-shield-lock', 'label' => 'RBAC Control Panel', 'link' => 'admin_RBAC.php'],
     ],
     'teacher' => [
@@ -80,9 +81,19 @@ if (!empty($_SESSION['logged_in']) && in_array($current_role, ['teacher', 'paren
     <!-- Sidebar Header -->
     <div class="sidebar-header">
         <div class="sidebar-logo">
-            <img src="../assets/images/bshs-logo.jpg" alt="Balingasag SHS Logo" class="sidebar-logo-img">
+            <img src="../assets/images/bshs-logo.jpg" alt="School Logo" class="sidebar-logo-img">
         </div>
-        <span class="sidebar-title">Balingasag SHS</span>
+        <span class="sidebar-title"><?php
+            $sidebarSchoolTitle = 'Balingasag SHS';
+            $activeDb = $sidebarDb ?? ($db ?? null);
+            if (isset($activeDb) && $activeDb instanceof PDO) {
+                $dbSchool = getSchoolSetting($activeDb, 'school_name', '');
+                if ($dbSchool !== '') {
+                    $sidebarSchoolTitle = $dbSchool;
+                }
+            }
+            echo htmlspecialchars($sidebarSchoolTitle);
+        ?></span>
     </div>
 
     <!-- Navigation -->

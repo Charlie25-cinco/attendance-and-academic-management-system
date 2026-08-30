@@ -14,6 +14,13 @@ unset($__appRoot);
 if (!function_exists('apiEcrSchoolMetaValue')) {
     function apiEcrSchoolMetaValue(string $localKey, string $envKey, string $fallback = ''): string
     {
+        if (isset($GLOBALS['DB']) && $GLOBALS['DB'] instanceof PDO && function_exists('getSchoolSetting')) {
+            $dbVal = trim(getSchoolSetting($GLOBALS['DB'], $localKey, ''));
+            if ($dbVal !== '') {
+                return $dbVal;
+            }
+        }
+
         $envValue = trim(apiEnvValue($envKey));
         if ($envValue !== '') {
             return $envValue;

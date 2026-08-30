@@ -44,14 +44,32 @@ $bootstrapCss = '../assets/vendor/bootstrap/bootstrap.min.css';
 $bootstrapIconsCss = '../assets/vendor/bootstrap-icons/bootstrap-icons.css';
 $bootstrapJs = '../assets/vendor/bootstrap/bootstrap.bundle.min.js';
 $siteCss = '../assets/css/Site.css';
+
+$siteSchoolName = 'Balingasag Senior High School';
+$siteRegion = 'Region X';
+$siteDivision = 'Misamis Oriental';
+if ($db instanceof PDO && function_exists('getSchoolSetting')) {
+    $dbName = getSchoolSetting($db, 'school_name', '');
+    if ($dbName !== '') {
+        $siteSchoolName = $dbName;
+    }
+    $dbReg = getSchoolSetting($db, 'region', '');
+    if ($dbReg !== '') {
+        $siteRegion = $dbReg;
+    }
+    $dbDiv = getSchoolSetting($db, 'division', '');
+    if ($dbDiv !== '') {
+        $siteDivision = $dbDiv;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Balingasag Senior High School public website and Academic Management System portal access.">
-    <title>Balingasag Senior High School</title>
+    <meta name="description" content="<?php echo htmlspecialchars($siteSchoolName); ?> public website and Academic Management System portal access.">
+    <title><?php echo htmlspecialchars($siteSchoolName); ?></title>
     <link href="<?php echo $bootstrapCss; ?>" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo $bootstrapIconsCss; ?>">
     <link rel="stylesheet" href="<?php echo $siteCss; ?>">
@@ -60,11 +78,11 @@ $siteCss = '../assets/css/Site.css';
 <body class="site-shell">
     <nav class="site-navbar navbar navbar-expand-lg">
         <div class="container site-container">
-            <a class="navbar-brand" href="#top" aria-label="Balingasag Senior High School home">
-                <img src="<?php echo $logoPath; ?>" alt="BSHS Logo">
+            <a class="navbar-brand" href="#top" aria-label="<?php echo htmlspecialchars($siteSchoolName); ?> home">
+                <img src="<?php echo $logoPath; ?>" alt="School Logo">
                 <span>
-                    <small class="brand-kicker">Balingasag Senior High School</small>
-                    <strong>Balingasag SHS</strong>
+                    <small class="brand-kicker"><?php echo htmlspecialchars($siteSchoolName); ?></small>
+                    <strong><?php echo htmlspecialchars($siteSchoolName); ?></strong>
                 </span>
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#siteNav" aria-controls="siteNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -256,8 +274,8 @@ $siteCss = '../assets/css/Site.css';
 
     <footer class="site-footer">
         <div class="container site-container">
-            <p class="mb-1">&copy; <?php echo date('Y'); ?> Balingasag Senior High School. All rights reserved.</p>
-            <p class="mb-0">Department of Education - Region X · <a href="<?php echo $loginUrl; ?>">Academic Management System</a></p>
+            <p class="mb-1">&copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars($siteSchoolName); ?>. All rights reserved.</p>
+            <p class="mb-0">Department of Education - <?php echo htmlspecialchars($siteRegion); ?> · <a href="<?php echo $loginUrl; ?>">Academic Management System</a></p>
         </div>
     </footer>
 
