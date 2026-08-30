@@ -24,21 +24,15 @@ final class PwaAssetFreshnessTest extends TestCase
         $serviceWorker = file_get_contents(__DIR__ . '/../sw.js');
 
         $this->assertIsString($serviceWorker);
-        $this->assertStringContainsString('bshs-ams-v30', $serviceWorker);
+        $this->assertStringContainsString('bshs-ams-v31', $serviceWorker);
         $this->assertStringContainsString('BASE_PATH = (self.location.pathname ||', $serviceWorker);
         $this->assertStringContainsString("function resolvePath(path)", $serviceWorker);
         $this->assertStringContainsString('/assets/js/offlineStorage.js', $serviceWorker);
         $this->assertStringContainsString('/assets/js/networkSync.js', $serviceWorker);
         $this->assertStringContainsString('/assets/vendor/html5-qrcode/html5-qrcode.min.js', $serviceWorker);
-        $this->assertStringContainsString('var needsFreshAsset = /\.(css|js)$/i.test(url.pathname);', $serviceWorker);
-        $this->assertStringContainsString('if (needsFreshAsset) {', $serviceWorker);
         $this->assertStringContainsString('<svg xmlns="http://www.w3.org/2000/svg"', $serviceWorker);
         $this->assertStringNotContainsString('📶', $serviceWorker);
-        $networkFirst = strpos($serviceWorker, 'if (needsFreshAsset) {');
-        $cacheFirst = strpos($serviceWorker, 'if (isAsset || isStaticAsset) {');
-        $this->assertIsInt($networkFirst);
-        $this->assertIsInt($cacheFirst);
-        $this->assertLessThan($cacheFirst, $networkFirst);
+        $this->assertStringContainsString('return cached || fetchAndCache;', $serviceWorker);
     }
 
     public function testTeacherAttendanceUsesVersionedNetworkSync(): void

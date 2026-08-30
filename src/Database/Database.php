@@ -7,6 +7,8 @@ use PDOException;
 
 class Database
 {
+    private static ?PDO $sharedConnection = null;
+
     private $host;
     private $port;
     private $socket;
@@ -53,11 +55,27 @@ class Database
         $this->sslVerifyServerCert = appEnvValue('DB_SSL_VERIFY_SERVER_CERT', $verifyDefault) !== '0';
     }
 
+    public static function resetSharedConnection(): void
+    {
+        self::$sharedConnection = null;
+    }
+
     public function getConnection()
     {
+        if (self::$sharedConnection instanceof PDO) {
+            try {
+                self::$sharedConnection->query('SELECT 1');
+                $this->connection = self::$sharedConnection;
+                return $this->connection;
+            } catch (PDOException $e) {
+                self::$sharedConnection = null;
+            }
+        }
+
         if ($this->connection instanceof PDO) {
             try {
                 $this->connection->query('SELECT 1');
+                self::$sharedConnection = $this->connection;
                 return $this->connection;
             } catch (PDOException $e) {
                 $this->connection = null;
@@ -82,8 +100,10 @@ class Database
                 }
             }
 
-            $this->connection = new PDO($dsn, $this->username, $this->password, $options);
-            $this->connection->exec("SET NAMES utf8mb4");
+            $pdo = new PDO($dsn, $this->username, $this->password, $options);
+            $pdo->exec("SET NAMES utf8mb4");
+            self::$sharedConnection = $pdo;
+            $this->connection = $pdo;
         } catch (PDOException $e) {
             error_log("Database connection error: " . $e->getMessage());
         }
