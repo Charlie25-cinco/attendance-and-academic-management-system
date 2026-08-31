@@ -9,6 +9,9 @@ env:
   DB_SSL_VERIFY_SERVER_CERT: "1"
   API_ALLOWED_ORIGIN: "https://balingasagshs.wasmer.app"
   APP_PUBLIC_BASE_URL: "https://balingasagshs.wasmer.app"
+  SMS_PROVIDER: "philsms"
+  SMS_SENDER_NAME: "PhilSMS"
+  SMS_ENDPOINT: "https://dashboard.philsms.com/api/v3/sms/send"
 
 capabilities:
   instaboot:
