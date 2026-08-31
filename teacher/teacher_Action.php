@@ -1937,7 +1937,38 @@ function submitGrades($db, $teacherId) {
 
         $db->commit();
         notifyGradeSubmissionParents($db, $teacherId, $classId, $classSubjectId, $term, $academicYear, $records);
-        echo json_encode(['success' => true, 'message' => 'Grades submitted to Adviser Report Card']);
+
+        // Notify Admin users about new subject grade submission for Stage 1 Verification
+        try {
+            $adminStmt = $db->query("SELECT id FROM users WHERE role = 'admin' AND COALESCE(status, 'active') = 'active'");
+            $adminIds = $adminStmt ? $adminStmt->fetchAll(PDO::FETCH_COLUMN) : [];
+            $classInfoStmt = $db->prepare("SELECT c.class_name, c.grade_level, c.section, u.first_name, u.last_name FROM classes c LEFT JOIN users u ON u.id = ? WHERE c.id = ?");
+            $classInfoStmt->execute([$teacherId, $classId]);
+            $classInfo = $classInfoStmt->fetch(PDO::FETCH_ASSOC);
+            $tName = trim(($classInfo['first_name'] ?? '') . ' ' . ($classInfo['last_name'] ?? ''));
+            $gLevel = (int)($classInfo['grade_level'] ?? 0);
+            $secName = (string)($classInfo['section'] ?? '');
+            $cName = (string)($classInfo['class_name'] ?? '');
+
+            if (!empty($adminIds) && function_exists('appDispatchNotification')) {
+                $targetLink = 'admin_Grade_Approvals_Detail.php?tab=grades&grade_level=' . $gLevel . '&section=' . urlencode($secName) . '&academic_year=' . urlencode($academicYear) . '&semester=' . urlencode((string)($semester ?? ''));
+                appDispatchNotification(
+                    $db,
+                    $adminIds,
+                    'grade_submission_' . $classSubjectId . '_' . $term . '_' . $academicYear . '_' . time(),
+                    'Subject Grades Submitted',
+                    "Teacher {$tName} submitted {$cName} (Grade {$gLevel} - {$secName}, {$term}) for admin verification.",
+                    'bi-journal-check',
+                    'primary',
+                    ['admin' => $targetLink],
+                    ['type' => 'grade_submission', 'class_id' => $classId, 'term' => $term, 'academic_year' => $academicYear]
+                );
+            }
+        } catch (Throwable $e) {
+            error_log('Admin grade submission notification failed: ' . $e->getMessage());
+        }
+
+        echo json_encode(['success' => true, 'message' => 'Grades submitted to Admin for verification']);
     } catch (PDOException $e) {
         if ($db->inTransaction()) {
             $db->rollBack();
@@ -2867,6 +2898,35 @@ function submitReportCard($db, $teacherId) {
             $submittedCount++;
         }
         $db->commit();
+
+        // Dispatch notification to Admin users about Adviser Report Card submission
+        try {
+            $adminStmt = $db->query("SELECT id FROM users WHERE role = 'admin' AND COALESCE(status, 'active') = 'active'");
+            $adminIds = $adminStmt ? $adminStmt->fetchAll(PDO::FETCH_COLUMN) : [];
+            $advStmt = $db->prepare("SELECT u.first_name, u.last_name, s.grade_level, s.name AS section_name FROM users u LEFT JOIN sections s ON s.adviser_id = u.id WHERE u.id = ? LIMIT 1");
+            $advStmt->execute([$teacherId]);
+            $advInfo = $advStmt->fetch(PDO::FETCH_ASSOC);
+            $advName = trim(($advInfo['first_name'] ?? '') . ' ' . ($advInfo['last_name'] ?? ''));
+            $advGLevel = (int)($advInfo['grade_level'] ?? 0);
+            $advSecName = (string)($advInfo['section_name'] ?? '');
+
+            if (!empty($adminIds) && function_exists('appDispatchNotification')) {
+                $targetLink = 'admin_Grade_Approvals_Detail.php?tab=report_cards&grade_level=' . $advGLevel . '&section=' . urlencode($advSecName) . '&academic_year=' . urlencode($academicYear) . '&semester=' . urlencode((string)($semester ?? ''));
+                appDispatchNotification(
+                    $db,
+                    $adminIds,
+                    'report_card_submission_' . $teacherId . '_' . $academicYear . '_' . ($semester ?? '3term') . '_' . time(),
+                    'Report Cards Submitted for Approval',
+                    "Adviser {$advName} submitted report cards for Grade {$advGLevel} - {$advSecName} ({$submittedCount} students) for final admin approval.",
+                    'bi-folder-check',
+                    'success',
+                    ['admin' => $targetLink],
+                    ['type' => 'report_card_submission', 'teacher_id' => $teacherId, 'academic_year' => $academicYear]
+                );
+            }
+        } catch (Throwable $e) {
+            error_log('Admin report card submission notification failed: ' . $e->getMessage());
+        }
 
         echo json_encode(['success' => true, 'message' => 'Submitted report cards for ' . $submittedCount . ' student(s) to admin for approval']);
     } catch (PDOException $e) {

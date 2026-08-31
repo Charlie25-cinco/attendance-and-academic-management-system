@@ -162,12 +162,50 @@ $page_title = 'Grade Approvals';
     <div class="main-content">
     <?php include '../includes/header.php'; ?>
     <div class="page-content">
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
                 <h4 class="mb-1">Grade Approvals</h4>
-                <p class="text-muted mb-0">Review, approve, or reject submitted grades before student release.</p>
+                <p class="text-muted mb-0">Review, verify, and officially release submitted grades and advisory report cards.</p>
             </div>
         </div>
+
+        <!-- DepEd Grade Approval Pipeline Progress Guide -->
+        <div class="content-card mb-4 bg-light border">
+            <div class="content-card-body p-3">
+                <h6 class="fw-bold mb-2 text-primary d-flex align-items-center"><i class="bi bi-diagram-3-fill me-2"></i>DepEd Grade Approval & Publication Pipeline</h6>
+                <div class="row g-2 text-center small">
+                    <div class="col-md-3">
+                        <div class="p-2 rounded bg-white border shadow-sm h-100">
+                            <span class="badge bg-primary mb-1">Step 1</span>
+                            <div class="fw-semibold">Subject Teachers</div>
+                            <div class="text-muted" style="font-size: 11px;">Encode scores & submit subject grades to Admin</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-2 rounded bg-white border border-primary shadow-sm h-100">
+                            <span class="badge bg-info text-dark mb-1">Step 2: Admin Action</span>
+                            <div class="fw-semibold">Admin Verification</div>
+                            <div class="text-muted" style="font-size: 11px;">Verify subject grades to unlock section report card compilation</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-2 rounded bg-white border shadow-sm h-100">
+                            <span class="badge bg-warning text-dark mb-1">Step 3</span>
+                            <div class="fw-semibold">Class Advisers</div>
+                            <div class="text-muted" style="font-size: 11px;">Review compiled section report cards & submit to Admin</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-2 rounded bg-white border border-success shadow-sm h-100">
+                            <span class="badge bg-success mb-1">Step 4: Final Release</span>
+                            <div class="fw-semibold">Admin Approval & SMS</div>
+                            <div class="text-muted" style="font-size: 11px;">Final release unlocks student/parent viewing & triggers SMS</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="content-card">
             <div class="content-card-header d-flex justify-content-between align-items-center">
                 <div>
@@ -430,6 +468,11 @@ function returnReleasedReportCards(gradeLevel, section, academicYear, semester) 
         })
         .catch(() => showNotification('Error returning released grades', 'danger'));
 }
+
+window.addEventListener('ams:notificationReceived', () => {
+    // Live update approval cards when new submissions or reviews arrive
+    setTimeout(() => window.location.reload(), 1200);
+});
 </script>
 <?php include '../includes/footer.php'; ?>
 

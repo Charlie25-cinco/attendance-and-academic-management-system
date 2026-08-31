@@ -2,6 +2,28 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.105 — 2026-08-31
+
+### Added
+
+- **Live Real-Time Notification Polling & Background Sync**:
+  - Added `initLiveNotificationPoller()` and `pollNotificationsLive()` in [`assets/js/main.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/main.js) (polls every 15s when active).
+  - Dynamically updates header badge count and notification dropdown list, pops instant toast notifications for new arrivals, and emits `ams:notificationReceived` event.
+  - Added live event listeners on [`admin/admin_Grade_Approvals.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Grade_Approvals.php) to automatically refresh approval cards when submissions arrive without manual reload.
+
+- **Automated Workflow Notifications (Adviser, Admin, & Teacher)**:
+  - Added automated in-app notification dispatch to Admin users when an Adviser submits consolidated section report cards in [`teacher/teacher_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Action.php).
+  - Added automated in-app notification dispatch to Admin users when a Subject Teacher submits subject grades in [`teacher/teacher_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Action.php).
+  - Added automated in-app notification dispatch to Section Advisers and Teachers when Admin verifies subject grades or returns grades/report cards for correction in [`admin/admin_Grade_Approvals_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Grade_Approvals_Action.php).
+
+### Changed
+
+- **Clarified Grade Submission & Approval Workflow UI**:
+  - Added a 4-step visual DepEd grade pipeline progress guide in [`admin/admin_Grade_Approvals.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Grade_Approvals.php).
+  - Added Step 1 Subject Grade Submission guidance banner in [`teacher/teacher_Grades.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Grades.php).
+  - Added Step 2 Advisory Report Card Compilation guidance banner in [`teacher/teacher_Advisory.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Advisory.php).
+  - Bumped PWA service worker cache version to `bshs-ams-v35`.
+
 ## v0.3.104 — 2026-08-30
 
 ### Added

@@ -415,6 +415,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
   initHeaderNotificationActions();
   focusNotificationTarget();
+  initLiveNotificationPoller();
   window.setTimeout(initPwaPushAutoRegistration, 1200);
   window.setTimeout(initPwaPushFirstOpenPrompt, 1500);
 });
@@ -592,7 +593,10 @@ function programLabel(row) {
 window.programLabel = programLabel;
 
 function appendCsrfToFormData(fd) {
-  const token = (typeof csrfToken !== "undefined" && csrfToken) ? csrfToken : (window.APP_CSRF_TOKEN || "");
+  const token =
+    typeof csrfToken !== "undefined" && csrfToken
+      ? csrfToken
+      : window.APP_CSRF_TOKEN || "";
   if (fd && token) {
     fd.set("csrf_token", token);
   }
@@ -861,6 +865,86 @@ function initHeaderNotificationActions() {
         );
     });
   }
+}
+
+let lastKnownNotificationIds = null;
+
+function renderLiveNotifications(items, unreadCount) {
+  setHeaderNotificationCount(unreadCount);
+  const scrollContainer = document.querySelector(".header-notification-scroll-body");
+  if (!scrollContainer) return;
+
+  if (!items || items.length === 0) {
+    scrollContainer.innerHTML = '<div class="dropdown-item text-muted py-3 text-center">No new notifications</div>';
+    return;
+  }
+
+  const html = items.map((item) => {
+    const isRead = Number(item.is_read || 0) === 1;
+    const color = escapeHtml(item.color || "primary");
+    const icon = escapeHtml(item.icon || "bi-bell");
+    const title = escapeHtml(item.title || "");
+    const subtitle = escapeHtml(item.subtitle || "");
+    const time = escapeHtml(item.time || "");
+    const link = escapeHtml(item.link || "#");
+    const id = Number(item.id || 0);
+
+    return `
+      <div data-notification-row="${id}">
+        <div class="dropdown-item d-flex align-items-start py-2 ${isRead ? "opacity-75" : ""}">
+          <a class="header-notification-item d-flex align-items-start text-decoration-none text-reset flex-grow-1" href="${link}" data-notification-id="${id}">
+            <div class="header-notification-icon bg-${color} bg-opacity-10 rounded-circle p-2 me-3 flex-shrink-0">
+              <i class="bi ${icon} text-${color}"></i>
+            </div>
+            <div class="header-notification-body flex-grow-1 min-w-0">
+              <p class="mb-0 fw-medium notification-title" style="font-size: 14px;">${title}</p>
+              <p class="mb-0 text-muted notification-subtitle" style="font-size: 12px;">${subtitle}</p>
+              <small class="text-muted header-notification-time">${time}</small>
+            </div>
+          </a>
+          <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-2 delete-notification-btn" title="Delete" data-notification-id="${id}">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  scrollContainer.innerHTML = html;
+  initHeaderNotificationActions();
+}
+
+function pollNotificationsLive() {
+  if (document.hidden) return;
+  appFetchJson("notifications")
+    .then((data) => {
+      if (!data || !data.ok) return;
+      const currentIds = new Set((data.items || []).map((it) => it.id));
+      const unreadCount = Number(data.unread_count || 0);
+
+      if (lastKnownNotificationIds !== null) {
+        const newUnread = (data.items || []).filter(
+          (it) => !lastKnownNotificationIds.has(it.id) && Number(it.is_read || 0) === 0
+        );
+        if (newUnread.length > 0) {
+          const newest = newUnread[0];
+          showNotification(`${newest.title}: ${newest.subtitle}`, "info");
+          window.dispatchEvent(new CustomEvent("ams:notificationReceived", { detail: { items: data.items, newCount: newUnread.length } }));
+        }
+      }
+      lastKnownNotificationIds = currentIds;
+      renderLiveNotifications(data.items, unreadCount);
+    })
+    .catch(() => {});
+}
+
+function initLiveNotificationPoller() {
+  if (typeof window === "undefined" || !document.querySelector('[aria-label="View notifications"]')) return;
+  const initialRows = document.querySelectorAll("[data-notification-row]");
+  lastKnownNotificationIds = new Set(
+    Array.from(initialRows).map((r) => Number(r.getAttribute("data-notification-row") || "0"))
+  );
+  window.setInterval(pollNotificationsLive, 15000);
 }
 
 function setSettingsBusy(isBusy) {
@@ -1491,7 +1575,7 @@ if ("serviceWorker" in navigator && navigator.onLine) {
         .keys()
         .then((keys) => {
           keys.forEach((key) => {
-            if (key.startsWith("bshs-ams-v") && key !== "bshs-ams-v34") {
+            if (key.startsWith("bshs-ams-v") && key !== "bshs-ams-v35") {
               caches.delete(key);
             }
           });

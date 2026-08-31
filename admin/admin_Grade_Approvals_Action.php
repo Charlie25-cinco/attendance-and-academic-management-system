@@ -15,6 +15,49 @@ if (!$db) {
 
 
 
+function notifySectionAdviserAndTeachers(PDO $db, int $gradeLevel, string $section, string $academicYear, string $title, string $subtitle, string $icon, string $color, string $teacherTarget = 'teacher_Advisory.php', ?int $onlyTeacherId = null): void {
+    try {
+        $teacherIds = [];
+        if ($onlyTeacherId !== null && $onlyTeacherId > 0) {
+            $teacherIds = [$onlyTeacherId];
+        } else {
+            $advStmt = $db->prepare("SELECT adviser_id FROM sections WHERE grade_level = ? AND " . sectionMatchSql('name') . " LIMIT 1");
+            $advStmt->execute([$gradeLevel, $section, $section]);
+            $adviserId = (int)($advStmt->fetchColumn() ?: 0);
+            if ($adviserId > 0) {
+                $teacherIds[] = $adviserId;
+            }
+            $subStmt = $db->prepare("SELECT DISTINCT cs.teacher_id 
+                                     FROM class_subjects cs 
+                                     JOIN classes c ON c.id = cs.class_id 
+                                     WHERE c.grade_level = ? AND " . sectionMatchSql('c.section'));
+            $subStmt->execute([$gradeLevel, $section, $section]);
+            foreach ($subStmt->fetchAll(PDO::FETCH_COLUMN) as $tid) {
+                $tid = (int)$tid;
+                if ($tid > 0) {
+                    $teacherIds[] = $tid;
+                }
+            }
+        }
+        $teacherIds = array_values(array_unique(array_filter($teacherIds)));
+        if (!empty($teacherIds) && function_exists('appDispatchNotification')) {
+            appDispatchNotification(
+                $db,
+                $teacherIds,
+                'grade_workflow_' . $gradeLevel . '_' . preg_replace('/[^a-zA-Z0-9]/', '', $section) . '_' . time(),
+                $title,
+                $subtitle,
+                $icon,
+                $color,
+                ['teacher' => $teacherTarget],
+                ['type' => 'grade_workflow', 'grade_level' => $gradeLevel, 'section' => $section, 'academic_year' => $academicYear]
+            );
+        }
+    } catch (Throwable $e) {
+        error_log('notifySectionAdviserAndTeachers error: ' . $e->getMessage());
+    }
+}
+
 $action = $_GET['action'] ?? '';
 if ($action === 'review') {
     requireCsrfToken();
@@ -112,6 +155,33 @@ if ($action === 'review_grade_batch') {
         exit();
     }
 
+    if ($status === 'admin_verified') {
+        notifySectionAdviserAndTeachers(
+            $db,
+            $gradeLevel,
+            $section,
+            $academicYear,
+            'Subject Grades Verified',
+            "Admin verified subject grades for Grade {$gradeLevel} - {$section}. Adviser report cards can now be compiled.",
+            'bi-check2-circle',
+            'info',
+            'teacher_Advisory.php'
+        );
+    } elseif ($status === 'rejected') {
+        $reasonText = $remarks !== '' ? ": {$remarks}" : '.';
+        notifySectionAdviserAndTeachers(
+            $db,
+            $gradeLevel,
+            $section,
+            $academicYear,
+            'Subject Grades Returned for Correction',
+            "Admin returned subject grades for Grade {$gradeLevel} - {$section}{$reasonText}",
+            'bi-exclamation-triangle',
+            'warning',
+            'teacher_Grades.php'
+        );
+    }
+
     echo json_encode(['success' => true, 'message' => 'Section grades updated to ' . str_replace('_', ' ', $status)]);
     exit();
 }
@@ -153,6 +223,19 @@ if ($action === 'return_grade_batch') {
         echo json_encode(['success' => false, 'message' => 'No verified grade records found for the selected section']);
         exit();
     }
+
+    $reasonText = $remarks !== '' ? ": {$remarks}" : '.';
+    notifySectionAdviserAndTeachers(
+        $db,
+        $gradeLevel,
+        $section,
+        $academicYear,
+        'Verified Grades Returned for Teacher Edit',
+        "Admin returned verified grades for Grade {$gradeLevel} - {$section} as editable{$reasonText}",
+        'bi-exclamation-triangle',
+        'warning',
+        'teacher_Grades.php'
+    );
 
     echo json_encode(['success' => true, 'message' => 'Verified grades returned as rejected. Teachers can edit and submit again.']);
     exit();
@@ -262,6 +345,31 @@ if ($action === 'review_report_card_batch') {
         if ($classId > 0 && function_exists('pushNotifyGradePublication')) {
             pushNotifyGradePublication($db, $classId, $semester !== '' ? $semester : 'Final', $academicYear);
         }
+
+        notifySectionAdviserAndTeachers(
+            $db,
+            $gradeLevel,
+            $section,
+            $academicYear,
+            'Report Cards Officially Approved & Released',
+            "Admin officially approved and released the report cards for Grade {$gradeLevel} - {$section}.",
+            'bi-award',
+            'success',
+            'teacher_Advisory.php'
+        );
+    } elseif ($status === 'rejected') {
+        $reasonText = $remarks !== '' ? ": {$remarks}" : '.';
+        notifySectionAdviserAndTeachers(
+            $db,
+            $gradeLevel,
+            $section,
+            $academicYear,
+            'Report Cards Returned by Admin',
+            "Admin returned the report cards for Grade {$gradeLevel} - {$section}{$reasonText}",
+            'bi-x-circle',
+            'danger',
+            'teacher_Advisory.php'
+        );
     }
 
     echo json_encode(['success' => true, 'message' => 'Section report cards updated to ' . ucfirst($status)]);

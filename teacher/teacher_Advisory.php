@@ -283,8 +283,11 @@ $page_title = 'Report Card';
                         Section: <strong><?php echo 'G' . (int)$advisoryInfo['grade_level'] . ' - ' . htmlspecialchars((string)$advisoryInfo['section']); ?></strong>
                         | Grading System: <strong><?php echo $gs === '4_quarter' ? '4-Quarter' : '3-Term'; ?></strong>
                     </div>
-                    <div class="alert alert-info mb-3">
-                        Submitted report cards are routed to <strong>Admin Grade Approvals</strong> first. Students can view grades only after admin approval.
+                    <div class="alert alert-info py-2 px-3 mb-3 d-flex align-items-center rounded-3 border-0 bg-info bg-opacity-10 text-dark">
+                        <i class="bi bi-folder-check me-2 fs-5 text-primary"></i>
+                        <div>
+                            <strong>Step 2: Advisory Report Card Compilation</strong> — Review and consolidate verified subject grades. Submitting here sends the completed section report cards to the Admin for official approval, portal release, and automated PhilSMS notification.
+                        </div>
                     </div>
 
                     <form method="GET" class="row g-3 align-items-end mb-3 app-responsive-filter-form" id="advisoryReportCardForm">

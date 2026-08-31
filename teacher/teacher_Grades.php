@@ -179,6 +179,12 @@ $page_title = 'Grade Entry';
                 </div>
             </div>
             <div class="content-card-body">
+                <div class="alert alert-info py-2 px-3 mb-3 d-flex align-items-center rounded-3 border-0 bg-primary bg-opacity-10 text-primary">
+                    <i class="bi bi-info-circle-fill me-2 fs-5"></i>
+                    <div>
+                        <strong>Step 1: Subject Grade Submission</strong> — Submitting scores here routes them to Admin for Stage 1 Verification. Once Admin verifies, the section adviser can compile and submit the full class report card.
+                    </div>
+                </div>
                 <div class="row g-3 mb-3 app-filter-panel">
                     <div class="col-md-5">
                         <label class="form-label">Class</label>
