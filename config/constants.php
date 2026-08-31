@@ -898,7 +898,24 @@ function pwaHeadHtml(): string {
     $html .= '<link rel="icon" type="image/png" sizes="32x32" href="' . htmlspecialchars($favicon32Url, ENT_QUOTES, 'UTF-8') . '">' . "\n";
     $html .= '<link rel="icon" type="image/png" sizes="16x16" href="' . htmlspecialchars($favicon16Url, ENT_QUOTES, 'UTF-8') . '">' . "\n";
     $html .= '<link rel="icon" type="image/png" sizes="192x192" href="' . htmlspecialchars($faviconUrl, ENT_QUOTES, 'UTF-8') . '">' . "\n";
-    $html .= '<link rel="icon" type="image/jpeg" href="' . htmlspecialchars($logoUrl, ENT_QUOTES, 'UTF-8') . '">' . "\n";
+    $isDark = function_exists('appUiDarkModeEnabled') && appUiDarkModeEnabled();
+    $html .= '<style id="app-theme-critical-dark">'
+        . 'html.dark-mode,body.dark-mode{background-color:#111827 !important;color:#e5e7eb !important;}'
+        . 'body.dark-mode .sidebar{background:#111827 !important;color:#e5e7eb !important;}'
+        . 'body.dark-mode .main-content{background:#111827 !important;color:#e5e7eb !important;}'
+        . 'body.dark-mode .header{background:#1f2937 !important;border-bottom:1px solid #374151 !important;color:#e5e7eb !important;}'
+        . 'body.dark-mode .dashboard-card,body.dark-mode .content-card,body.dark-mode .attendance-sheet,body.dark-mode .material-card,body.dark-mode .grade-card,body.dark-mode .announcement-card,body.dark-mode .report-card,body.dark-mode .class-card,body.dark-mode .table-container{background:#1f2937 !important;color:#e5e7eb !important;border-color:#374151 !important;box-shadow:none !important;}'
+        . 'body.dark-mode .custom-table thead th{background:#374151 !important;color:#e5e7eb !important;border-color:#374151 !important;}'
+        . 'body.dark-mode .custom-table tbody tr,body.dark-mode .custom-table tbody td{background:transparent !important;color:#d1d5db !important;border-color:#374151 !important;}'
+        . 'body.dark-mode .form-control,body.dark-mode .form-select,body.dark-mode .input-group-text{background:#374151 !important;border-color:#4b5563 !important;color:#e5e7eb !important;}'
+        . 'body.dark-mode .text-muted,body.dark-mode p,body.dark-mode small{color:#9ca3af !important;}'
+        . 'body.dark-mode .header-btn,body.dark-mode .btn-secondary-custom{background:#374151 !important;color:#e5e7eb !important;border-color:#4b5563 !important;}'
+        . 'body.dark-mode .sidebar-link{color:#9ca3af !important;}'
+        . 'body.dark-mode .sidebar-link.active,body.dark-mode .sidebar-link:hover{background:rgba(59,130,246,.2) !important;color:#93c5fd !important;}'
+        . '</style>' . "\n";
+    $html .= '<script>'
+        . '(function(){try{var dark=localStorage.getItem("darkMode")==="true"||' . ($isDark ? 'true' : 'false') . ';if(dark){document.documentElement.classList.add("dark-mode");document.documentElement.style.backgroundColor="#111827";}}catch(e){}})();'
+        . '</script>' . "\n";
     $html .= '<style id="app-top-progress-critical">'
         . '.app-top-progress{--app-progress:0vw;position:fixed;top:0;left:0;width:var(--app-progress,0vw);max-width:100vw;height:3px;z-index:100000;pointer-events:none;opacity:0;background:linear-gradient(90deg,#1f4f82 0%,#11856f 50%,#3b82f6 100%);box-shadow:0 0 16px rgba(31,79,130,0.55);transition:width .32s cubic-bezier(0.4,0,0.2,1),opacity .2s ease;}'
         . '.app-top-progress.is-visible{opacity:1;}'

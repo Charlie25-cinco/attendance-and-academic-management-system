@@ -1344,7 +1344,10 @@ function initPwaPushFirstOpenPrompt() {
   }
 
   const dismissed = localStorage.getItem("bshs_push_prompt_dismissed");
-  const dismissedAt = Number.parseInt(localStorage.getItem("bshs_push_prompt_dismissed_at") || "0", 10);
+  const dismissedAt = Number.parseInt(
+    localStorage.getItem("bshs_push_prompt_dismissed_at") || "0",
+    10,
+  );
   if (dismissed === "granted" || dismissed === "denied") {
     return;
   }
@@ -1361,7 +1364,10 @@ function initPwaPushFirstOpenPrompt() {
   const handleDismiss = (status) => {
     try {
       localStorage.setItem("bshs_push_prompt_dismissed", status || "later");
-      localStorage.setItem("bshs_push_prompt_dismissed_at", Date.now().toString());
+      localStorage.setItem(
+        "bshs_push_prompt_dismissed_at",
+        Date.now().toString(),
+      );
     } catch (_) {}
     promptModal.hide();
   };
@@ -1398,7 +1404,10 @@ function initPwaPushFirstOpenPrompt() {
                   updatePwaPushStatus();
                 });
             }
-            showNotification("Notifications allowed for this device", "success");
+            showNotification(
+              "Notifications allowed for this device",
+              "success",
+            );
           } else {
             showNotification("Notifications denied for this device.", "muted");
             updatePwaPushStatus();
@@ -1436,7 +1445,8 @@ function initPwaPushFirstOpenPrompt() {
     if (
       isInstalledPwa() &&
       Notification.permission === "default" &&
-      (!dismissed || (dismissed === "later" && Date.now() - dismissedAt >= 86400000))
+      (!dismissed ||
+        (dismissed === "later" && Date.now() - dismissedAt >= 86400000))
     ) {
       promptModal.show();
     }

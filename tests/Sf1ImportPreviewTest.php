@@ -91,7 +91,8 @@ final class Sf1ImportPreviewTest extends TestCase
 
     public function testEnrollmentsPageContainsEditablePreviewModalAndControls(): void
     {
-        $page = file_get_contents(__DIR__ . '/../admin/admin_Enrollments.php');
+        $page = file_get_contents(__DIR__ . '/../admin/admin_Enrollments.php') . "\n"
+            . file_get_contents(__DIR__ . '/../includes/modals/enrollment_modals.php');
         $this->assertIsString($page);
 
         // Modal structure

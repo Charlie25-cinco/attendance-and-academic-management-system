@@ -2,6 +2,17 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.107 — 2026-08-31
+
+### Refactored
+
+- **Monolithic Enrollments Modal Extraction**:
+  - Extracted 4 large modal definitions (`#addStudentModal`, `#editStudentModal`, `#viewStudentModal`, `#importModal`) from [`admin/admin_Enrollments.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Enrollments.php) into [`includes/modals/enrollment_modals.php`](file:///c:/laragon/www/attendance-and-academic-management-system/includes/modals/enrollment_modals.php).
+  - Reduced `admin_Enrollments.php` file size from ~96 KB down to ~48 KB while preserving all DOM IDs, inputs, and JavaScript bindings.
+- **Session Layer & Anti-Flicker Dark Mode Streamlining**:
+  - Removed regex-based HTML buffer rewrites (`ob_start`) from [`config/session.php`](file:///c:/laragon/www/attendance-and-academic-management-system/config/session.php).
+  - Integrated synchronous anti-flicker dark mode scripts directly in `pwaHeadHtml()` within [`config/constants.php`](file:///c:/laragon/www/attendance-and-academic-management-system/config/constants.php), eliminating buffer interference while keeping theme transitions instant.
+
 ## v0.3.106 — 2026-08-31
 
 ### Changed

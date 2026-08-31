@@ -205,7 +205,7 @@ if (!function_exists('appAssetPath')) {
 }
 
 if (!function_exists('appUiDarkModeEnabled')) {
-    function appUiDarkModeEnabled() {
+    function appUiDarkModeEnabled(): bool {
         if (isset($_SESSION['ui_dark_mode'])) {
             return (int)$_SESSION['ui_dark_mode'] === 1;
         }
@@ -216,68 +216,3 @@ if (!function_exists('appUiDarkModeEnabled')) {
     }
 }
 
-if (!defined('APP_THEME_BODY_BUFFER_STARTED')) {
-    define('APP_THEME_BODY_BUFFER_STARTED', true);
-    ob_start(function ($buffer) {
-        if ($buffer === '') { return $buffer; }
-        if (!appUiDarkModeEnabled()) { return $buffer; }
-
-        $criticalHead = '<meta name="color-scheme" content="dark light">' . "\n"
-            . '<style id="app-theme-critical-dark">'
-            . 'html,body{background-color:#111827 !important;color:#e5e7eb !important;}'
-            . 'body.dark-mode{background-color:#111827 !important;color:#e5e7eb !important;}'
-            . 'body.dark-mode .sidebar{background:#111827 !important;color:#e5e7eb !important;}'
-            . 'body.dark-mode .main-content{background:#111827 !important;color:#e5e7eb !important;}'
-            . 'body.dark-mode .header{background:#1f2937 !important;border-bottom:1px solid #374151 !important;color:#e5e7eb !important;}'
-            . 'body.dark-mode .dashboard-card,body.dark-mode .content-card,body.dark-mode .attendance-sheet,body.dark-mode .material-card,body.dark-mode .grade-card,body.dark-mode .announcement-card,body.dark-mode .report-card,body.dark-mode .class-card,body.dark-mode .table-container{background:#1f2937 !important;color:#e5e7eb !important;border-color:#374151 !important;box-shadow:none !important;}'
-            . 'body.dark-mode .custom-table thead th{background:#374151 !important;color:#e5e7eb !important;border-color:#374151 !important;}'
-            . 'body.dark-mode .custom-table tbody tr,body.dark-mode .custom-table tbody td{background:transparent !important;color:#d1d5db !important;border-color:#374151 !important;}'
-            . 'body.dark-mode .form-control,body.dark-mode .form-select,body.dark-mode .input-group-text{background:#374151 !important;border-color:#4b5563 !important;color:#e5e7eb !important;}'
-            . 'body.dark-mode .text-muted,body.dark-mode p,body.dark-mode small{color:#9ca3af !important;}'
-            . 'body.dark-mode .header-btn,body.dark-mode .btn-secondary-custom{background:#374151 !important;color:#e5e7eb !important;border-color:#4b5563 !important;}'
-            . 'body.dark-mode .sidebar-link{color:#9ca3af !important;}'
-            . 'body.dark-mode .sidebar-link.active,body.dark-mode .sidebar-link:hover{background:rgba(59,130,246,.2) !important;color:#93c5fd !important;}'
-            . '</style>' . "\n"
-            . '<script>document.documentElement.classList.add("dark-mode");document.documentElement.style.backgroundColor="#111827";</script>' . "\n";
-
-        if (stripos($buffer, '<head>') !== false && stripos($buffer, 'app-theme-critical-dark') === false) {
-            $buffer = preg_replace('/<head>/i', '<head>' . "\n" . $criticalHead, $buffer, 1);
-        }
-
-        if (stripos($buffer, '<html') !== false) {
-            $buffer = preg_replace_callback('/<html([^>]*)>/i', function ($matches) {
-                $attrs = (string)($matches[1] ?? '');
-                if (preg_match('/\bclass\s*=\s*(["\'])(.*?)\1/i', $attrs, $classMatch)) {
-                    $classes = preg_split('/\s+/', trim((string)$classMatch[2])) ?: [];
-                    if (!in_array('dark-mode', $classes, true)) { $classes[] = 'dark-mode'; }
-                    $newClassAttr = 'class=' . $classMatch[1] . trim(implode(' ', array_filter($classes))) . $classMatch[1];
-                    $updatedAttrs = preg_replace('/\bclass\s*=\s*(["\'])(.*?)\1/i', $newClassAttr, $attrs, 1);
-                    if (!preg_match('/\bstyle\s*=/i', $updatedAttrs)) {
-                        $updatedAttrs .= ' style="background-color:#111827;"';
-                    }
-                    return '<html' . $updatedAttrs . '>';
-                }
-                return '<html class="dark-mode" style="background-color:#111827;"' . $attrs . '>';
-            }, $buffer, 1);
-        }
-
-        if (stripos($buffer, '<body') !== false) {
-            return preg_replace_callback('/<body([^>]*)>/i', function ($matches) {
-                $attrs = (string)($matches[1] ?? '');
-                if (preg_match('/\bclass\s*=\s*(["\'])(.*?)\1/i', $attrs, $classMatch)) {
-                    $classes = preg_split('/\s+/', trim((string)$classMatch[2])) ?: [];
-                    if (!in_array('dark-mode', $classes, true)) { $classes[] = 'dark-mode'; }
-                    $newClassAttr = 'class=' . $classMatch[1] . trim(implode(' ', array_filter($classes))) . $classMatch[1];
-                    $updatedAttrs = preg_replace('/\bclass\s*=\s*(["\'])(.*?)\1/i', $newClassAttr, $attrs, 1);
-                    if (!preg_match('/\bstyle\s*=/i', $updatedAttrs)) {
-                        $updatedAttrs .= ' style="background-color:#111827;color:#e5e7eb;"';
-                    }
-                    return '<body' . $updatedAttrs . '>';
-                }
-                return '<body class="dark-mode" style="background-color:#111827;color:#e5e7eb;"' . $attrs . '>';
-            }, $buffer, 1);
-        }
-
-        return $buffer;
-    });
-}
