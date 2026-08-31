@@ -30,15 +30,15 @@ final class PerformanceOptimizationTest extends TestCase
         $swJs = file_get_contents(__DIR__ . '/../sw.js');
         $this->assertIsString($swJs);
 
-        $this->assertStringContainsString('bshs-ams-v35', $swJs);
+        $this->assertStringContainsString('bshs-ams-v36', $swJs);
         $this->assertStringContainsString('isStaticAsset', $swJs);
         $this->assertStringContainsString('cacheResponse', $swJs);
 
         // 3. Verify main.js and offlineStorage.js cache version synchronization
         $mainJs = file_get_contents(__DIR__ . '/../assets/js/main.js');
-        $this->assertStringContainsString('bshs-ams-v35', $mainJs);
+        $this->assertStringContainsString('bshs-ams-v36', $mainJs);
 
         $storageJs = file_get_contents(__DIR__ . '/../assets/js/offlineStorage.js');
-        $this->assertStringContainsString('bshs-ams-v35', $storageJs);
+        $this->assertStringContainsString('bshs-ams-v36', $storageJs);
     }
 }

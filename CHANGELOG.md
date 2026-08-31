@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.106 — 2026-08-31
+
+### Changed
+
+- **Login "Keep Me Signed In" Default State**:
+  - Changed the "Keep me signed in on this device" checkbox in [`auth/login.php`](file:///c:/laragon/www/attendance-and-academic-management-system/auth/login.php) to be **unchecked (off) by default**, giving users explicit control over persistent device login vs. standard single-session login.
+- **PWA Device Notification Onboarding Prompt**:
+  - Refined `initPwaPushFirstOpenPrompt()` in [`assets/js/main.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/main.js) to prompt for device notifications smoothly when installed, added a 24-hour grace window for "Later" dismissals, and exposed `window.showDeviceNotificationPrompt()` for manual invocation.
+  - Bumped PWA service worker cache version to `bshs-ams-v36`.
+
 ## v0.3.105 — 2026-08-31
 
 ### Added

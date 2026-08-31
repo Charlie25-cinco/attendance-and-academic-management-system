@@ -53,7 +53,7 @@ final class NotificationDeliveryTest extends TestCase
         $this->assertStringNotContainsString('sendTestPushNotification', $javascript);
 
         $this->assertIsString($serviceWorker);
-        $this->assertStringContainsString('bshs-ams-v35', $serviceWorker);
+        $this->assertStringContainsString('bshs-ams-v36', $serviceWorker);
         $this->assertStringContainsString('new URL(targetUrl, self.location.origin).href', $serviceWorker);
     }
 

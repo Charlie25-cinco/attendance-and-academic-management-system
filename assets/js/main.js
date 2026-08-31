@@ -871,25 +871,29 @@ let lastKnownNotificationIds = null;
 
 function renderLiveNotifications(items, unreadCount) {
   setHeaderNotificationCount(unreadCount);
-  const scrollContainer = document.querySelector(".header-notification-scroll-body");
+  const scrollContainer = document.querySelector(
+    ".header-notification-scroll-body",
+  );
   if (!scrollContainer) return;
 
   if (!items || items.length === 0) {
-    scrollContainer.innerHTML = '<div class="dropdown-item text-muted py-3 text-center">No new notifications</div>';
+    scrollContainer.innerHTML =
+      '<div class="dropdown-item text-muted py-3 text-center">No new notifications</div>';
     return;
   }
 
-  const html = items.map((item) => {
-    const isRead = Number(item.is_read || 0) === 1;
-    const color = escapeHtml(item.color || "primary");
-    const icon = escapeHtml(item.icon || "bi-bell");
-    const title = escapeHtml(item.title || "");
-    const subtitle = escapeHtml(item.subtitle || "");
-    const time = escapeHtml(item.time || "");
-    const link = escapeHtml(item.link || "#");
-    const id = Number(item.id || 0);
+  const html = items
+    .map((item) => {
+      const isRead = Number(item.is_read || 0) === 1;
+      const color = escapeHtml(item.color || "primary");
+      const icon = escapeHtml(item.icon || "bi-bell");
+      const title = escapeHtml(item.title || "");
+      const subtitle = escapeHtml(item.subtitle || "");
+      const time = escapeHtml(item.time || "");
+      const link = escapeHtml(item.link || "#");
+      const id = Number(item.id || 0);
 
-    return `
+      return `
       <div data-notification-row="${id}">
         <div class="dropdown-item d-flex align-items-start py-2 ${isRead ? "opacity-75" : ""}">
           <a class="header-notification-item d-flex align-items-start text-decoration-none text-reset flex-grow-1" href="${link}" data-notification-id="${id}">
@@ -908,7 +912,8 @@ function renderLiveNotifications(items, unreadCount) {
         </div>
       </div>
     `;
-  }).join("");
+    })
+    .join("");
 
   scrollContainer.innerHTML = html;
   initHeaderNotificationActions();
@@ -924,12 +929,18 @@ function pollNotificationsLive() {
 
       if (lastKnownNotificationIds !== null) {
         const newUnread = (data.items || []).filter(
-          (it) => !lastKnownNotificationIds.has(it.id) && Number(it.is_read || 0) === 0
+          (it) =>
+            !lastKnownNotificationIds.has(it.id) &&
+            Number(it.is_read || 0) === 0,
         );
         if (newUnread.length > 0) {
           const newest = newUnread[0];
           showNotification(`${newest.title}: ${newest.subtitle}`, "info");
-          window.dispatchEvent(new CustomEvent("ams:notificationReceived", { detail: { items: data.items, newCount: newUnread.length } }));
+          window.dispatchEvent(
+            new CustomEvent("ams:notificationReceived", {
+              detail: { items: data.items, newCount: newUnread.length },
+            }),
+          );
         }
       }
       lastKnownNotificationIds = currentIds;
@@ -939,10 +950,16 @@ function pollNotificationsLive() {
 }
 
 function initLiveNotificationPoller() {
-  if (typeof window === "undefined" || !document.querySelector('[aria-label="View notifications"]')) return;
+  if (
+    typeof window === "undefined" ||
+    !document.querySelector('[aria-label="View notifications"]')
+  )
+    return;
   const initialRows = document.querySelectorAll("[data-notification-row]");
   lastKnownNotificationIds = new Set(
-    Array.from(initialRows).map((r) => Number(r.getAttribute("data-notification-row") || "0"))
+    Array.from(initialRows).map((r) =>
+      Number(r.getAttribute("data-notification-row") || "0"),
+    ),
   );
   window.setInterval(pollNotificationsLive, 15000);
 }
@@ -1318,7 +1335,7 @@ function initPwaPushFirstOpenPrompt() {
     return;
   }
 
-  if (!pwaPushSupported() || !("Notification" in window)) {
+  if (!("Notification" in window)) {
     return;
   }
 
@@ -1327,7 +1344,11 @@ function initPwaPushFirstOpenPrompt() {
   }
 
   const dismissed = localStorage.getItem("bshs_push_prompt_dismissed");
-  if (dismissed) {
+  const dismissedAt = Number.parseInt(localStorage.getItem("bshs_push_prompt_dismissed_at") || "0", 10);
+  if (dismissed === "granted" || dismissed === "denied") {
+    return;
+  }
+  if (dismissed === "later" && Date.now() - dismissedAt < 86400000) {
     return;
   }
 
@@ -1340,6 +1361,7 @@ function initPwaPushFirstOpenPrompt() {
   const handleDismiss = (status) => {
     try {
       localStorage.setItem("bshs_push_prompt_dismissed", status || "later");
+      localStorage.setItem("bshs_push_prompt_dismissed_at", Date.now().toString());
     } catch (_) {}
     promptModal.hide();
   };
@@ -1359,21 +1381,24 @@ function initPwaPushFirstOpenPrompt() {
           if (permission === "granted") {
             const pushSwitch = document.getElementById("pushNotifSwitch");
             if (pushSwitch) pushSwitch.checked = true;
-            return enablePwaPushNotifications()
-              .then(() => {
-                showNotification(
-                  "Notifications enabled for this device",
-                  "success",
-                );
-                updatePwaPushStatus();
-              })
-              .catch((err) => {
-                showNotification(
-                  err.message || "Failed to subscribe for notifications",
-                  "warning",
-                );
-                updatePwaPushStatus();
-              });
+            if (pwaPushSupported()) {
+              return enablePwaPushNotifications()
+                .then(() => {
+                  showNotification(
+                    "Notifications enabled for this device",
+                    "success",
+                  );
+                  updatePwaPushStatus();
+                })
+                .catch((err) => {
+                  showNotification(
+                    err.message || "Failed to subscribe for notifications",
+                    "warning",
+                  );
+                  updatePwaPushStatus();
+                });
+            }
+            showNotification("Notifications allowed for this device", "success");
           } else {
             showNotification("Notifications denied for this device.", "muted");
             updatePwaPushStatus();
@@ -1411,12 +1436,19 @@ function initPwaPushFirstOpenPrompt() {
     if (
       isInstalledPwa() &&
       Notification.permission === "default" &&
-      !localStorage.getItem("bshs_push_prompt_dismissed")
+      (!dismissed || (dismissed === "later" && Date.now() - dismissedAt >= 86400000))
     ) {
       promptModal.show();
     }
-  }, 300);
+  }, 400);
 }
+
+window.showDeviceNotificationPrompt = function () {
+  const modalEl = document.getElementById("pushPromptModal");
+  if (modalEl && typeof bootstrap !== "undefined" && bootstrap.Modal) {
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+  }
+};
 
 function ensureAppConfirmModal() {
   const modalEl = document.getElementById("appConfirmModal");
@@ -1575,7 +1607,7 @@ if ("serviceWorker" in navigator && navigator.onLine) {
         .keys()
         .then((keys) => {
           keys.forEach((key) => {
-            if (key.startsWith("bshs-ams-v") && key !== "bshs-ams-v35") {
+            if (key.startsWith("bshs-ams-v") && key !== "bshs-ams-v36") {
               caches.delete(key);
             }
           });

@@ -591,7 +591,7 @@
             const cacheKeys = await caches.keys();
             const activeCacheName =
               cacheKeys.find((k) => k.startsWith("bshs-ams-")) ||
-              "bshs-ams-v35";
+              "bshs-ams-v36";
             const cache = await caches.open(activeCacheName);
             const teacherPages = [
               "/teacher/teacher.php",

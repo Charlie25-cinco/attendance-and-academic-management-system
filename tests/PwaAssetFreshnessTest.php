@@ -24,7 +24,7 @@ final class PwaAssetFreshnessTest extends TestCase
         $serviceWorker = file_get_contents(__DIR__ . '/../sw.js');
 
         $this->assertIsString($serviceWorker);
-        $this->assertStringContainsString('bshs-ams-v35', $serviceWorker);
+        $this->assertStringContainsString('bshs-ams-v36', $serviceWorker);
         $this->assertStringContainsString('BASE_PATH = (self.location.pathname ||', $serviceWorker);
         $this->assertStringContainsString("function resolvePath(path)", $serviceWorker);
         $this->assertStringContainsString('/assets/js/offlineStorage.js', $serviceWorker);
