@@ -98,7 +98,8 @@ class UserValidationHelper
         }
         $placeholders = implode(',', array_fill(0, count($studentIds), '?'));
         $params = $studentIds;
-        $sql = "SELECT CONCAT(u.first_name, ' ', u.last_name) AS student_name
+        $sql = "SELECT u.first_name AS student_first, u.last_name AS student_last,
+                       p.first_name AS parent_first, p.last_name AS parent_last
                 FROM parent_students ps
                 JOIN users u ON u.id = ps.student_id
                 JOIN users p ON p.id = ps.parent_id
@@ -107,9 +108,18 @@ class UserValidationHelper
             $sql .= " AND ps.parent_id <> ?";
             $params[] = $excludeParentId;
         }
-        $sql .= " GROUP BY ps.student_id, u.first_name, u.last_name";
+        $sql .= " GROUP BY ps.student_id, u.first_name, u.last_name, p.first_name, p.last_name";
         $stmt = $db->prepare($sql);
         $stmt->execute($params);
-        return array_values(array_filter($stmt->fetchAll(PDO::FETCH_COLUMN)));
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $conflicts = [];
+        foreach ($rows as $row) {
+            $studentName = trim((string)($row['student_first'] ?? '') . ' ' . (string)($row['student_last'] ?? ''));
+            if ($studentName !== '') {
+                $conflicts[] = $studentName;
+            }
+        }
+        return array_values(array_unique(array_filter($conflicts)));
     }
 }
+

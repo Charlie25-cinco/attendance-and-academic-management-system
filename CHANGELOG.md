@@ -2,6 +2,18 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.110 — 2026-08-31
+
+### Added
+
+- **Automated Verification for Logic Helpers**:
+  - Added [`tests/ReportAndUserHelpersTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/ReportAndUserHelpersTest.php) testing `ReportFilterHelper` and `UserValidationHelper` (bringing automated test count to 148 tests).
+
+### Security
+
+- **Strict Column Whitelisting in Report Filter Builder**:
+  - Implemented explicit compile-time column whitelist in `ReportFilterHelper::appendDateFilter` ensuring dynamic date filters only target pre-approved column identifiers (`a.date`, `sg.recorded_at`, `g.created_at`, `e.created_at`, `u.created_at`, `c.created_at`, etc.).
+
 ## v0.3.109 — 2026-08-31
 
 ### Refactored

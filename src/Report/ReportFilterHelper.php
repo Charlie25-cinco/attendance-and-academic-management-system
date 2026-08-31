@@ -4,8 +4,24 @@ namespace BshsAms\Report;
 
 class ReportFilterHelper
 {
+    private const ALLOWED_DATE_COLUMNS = [
+        'a.date',
+        'sg.recorded_at',
+        'g.created_at',
+        'e.created_at',
+        'u.created_at',
+        'c.created_at',
+        'created_at',
+        'date',
+        'attendance_date',
+    ];
+
     public static function appendDateFilter(string $column, array &$where, array &$params, string $dateFrom, string $dateTo): void
     {
+        $column = trim($column);
+        if (!in_array($column, self::ALLOWED_DATE_COLUMNS, true)) {
+            $column = 'date';
+        }
         if ($dateFrom !== '') {
             $where[] = "DATE($column) >= ?";
             $params[] = $dateFrom;
@@ -172,3 +188,4 @@ class ReportFilterHelper
         return number_format($rate, 1) . '%';
     }
 }
+
