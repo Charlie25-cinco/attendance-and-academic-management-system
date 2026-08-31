@@ -116,6 +116,11 @@ if ($route === 'admin-users' && $method === 'POST') {
     if ($role === 'student' && ($gradeLevel < 11 || $gradeLevel > 12)) {
         apiJson(['ok' => false, 'message' => 'Grade level must be 11 or 12 for students'], 422);
     }
+    if ($role === 'teacher' && $gradeLevel > 0 && $section !== '') {
+        if (\BshsAms\User\UserValidationHelper::isTeacherSectionTaken($db, $gradeLevel, $section)) {
+            apiJson(['ok' => false, 'message' => 'A teacher is already assigned to this grade level and section'], 422);
+        }
+    }
 
     $existing = $db->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
     $existing->execute([$email]);

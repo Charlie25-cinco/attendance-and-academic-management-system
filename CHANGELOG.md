@@ -2,6 +2,17 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.109 — 2026-08-31
+
+### Refactored
+
+- **Report Filter & Query Building Logic Centralization**:
+  - Created [`src/Report/ReportFilterHelper.php`](file:///c:/laragon/www/attendance-and-academic-management-system/src/Report/ReportFilterHelper.php) (`BshsAms\Report\ReportFilterHelper`) to encapsulate dynamic report filters, date range filters, filter parameter builders, and export formatters.
+  - Replaced duplicate filter and query builder implementations in [`admin/admin_Reports.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Reports.php) and [`admin/admin_Reports_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Reports_Action.php).
+- **User Validation & Conflict Checking Centralization**:
+  - Created [`src/User/UserValidationHelper.php`](file:///c:/laragon/www/attendance-and-academic-management-system/src/User/UserValidationHelper.php) (`BshsAms\User\UserValidationHelper`) to encapsulate teacher advisory collision checks, teacher subject conflict detection, student validity checks, and parent-student duplicate linkages.
+  - Refactored [`admin/admin_Users_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Users_Action.php) and [`api/routes/06-admin.php`](file:///c:/laragon/www/attendance-and-academic-management-system/api/routes/06-admin.php) to use the centralized validation rules.
+
 ## v0.3.108 — 2026-08-31
 
 ### Refactored
