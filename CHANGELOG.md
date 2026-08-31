@@ -2,6 +2,15 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.111 — 2026-08-31
+
+### Fixed
+
+- **Enrollment Report Date Filter Whitelist & Strict Exception Handling**:
+  - Registered `e.enrolled_at` into `ReportFilterHelper::ALLOWED_DATE_COLUMNS`, ensuring Admin Enrollment reports with date filtering generate `DATE(e.enrolled_at) >= ?` and `DATE(e.enrolled_at) <= ?` without regressions.
+  - Replaced silent fallback to `'date'` with explicit `\InvalidArgumentException` throw on unregistered date columns, preventing subtle SQL generation bugs.
+  - Added regression test suite in [`tests/ReportAndUserHelpersTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/ReportAndUserHelpersTest.php) verifying all 6 caller date columns and exception rejection (total test suite now at 149 tests).
+
 ## v0.3.110 — 2026-08-31
 
 ### Added

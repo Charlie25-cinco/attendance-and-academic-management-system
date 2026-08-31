@@ -8,21 +8,35 @@ final class ReportAndUserHelpersTest extends TestCase
 {
     public function testReportFilterHelperDateFilterWhitelisting(): void
     {
+        $allLegitimateColumns = [
+            'a.date',
+            'sg.recorded_at',
+            'g.created_at',
+            'e.enrolled_at',
+            'u.created_at',
+            'c.created_at',
+        ];
+
+        foreach ($allLegitimateColumns as $column) {
+            $where = [];
+            $params = [];
+            ReportFilterHelper::appendDateFilter($column, $where, $params, '2026-08-01', '2026-08-31');
+
+            $this->assertCount(2, $where, "Column {$column} should produce 2 where clauses");
+            $this->assertSame("DATE({$column}) >= ?", $where[0]);
+            $this->assertSame("DATE({$column}) <= ?", $where[1]);
+            $this->assertSame(['2026-08-01', '2026-08-31'], $params);
+        }
+    }
+
+    public function testReportFilterHelperRejectsUnregisteredColumns(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage("Invalid or unregistered date column: 'malicious_column; DROP TABLE users'");
+
         $where = [];
         $params = [];
-        ReportFilterHelper::appendDateFilter('a.date', $where, $params, '2026-08-01', '2026-08-31');
-
-        $this->assertCount(2, $where);
-        $this->assertSame('DATE(a.date) >= ?', $where[0]);
-        $this->assertSame('DATE(a.date) <= ?', $where[1]);
-        $this->assertSame(['2026-08-01', '2026-08-31'], $params);
-
-        // Untrusted column names should safely fallback to 'date'
-        $whereUntrusted = [];
-        $paramsUntrusted = [];
-        ReportFilterHelper::appendDateFilter('malicious_column; DROP TABLE users', $whereUntrusted, $paramsUntrusted, '2026-08-01', '');
-        $this->assertSame('DATE(date) >= ?', $whereUntrusted[0]);
-        $this->assertStringNotContainsString('DROP TABLE', $whereUntrusted[0]);
+        ReportFilterHelper::appendDateFilter('malicious_column; DROP TABLE users', $where, $params, '2026-08-01', '');
     }
 
     public function testReportFilterHelperAdvancedFilters(): void

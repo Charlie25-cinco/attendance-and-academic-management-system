@@ -4,10 +4,11 @@ namespace BshsAms\Report;
 
 class ReportFilterHelper
 {
-    private const ALLOWED_DATE_COLUMNS = [
+    public const ALLOWED_DATE_COLUMNS = [
         'a.date',
         'sg.recorded_at',
         'g.created_at',
+        'e.enrolled_at',
         'e.created_at',
         'u.created_at',
         'c.created_at',
@@ -20,14 +21,14 @@ class ReportFilterHelper
     {
         $column = trim($column);
         if (!in_array($column, self::ALLOWED_DATE_COLUMNS, true)) {
-            $column = 'date';
+            throw new \InvalidArgumentException("Invalid or unregistered date column: '{$column}'");
         }
         if ($dateFrom !== '') {
-            $where[] = "DATE($column) >= ?";
+            $where[] = "DATE({$column}) >= ?";
             $params[] = $dateFrom;
         }
         if ($dateTo !== '') {
-            $where[] = "DATE($column) <= ?";
+            $where[] = "DATE({$column}) <= ?";
             $params[] = $dateTo;
         }
     }
