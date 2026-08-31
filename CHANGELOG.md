@@ -2,6 +2,14 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.108 — 2026-08-31
+
+### Refactored
+
+- **Monolithic User Management Modal Extraction**:
+  - Extracted 3 large modal definitions (`#addUserModal`, `#viewUserModal`, `#editUserModal`) from [`admin/admin_Users.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Users.php) into [`includes/modals/user_modals.php`](file:///c:/laragon/www/attendance-and-academic-management-system/includes/modals/user_modals.php).
+  - Reduced `admin_Users.php` file size from ~109 KB down to ~76 KB while preserving all DOM IDs, inputs, and JavaScript bindings.
+
 ## v0.3.107 — 2026-08-31
 
 ### Refactored
