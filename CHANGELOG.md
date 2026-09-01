@@ -2,6 +2,15 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.113 — 2026-09-02
+
+### Fixed
+
+- **PWA Service Worker Initial Load & ControllerChange Reload Guard**:
+  - Added `hadPreviousController` guard to `navigator.serviceWorker.addEventListener('controllerchange')` in [`config/constants.php`](file:///c:/laragon/www/attendance-and-academic-management-system/config/constants.php), preventing `clients.claim()` on initial visits from triggering an immediate second page reload.
+  - Synchronized `window._CACHE_NAME` across inline header scripts to match `sw.js` (`bshs-ams-v36`).
+  - Added test in [`tests/PwaAssetFreshnessTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/PwaAssetFreshnessTest.php) verifying `hadPreviousController` guard and cache version alignment (total test suite at 150 tests).
+
 ## v0.3.112 — 2026-09-01
 
 ### Fixed

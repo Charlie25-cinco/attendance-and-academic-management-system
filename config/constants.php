@@ -922,13 +922,13 @@ function pwaHeadHtml(): string {
         . '.app-top-progress.is-finishing{opacity:0;transition:width .32s cubic-bezier(0.4,0,0.2,1),opacity .28s ease .12s;}'
         . '</style>' . "\n";
     $html .= '<script>'
-        . 'window._CACHE_NAME="bshs-ams-v28";'
+        . 'window._CACHE_NAME="bshs-ams-v36";'
         . '(function(){try{if(sessionStorage.getItem("app_page_navigating")==="true"){var b=document.createElement("div");b.id="appTopProgress";b.className="app-top-progress is-visible";b.style.setProperty("--app-progress","75vw");b.style.width="75vw";(document.head||document.documentElement).appendChild(b);}}catch(e){}})();'
         . '</script>' . "\n";
 
     $swScript = "
 <script>
-window._CACHE_NAME = 'bshs-ams-v28';
+window._CACHE_NAME = 'bshs-ams-v36';
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
         var desiredScript = '" . htmlspecialchars($serviceWorkerUrl, ENT_QUOTES, 'UTF-8') . "';
@@ -957,9 +957,10 @@ if ('serviceWorker' in navigator) {
             })
             .catch(function (e) { console.warn('[PWA] SW list:', e); })
             .finally(function () {
+                var hadPreviousController = Boolean(navigator.serviceWorker.controller);
                 var refreshingForUpdate = false;
                 navigator.serviceWorker.addEventListener('controllerchange', function () {
-                    if (refreshingForUpdate) { return; }
+                    if (refreshingForUpdate || !hadPreviousController) { return; }
                     refreshingForUpdate = true;
                     window.location.reload();
                 });

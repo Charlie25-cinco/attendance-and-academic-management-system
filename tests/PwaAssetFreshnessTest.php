@@ -87,4 +87,13 @@ final class PwaAssetFreshnessTest extends TestCase
         $this->assertStringContainsString('initPwaPushFirstOpenPrompt', $javascript);
         $this->assertStringContainsString('bshs_push_prompt_dismissed', $javascript);
     }
+
+    public function testPwaHeadScriptGuardsControllerChangeAndSynchronizesCacheVersion(): void
+    {
+        $constants = file_get_contents(__DIR__ . '/../config/constants.php');
+        $this->assertIsString($constants);
+        $this->assertStringContainsString('var hadPreviousController = Boolean(navigator.serviceWorker.controller);', $constants);
+        $this->assertStringContainsString('if (refreshingForUpdate || !hadPreviousController) { return; }', $constants);
+        $this->assertStringContainsString('window._CACHE_NAME = \'bshs-ams-v36\';', $constants);
+    }
 }
