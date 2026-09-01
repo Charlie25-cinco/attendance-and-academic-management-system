@@ -924,11 +924,12 @@ function pollNotificationsLive() {
   appFetchJson("notifications")
     .then((data) => {
       if (!data || !data.ok) return;
-      const currentIds = new Set((data.items || []).map((it) => it.id));
+      const items = data.notifications || data.items || [];
+      const currentIds = new Set(items.map((it) => it.id));
       const unreadCount = Number(data.unread_count || 0);
 
       if (lastKnownNotificationIds !== null) {
-        const newUnread = (data.items || []).filter(
+        const newUnread = items.filter(
           (it) =>
             !lastKnownNotificationIds.has(it.id) &&
             Number(it.is_read || 0) === 0,
@@ -938,13 +939,13 @@ function pollNotificationsLive() {
           showNotification(`${newest.title}: ${newest.subtitle}`, "info");
           window.dispatchEvent(
             new CustomEvent("ams:notificationReceived", {
-              detail: { items: data.items, newCount: newUnread.length },
+              detail: { items: items, newCount: newUnread.length },
             }),
           );
         }
       }
       lastKnownNotificationIds = currentIds;
-      renderLiveNotifications(data.items, unreadCount);
+      renderLiveNotifications(items, unreadCount);
     })
     .catch(() => {});
 }

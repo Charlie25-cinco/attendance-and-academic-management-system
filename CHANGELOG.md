@@ -2,6 +2,15 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.112 — 2026-09-01
+
+### Fixed
+
+- **In-App Notification Live Polling & Toast Normalization**:
+  - Unified JSON response format in [`api/routes/05-notifications.php`](file:///c:/laragon/www/attendance-and-academic-management-system/api/routes/05-notifications.php) to provide both `notifications` and `items` keys for backward and forward compatibility.
+  - Updated `pollNotificationsLive()` in [`assets/js/main.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/main.js) to resolve `data.notifications || data.items || []`, preventing real-time background polling from resetting the dropdown or dropping live in-app toasts.
+  - Enhanced [`tests/NotificationDeliveryTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/NotificationDeliveryTest.php) to verify payload compatibility and client polling contracts.
+
 ## v0.3.111 — 2026-08-31
 
 ### Fixed

@@ -105,6 +105,7 @@ if ($route === 'notifications' && $method === 'GET') {
         apiJson([
             'ok' => true,
             'notifications' => $savedItems,
+            'items' => $savedItems,
             'count' => count($savedItems),
             'unread_count' => $unreadCount,
         ]);
@@ -347,7 +348,13 @@ if ($route === 'notifications' && $method === 'GET') {
     });
     $notificationItems = array_slice($notificationItems, 0, 8);
 
-    apiJson(['ok' => true, 'notifications' => $notificationItems, 'count' => count($notificationItems)]);
+    apiJson([
+        'ok' => true,
+        'notifications' => $notificationItems,
+        'items' => $notificationItems,
+        'count' => count($notificationItems),
+        'unread_count' => 0,
+    ]);
 }
 
 if ($route === 'register-push-token' && $method === 'POST') {

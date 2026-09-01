@@ -43,6 +43,8 @@ final class NotificationDeliveryTest extends TestCase
         $this->assertStringContainsString("\$action === 'read_all'", $api);
         $this->assertStringContainsString("\$action === 'delete_all'", $api);
         $this->assertStringContainsString("'unread_count' => (int)\$countStmt->fetchColumn()", $api);
+        $this->assertStringContainsString("'notifications' => \$savedItems", $api);
+        $this->assertStringContainsString("'items' => \$savedItems", $api);
         $this->assertStringNotContainsString("\$route === 'web-push-test'", $api);
 
         $this->assertIsString($javascript);
@@ -50,6 +52,7 @@ final class NotificationDeliveryTest extends TestCase
         $this->assertStringContainsString('updateNotificationState("delete_all")', $javascript);
         $this->assertStringContainsString('setHeaderNotificationCount(data.unread_count)', $javascript);
         $this->assertStringContainsString('focusNotificationTarget();', $javascript);
+        $this->assertStringContainsString('data.notifications || data.items || []', $javascript);
         $this->assertStringNotContainsString('sendTestPushNotification', $javascript);
 
         $this->assertIsString($serviceWorker);
