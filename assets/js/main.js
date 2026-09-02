@@ -847,6 +847,8 @@ function initHeaderNotificationActions() {
   document
     .querySelectorAll(".header-notification-item[data-notification-id]")
     .forEach((item) => {
+      if (item.dataset.bound === "1") return;
+      item.dataset.bound = "1";
       item.addEventListener("click", (event) => {
         const id = Number.parseInt(item.dataset.notificationId || "0", 10);
         const href = item.getAttribute("href") || "";
@@ -870,6 +872,8 @@ function initHeaderNotificationActions() {
   document
     .querySelectorAll(".delete-notification-btn[data-notification-id]")
     .forEach((button) => {
+      if (button.dataset.bound === "1") return;
+      button.dataset.bound = "1";
       button.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -892,7 +896,8 @@ function initHeaderNotificationActions() {
     });
 
   const readAll = document.getElementById("markAllNotificationsRead");
-  if (readAll) {
+  if (readAll && readAll.dataset.bound !== "1") {
+    readAll.dataset.bound = "1";
     readAll.addEventListener("click", (event) => {
       event.preventDefault();
       updateNotificationState("read_all")
@@ -914,7 +919,8 @@ function initHeaderNotificationActions() {
   }
 
   const deleteAll = document.getElementById("deleteAllNotifications");
-  if (deleteAll) {
+  if (deleteAll && deleteAll.dataset.bound !== "1") {
+    deleteAll.dataset.bound = "1";
     deleteAll.addEventListener("click", (event) => {
       event.preventDefault();
       updateNotificationState("delete_all")
@@ -995,6 +1001,7 @@ const LiveNotificationPoller = {
   lastPollTime: 0,
   seenNotificationIds: null,
   abortController: null,
+  eventsBound: false,
 
   init() {
     if (typeof window === "undefined") return;
@@ -1009,9 +1016,15 @@ const LiveNotificationPoller = {
 
     this.bindEvents();
     this.start();
+    window.setTimeout(() => {
+      if (!this.isPolling) this.poll();
+    }, 1000);
   },
 
   bindEvents() {
+    if (this.eventsBound) return;
+    this.eventsBound = true;
+
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) {
         this.stop();
@@ -1033,11 +1046,19 @@ const LiveNotificationPoller = {
     window.addEventListener("offline", () => {
       this.stop();
     });
+
+    const refreshBtn = document.getElementById("headerRefreshBtn");
+    if (refreshBtn && refreshBtn.dataset.notifBound !== "1") {
+      refreshBtn.dataset.notifBound = "1";
+      refreshBtn.addEventListener("click", () => {
+        this.poll();
+      });
+    }
   },
 
   start() {
     this.stop();
-    if (typeof navigator !== "undefined" && !navigator.onLine) return;
+    if (typeof navigator !== "undefined" && navigator.onLine === false) return;
     if (document.hidden) return;
 
     this.timerId = window.setInterval(() => {
@@ -1063,7 +1084,7 @@ const LiveNotificationPoller = {
     if (
       this.isPolling ||
       document.hidden ||
-      (typeof navigator !== "undefined" && !navigator.onLine)
+      (typeof navigator !== "undefined" && navigator.onLine === false)
     ) {
       return Promise.resolve();
     }
@@ -1134,6 +1155,13 @@ const LiveNotificationPoller = {
       .catch((err) => {
         if (timeoutId) window.clearTimeout(timeoutId);
         if (err && err.name === "AbortError") return;
+        if (
+          err &&
+          (err.status === 401 || err.message === "Authentication required")
+        ) {
+          this.stop();
+          return;
+        }
         this.currentIntervalMs = Math.min(
           this.currentIntervalMs * 1.5,
           this.maxIntervalMs,
@@ -1144,6 +1172,10 @@ const LiveNotificationPoller = {
         this.abortController = null;
       });
   },
+};
+
+window.refreshNotifications = function () {
+  return LiveNotificationPoller.poll();
 };
 
 function initLiveNotificationPoller() {

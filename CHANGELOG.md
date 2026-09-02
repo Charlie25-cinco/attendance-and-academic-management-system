@@ -2,6 +2,17 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.159 — 2026-09-03
+
+### Fixed
+
+- **Live In-App Notification Header Refresh & Authenticated Portal Shell Push Prompt Lifecycle**:
+  - **In-Place Live Notification Header Updates**: Refined `LiveNotificationPoller` in [`assets/js/main.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/main.js) to periodically query `GET api/index.php?route=notifications` and update `#headerNotificationBadge` and `.header-notification-scroll-body` in place on open portal pages, ensuring newly created database notifications become visible without requiring a manual page reload.
+  - **Action Listener Deduplication**: Guarded `#markAllNotificationsRead` and `#deleteAllNotifications` in `initHeaderNotificationActions()` with `dataset.bound = '1'` to eliminate duplicate click listener stacking across periodic poll renders.
+  - **Lifecycle & Auth Safety**: Guarded `bindEvents()` with `eventsBound` to prevent duplicate document and window event listeners, scheduled an initial 1000ms poll on initialization, stopped polling immediately upon receiving `401 Unauthorized` responses, and exposed `window.refreshNotifications()` wired to `#headerRefreshBtn`.
+  - **Authenticated Portal Push Prompt Integration**: Verified `#pushPromptModal` availability in [`includes/modals.php`](file:///c:/laragon/www/attendance-and-academic-management-system/includes/modals.php) within the authenticated portal shell, displaying on eligible standalone launches and auto-registering Web Push subscriptions via `initPwaPushAutoRegistration()` when permission is already granted.
+  - **Automated Regression Test Suite**: Extended [`tests/RealtimeNotificationPollingTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/RealtimeNotificationPollingTest.php) with tests for live database query contract, in-place DOM updates, action listener deduplication, 401 termination, and portal modal markup.
+
 ## v0.3.158 — 2026-09-03
 
 ### Fixed
