@@ -192,7 +192,7 @@ final class AdminClassEditRegressionTest extends TestCase
         $tbaSchedRows = $db->query("SELECT * FROM class_schedules WHERE class_id = 1")->fetchAll(PDO::FETCH_ASSOC);
         $this->assertCount(0, $tbaSchedRows);
 
-        // 3. Test updating class with apply_to_sections (multi-section sync)
+        // 3. Test updating class is strictly section-specific and does not modify or create other sections
         $_POST = [
             'class_id' => '1',
             'class_name' => 'General Mathematics',
@@ -206,8 +206,7 @@ final class AdminClassEditRegressionTest extends TestCase
             'pt_weight' => '50.00',
             'assessment_weight' => '25.00',
             'schedule_mode' => 'tba',
-            'schedule' => 'TBA',
-            'apply_to_sections' => ['Ruby', 'Diamond']
+            'schedule' => 'TBA'
         ];
 
         ob_start();
@@ -215,10 +214,10 @@ final class AdminClassEditRegressionTest extends TestCase
         $multiOutput = ob_get_clean();
         $multiRes = json_decode($multiOutput, true);
         $this->assertTrue($multiRes['success'] ?? false);
-        $this->assertStringContainsString('and applied to 2 other section(s)', $multiRes['message']);
+        $this->assertSame('Class updated successfully', $multiRes['message']);
 
-        // Verify Ruby and Diamond classes were created
+        // Verify only Emerald class exists in DB
         $allClasses = $db->query("SELECT section FROM classes WHERE class_name = 'General Mathematics' ORDER BY section ASC")->fetchAll(PDO::FETCH_COLUMN);
-        $this->assertSame(['Diamond', 'Emerald', 'Ruby'], $allClasses);
+        $this->assertSame(['Emerald'], $allClasses);
     }
 }

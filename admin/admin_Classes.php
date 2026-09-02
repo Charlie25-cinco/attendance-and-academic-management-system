@@ -408,12 +408,12 @@ $page_title = 'Manage Classes';
                 ?>
                 <div class="col-md-6 col-lg-4">
                     <div class="class-card <?php echo $isMultiSection ? 'class-card-grouped' : ''; ?>">
-                        <div class="class-card-header" style="background: <?php echo $gradient; ?>; <?php echo $isMultiSection ? 'cursor: pointer;' : ''; ?>" <?php echo $isMultiSection ? 'onclick="openGroupedClassModal(' . $index . ')"' : ''; ?>>
+                        <div class="class-card-header" style="background: <?php echo $gradient; ?>; cursor: pointer;" onclick="openGroupedClassModal(<?php echo $index; ?>)" title="Click to view sections or add section">
                             <div class="class-card-icon"><i class="bi bi-journal-bookmark"></i></div>
                         </div>
                         <div class="class-card-body">
                             <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
-                                <h4 class="class-card-title mb-0 <?php echo $isMultiSection ? 'cursor-pointer text-primary' : ''; ?>" <?php echo $isMultiSection ? 'style="cursor: pointer;" onclick="openGroupedClassModal(' . $index . ')"' : ''; ?>>
+                                <h4 class="class-card-title mb-0 cursor-pointer text-primary" style="cursor: pointer;" onclick="openGroupedClassModal(<?php echo $index; ?>)" title="Click to view sections or add section">
                                     <?php echo htmlspecialchars($group['class_name']); ?>
                                 </h4>
                                 <?php if ($isMultiSection): ?>
@@ -424,7 +424,7 @@ $page_title = 'Manage Classes';
                             </div>
 
                             <?php if (!$isMultiSection): ?>
-                                <p class="class-card-subtitle">Grade <?php echo htmlspecialchars($group['grade_level']); ?> - <?php echo htmlspecialchars($singleSection['section']); ?></p>
+                                <p class="class-card-subtitle" style="cursor: pointer;" onclick="openGroupedClassModal(<?php echo $index; ?>)">Grade <?php echo htmlspecialchars($group['grade_level']); ?> - <?php echo htmlspecialchars($singleSection['section']); ?></p>
                             <?php else: ?>
                                 <p class="class-card-subtitle text-primary fw-medium" style="cursor: pointer;" onclick="openGroupedClassModal(<?php echo $index; ?>)">
                                     Grade <?php echo htmlspecialchars($group['grade_level']); ?> · Sections: <?php echo htmlspecialchars($sectionNames); ?>
@@ -686,12 +686,16 @@ $page_title = 'Manage Classes';
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body app-modal-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded border app-group-meta-bar">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 p-2 bg-light rounded border app-group-meta-bar">
                         <div class="d-flex align-items-center gap-2">
                             <span class="badge bg-primary px-2 py-1" id="groupModalSectionCountBadge">0 Sections</span>
                             <span class="badge bg-secondary-subtle text-dark border px-2 py-1" id="groupModalTotalStudentsBadge">0 Total Students</span>
                         </div>
-                        <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Each section maintains a separate database record</small>
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="button" class="btn btn-sm btn-primary-custom" id="groupModalAddSectionBtn" onclick="openAddSectionForGroup()">
+                                <i class="bi bi-plus-circle me-1"></i>Add Section
+                            </button>
+                        </div>
                     </div>
                     <div id="groupModalSectionsList" class="d-flex flex-column gap-2">
                         <!-- Populated by JavaScript -->
@@ -1321,8 +1325,10 @@ $page_title = 'Manage Classes';
         }
 
         const groupedClassesData = <?php echo json_encode($groupedClasses, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+        let activeGroupIndex = null;
 
         function openGroupedClassModal(index) {
+            activeGroupIndex = index;
             const group = groupedClassesData[index];
             if (!group) return;
 
@@ -1393,6 +1399,72 @@ $page_title = 'Manage Classes';
             }
         }
 
+        function openAddSectionForGroup() {
+            if (activeGroupIndex === null || !groupedClassesData[activeGroupIndex]) return;
+            const group = groupedClassesData[activeGroupIndex];
+
+            // Close group sections modal
+            const groupModalEl = document.getElementById('classGroupSectionsModal');
+            if (groupModalEl) {
+                const m = bootstrap.Modal.getInstance(groupModalEl);
+                if (m) m.hide();
+            }
+
+            // Open addClassModal
+            const addModal = getAddClassModal();
+            if (!addModal) return;
+
+            resetAddClassModal();
+
+            // Pre-populate with group attributes
+            const nameInput = document.getElementById('addSubjectNameInput');
+            if (nameInput) nameInput.value = group.class_name;
+
+            const catSelect = document.getElementById('subjectCategorySelect');
+            if (catSelect && group.subject_category) {
+                catSelect.value = group.subject_category;
+            }
+
+            const gradeSelect = document.getElementById('gradeLevel');
+            if (gradeSelect) {
+                gradeSelect.value = group.grade_level;
+            }
+
+            const trackSelect = document.getElementById('classTrack');
+            if (trackSelect && group.track) {
+                trackSelect.value = group.track;
+            }
+
+            // Populate sections and disable already existing sections in this group
+            hydrateSectionsCache(serverSections);
+            loadSectionsCache().then(() => {
+                updateSections();
+                const existingSectionNames = (group.sections || []).map(s => (s.section || '').toString().toLowerCase().trim());
+                const container = document.getElementById('sectionCheckboxesContainer');
+                if (container) {
+                    container.querySelectorAll('.section-checkbox').forEach(cb => {
+                        const val = (cb.value || '').toString().toLowerCase().trim();
+                        if (existingSectionNames.includes(val)) {
+                            cb.checked = false;
+                            cb.disabled = true;
+                            const pill = cb.closest('.app-section-pill');
+                            if (pill) {
+                                pill.classList.add('opacity-50');
+                                pill.title = 'Section already exists in this subject group';
+                                const label = pill.querySelector('label');
+                                if (label && !label.querySelector('.badge-already-added')) {
+                                    label.innerHTML += ' <span class="badge bg-secondary-subtle text-muted border ms-1 badge-already-added" style="font-size: 10px;">Already Added</span>';
+                                }
+                            }
+                        }
+                    });
+                }
+                renderSectionScheduleTabs();
+            });
+
+            addModal.show();
+        }
+
         function deleteSectionFromGroupModal(id, className, sectionName) {
             const modalEl = document.getElementById('classGroupSectionsModal');
             if (modalEl) {
@@ -1403,6 +1475,7 @@ $page_title = 'Manage Classes';
         }
 
         window.openGroupedClassModal = openGroupedClassModal;
+        window.openAddSectionForGroup = openAddSectionForGroup;
         window.deleteSectionFromGroupModal = deleteSectionFromGroupModal;
 
         function viewClass(id) {

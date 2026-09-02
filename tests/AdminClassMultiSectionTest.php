@@ -60,30 +60,39 @@ final class AdminClassMultiSectionTest extends TestCase
         $this->assertStringContainsString('$scheduleMode === \'tba\'', $code);
     }
 
-    public function testAdminClassEditContainsDatalistAndMultiSectionApply(): void
+    public function testAdminClassEditIsStrictlySectionSpecific(): void
     {
         $html = file_get_contents(__DIR__ . '/../admin/admin_Class_Edit.php');
         $this->assertIsString($html);
 
-        $this->assertStringContainsString('id="editSectionCheckboxesContainer"', $html);
-        $this->assertStringContainsString('id="selectAllEditSectionsBtn"', $html);
-        $this->assertStringContainsString('toggleAllEditSections()', $html);
+        // Subject datalist exists
         $this->assertStringContainsString('id="registeredSubjectsList"', $html);
         $this->assertStringContainsString('list="registeredSubjectsList"', $html);
-        $this->assertStringContainsString('name="apply_to_sections[]"', $html);
-        $this->assertStringContainsString('id="editSchedModeSpecific"', $html);
-        $this->assertStringContainsString('id="editSchedModeTba"', $html);
+
+        // Section dropdown exists
+        $this->assertStringContainsString('name="section"', $html);
+        $this->assertStringContainsString('id="sectionSelect"', $html);
+
+        // Multi-section cross-apply elements MUST NOT exist
+        $this->assertStringNotContainsString('id="editSectionCheckboxesContainer"', $html);
+        $this->assertStringNotContainsString('id="selectAllEditSectionsBtn"', $html);
+        $this->assertStringNotContainsString('toggleAllEditSections()', $html);
+        $this->assertStringNotContainsString('updateOtherSections()', $html);
+        $this->assertStringNotContainsString('name="apply_to_sections[]"', $html);
+        $this->assertStringNotContainsString('apply_to_sections', $html);
     }
 
-    public function testAdminClassesActionUpdateSupportsApplyToSections(): void
+    public function testAdminClassesActionUpdateIsStrictlySectionSpecific(): void
     {
         $code = file_get_contents(__DIR__ . '/../admin/admin_Classes_Action.php');
         $this->assertIsString($code);
 
-        $this->assertStringContainsString('$_POST[\'apply_to_sections\']', $code);
-        $this->assertStringContainsString('$appliedSections[] = $extraSection;', $code);
-        $this->assertStringContainsString('and applied to', $code);
-        $this->assertStringContainsString('$scheduleMode === \'tba\'', $code);
+        // apply_to_sections must NOT exist in action handler
+        $this->assertStringNotContainsString('apply_to_sections', $code);
+        $this->assertStringNotContainsString('$appliedSections', $code);
+
+        // Update query must update only WHERE id = ?
+        $this->assertStringContainsString('UPDATE classes SET $setClause WHERE id = ?', $code);
     }
 
     public function testSectionSelectorAndScheduleTimeFieldsVisibility(): void
@@ -143,9 +152,12 @@ final class AdminClassMultiSectionTest extends TestCase
         $this->assertStringContainsString('View & Manage Sections', $code);
         $this->assertStringContainsString('openGroupedClassModal(', $code);
 
-        // Verify modal structure
+        // Verify modal structure & Add Section button
         $this->assertStringContainsString('id="classGroupSectionsModal"', $code);
         $this->assertStringContainsString('id="groupModalSectionsList"', $code);
+        $this->assertStringContainsString('id="groupModalAddSectionBtn"', $code);
+        $this->assertStringContainsString('openAddSectionForGroup()', $code);
+        $this->assertStringContainsString('window.openAddSectionForGroup = openAddSectionForGroup;', $code);
         $this->assertStringContainsString('admin_Class_Detail.php?id=${sec.id}', $code);
         $this->assertStringContainsString('admin_Class_Edit.php?id=${sec.id}', $code);
         $this->assertStringContainsString('deleteSectionFromGroupModal(', $code);
@@ -298,6 +310,55 @@ final class AdminClassMultiSectionTest extends TestCase
         $this->assertSame('Oral Communication', $grouped[2]['class_name']);
         $this->assertCount(1, $grouped[2]['sections']);
         $this->assertSame(301, $grouped[2]['sections'][0]['id']);
+    }
+
+    public function testEditSectionIsolationLeavesOtherSectionsUntouched(): void
+    {
+        $db = new PDO('sqlite::memory:');
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        $db->exec("CREATE TABLE classes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            class_name TEXT NOT NULL,
+            grade_level TEXT NOT NULL,
+            section TEXT NOT NULL,
+            teacher_id INTEGER NULL,
+            schedule TEXT NULL,
+            room TEXT NULL,
+            ww_weight REAL DEFAULT 30,
+            pt_weight REAL DEFAULT 50,
+            assessment_weight REAL DEFAULT 20,
+            subject_category TEXT DEFAULT 'core',
+            track TEXT DEFAULT 'academic',
+            curriculum TEXT DEFAULT 'SHS',
+            program TEXT DEFAULT 'academic_strengthened',
+            status TEXT DEFAULT 'active'
+        )");
+
+        // Insert 2 sections for General Mathematics
+        $db->exec("INSERT INTO classes (id, class_name, grade_level, section, teacher_id, schedule, room) VALUES
+            (1, 'General Mathematics', '11', 'Ruby', 10, 'Mon 8:00 AM - 9:00 AM', 'Room 101'),
+            (2, 'General Mathematics', '11', 'Emerald', 10, 'Mon 8:00 AM - 9:00 AM', 'Room 101')");
+
+        // Simulate strictly section-specific update on Class 1 (Ruby only)
+        $updateStmt = $db->prepare("UPDATE classes SET teacher_id = ?, schedule = ?, room = ? WHERE id = ?");
+        $updateStmt->execute([25, 'Tue 1:00 PM - 2:00 PM', 'Room 205', 1]);
+
+        // Verify Class 1 (Ruby) was updated
+        $stmt1 = $db->prepare("SELECT * FROM classes WHERE id = 1");
+        $stmt1->execute();
+        $class1 = $stmt1->fetch(PDO::FETCH_ASSOC);
+        $this->assertSame(25, (int)$class1['teacher_id']);
+        $this->assertSame('Tue 1:00 PM - 2:00 PM', $class1['schedule']);
+        $this->assertSame('Room 205', $class1['room']);
+
+        // Verify Class 2 (Emerald) remains 100% UNTOUCHED
+        $stmt2 = $db->prepare("SELECT * FROM classes WHERE id = 2");
+        $stmt2->execute();
+        $class2 = $stmt2->fetch(PDO::FETCH_ASSOC);
+        $this->assertSame(10, (int)$class2['teacher_id']);
+        $this->assertSame('Mon 8:00 AM - 9:00 AM', $class2['schedule']);
+        $this->assertSame('Room 101', $class2['room']);
     }
 }
 

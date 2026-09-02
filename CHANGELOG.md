@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.129 — 2026-09-02
+
+### Admin & Core
+
+- **Centralized Grouped Class Section Management & Strictly Section-Specific Edit**:
+  - **Add Section via Grouped Modal**: Added an **Add Section** action button to `#classGroupSectionsModal` in [`admin/admin_Classes.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Classes.php), pre-populating `#addClassModal` with the selected group's class/subject identity, grade level, category, and track, while disabling existing sections in that group.
+  - **Strict Section-Specific Edit**: Removed "Also Apply to Other Sections" selector and form logic from [`admin/admin_Class_Edit.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Class_Edit.php) and removed cross-section propagation loops from `updateClass()` in [`admin/admin_Classes_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Classes_Action.php), guaranteeing that editing one section modifies only that exact record `WHERE id = ?`.
+  - **Clickable Cards for Modal Access**: Enabled card header and title click triggers on all class cards (single-section and multi-section) to access `#classGroupSectionsModal` and section management actions.
+  - **Automated Regression Test Suite**: Updated [`tests/AdminClassMultiSectionTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/AdminClassMultiSectionTest.php) and [`tests/AdminClassEditRegressionTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/AdminClassEditRegressionTest.php) to verify Add Section workflow, edit isolation, atomicity, and duplicate rejection (9 tests, 109 assertions in MultiSectionTest; 172 tests total).
+
 ## v0.3.128 — 2026-09-02
 
 ### Admin & Presentation
