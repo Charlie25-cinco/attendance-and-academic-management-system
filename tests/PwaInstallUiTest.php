@@ -50,7 +50,6 @@ final class PwaInstallUiTest extends TestCase
 
         $this->assertStringContainsString('window._pwaInstallPrompt = null;', $constants);
         $this->assertStringContainsString('window.isPwaStandalone = function ()', $constants);
-        $this->assertStringContainsString('window.triggerPwaInstall = async function (e)', $constants);
         $this->assertStringContainsString('window.showPwaInstallModal = function ()', $constants);
         $this->assertStringContainsString('window.bindPwaInstallButton = function ()', $constants);
         $this->assertStringContainsString("document.getElementById('settingsPwaInstallSection')", $constants);
@@ -58,37 +57,34 @@ final class PwaInstallUiTest extends TestCase
         $this->assertStringNotContainsString("document.getElementById('pwaInstallBtn')", $constants);
         $this->assertStringNotContainsString("document.getElementById('headerPwaInstallDropdownItem')", $constants);
         $this->assertStringNotContainsString("document.getElementById('headerPwaInstallDropdownBtn')", $constants);
+        $this->assertStringNotContainsString("window.triggerPwaInstall", $constants);
+        $this->assertStringNotContainsString("window._pwaInstallInProgress", $constants);
         $this->assertStringContainsString("window.addEventListener('beforeinstallprompt'", $constants);
         $this->assertStringContainsString("window.addEventListener('appinstalled'", $constants);
         $this->assertStringContainsString("window._pwaInstallPrompt.prompt()", $constants);
         $this->assertStringContainsString("window.showPwaInstallModal()", $constants);
     }
 
-    public function testSingleAuthoritativeClickDispatcherAndModalLifecycleTransition(): void
+    public function testDirectSettingsPwaInstallButtonBinding(): void
     {
         $constants = file_get_contents(__DIR__ . '/../config/constants.php');
         $this->assertIsString($constants);
 
-        // Assert in-flight tap guard
-        $this->assertStringContainsString('window._pwaInstallInProgress = false;', $constants);
-        $this->assertStringContainsString('if (window._pwaInstallInProgress) {', $constants);
-        $this->assertStringContainsString('window._pwaInstallInProgress = true;', $constants);
-        $this->assertStringContainsString('window._pwaInstallInProgress = false;', $constants);
-
-        // Assert single document delegated click dispatcher
-        $this->assertStringContainsString("document.addEventListener('click', function (e) {", $constants);
-        $this->assertStringContainsString("e.target.closest('#settingsPwaInstallBtn')", $constants);
-        $this->assertStringContainsString('window.triggerPwaInstall(e);', $constants);
+        // Assert direct button event listener and bound attribute guard
+        $this->assertStringContainsString("if (settingsBtn.dataset.bound !== '1') {", $constants);
+        $this->assertStringContainsString("settingsBtn.dataset.bound = '1';", $constants);
+        $this->assertStringContainsString("settingsBtn.addEventListener('click', async function (e) {", $constants);
 
         // Assert native prompt handling with userChoice
         $this->assertStringContainsString('await window._pwaInstallPrompt.prompt();', $constants);
         $this->assertStringContainsString('var choice = await window._pwaInstallPrompt.userChoice;', $constants);
         $this->assertStringContainsString("choice.outcome === 'accepted'", $constants);
 
-        // Assert modal lifecycle sequencing on settings modal with timeout fallback
-        $this->assertStringContainsString("settingsModalEl.addEventListener('hidden.bs.modal', onSettingsHidden);", $constants);
-        $this->assertStringContainsString('setTimeout(showTargetModal, 350);', $constants);
-        $this->assertStringContainsString('showTargetModal();', $constants);
+        // Assert fallback modal invocation
+        $this->assertStringContainsString('window.showPwaInstallModal();', $constants);
+
+        // Assert absence of document-level click delegators for Settings button
+        $this->assertStringNotContainsString("e.target.closest('#settingsPwaInstallBtn')", $constants);
     }
 
     public function testServiceWorkerRegistrationIsNotPreemptedOnFreshLoadWithoutController(): void

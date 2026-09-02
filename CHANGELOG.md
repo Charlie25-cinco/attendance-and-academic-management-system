@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.154 — 2026-09-03
+
+### Fixed
+
+- **Direct Settings-Only PWA Install Event Binding**:
+  - **Direct Element Click Binding**: Restored the direct `settingsPwaInstallBtn.addEventListener('click', ...)` mechanism from `v0.3.150` scoped exclusively to `#settingsPwaInstallBtn` inside `window.bindPwaInstallButton()`, guarded with `dataset.bound !== '1'`.
+  - **Removed Intermediate Workarounds**: Completely removed `window.triggerPwaInstall`, `window._pwaInstallInProgress`, document-level click delegators, and Settings-modal hide/timeout hooks.
+  - **Native & Fallback Guidance**: Ensured direct click execution calls `_pwaInstallPrompt.prompt()` and handles `userChoice` when the prompt event is available, and otherwise directly opens `window.showPwaInstallModal()`.
+  - **Automated Regression Testing**: Updated [`tests/PwaInstallUiTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/PwaInstallUiTest.php) verifying direct element binding, absence of document-level click delegators, and absence of header/profile install controls.
+
 ## v0.3.153 — 2026-09-03
 
 ### Fixed
