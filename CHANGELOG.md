@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.147 — 2026-09-03
+
+### Fixed
+
+- **Restored PWA Install Action in Shared Profile/Settings UI**:
+  - **Shared Settings Modal**: Added an "Application" installation section (`#settingsPwaInstallSection` and `#settingsPwaInstallBtn`) in [`includes/modals.php`](file:///c:/laragon/www/attendance-and-academic-management-system/includes/modals.php) matching the exact `.settings-option` design language used for Appearance and Notification settings.
+  - **Shared Profile Dropdown**: Added an "Install App" menu item (`#headerPwaInstallDropdownItem` and `#headerPwaInstallDropdownBtn`) in [`includes/header.php`](file:///c:/laragon/www/attendance-and-academic-management-system/includes/header.php) for direct accessibility from the user profile avatar menu.
+  - **Unified Install Prompt Management**: Updated `window.bindPwaInstallButton()` in [`config/constants.php`](file:///c:/laragon/www/attendance-and-academic-management-system/config/constants.php) and [`assets/js/main.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/main.js) to manage visibility and bind click listeners across the header action bar, settings modal, and profile dropdown menu using standard `beforeinstallprompt` and `appinstalled` events.
+  - **Automated Regression Testing**: Created [`tests/PwaInstallUiTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/PwaInstallUiTest.php) and updated [`tests/PwaAssetFreshnessTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/PwaAssetFreshnessTest.php) verifying all PWA install UI surfaces and handler bindings across shared role portals.
+
 ## v0.3.146 — 2026-09-02
 
 ### Fixed

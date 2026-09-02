@@ -123,6 +123,22 @@
                         <button type="button" class="btn btn-sm btn-outline-secondary" id="deferPushPermissionBtn">Not Now</button>
                     </span>
                 </div>
+
+                <div id="settingsPwaInstallSection" class="mt-4" style="display:none;">
+                    <div class="settings-group-title">Application</div>
+                    <div class="settings-option">
+                        <span class="settings-option-main">
+                            <span class="settings-option-icon"><i class="bi bi-phone"></i></span>
+                            <span>
+                                <span class="settings-option-title d-block">Install App</span>
+                                <span class="settings-option-desc d-block">Install BSHS AMS on this device for quick access and offline reliability.</span>
+                            </span>
+                        </span>
+                        <button type="button" class="btn btn-sm btn-primary-custom flex-shrink-0" id="settingsPwaInstallBtn">
+                            <i class="bi bi-download me-1"></i>Install
+                        </button>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer app-modal-footer settings-modal-footer">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>

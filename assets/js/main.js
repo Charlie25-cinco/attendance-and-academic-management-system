@@ -1410,7 +1410,12 @@ function initSettingsControls() {
     });
   document
     .getElementById("settingsModal")
-    ?.addEventListener("shown.bs.modal", updatePwaPushStatus);
+    ?.addEventListener("shown.bs.modal", () => {
+      updatePwaPushStatus();
+      if (typeof window.bindPwaInstallButton === "function") {
+        window.bindPwaInstallButton();
+      }
+    });
   const darkMode = document.getElementById("darkModeSwitch");
   if (darkMode) {
     darkMode.addEventListener("change", function () {

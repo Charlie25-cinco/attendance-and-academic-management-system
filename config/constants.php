@@ -991,19 +991,43 @@ if ('serviceWorker' in navigator) {
     });
     window._pwaInstallPrompt = null;
     window.bindPwaInstallButton = function () {
-        var btn = document.getElementById('pwaInstallBtn');
-        if (!btn) { return; }
-        btn.style.display = window._pwaInstallPrompt ? 'flex' : 'none';
-        if (btn.dataset.bound === '1') { return; }
-        btn.dataset.bound = '1';
-        btn.addEventListener('click', async function () {
-            if (!window._pwaInstallPrompt) { return; }
-            try {
-                await window._pwaInstallPrompt.prompt();
-                var choice = await window._pwaInstallPrompt.userChoice;
-                if (choice && choice.outcome === 'accepted') { btn.style.display = 'none'; }
-            } catch (e) { console.warn('[PWA] Install prompt:', e); }
-            finally { window._pwaInstallPrompt = null; btn.style.display = 'none'; }
+        var isInstallable = Boolean(window._pwaInstallPrompt);
+        var headerBtn = document.getElementById('pwaInstallBtn');
+        var settingsSection = document.getElementById('settingsPwaInstallSection');
+        var settingsBtn = document.getElementById('settingsPwaInstallBtn');
+        var dropdownItem = document.getElementById('headerPwaInstallDropdownItem');
+        var dropdownBtn = document.getElementById('headerPwaInstallDropdownBtn');
+
+        if (headerBtn) {
+            headerBtn.style.display = isInstallable ? 'flex' : 'none';
+        }
+        if (settingsSection) {
+            settingsSection.style.display = isInstallable ? 'block' : 'none';
+        }
+        if (dropdownItem) {
+            dropdownItem.style.display = isInstallable ? 'block' : 'none';
+        }
+
+        var buttons = [headerBtn, settingsBtn, dropdownBtn];
+        buttons.forEach(function (btn) {
+            if (!btn || btn.dataset.bound === '1') { return; }
+            btn.dataset.bound = '1';
+            btn.addEventListener('click', async function (e) {
+                if (e) e.preventDefault();
+                if (!window._pwaInstallPrompt) { return; }
+                try {
+                    await window._pwaInstallPrompt.prompt();
+                    var choice = await window._pwaInstallPrompt.userChoice;
+                    if (choice && choice.outcome === 'accepted') {
+                        window._pwaInstallPrompt = null;
+                    }
+                } catch (err) {
+                    console.warn('[PWA] Install prompt:', err);
+                } finally {
+                    window._pwaInstallPrompt = null;
+                    window.bindPwaInstallButton();
+                }
+            });
         });
     };
     document.addEventListener('DOMContentLoaded', function () { window.bindPwaInstallButton(); });
@@ -1014,8 +1038,7 @@ if ('serviceWorker' in navigator) {
     });
     window.addEventListener('appinstalled', function () {
         window._pwaInstallPrompt = null;
-        var btn = document.getElementById('pwaInstallBtn');
-        if (btn) btn.style.display = 'none';
+        window.bindPwaInstallButton();
     });
 }
 </script>";
