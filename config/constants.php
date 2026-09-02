@@ -997,9 +997,7 @@ if ('serviceWorker' in navigator) {
         return Boolean((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true);
     };
     window.isPwaInstalled = function () {
-        var isStandalone = window.isPwaStandalone();
-        var isFlagged = Boolean(window._pwaInstalled === true || (window.localStorage && window.localStorage.getItem('bshs_pwa_installed') === '1'));
-        return isStandalone || isFlagged;
+        return Boolean(window.isPwaStandalone() || window._pwaInstalled === true);
     };
 
     window.showPwaInstallModal = function () {
@@ -1087,11 +1085,6 @@ if ('serviceWorker' in navigator) {
                             var choice = await window._pwaInstallPrompt.userChoice;
                             if (choice && choice.outcome === 'accepted') {
                                 window._pwaInstalled = true;
-                                try {
-                                    if (window.localStorage) {
-                                        window.localStorage.setItem('bshs_pwa_installed', '1');
-                                    }
-                                } catch (err) {}
                                 window._pwaInstallPrompt = null;
                             }
                         } catch (err) {
@@ -1113,15 +1106,16 @@ if ('serviceWorker' in navigator) {
     window.addEventListener('beforeinstallprompt', function (e) {
         e.preventDefault();
         window._pwaInstallPrompt = e;
+        window._pwaInstalled = false;
+        try {
+            if (window.localStorage) {
+                window.localStorage.removeItem('bshs_pwa_installed');
+            }
+        } catch (err) {}
         window.bindPwaInstallButton();
     });
     window.addEventListener('appinstalled', function () {
         window._pwaInstalled = true;
-        try {
-            if (window.localStorage) {
-                window.localStorage.setItem('bshs_pwa_installed', '1');
-            }
-        } catch (err) {}
         window._pwaInstallPrompt = null;
         window.bindPwaInstallButton();
     });

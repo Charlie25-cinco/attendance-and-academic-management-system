@@ -728,8 +728,24 @@ function showNotification(message, type = "info", title = "") {
 // ============================================
 
 function appApiUrl(route) {
-  const url = `/api/index.php?route=${encodeURIComponent(route)}`;
-  const token = window.APP_CSRF_TOKEN || "";
+  let base = "";
+  if (typeof window !== "undefined") {
+    if (window.APP_BASE_URL) {
+      base = window.APP_BASE_URL.replace(/\/$/, "");
+    } else {
+      const path = (window.location && window.location.pathname) || "";
+      const isSubfolder =
+        path.includes("/admin/") ||
+        path.includes("/teacher/") ||
+        path.includes("/student/") ||
+        path.includes("/parent/") ||
+        path.includes("/auth/") ||
+        path.includes("/site/");
+      base = isSubfolder ? ".." : ".";
+    }
+  }
+  const url = `${base}/api/index.php?route=${encodeURIComponent(route)}`;
+  const token = (typeof window !== "undefined" && window.APP_CSRF_TOKEN) || "";
   return token ? `${url}&csrf_token=${encodeURIComponent(token)}` : url;
 }
 
@@ -738,7 +754,11 @@ function appFetchJson(route, options = {}) {
   if (!headers.has("Content-Type") && options.body) {
     headers.set("Content-Type", "application/json");
   }
-  if (window.APP_CSRF_TOKEN && !headers.has("X-CSRF-Token")) {
+  if (
+    typeof window !== "undefined" &&
+    window.APP_CSRF_TOKEN &&
+    !headers.has("X-CSRF-Token")
+  ) {
     headers.set("X-CSRF-Token", window.APP_CSRF_TOKEN);
   }
 
@@ -751,7 +771,10 @@ function appFetchJson(route, options = {}) {
   ).then((response) =>
     response.json().then((data) => {
       if (!response.ok || !data.ok) {
-        throw new Error(data.message || "Request failed");
+        const error = new Error(data.message || "Request failed");
+        error.status = response.status;
+        error.data = data;
+        throw error;
       }
       return data;
     }),
@@ -1484,12 +1507,16 @@ function initPwaPushAutoRegistration() {
     !pwaPushSupported() ||
     Notification.permission !== "granted"
   ) {
-    return;
+    return Promise.resolve();
   }
 
-  enablePwaPushNotifications().catch(() => {
-    updatePwaPushStatus();
-  });
+  return enablePwaPushNotifications()
+    .then(() => {
+      updatePwaPushStatus();
+    })
+    .catch(() => {
+      updatePwaPushStatus();
+    });
 }
 
 function initPwaPushFirstOpenPrompt() {
@@ -1543,7 +1570,7 @@ function initPwaPushFirstOpenPrompt() {
   if (allowBtn) {
     allowBtn.onclick = function () {
       allowBtn.disabled = true;
-      Notification.requestPermission()
+      return Notification.requestPermission()
         .then((permission) => {
           try {
             localStorage.setItem(
@@ -1565,10 +1592,21 @@ function initPwaPushFirstOpenPrompt() {
                   updatePwaPushStatus();
                 })
                 .catch((err) => {
-                  showNotification(
-                    err.message || "Failed to subscribe for notifications",
-                    "warning",
-                  );
+                  if (
+                    err &&
+                    (err.status === 401 ||
+                      err.message === "Authentication required")
+                  ) {
+                    showNotification(
+                      "Notifications allowed for this device. Subscription will activate after login.",
+                      "info",
+                    );
+                  } else {
+                    showNotification(
+                      err.message || "Failed to subscribe for notifications",
+                      "warning",
+                    );
+                  }
                   updatePwaPushStatus();
                 });
             }
@@ -1627,6 +1665,9 @@ window.showDeviceNotificationPrompt = function () {
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
   }
 };
+window.initPwaPushFirstOpenPrompt = initPwaPushFirstOpenPrompt;
+window.initPwaPushAutoRegistration = initPwaPushAutoRegistration;
+window.enablePwaPushNotifications = enablePwaPushNotifications;
 
 function ensureAppConfirmModal() {
   const modalEl = document.getElementById("appConfirmModal");

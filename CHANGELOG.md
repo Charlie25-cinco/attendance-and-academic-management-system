@@ -2,6 +2,15 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.157 — 2026-09-03
+
+### Fixed
+
+- **Notification Unauthenticated-to-Authenticated Lifecycle & Stale-Storage-Immune PWA Installation Detection**:
+  - **Unauthenticated-to-Authenticated Notification Lifecycle**: Refined `pushPromptAllowBtn` click handling and `appApiUrl()` in [`assets/js/main.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/main.js) to resolve API endpoints properly across subdirectories, create the browser `PushSubscription` on `login.php`, catch unauthenticated `401` responses gracefully without error toasts, and automatically complete backend subscription registration upon authenticated dashboard load via `initPwaPushAutoRegistration()`.
+  - **Stale-Storage-Immune Installation Detection**: Updated `isPwaInstalled()` in [`config/constants.php`](file:///c:/laragon/www/attendance-and-academic-management-system/config/constants.php) to evaluate `isPwaStandalone() || _pwaInstalled === true`. Stale `localStorage` flags from prior installations no longer cause regular browser visits to render as `Installed`, and `beforeinstallprompt` purges stale storage while resetting `_pwaInstalled` to `false`.
+  - **Comprehensive Lifecycle & Regression Tests**: Updated [`tests/PwaNotificationPromptTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/PwaNotificationPromptTest.php) and [`tests/PwaInstallUiTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/PwaInstallUiTest.php) with Node.js runtime tests verifying the full Allow/Deny/Later notification lifecycle, unauthenticated-to-authenticated subscription handover, and stale storage immunity on uninstalled PWAs.
+
 ## v0.3.156 — 2026-09-03
 
 ### Fixed

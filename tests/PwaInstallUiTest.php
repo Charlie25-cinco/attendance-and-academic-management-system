@@ -294,7 +294,7 @@ final class PwaInstallUiTest extends TestCase
             if (mockWindow._pwaInstallPrompt !== null) {
                 process.exit(13);
             }
-            if (!btn.innerHTML.includes('Installed') || storage.getItem('bshs_pwa_installed') !== '1') {
+            if (!btn.innerHTML.includes('Installed') || !mockWindow.isPwaInstalled()) {
                 process.exit(14);
             }
 
@@ -341,7 +341,7 @@ final class PwaInstallUiTest extends TestCase
 
             // Dispatch appinstalled event
             await doc2.dispatchEvent('appinstalled');
-            if (!btn2.innerHTML.includes('Installed') || storage.getItem('bshs_pwa_installed') !== '1' || !mockWindow2.isPwaInstalled()) {
+            if (!btn2.innerHTML.includes('Installed') || !mockWindow2.isPwaInstalled()) {
                 process.exit(21);
             }
 
@@ -375,6 +375,53 @@ final class PwaInstallUiTest extends TestCase
             const btn3 = doc3.elements['settingsPwaInstallBtn'];
             if (!btn3.innerHTML.includes('Installed') || !mockWindow3.isPwaInstalled()) {
                 process.exit(30);
+            }
+
+            // Scenario 4: Uninstalled PWA with stale localStorage
+            const staleStorage = new MockLocalStorage();
+            staleStorage.setItem('bshs_pwa_installed', '1');
+
+            const doc4 = new MockDocument();
+            doc4.elements['settingsPwaInstallSection'] = new MockElement('settingsPwaInstallSection');
+            doc4.elements['settingsPwaInstallBtn'] = new MockElement('settingsPwaInstallBtn', 'button');
+            doc4.elements['pwaInstallModal'] = new MockElement('pwaInstallModal');
+            doc4.elements['pwaInstallModalTitle'] = new MockElement('pwaInstallModalTitle');
+            doc4.elements['pwaInstallModalSubtitle'] = new MockElement('pwaInstallModalSubtitle');
+
+            const mockWindow4 = {
+                matchMedia: (query) => ({ matches: false }),
+                navigator: { standalone: false, userAgent: 'Chrome/Desktop' },
+                localStorage: staleStorage,
+                addEventListener: (event, fn) => doc4.addEventListener(event, fn),
+                document: doc4,
+                bootstrap: mockBootstrap
+            };
+
+            const fn4 = new Function('window', 'document', 'navigator', 'bootstrap', pwaScript);
+            fn4(mockWindow4, doc4, mockWindow4.navigator, mockBootstrap);
+            await doc4.dispatchEvent('DOMContentLoaded');
+
+            const btn4 = doc4.elements['settingsPwaInstallBtn'];
+            // Stale localStorage must not make the button render as Installed in a regular browser
+            if (mockWindow4.isPwaInstalled() || !btn4.innerHTML.includes('Install') || btn4.innerHTML.includes('Installed')) {
+                console.error('Button should render Install despite stale localStorage');
+                process.exit(40);
+            }
+
+            // Dispatching beforeinstallprompt should purge stale storage
+            await doc4.dispatchEvent('beforeinstallprompt', {
+                preventDefault: () => {},
+                prompt: async () => {},
+                userChoice: Promise.resolve({ outcome: 'dismissed' })
+            });
+
+            if (staleStorage.getItem('bshs_pwa_installed') !== null) {
+                console.error('Stale localStorage should be purged on beforeinstallprompt');
+                process.exit(41);
+            }
+            if (mockWindow4.isPwaInstalled() || !btn4.innerHTML.includes('Install') || btn4.innerHTML.includes('Installed')) {
+                console.error('Button should remain Install after beforeinstallprompt');
+                process.exit(42);
             }
 
             process.exit(0);
