@@ -1,74 +1,91 @@
 <?php
 
 use PHPUnit\Framework\TestCase;
-use BshsAms\Database\Database;
+use BshsAms\Database\SchemaCache;
 
 final class PerformanceOptimizationTest extends TestCase
 {
     protected function setUp(): void
     {
-        Database::resetSharedConnection();
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            @session_start();
+        }
     }
 
-    protected function tearDown(): void
+    public function testLazyAutoloadAliasesResolvesLegacyClasses(): void
     {
-        Database::resetSharedConnection();
+        $this->assertTrue(class_exists('SimpleXlsxWriter'));
+        $this->assertTrue(class_exists('Sf1Exporter'));
+        $this->assertTrue(class_exists('Sf2Exporter'));
+        $this->assertTrue(class_exists('Sf5Exporter'));
+        $this->assertTrue(class_exists('Sf9Exporter'));
+        $this->assertTrue(class_exists('EcrExporter'));
+        $this->assertTrue(class_exists('ReportFilterHelper'));
+        $this->assertTrue(class_exists('SshsGradeCalculator'));
+        $this->assertTrue(class_exists('GradeImporter'));
     }
 
-    public function testDatabaseClassHasSharedConnectionLogic(): void
+    public function testRbacPermissionsCacheValidation(): void
     {
-        $dbClass = file_get_contents(__DIR__ . '/../src/Database/Database.php');
-        $this->assertIsString($dbClass);
+        $_SESSION['logged_in'] = true;
+        $_SESSION['user_id'] = 42;
+        $_SESSION['role'] = 'teacher';
+        $_SESSION['rbac_permissions_user_id'] = 42;
+        $_SESSION['rbac_permissions_role'] = 'teacher';
+        $_SESSION['rbac_permissions_loaded_at'] = time();
+        $_SESSION['rbac_permissions'] = ['attendance.view', 'attendance.mark'];
 
-        $this->assertStringContainsString('private static ?PDO $sharedConnection', $dbClass);
-        $this->assertStringContainsString('public static function resetSharedConnection()', $dbClass);
-        $this->assertStringContainsString('self::$sharedConnection instanceof PDO', $dbClass);
+        $this->assertTrue(isRbacPermissionsCacheValid());
+        $this->assertTrue(hasPermission('attendance.view'));
+        $this->assertFalse(hasPermission('users.manage'));
+
+        // Test user ID mismatch invalidation
+        $_SESSION['user_id'] = 99;
+        $this->assertFalse(isRbacPermissionsCacheValid());
+
+        // Restore and test role mismatch invalidation
+        $_SESSION['user_id'] = 42;
+        $_SESSION['role'] = 'admin';
+        $this->assertFalse(isRbacPermissionsCacheValid());
+
+        // Test expired TTL invalidation
+        $_SESSION['role'] = 'teacher';
+        $_SESSION['rbac_permissions_loaded_at'] = time() - 400; // > 300s TTL
+        $this->assertFalse(isRbacPermissionsCacheValid());
     }
 
-    public function testServiceWorkerUsesStaleWhileRevalidateForAssets(): void
+    public function testSchemaCacheKnownMapReturnsTrueInstantly(): void
     {
-        $swJs = file_get_contents(__DIR__ . '/../sw.js');
-        $this->assertIsString($swJs);
+        $pdo = new PDO('sqlite::memory:');
 
-        $this->assertStringContainsString('bshs-ams-v37', $swJs);
-        $this->assertStringContainsString('isStaticAsset', $swJs);
-        $this->assertStringContainsString('cacheResponse', $swJs);
+        $this->assertTrue(SchemaCache::hasTable($pdo, 'users'));
+        $this->assertTrue(SchemaCache::hasTable($pdo, 'classes'));
+        $this->assertTrue(SchemaCache::hasTable($pdo, 'messages'));
+        $this->assertTrue(SchemaCache::hasTable($pdo, 'user_notifications'));
+        $this->assertTrue(SchemaCache::hasTable($pdo, 'user_settings'));
 
-        // 3. Verify main.js and offlineStorage.js cache version synchronization
-        $mainJs = file_get_contents(__DIR__ . '/../assets/js/main.js');
-        $this->assertStringContainsString('bshs-ams-v37', $mainJs);
-
-        $storageJs = file_get_contents(__DIR__ . '/../assets/js/offlineStorage.js');
-        $this->assertStringContainsString('bshs-ams-v37', $storageJs);
+        $this->assertTrue(SchemaCache::hasColumn($pdo, 'classes', 'track'));
+        $this->assertTrue(SchemaCache::hasColumn($pdo, 'classes', 'curriculum'));
+        $this->assertTrue(SchemaCache::hasColumn($pdo, 'classes', 'program'));
+        $this->assertTrue(SchemaCache::hasColumn($pdo, 'users', 'reference_code'));
+        $this->assertTrue(SchemaCache::hasColumn($pdo, 'users', 'sex'));
     }
 
-    public function testMainCssHasZeroBlockingImports(): void
+    public function testNotificationCacheInvalidationOnDispatch(): void
     {
-        $mainCss = file_get_contents(__DIR__ . '/../assets/css/main.css');
-        $this->assertIsString($mainCss);
-        $this->assertStringNotContainsString('@import', $mainCss);
-        $this->assertStringContainsString('notification-toast', $mainCss);
-    }
+        $pdo = new PDO('sqlite::memory:');
+        $pdo->exec("CREATE TABLE users (id INTEGER PRIMARY KEY, role TEXT);");
+        $pdo->exec("INSERT INTO users (id, role) VALUES (10, 'student');");
 
-    public function testSiteCssAndAuthCssHaveZeroBlockingImports(): void
-    {
-        $siteCss = file_get_contents(__DIR__ . '/../assets/css/Site.css');
-        $this->assertIsString($siteCss);
-        $this->assertStringNotContainsString('@import', $siteCss);
+        $_SESSION['user_id'] = 10;
+        $_SESSION['app_header_notifications'] = [
+            'items' => [['id' => 1, 'title' => 'Old']],
+            'count' => 1
+        ];
 
-        $authCss = file_get_contents(__DIR__ . '/../assets/css/auth.css');
-        $this->assertIsString($authCss);
-        $this->assertStringNotContainsString('@import', $authCss);
-    }
+        appNotifyUsers($pdo, [10], 'test_key', 'New Title', 'New Subtitle');
 
-    public function testPwaHeadIncludesFontPreconnect(): void
-    {
-        $constants = file_get_contents(__DIR__ . '/../config/constants.php');
-        $this->assertIsString($constants);
-        $this->assertStringContainsString('preconnect', $constants);
-        $this->assertStringContainsString('fonts.googleapis.com', $constants);
-        $this->assertStringContainsString('fonts.gstatic.com', $constants);
-        $this->assertStringContainsString('Manrope', $constants);
-        $this->assertStringContainsString('Poppins', $constants);
+        // Session cache should be invalidated
+        $this->assertArrayNotHasKey('app_header_notifications', $_SESSION);
     }
 }

@@ -223,23 +223,21 @@ if ($headerDb && $sessionUserId > 0) {
         $settingsCache = headerCacheRead('app_header_settings', $sessionUserId, $headerCacheTtl);
         if ($settingsCache === null) {
             $settingsCache = ['has_saved' => false, 'settings' => $headerInitialSettings];
-            if (dbHasTable($headerDb, 'user_settings')) {
-                $settingsStmt = $headerDb->prepare("SELECT dark_mode, email_notifications, push_notifications
-                                                    FROM user_settings
-                                                    WHERE user_id = ?
-                                                    LIMIT 1");
-                $settingsStmt->execute([$sessionUserId]);
-                $settingsRow = $settingsStmt->fetch(PDO::FETCH_ASSOC);
-                if ($settingsRow) {
-                    $settingsCache = [
-                        'has_saved' => true,
-                        'settings' => [
-                            'dark_mode' => (int)($settingsRow['dark_mode'] ?? 0),
-                            'email_notifications' => (int)($settingsRow['email_notifications'] ?? 1),
-                            'push_notifications' => (int)($settingsRow['push_notifications'] ?? 1)
-                        ]
-                    ];
-                }
+            $settingsStmt = $headerDb->prepare("SELECT dark_mode, email_notifications, push_notifications
+                                                FROM user_settings
+                                                WHERE user_id = ?
+                                                LIMIT 1");
+            $settingsStmt->execute([$sessionUserId]);
+            $settingsRow = $settingsStmt->fetch(PDO::FETCH_ASSOC);
+            if ($settingsRow) {
+                $settingsCache = [
+                    'has_saved' => true,
+                    'settings' => [
+                        'dark_mode' => (int)($settingsRow['dark_mode'] ?? 0),
+                        'email_notifications' => (int)($settingsRow['email_notifications'] ?? 1),
+                        'push_notifications' => (int)($settingsRow['push_notifications'] ?? 1)
+                    ]
+                ];
             }
             headerCacheWrite('app_header_settings', $sessionUserId, $settingsCache, $headerCacheTtl);
         }
@@ -258,14 +256,19 @@ if ($headerDb && $sessionUserId > 0) {
     }
 
     try {
-        if (dbHasTable($headerDb, 'user_notifications')) {
+        $notifCache = headerCacheRead('app_header_notifications', $sessionUserId, $headerCacheTtl);
+        if ($notifCache !== null) {
+            $notificationItems = $notifCache['items'] ?? [];
+            $notification_count = (int)($notifCache['count'] ?? 0);
+        } else {
             $notifStmt = $headerDb->prepare("SELECT id, source_key, title, subtitle, icon, color, link, event_at, is_read
                                              FROM user_notifications
                                              WHERE user_id = ?
                                              ORDER BY is_read ASC, event_at DESC, id DESC
                                              LIMIT 8");
             $notifStmt->execute([$sessionUserId]);
-            foreach ($notifStmt->fetchAll(PDO::FETCH_ASSOC) as $item) {
+            $rawItems = $notifStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            foreach ($rawItems as $item) {
                 $item['time'] = headerTimeAgo($item['event_at'] ?? '');
                 $item['link'] = appNotificationTargetUrl(
                     (string)($_SESSION['role'] ?? ''),
@@ -277,6 +280,10 @@ if ($headerDb && $sessionUserId > 0) {
                     $notification_count++;
                 }
             }
+            headerCacheWrite('app_header_notifications', $sessionUserId, [
+                'items' => $notificationItems,
+                'count' => $notification_count
+            ], $headerCacheTtl);
         }
     } catch (Throwable $e) {
         error_log('Header notifications query error: ' . $e->getMessage());

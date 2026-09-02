@@ -658,6 +658,10 @@ function appNotifyUsers(PDO $db, array $userIds, string $sourceKey, string $titl
                 $eventAt
             ]);
         }
+        $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+        if ($currentUserId > 0 && in_array($currentUserId, $userIds, true)) {
+            unset($_SESSION['app_header_notifications']);
+        }
     } catch (Throwable $e) {
         error_log('User notification insert failed: ' . $e->getMessage());
     }
@@ -1102,8 +1106,33 @@ function loadRbacPermissions(PDO $db, string $roleKey): array {
     return $stmt->fetchAll(PDO::FETCH_COLUMN);
 }
 
+function isRbacPermissionsCacheValid(): bool {
+    if (empty($_SESSION['logged_in']) || !isset($_SESSION['user_id']) || empty($_SESSION['role'])) {
+        return false;
+    }
+    $cachedUserId = (int)($_SESSION['rbac_permissions_user_id'] ?? 0);
+    $currentUserId = (int)$_SESSION['user_id'];
+    if ($cachedUserId !== $currentUserId || $currentUserId <= 0) {
+        return false;
+    }
+    $cachedRole = (string)($_SESSION['rbac_permissions_role'] ?? '');
+    $currentRole = (string)$_SESSION['role'];
+    if ($cachedRole !== $currentRole || $currentRole === '') {
+        return false;
+    }
+    $loadedAt = (int)($_SESSION['rbac_permissions_loaded_at'] ?? 0);
+    $ttl = max(0, (int)appEnvValue('APP_RBAC_CACHE_TTL', '300'));
+    if ($ttl <= 0 || (time() - $loadedAt) > $ttl) {
+        return false;
+    }
+    $perms = $_SESSION['rbac_permissions'] ?? null;
+    return is_array($perms);
+}
+
 function cachedRbacPermissions(PDO $db, string $roleKey): array {
     $ttl = max(0, (int)appEnvValue('APP_RBAC_CACHE_TTL', '300'));
+    $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+    $cachedUserId = (int)($_SESSION['rbac_permissions_user_id'] ?? 0);
     $cachedRole = (string)($_SESSION['rbac_permissions_role'] ?? '');
     $loadedAt = (int)($_SESSION['rbac_permissions_loaded_at'] ?? 0);
     $cachedPermissions = $_SESSION['rbac_permissions'] ?? null;
@@ -1111,6 +1140,8 @@ function cachedRbacPermissions(PDO $db, string $roleKey): array {
     if (
         is_array($cachedPermissions)
         && $cachedRole === $roleKey
+        && $cachedUserId === $currentUserId
+        && $currentUserId > 0
         && $ttl > 0
         && (time() - $loadedAt) <= $ttl
     ) {
@@ -1119,6 +1150,7 @@ function cachedRbacPermissions(PDO $db, string $roleKey): array {
 
     $permissions = loadRbacPermissions($db, $roleKey);
     $_SESSION['rbac_permissions'] = $permissions;
+    $_SESSION['rbac_permissions_user_id'] = $currentUserId;
     $_SESSION['rbac_permissions_role'] = $roleKey;
     $_SESSION['rbac_permissions_loaded_at'] = time();
 
@@ -1127,18 +1159,15 @@ function cachedRbacPermissions(PDO $db, string $roleKey): array {
 
 function hasPermission(string $permissionKey): bool {
     if (!isset($_SESSION['role'])) { return false; }
-    $perms = $_SESSION['rbac_permissions'] ?? null;
     $roleKey = (string)$_SESSION['role'];
-    $cachedRole = (string)($_SESSION['rbac_permissions_role'] ?? '');
-    $loadedAt = (int)($_SESSION['rbac_permissions_loaded_at'] ?? 0);
-    $ttl = max(0, (int)appEnvValue('APP_RBAC_CACHE_TTL', '300'));
-    if ($perms === null || $cachedRole !== $roleKey || $ttl <= 0 || (time() - $loadedAt) > $ttl) {
+    if (!isRbacPermissionsCacheValid()) {
         $dbInstance = new Database();
         $db = $dbInstance->getConnection();
         if (!$db) { return false; }
-        $perms = cachedRbacPermissions($db, $roleKey);
+        cachedRbacPermissions($db, $roleKey);
     }
-    return in_array($permissionKey, $perms, true);
+    $perms = $_SESSION['rbac_permissions'] ?? [];
+    return is_array($perms) && in_array($permissionKey, $perms, true);
 }
 
 function requirePermission(string $permissionKey): void {
@@ -1220,12 +1249,21 @@ function permissionForScript(string $scriptName): string {
     return $map[$scriptName] ?? '';
 }
 
-function enforceScriptPermission(PDO $db): void {
+function enforceScriptPermission(?PDO $db = null): void {
     if (empty($_SESSION['logged_in']) || empty($_SESSION['role'])) { return; }
     $script = basename((string)($_SERVER['SCRIPT_NAME'] ?? ''));
     $permission = permissionForScript($script);
     if ($permission === '') { return; }
-    cachedRbacPermissions($db, (string)$_SESSION['role']);
+
+    if (!isRbacPermissionsCacheValid()) {
+        if ($db === null) {
+            $db = (new Database())->getConnection();
+        }
+        if ($db instanceof PDO) {
+            cachedRbacPermissions($db, (string)$_SESSION['role']);
+        }
+    }
+
     $isJson = str_ends_with(strtolower($script), '_action.php') || str_contains((string)($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json');
     if (hasPermission($permission)) { return; }
     http_response_code(403);

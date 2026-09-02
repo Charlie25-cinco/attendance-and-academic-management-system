@@ -31,77 +31,98 @@ $announcements = [];
 $archives = [];
 
 if ($db) {
-    // Batched stats: total users, total classes, today's attendance, active announcements
-    $row = $db->query("SELECT
-        (SELECT COUNT(*) FROM users WHERE status <> 'inactive' AND role <> 'admin') AS total_users,
-        (SELECT COUNT(*) FROM classes WHERE status = 'active') AS total_classes,
-        (SELECT COUNT(CASE WHEN status = 'present' THEN 1 END) FROM attendance WHERE date = CURDATE()) AS present_today,
-        (SELECT COUNT(*) FROM attendance WHERE date = CURDATE()) AS total_today,
-        (SELECT COUNT(*) FROM announcements WHERE status = 'active') AS active_announcements
-    ")->fetch(PDO::FETCH_ASSOC);
-    $stats['total_users'] = (int)($row['total_users'] ?? 0);
-    $stats['total_classes'] = (int)($row['total_classes'] ?? 0);
-    $present = (int)($row['present_today'] ?? 0);
-    $total = (int)($row['total_today'] ?? 0);
-    $stats['today_attendance'] = $total > 0 ? round(($present / $total) * 100, 1) : 0;
-    $stats['active_announcements'] = (int)($row['active_announcements'] ?? 0);
+    $statsCacheTtl = 30; // 30 seconds
+    $cachedStatsData = $_SESSION['admin_dashboard_stats_cache'] ?? null;
+    $cacheLoadedAt = (int)($_SESSION['admin_dashboard_stats_loaded_at'] ?? 0);
 
-    // Student counts by grade level + gender in one query
-    $query = "SELECT
-                grade_level,
-                LOWER(TRIM(COALESCE(sex, ''))) AS sex,
-                COUNT(*) AS total
-              FROM users
-              WHERE role = 'student'
-                AND status = 'active'
-                AND grade_level IN (11, 12)
-                AND LOWER(TRIM(COALESCE(sex, ''))) IN ('male', 'female')
-              GROUP BY grade_level, LOWER(TRIM(COALESCE(sex, '')))";
-    $stmt = $db->query($query);
-    $genderRows = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
-    foreach ($genderRows as $row) {
-        $grade = (int)($row['grade_level'] ?? 0);
-        $sex = strtolower(trim((string)($row['sex'] ?? '')));
-        $count = (int)($row['total'] ?? 0);
-        if ($grade === 11) {
-            $stats['grade11_students'] += $count;
-            if (isset($genderByGrade['grade11'][$sex])) $genderByGrade['grade11'][$sex] = $count;
-        } elseif ($grade === 12) {
-            $stats['grade12_students'] += $count;
-            if (isset($genderByGrade['grade12'][$sex])) $genderByGrade['grade12'][$sex] = $count;
+    if (
+        is_array($cachedStatsData)
+        && (time() - $cacheLoadedAt) <= $statsCacheTtl
+        && isset($cachedStatsData['stats'], $cachedStatsData['genderByGrade'], $cachedStatsData['sectionEnrollmentData'])
+    ) {
+        $stats = $cachedStatsData['stats'];
+        $genderByGrade = $cachedStatsData['genderByGrade'];
+        $sectionEnrollmentData = $cachedStatsData['sectionEnrollmentData'];
+    } else {
+        // Batched stats: total users, total classes, today's attendance, active announcements
+        $row = $db->query("SELECT
+            (SELECT COUNT(*) FROM users WHERE status <> 'inactive' AND role <> 'admin') AS total_users,
+            (SELECT COUNT(*) FROM classes WHERE status = 'active') AS total_classes,
+            (SELECT COUNT(CASE WHEN status = 'present' THEN 1 END) FROM attendance WHERE date = CURDATE()) AS present_today,
+            (SELECT COUNT(*) FROM attendance WHERE date = CURDATE()) AS total_today,
+            (SELECT COUNT(*) FROM announcements WHERE status = 'active') AS active_announcements
+        ")->fetch(PDO::FETCH_ASSOC);
+        $stats['total_users'] = (int)($row['total_users'] ?? 0);
+        $stats['total_classes'] = (int)($row['total_classes'] ?? 0);
+        $present = (int)($row['present_today'] ?? 0);
+        $total = (int)($row['total_today'] ?? 0);
+        $stats['today_attendance'] = $total > 0 ? round(($present / $total) * 100, 1) : 0;
+        $stats['active_announcements'] = (int)($row['active_announcements'] ?? 0);
+
+        // Student counts by grade level + gender in one query
+        $query = "SELECT
+                    grade_level,
+                    LOWER(TRIM(COALESCE(sex, ''))) AS sex,
+                    COUNT(*) AS total
+                  FROM users
+                  WHERE role = 'student'
+                    AND status = 'active'
+                    AND grade_level IN (11, 12)
+                    AND LOWER(TRIM(COALESCE(sex, ''))) IN ('male', 'female')
+                  GROUP BY grade_level, LOWER(TRIM(COALESCE(sex, '')))";
+        $stmt = $db->query($query);
+        $genderRows = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+        foreach ($genderRows as $row) {
+            $grade = (int)($row['grade_level'] ?? 0);
+            $sex = strtolower(trim((string)($row['sex'] ?? '')));
+            $count = (int)($row['total'] ?? 0);
+            if ($grade === 11) {
+                $stats['grade11_students'] += $count;
+                if (isset($genderByGrade['grade11'][$sex])) $genderByGrade['grade11'][$sex] = $count;
+            } elseif ($grade === 12) {
+                $stats['grade12_students'] += $count;
+                if (isset($genderByGrade['grade12'][$sex])) $genderByGrade['grade12'][$sex] = $count;
+            }
         }
-    }
 
-    // Enrolled students per section (distinct students) for active classes
-    $query = "SELECT
-                c.grade_level,
-                c.section,
-                COUNT(DISTINCT e.student_id) AS enrolled_total
-              FROM classes c
-              LEFT JOIN enrollments e
-                ON e.class_id = c.id
-               AND COALESCE(e.status, 'enrolled') = 'enrolled'
-              WHERE c.status = 'active'
-              GROUP BY c.grade_level, c.section
-              ORDER BY c.grade_level ASC, c.section ASC";
-    $stmt = $db->query($query);
-    $sectionRows = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
-    foreach ($sectionRows as $row) {
-        $grade = (int)($row['grade_level'] ?? 0);
-        $section = trim((string)($row['section'] ?? ''));
-        if ($section === '') continue;
-        $sectionEnrollmentData[] = [
-            'label' => 'G' . $grade . ' - ' . $section,
-            'total' => (int)($row['enrolled_total'] ?? 0)
+        // Enrolled students per section (distinct students) for active classes
+        $query = "SELECT
+                    c.grade_level,
+                    c.section,
+                    COUNT(DISTINCT e.student_id) AS enrolled_total
+                  FROM classes c
+                  LEFT JOIN enrollments e
+                    ON e.class_id = c.id
+                   AND COALESCE(e.status, 'enrolled') = 'enrolled'
+                  WHERE c.status = 'active'
+                  GROUP BY c.grade_level, c.section
+                  ORDER BY c.grade_level ASC, c.section ASC";
+        $stmt = $db->query($query);
+        $sectionRows = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+        foreach ($sectionRows as $row) {
+            $grade = (int)($row['grade_level'] ?? 0);
+            $section = trim((string)($row['section'] ?? ''));
+            if ($section === '') continue;
+            $sectionEnrollmentData[] = [
+                'label' => 'G' . $grade . ' - ' . $section,
+                'total' => (int)($row['enrolled_total'] ?? 0)
+            ];
+        }
+
+        $_SESSION['admin_dashboard_stats_cache'] = [
+            'stats' => $stats,
+            'genderByGrade' => $genderByGrade,
+            'sectionEnrollmentData' => $sectionEnrollmentData
         ];
+        $_SESSION['admin_dashboard_stats_loaded_at'] = time();
     }
     
-    // Recent users
+    // Recent users (operational: fresh on each request)
     $query = "SELECT id, reference_code, first_name, last_name, email, role, status, created_at 
                FROM users ORDER BY created_at DESC LIMIT 4";
     $recentUsers = $db->query($query)->fetchAll(PDO::FETCH_ASSOC);
     
-    // Classes with teacher info
+    // Classes with teacher info (operational: fresh on each request)
     $query = "SELECT c.*, CONCAT(u.first_name, ' ', u.last_name) as teacher_name,
                (SELECT COUNT(*) FROM enrollments WHERE class_id = c.id) as student_count
                FROM classes c 
@@ -109,7 +130,7 @@ if ($db) {
                WHERE c.status = 'active' LIMIT 4";
     $classes = $db->query($query)->fetchAll(PDO::FETCH_ASSOC);
     
-    // Recent announcements
+    // Recent announcements (operational: fresh on each request)
     $query = "SELECT a.*, CONCAT(u.first_name, ' ', u.last_name) as posted_by_name
                FROM announcements a 
                JOIN users u ON a.posted_by = u.id 
@@ -117,12 +138,8 @@ if ($db) {
                ORDER BY a.created_at DESC LIMIT 3";
     $announcements = $db->query($query)->fetchAll(PDO::FETCH_ASSOC);
     
-    // Recent archives (announcements as archives example)
-    $query = "SELECT a.*, CONCAT(u.first_name, ' ', u.last_name) as posted_by_name
-               FROM announcements a 
-               JOIN users u ON a.posted_by = u.id 
-               ORDER BY a.created_at DESC LIMIT 3";
-    $archives = $db->query($query)->fetchAll(PDO::FETCH_ASSOC);
+    // Reuse announcements for archives rather than duplicate SQL query
+    $archives = $announcements;
 }
 
 $totalStudents = (int)$stats['grade11_students'] + (int)$stats['grade12_students'];

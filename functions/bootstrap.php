@@ -9,13 +9,32 @@ if (!defined('APP_REQUEST_STARTED_AT')) {
 }
 
 require_once APP_ROOT . '/vendor/autoload.php';
-require_once APP_ROOT . '/config/db.php';
-require_once APP_ROOT . '/functions/db-helper.php';
-require_once APP_ROOT . '/functions/simple-xlsx-writer.php';
-require_once APP_ROOT . '/functions/sf-exporter.php';
-require_once APP_ROOT . '/functions/grade-helper.php';
-require_once APP_ROOT . '/functions/ecr-exporter.php';
-require_once APP_ROOT . '/functions/report-aggregates.php';
+
+// Lazy alias loader for legacy un-namespaced class references
+spl_autoload_register(function (string $class): void {
+    static $aliases = [
+        'Database' => \BshsAms\Database\Database::class,
+        'SchemaCache' => \BshsAms\Database\SchemaCache::class,
+        'ScheduleParser' => \BshsAms\Schedule\ScheduleParser::class,
+        'SimpleXlsxParser' => \BshsAms\Xlsx\SimpleXlsxParser::class,
+        'SimpleXlsxWriter' => \BshsAms\Xlsx\SimpleXlsxWriter::class,
+        'SimpleXlsxTemplateEditor' => \BshsAms\Xlsx\SimpleXlsxTemplateEditor::class,
+        'Sf1Parser' => \BshsAms\Export\Sf1Parser::class,
+        'Sf1Exporter' => \BshsAms\Export\Sf1Exporter::class,
+        'Sf2Exporter' => \BshsAms\Export\Sf2Exporter::class,
+        'Sf5Exporter' => \BshsAms\Export\Sf5Exporter::class,
+        'Sf9Exporter' => \BshsAms\Export\Sf9Exporter::class,
+        'EcrParser' => \BshsAms\Export\EcrParser::class,
+        'EcrExporter' => \BshsAms\Export\EcrExporter::class,
+        'ReportFilterHelper' => \BshsAms\Report\ReportFilterHelper::class,
+        'SshsGradeCalculator' => \BshsAms\Grade\SshsGradeCalculator::class,
+        'GradeImporter' => \BshsAms\Grade\GradeImporter::class,
+        'AppDatabaseSessionHandler' => \BshsAms\Database\SessionHandler::class,
+    ];
+    if (isset($aliases[$class]) && class_exists($aliases[$class])) {
+        class_alias($aliases[$class], $class);
+    }
+});
 
 if (PHP_SAPI !== 'cli') {
     require_once APP_ROOT . '/config/session.php';
@@ -47,13 +66,9 @@ if (PHP_SAPI !== 'cli') {
 if (PHP_SAPI !== 'cli') {
     if (!empty($_SESSION['logged_in']) && function_exists('enforceScriptPermission')) {
         try {
-            $database = new Database();
-            $db = $database->getConnection();
-            if ($db instanceof PDO) {
-                enforceScriptPermission($db);
-            } else {
-                throw new RuntimeException('Database connection unavailable.');
-            }
+            // enforceScriptPermission validates cached session permissions first,
+            // connecting to the database only when cache is missing, expired, or role changed.
+            enforceScriptPermission();
         } catch (Throwable $e) {
             error_log('RBAC enforcement failed: ' . $e->getMessage());
             $script = basename((string)($_SERVER['SCRIPT_NAME'] ?? ''));

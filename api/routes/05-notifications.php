@@ -45,6 +45,7 @@ if ($route === 'notification-action' && $method === 'POST') {
 
     $countStmt = $db->prepare('SELECT COUNT(*) FROM user_notifications WHERE user_id = ? AND is_read = 0');
     $countStmt->execute([$userId]);
+    unset($_SESSION['app_header_notifications']);
     apiJson([
         'ok' => true,
         'message' => 'Notification state updated',
