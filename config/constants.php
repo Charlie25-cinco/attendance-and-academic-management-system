@@ -806,7 +806,18 @@ function smsNotifyGradePublication(
         $ayLabel = $academicYear !== '' ? " S.Y. {$academicYear}" : '';
         $message = "BSHS AMS: Official grades and report card for {$studentName} ({$className}{$ayLabel} - {$termLabel}) have been approved by Admin and are now available on the portal.";
 
+        $sentPhoneKeys = [];
         foreach ($recipientsToSend as $recip) {
+            $rawPhone = trim((string)($recip['phone'] ?? ''));
+            if ($rawPhone === '') {
+                continue;
+            }
+            $normPhoneKey = \BshsAms\Notification\SmsService::normalizePhilippineNumber($rawPhone) ?? $rawPhone;
+            if (isset($sentPhoneKeys[$normPhoneKey])) {
+                continue;
+            }
+            $sentPhoneKeys[$normPhoneKey] = true;
+
             $results['total']++;
             $res = $service->send($recip['phone'], $message, $recip['user_id'], $db);
             if (!empty($res['success'])) {
@@ -846,6 +857,7 @@ function smsNotifyGradePublication(
     $termLabel = $term !== '' ? $term : 'Final';
     $ayLabel = $academicYear !== '' ? " S.Y. {$academicYear}" : '';
 
+    $sentPhoneKeys = [];
     foreach ($students as $student) {
         $studentId = (int)$student['id'];
         $studentName = trim(($student['first_name'] ?? '') . ' ' . ($student['last_name'] ?? ''));
@@ -862,6 +874,16 @@ function smsNotifyGradePublication(
         }
 
         foreach ($recipients as $r) {
+            $rawPhone = trim((string)($r['phone'] ?? ''));
+            if ($rawPhone === '') {
+                continue;
+            }
+            $normPhoneKey = \BshsAms\Notification\SmsService::normalizePhilippineNumber($rawPhone) ?? $rawPhone;
+            if (isset($sentPhoneKeys[$normPhoneKey])) {
+                continue;
+            }
+            $sentPhoneKeys[$normPhoneKey] = true;
+
             $results['total']++;
             $res = $service->send($r['phone'], $message, $r['user_id'], $db);
             if (!empty($res['success'])) {

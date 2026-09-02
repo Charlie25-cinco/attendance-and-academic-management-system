@@ -2,6 +2,15 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.161 — 2026-09-03
+
+### Fixed
+
+- **Grade Publication SMS Phone Normalization & Deduplication**:
+  - **Phone Number Normalization & Deduplication in `smsNotifyGradePublication()`**: Updated `smsNotifyGradePublication()` in [`config/constants.php`](file:///c:/laragon/www/attendance-and-academic-management-system/config/constants.php) to track dispatched phone keys and deduplicate numbers via `\BshsAms\Notification\SmsService::normalizePhilippineNumber()` across both single-student and class-wide grade release invocations.
+  - **Single SMS per Normalized Number**: Ensures at most one SMS is dispatched per unique normalized Philippine mobile number per call, properly handling sibling students sharing a parent, multiple parent accounts sharing a contact number, and students sharing a phone with their parent, while preserving recipient `user_id` and contact information for audit logging in `sms_logs`.
+  - **Automated Regression Test Suite**: Extended [`tests/SmsServiceTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/SmsServiceTest.php) with tests covering shared student/parent numbers, multi-parent shared numbers, class-wide sibling parent deduplication, distinct parent accounts with the same phone, and distinct phone multi-recipient deliveries.
+
 ## v0.3.160 — 2026-09-03
 
 ### Fixed
