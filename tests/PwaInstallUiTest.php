@@ -50,6 +50,7 @@ final class PwaInstallUiTest extends TestCase
 
         $this->assertStringContainsString('window._pwaInstallPrompt = null;', $constants);
         $this->assertStringContainsString('window.isPwaStandalone = function ()', $constants);
+        $this->assertStringContainsString('window.triggerPwaInstall = async function (e)', $constants);
         $this->assertStringContainsString('window.showPwaInstallModal = function ()', $constants);
         $this->assertStringContainsString('window.bindPwaInstallButton = function ()', $constants);
         $this->assertStringContainsString("document.getElementById('settingsPwaInstallSection')", $constants);
@@ -61,6 +62,21 @@ final class PwaInstallUiTest extends TestCase
         $this->assertStringContainsString("window.addEventListener('appinstalled'", $constants);
         $this->assertStringContainsString("window._pwaInstallPrompt.prompt()", $constants);
         $this->assertStringContainsString("window.showPwaInstallModal()", $constants);
+    }
+
+    public function testSingleAuthoritativeClickDispatcherAndModalLifecycleTransition(): void
+    {
+        $constants = file_get_contents(__DIR__ . '/../config/constants.php');
+        $this->assertIsString($constants);
+
+        // Assert single document delegated click dispatcher
+        $this->assertStringContainsString("document.addEventListener('click', function (e) {", $constants);
+        $this->assertStringContainsString("e.target.closest('#settingsPwaInstallBtn')", $constants);
+        $this->assertStringContainsString('window.triggerPwaInstall(e);', $constants);
+
+        // Assert modal lifecycle sequencing on settings modal
+        $this->assertStringContainsString("settingsModalEl.addEventListener('hidden.bs.modal', function onSettingsHidden() {", $constants);
+        $this->assertStringContainsString('showTargetModal();', $constants);
     }
 
     public function testServiceWorkerRegistrationIsNotPreemptedOnFreshLoadWithoutController(): void

@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.152 — 2026-09-03
+
+### Fixed
+
+- **Single Authoritative Click Dispatcher & Modal Lifecycle for Settings PWA Install**:
+  - **Single Authoritative Dispatcher**: Created `window.triggerPwaInstall(e)` in [`config/constants.php`](file:///c:/laragon/www/attendance-and-academic-management-system/config/constants.php) bound via a single delegated `document.addEventListener('click', ...)` listener, preventing duplicate or racing executions.
+  - **Pure State Synchronization**: Clarified `window.bindPwaInstallButton()` and `assets/js/main.js` `shown.bs.modal` listener to strictly synchronize button labels and classes without registering duplicate click handlers.
+  - **Modal Lifecycle Sequencing**: Updated `window.showPwaInstallModal()` to cleanly dismiss the active `#settingsModal` instance and await its `hidden.bs.modal` event before displaying `#pwaInstallModal`, guaranteeing clean backdrop cleanup and preventing modal lockups.
+  - **Automated Regression Testing**: Updated [`tests/PwaInstallUiTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/PwaInstallUiTest.php) verifying single click dispatcher delegation, modal lifecycle transition logic, and native/fallback behavior.
+
 ## v0.3.151 — 2026-09-03
 
 ### Changed

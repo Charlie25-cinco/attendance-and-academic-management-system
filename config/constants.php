@@ -996,8 +996,32 @@ if ('serviceWorker' in navigator) {
         return Boolean((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true);
     };
 
+    window.triggerPwaInstall = async function (e) {
+        if (e && typeof e.preventDefault === 'function') {
+            e.preventDefault();
+        }
+        if (window._pwaInstallPrompt) {
+            try {
+                await window._pwaInstallPrompt.prompt();
+                var choice = await window._pwaInstallPrompt.userChoice;
+                if (choice && choice.outcome === 'accepted') {
+                    window._pwaInstallPrompt = null;
+                }
+            } catch (err) {
+                console.warn('[PWA] Install prompt error:', err);
+                window.showPwaInstallModal();
+            } finally {
+                window._pwaInstallPrompt = null;
+                window.bindPwaInstallButton();
+            }
+        } else {
+            window.showPwaInstallModal();
+        }
+    };
+
     window.showPwaInstallModal = function () {
         var modalEl = document.getElementById('pwaInstallModal');
+        if (!modalEl) { return; }
         var isStandalone = window.isPwaStandalone();
         var isIos = /iphone|ipad|ipod/i.test(navigator.userAgent || '') && !window.MSStream;
 
@@ -1039,13 +1063,29 @@ if ('serviceWorker' in navigator) {
             if (step3Desc) step3Desc.textContent = 'Accept the confirmation. The app will launch in its own standalone window.';
         }
 
-        if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-            var modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
-            modal.show();
-        } else if (modalEl) {
-            modalEl.classList.add('show');
-            modalEl.style.display = 'block';
+        var showTargetModal = function () {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                var modal = bootstrap.Modal.getOrCreateInstance ? bootstrap.Modal.getOrCreateInstance(modalEl) : (bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl));
+                modal.show();
+            } else {
+                modalEl.classList.add('show');
+                modalEl.style.display = 'block';
+            }
+        };
+
+        var settingsModalEl = document.getElementById('settingsModal');
+        if (settingsModalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            var smInstance = bootstrap.Modal.getInstance(settingsModalEl);
+            if (smInstance && (settingsModalEl.classList.contains('show') || settingsModalEl.style.display === 'block')) {
+                settingsModalEl.addEventListener('hidden.bs.modal', function onSettingsHidden() {
+                    settingsModalEl.removeEventListener('hidden.bs.modal', onSettingsHidden);
+                    showTargetModal();
+                });
+                smInstance.hide();
+                return;
+            }
         }
+        showTargetModal();
     };
 
     window.bindPwaInstallButton = function () {
@@ -1066,32 +1106,15 @@ if ('serviceWorker' in navigator) {
                 settingsBtn.classList.remove('btn-outline-secondary');
                 settingsBtn.classList.add('btn-primary-custom');
             }
-
-            if (settingsBtn.dataset.bound !== '1') {
-                settingsBtn.dataset.bound = '1';
-                settingsBtn.addEventListener('click', async function (e) {
-                    if (e) e.preventDefault();
-                    if (window._pwaInstallPrompt) {
-                        try {
-                            await window._pwaInstallPrompt.prompt();
-                            var choice = await window._pwaInstallPrompt.userChoice;
-                            if (choice && choice.outcome === 'accepted') {
-                                window._pwaInstallPrompt = null;
-                            }
-                        } catch (err) {
-                            console.warn('[PWA] Install prompt:', err);
-                            window.showPwaInstallModal();
-                        } finally {
-                            window._pwaInstallPrompt = null;
-                            window.bindPwaInstallButton();
-                        }
-                    } else {
-                        window.showPwaInstallModal();
-                    }
-                });
-            }
         }
     };
+
+    document.addEventListener('click', function (e) {
+        var btn = e.target && (e.target.closest ? e.target.closest('#settingsPwaInstallBtn') : null);
+        if (!btn) { return; }
+        window.triggerPwaInstall(e);
+    });
+
     document.addEventListener('DOMContentLoaded', function () { window.bindPwaInstallButton(); });
     window.addEventListener('beforeinstallprompt', function (e) {
         e.preventDefault();
