@@ -289,7 +289,6 @@ if ($displayFirstName === '' && $rawFirstName !== '') {
 
 $displayName = trim(implode(' ', array_filter([
     $displayFirstName,
-    $displayMiddleName,
     trim((string)($_SESSION['last_name'] ?? ''))
 ])));
 if ($displayName === '') {

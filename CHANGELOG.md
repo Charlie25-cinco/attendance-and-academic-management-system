@@ -2,6 +2,15 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.117 — 2026-09-02
+
+### UI & Refinement
+
+- **Header Profile Display Name Formatting (First and Last Name Only)**:
+  - Updated `$displayName` in [`includes/header.php`](file:///c:/laragon/www/attendance-and-academic-management-system/includes/header.php) to concatenate only `$displayFirstName` and `last_name`, cleanly omitting middle names from top navigation headers.
+  - Synchronized live profile update handler in [`includes/modals.php`](file:///c:/laragon/www/attendance-and-academic-management-system/includes/modals.php) to update `.header-profile-name` and `#headerProfileName` with first and last name only.
+  - Added unit test in [`tests/ProfileNameCapitalizationTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/ProfileNameCapitalizationTest.php) (total test suite at 158 tests).
+
 ## v0.3.116 — 2026-09-02
 
 ### Feature & UI

@@ -54,4 +54,15 @@ final class ProfileNameCapitalizationTest extends TestCase
         $this->assertSame('Delos Santos', $titleMiddleName);
         $this->assertSame('Dela Cruz', $titleLastName);
     }
+
+    public function testHeaderDisplayNameExcludesMiddleName(): void
+    {
+        $header = file_get_contents(__DIR__ . '/../includes/header.php');
+        $this->assertIsString($header);
+
+        $this->assertMatchesRegularExpression(
+            '/\$displayName\s*=\s*trim\(implode\(\s*\' \'\s*,\s*array_filter\(\[\s*\$displayFirstName,\s*trim\(\(string\)\(\$_SESSION\[\'last_name\'\]\s*\?\?\s*\'\'\)\)/',
+            $header
+        );
+    }
 }

@@ -434,8 +434,10 @@
                     throw new Error(data.message || 'Failed to update profile');
                 }
                 var updates = data.updates || {};
-                if (updates.first_name || updates.middle_name || updates.last_name) {
-                    var nameParts = [updates.first_name, updates.middle_name, updates.last_name].filter(Boolean);
+                if (updates.first_name || updates.last_name) {
+                    var firstName = updates.first_name || (document.getElementById('profileFirstName') ? document.getElementById('profileFirstName').value : '');
+                    var lastName = updates.last_name || (document.getElementById('profileLastName') ? document.getElementById('profileLastName').value : '');
+                    var nameParts = [firstName, lastName].filter(Boolean);
                     var name = nameParts.join(' ').replace(/\s+/g, ' ').trim();
                     var headerName = document.getElementById('headerProfileName');
                     if (headerName && name) headerName.textContent = name;
