@@ -878,7 +878,7 @@ function initHeaderNotificationActions() {
 function renderLiveNotifications(items, unreadCount, shouldPulse = false) {
   setHeaderNotificationCount(unreadCount, shouldPulse);
   const scrollContainer = document.querySelector(
-    ".header-notification-scroll-body",
+    ".header-notification-scroll-body, #headerNotificationList",
   );
   if (!scrollContainer) return;
 
@@ -896,6 +896,7 @@ function renderLiveNotifications(items, unreadCount, shouldPulse = false) {
       const title = escapeHtml(item.title || "");
       const subtitle = escapeHtml(item.subtitle || "");
       const time = escapeHtml(item.time || "");
+      const eventAt = escapeHtml(item.event_at || "");
       const link = escapeHtml(item.link || "#");
       const id = Number(item.id || 0);
 
@@ -909,7 +910,7 @@ function renderLiveNotifications(items, unreadCount, shouldPulse = false) {
             <div class="header-notification-body flex-grow-1 min-w-0">
               <p class="mb-0 fw-medium notification-title" style="font-size: 14px;">${title}</p>
               <p class="mb-0 text-muted notification-subtitle" style="font-size: 12px;">${subtitle}</p>
-              <small class="text-muted header-notification-time">${time}</small>
+              <small class="text-muted header-notification-time" data-event-at="${eventAt}">${time}</small>
             </div>
           </a>
           <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-2 delete-notification-btn" title="Delete" data-notification-id="${id}">
@@ -1858,162 +1859,3 @@ document.addEventListener("click", function (e) {
     showOfflineModal(linkText);
   }
 });
-
-// ============================================
-// REAL-TIME NOTIFICATION POLLER
-// ============================================
-
-const LiveNotificationPoller = {
-  intervalMs: 20000,
-  minIntervalMs: 15000,
-  maxIntervalMs: 60000,
-  currentIntervalMs: 20000,
-  timerId: null,
-  isPolling: false,
-  abortController: null,
-  seenNotificationIds: new Set(),
-  isPaused: false,
-
-  init() {
-    if (typeof window === "undefined" || !("fetch" in window)) return;
-
-    document.querySelectorAll("[data-notification-id]").forEach((el) => {
-      const id = el.getAttribute("data-notification-id");
-      if (id) this.seenNotificationIds.add(String(id));
-    });
-
-    document.addEventListener("visibilitychange", () => {
-      if (document.hidden) {
-        this.pause();
-      } else {
-        this.resume();
-        this.pollSoon(1000);
-      }
-    });
-
-    window.addEventListener("online", () => {
-      this.resume();
-      this.pollSoon(1000);
-    });
-    window.addEventListener("offline", () => {
-      this.pause();
-    });
-
-    this.scheduleNext();
-  },
-
-  pause() {
-    this.isPaused = true;
-    if (this.timerId) {
-      window.clearTimeout(this.timerId);
-      this.timerId = null;
-    }
-    if (this.abortController) {
-      this.abortController.abort();
-      this.abortController = null;
-    }
-  },
-
-  resume() {
-    this.isPaused = false;
-    this.currentIntervalMs = this.intervalMs;
-  },
-
-  scheduleNext(delay = null) {
-    if (this.timerId) {
-      window.clearTimeout(this.timerId);
-      this.timerId = null;
-    }
-    if (this.isPaused || !navigator.onLine || document.hidden) return;
-
-    const wait = delay !== null ? delay : this.currentIntervalMs;
-    this.timerId = window.setTimeout(() => this.poll(), wait);
-  },
-
-  pollSoon(delay = 500) {
-    this.scheduleNext(delay);
-  },
-
-  poll() {
-    if (this.isPolling || this.isPaused || !navigator.onLine || document.hidden)
-      return;
-
-    this.isPolling = true;
-    if (this.abortController) {
-      this.abortController.abort();
-    }
-    this.abortController = new AbortController();
-    const signal = this.abortController.signal;
-
-    appFetchJson("notifications", {
-      method: "GET",
-      signal,
-    })
-      .then((data) => {
-        this.isPolling = false;
-        this.currentIntervalMs = this.intervalMs;
-        if (data && data.ok) {
-          const unreadCount =
-            Number.parseInt(data.unread_count ?? "0", 10) || 0;
-          const items = Array.isArray(data.notifications)
-            ? data.notifications
-            : Array.isArray(data.items)
-              ? data.items
-              : [];
-
-          setHeaderNotificationCount(unreadCount);
-          renderLiveNotifications(items, unreadCount);
-          this.checkNewNotifications(items);
-        }
-        this.scheduleNext();
-      })
-      .catch((err) => {
-        this.isPolling = false;
-        if (err && err.name === "AbortError") return;
-        this.currentIntervalMs = Math.min(
-          this.maxIntervalMs,
-          Math.round(this.currentIntervalMs * 1.5),
-        );
-        this.scheduleNext();
-      });
-  },
-
-  checkNewNotifications(items) {
-    if (!Array.isArray(items)) return;
-    let hasNew = false;
-    items.forEach((item) => {
-      const id = String(item.id || item.notification_id || "");
-      if (id && !this.seenNotificationIds.has(id)) {
-        this.seenNotificationIds.add(id);
-        if (item.is_read == 0 || item.read_at === null) {
-          hasNew = true;
-          document.dispatchEvent(
-            new CustomEvent("ams:notificationReceived", { detail: item }),
-          );
-        }
-      }
-    });
-    if (hasNew) {
-      const badge = document.getElementById("headerNotificationBadge");
-      if (badge) {
-        badge.classList.remove("badge-pulse");
-        void badge.offsetWidth;
-        badge.classList.add("badge-pulse");
-      }
-    }
-  },
-};
-
-function renderLiveNotifications(items, unreadCount) {
-  const container = document.getElementById("headerNotificationList");
-  if (!container || !Array.isArray(items)) return;
-  if (items.length === 0) {
-    container.innerHTML =
-      '<div class="p-3 text-center text-muted small">No notifications</div>';
-    return;
-  }
-}
-
-function initLiveNotificationPoller() {
-  LiveNotificationPoller.init();
-}

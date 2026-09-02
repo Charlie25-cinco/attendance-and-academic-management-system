@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.124 — 2026-09-02
+
+### Core & Notifications
+
+- **Fixed Live Notification Dropdown Refresh & Poller Consolidation**:
+  - **Eliminated Duplicate Override**: Removed trailing duplicate stub block from [`assets/js/main.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/main.js) that was overriding the complete `renderLiveNotifications()` with a no-op function on non-empty items.
+  - **Dynamic Dropdown HTML Rendering**: Ensured `renderLiveNotifications()` seamlessly updates `.header-notification-scroll-body` and `#headerNotificationList` with full DepEd portal styling, unread/read opacity classes (`opacity-75`), icons, timestamps (`data-event-at`), target URLs, and trash buttons.
+  - **Automatic Action Re-binding**: Calls `initHeaderNotificationActions()` on every live render to attach mark-as-read and delete handlers to newly injected elements without requiring a page reload.
+  - **Expanded Regression Tests**: Added `testRenderLiveNotificationsMarkupGeneration` in [`tests/RealtimeNotificationPollingTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/RealtimeNotificationPollingTest.php) (4 tests, 39 assertions) covering full markup verification and empty/non-empty states.
+
 ## v0.3.123 — 2026-09-02
 
 ### Admin & Bug Fixes
