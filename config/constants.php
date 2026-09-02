@@ -51,7 +51,7 @@ function appPublicWebBaseUrl(): string {
     }
 
     $script = str_replace('\\', '/', (string)($_SERVER['SCRIPT_NAME'] ?? ''));
-    if (preg_match('#^(.*)/(api|auth|component|config|database|src|uploads|site)(?:/|$)#', $script, $m)) {
+    if (preg_match('#^(.*)/(admin|teacher|student|parent|api|auth|component|config|database|includes|assets|src|uploads|site)(?:/|$)#', $script, $m)) {
         return $scheme . '://' . $host . rtrim($m[1], '/');
     }
 
@@ -65,7 +65,7 @@ function appPublicWebBaseUrl(): string {
 
 function appUrlReadEnv(string $key): string {
     $val = getenv($key);
-    if ($val !== false && trim((string)$val) !== '') {
+    if ($val !== false) {
         return trim((string)$val);
     }
 

@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.149 — 2026-09-03
+
+### Fixed
+
+- **Base URL Resolution Across Role Portals for PWA Manifest & Service Worker Delivery**:
+  - **Portal Subdirectory Stripping**: Updated `appPublicWebBaseUrl()` in [`config/constants.php`](file:///c:/laragon/www/attendance-and-academic-management-system/config/constants.php) to recognize role portal directories (`admin`, `teacher`, `student`, `parent`, `includes`, `assets`) as application subdirectories, ensuring `appPublicWebBaseUrl()` resolves to the actual application root across all portals instead of appending portal directory names (e.g. `/admin`, `/teacher`).
+  - **Accurate PWA Head Metadata**: Fixed `pwaHeadHtml()` so `<link rel="manifest">`, `<link rel="icon">`, `<link rel="apple-touch-icon">`, and the root Service Worker registration URL point to valid application root assets instead of non-existent 404 paths in role portal folders.
+  - **Root-Absolute Manifest Semantics Preserved**: Retained standard root-absolute semantics (`/auth/login.php`, `/assets/...`, scope `/`) in [`assets/manifest.json`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/manifest.json).
+  - **Automated Regression Testing**: Created [`tests/PwaPublicWebBaseUrlTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/PwaPublicWebBaseUrlTest.php) testing exact generated manifest, service worker, and icon URLs across root and subdirectory deployments for all role portals (`admin`, `teacher`, `student`, `parent`, `auth`, `site`).
+
 ## v0.3.148 — 2026-09-03
 
 ### Fixed
