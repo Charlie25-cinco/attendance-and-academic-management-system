@@ -9,6 +9,7 @@ if (!defined('APP_REQUEST_STARTED_AT')) {
 }
 
 require_once APP_ROOT . '/vendor/autoload.php';
+require_once APP_ROOT . '/functions/app-helpers.php';
 
 // Lazy alias loader for legacy un-namespaced class references
 spl_autoload_register(function (string $class): void {

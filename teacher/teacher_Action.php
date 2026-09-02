@@ -6,6 +6,7 @@ while ($__appRoot !== dirname($__appRoot) && !is_file($__appRoot . '/functions/b
     $__appRoot = dirname($__appRoot);
 }
 require_once $__appRoot . '/functions/bootstrap.php';
+require_once $__appRoot . '/functions/app-helpers.php';
 unset($__appRoot);
 // Teacher Action Handler
 if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'teacher') {

@@ -501,7 +501,6 @@ function syncClassEnrollmentsForClass(PDO $db, int $classId): void {
     if (isset($syncedInRequest[$connId][$classId])) {
         return;
     }
-    $syncedInRequest[$connId][$classId] = true;
 
     $stmt = $db->prepare("SELECT grade_level, section, track FROM classes WHERE id = ? AND status = 'active' LIMIT 1");
     $stmt->execute([$classId]);
@@ -514,6 +513,8 @@ function syncClassEnrollmentsForClass(PDO $db, int $classId): void {
         $db, $classId, (int)$class['grade_level'],
         trim((string)$class['section']), $class['track'] ?? null
     );
+
+    $syncedInRequest[$connId][$classId] = true;
 }
 
 function autoLinkSf1Parent(PDO $db, int $studentId, array $row, string $academicYear, ?string $hashedPassword = null): ?array {

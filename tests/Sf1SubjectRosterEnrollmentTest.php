@@ -365,5 +365,48 @@ final class Sf1SubjectRosterEnrollmentTest extends TestCase
         $this->assertCount(1, $rosterAfter, 'fetchClassStudents query must still return 1 after second sync');
         $this->assertSame(201, (int)$rosterAfter[0]['id']);
     }
+
+    public function testBootstrapAndTeacherActionExplicitlyRequireAppHelpers(): void
+    {
+        $bootstrapContent = file_get_contents(__DIR__ . '/../functions/bootstrap.php');
+        $this->assertStringContainsString(
+            "require_once APP_ROOT . '/functions/app-helpers.php';",
+            $bootstrapContent,
+            'functions/bootstrap.php must explicitly require functions/app-helpers.php'
+        );
+
+        $teacherActionContent = file_get_contents(__DIR__ . '/../teacher/teacher_Action.php');
+        $this->assertStringContainsString(
+            "require_once \$__appRoot . '/functions/app-helpers.php';",
+            $teacherActionContent,
+            'teacher/teacher_Action.php must explicitly require functions/app-helpers.php'
+        );
+
+        $this->assertStringContainsString(
+            'syncClassEnrollmentsForClass($db, $classId);',
+            $teacherActionContent,
+            'teacher_Action.php fetchClassStudents must wire syncClassEnrollmentsForClass'
+        );
+    }
+
+    public function testSyncClassEnrollmentsForClassDefersCacheAssignmentUntilAfterSuccessfulCompletion(): void
+    {
+        // 1. Calling with non-existent class ID 999 must not mark it as synced or throw
+        syncClassEnrollmentsForClass($this->db, 999);
+
+        // 2. Seed student (ID 301) for Grade 11 Section Humility
+        $this->db->exec("INSERT INTO users (id, reference_code, lrn, first_name, last_name, role, grade_level, section, track, status)
+            VALUES (301, 'STU-2026-0301', '333344445555', 'Andres', 'Bonifacio', 'student', 11, 'Humility', 'academic', 'active')");
+
+        // 3. Seed Class 999 as active Filipino class
+        $this->db->exec("INSERT INTO classes (id, class_name, grade_level, section, track, teacher_id, status)
+            VALUES (999, 'Filipino', 11, 'Humility', 'academic', 10, 'active')");
+
+        // 4. Now synchronize Class 999 — it must successfully execute without being blocked by prior call
+        syncClassEnrollmentsForClass($this->db, 999);
+
+        $enrolledCount = (int)$this->db->query("SELECT COUNT(*) FROM enrollments WHERE student_id = 301 AND class_id = 999 AND status = 'enrolled'")->fetchColumn();
+        $this->assertSame(1, $enrolledCount, 'Student must be enrolled after class is created and synchronized');
+    }
 }
 
