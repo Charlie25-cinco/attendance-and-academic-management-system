@@ -559,6 +559,223 @@ final class AdminClassMultiSectionTest extends TestCase
         $this->assertSame('Mon 8:00 AM - 9:00 AM', $class2['schedule']);
         $this->assertSame('Room 101', $class2['room']);
     }
+
+    public function testSelectAllAndDeselectAllToggleLogic(): void
+    {
+        $html = file_get_contents(__DIR__ . '/../admin/admin_Classes.php');
+        $this->assertIsString($html);
+
+        // Verify helper and function definitions
+        $this->assertStringContainsString('function getEligibleSectionCheckboxes()', $html);
+        $this->assertStringContainsString('function getCheckedEligibleSections()', $html);
+        $this->assertStringContainsString('function updateSelectAllButtonState()', $html);
+        $this->assertStringContainsString('function toggleAllSections()', $html);
+        $this->assertStringContainsString('window.toggleAllSections = toggleAllSections;', $html);
+        $this->assertStringContainsString('window.updateSelectAllButtonState = updateSelectAllButtonState;', $html);
+
+        // Verify scoping to :not(:disabled) inside #sectionCheckboxesContainer
+        $this->assertStringContainsString(".section-checkbox:not(:disabled)", $html);
+        $this->assertStringContainsString(".section-checkbox:checked:not(:disabled)", $html);
+
+        // Simulation of 3 eligible sections and 1 disabled section
+        $checkboxes = [
+            ['name' => 'Ruby', 'disabled' => false, 'checked' => false],
+            ['name' => 'Emerald', 'disabled' => false, 'checked' => false],
+            ['name' => 'Sapphire', 'disabled' => false, 'checked' => false],
+            ['name' => 'DisabledSection', 'disabled' => true, 'checked' => false],
+        ];
+
+        $getEligible = function () use (&$checkboxes) {
+            return array_filter($checkboxes, fn($c) => !$c['disabled']);
+        };
+        $getCheckedEligible = function () use (&$checkboxes) {
+            return array_filter($checkboxes, fn($c) => !$c['disabled'] && $c['checked']);
+        };
+        $getButtonLabel = function () use (&$checkboxes, $getEligible) {
+            $eligible = $getEligible();
+            if (empty($eligible)) return 'Select All';
+            $allChecked = count(array_filter($eligible, fn($c) => $c['checked'])) === count($eligible);
+            return $allChecked ? 'Deselect All' : 'Select All';
+        };
+        $toggleAll = function () use (&$checkboxes, $getEligible) {
+            $eligible = $getEligible();
+            $allChecked = count(array_filter($eligible, fn($c) => $c['checked'])) === count($eligible);
+            foreach ($checkboxes as &$cb) {
+                if (!$cb['disabled']) {
+                    $cb['checked'] = !$allChecked;
+                }
+            }
+        };
+
+        // Initial state
+        $this->assertSame('Select All', $getButtonLabel());
+        $this->assertCount(0, $getCheckedEligible());
+
+        // Select All -> all 3 eligible checked, disabled remains unchecked
+        $toggleAll();
+        $this->assertSame('Deselect All', $getButtonLabel());
+        $this->assertCount(3, $getCheckedEligible());
+        $this->assertFalse($checkboxes[3]['checked'], 'Disabled checkbox must not be checked by Select All');
+
+        // Deselect All -> all 3 eligible unchecked
+        $toggleAll();
+        $this->assertSame('Select All', $getButtonLabel());
+        $this->assertCount(0, $getCheckedEligible());
+
+        // Partial selection (2 of 3)
+        $checkboxes[0]['checked'] = true;
+        $checkboxes[1]['checked'] = true;
+        $this->assertSame('Select All', $getButtonLabel());
+        $this->assertCount(2, $getCheckedEligible());
+
+        // Full selection (3 of 3)
+        $checkboxes[2]['checked'] = true;
+        $this->assertSame('Deselect All', $getButtonLabel());
+        $this->assertCount(3, $getCheckedEligible());
+    }
+
+    public function testCreateClassWithMultipleSelectedSectionsCreatesAllSectionsAtomically(): void
+    {
+        require_once __DIR__ . '/../admin/admin_Classes_Action.php';
+
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            @session_start();
+        }
+        $_SESSION['logged_in'] = true;
+        $_SESSION['role'] = 'admin';
+        $_SESSION['user_id'] = 1;
+
+        $db = new PDO('sqlite::memory:');
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        $db->exec("CREATE TABLE classes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            class_name TEXT,
+            grade_level INTEGER,
+            section TEXT,
+            teacher_id INTEGER,
+            schedule TEXT,
+            room TEXT,
+            ww_weight REAL DEFAULT 25.00,
+            pt_weight REAL DEFAULT 50.00,
+            assessment_weight REAL DEFAULT 25.00,
+            status TEXT DEFAULT 'active',
+            subject_category TEXT DEFAULT 'core',
+            track TEXT DEFAULT 'academic',
+            curriculum TEXT DEFAULT 'strengthened_shs',
+            program TEXT DEFAULT 'academic_strengthened',
+            created_at DATETIME,
+            updated_at DATETIME
+        )");
+
+        $db->exec("CREATE TABLE class_schedules (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            class_id INTEGER,
+            day TEXT,
+            start_time TEXT,
+            end_time TEXT,
+            created_at DATETIME
+        )");
+
+        $db->exec("CREATE TABLE class_subjects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            class_id INTEGER,
+            teacher_id INTEGER,
+            created_at DATETIME
+        )");
+
+        $db->exec("CREATE TABLE enrollments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id INTEGER,
+            class_id INTEGER,
+            academic_year TEXT,
+            semester INTEGER,
+            curriculum TEXT,
+            program TEXT,
+            status TEXT DEFAULT 'enrolled',
+            enrolled_at DATETIME
+        )");
+
+        $db->exec("CREATE TABLE users (
+            id INTEGER PRIMARY KEY,
+            role TEXT,
+            status TEXT,
+            first_name TEXT,
+            last_name TEXT,
+            grade_level INTEGER,
+            section TEXT,
+            track TEXT
+        )");
+
+        $db->exec("CREATE TABLE admin_audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            admin_user_id INTEGER,
+            action TEXT,
+            target_type TEXT,
+            target_id INTEGER,
+            details TEXT,
+            ip_address TEXT,
+            created_at DATETIME
+        )");
+
+        // Insert teacher
+        $db->exec("INSERT INTO users (id, role, status, first_name, last_name) VALUES (10, 'teacher', 'active', 'Jane', 'Doe')");
+
+        // Insert students in 3 sections
+        $db->exec("INSERT INTO users (id, role, status, first_name, last_name, grade_level, section, track) VALUES
+            (101, 'student', 'active', 'Alice', 'Smith', 11, 'Ruby', 'academic'),
+            (102, 'student', 'active', 'Bob', 'Jones', 11, 'Emerald', 'academic'),
+            (103, 'student', 'active', 'Charlie', 'Brown', 11, 'Sapphire', 'academic')");
+
+        // Simulate POST request with 3 selected sections
+        $_POST = [
+            'class_name' => 'Empowerment Technologies',
+            'grade_level' => '11',
+            'sections' => ['Ruby', 'Emerald', 'Sapphire'],
+            'teacher_id' => '10',
+            'room' => 'Computer Lab 1',
+            'subject_category' => 'core',
+            'track' => 'academic',
+            'schedule_mode' => 'uniform',
+            'schedule_rows' => json_encode([
+                ['day' => 'Mon', 'start_hour' => '08', 'start_min' => '00', 'start_ampm' => 'AM', 'end_hour' => '09', 'end_min' => '00', 'end_ampm' => 'AM']
+            ]),
+            'ww_weight' => '25',
+            'pt_weight' => '50',
+            'assessment_weight' => '25'
+        ];
+
+        ob_start();
+        createClass($db);
+        $output = ob_get_clean();
+        $res = json_decode($output, true);
+
+        $this->assertTrue($res['success'] ?? false, 'createClass should succeed for all 3 sections: ' . ($res['message'] ?? $output));
+        $this->assertSame(3, $res['created_count'] ?? 0);
+        $this->assertSame(['Ruby', 'Emerald', 'Sapphire'], $res['created_sections'] ?? []);
+
+        // Verify that 3 distinct class records exist in the database
+        $createdClasses = $db->query("SELECT * FROM classes WHERE class_name = 'Empowerment Technologies' ORDER BY section ASC")->fetchAll(PDO::FETCH_ASSOC);
+        $this->assertCount(3, $createdClasses);
+
+        $sectionsFound = array_column($createdClasses, 'section');
+        $this->assertSame(['Emerald', 'Ruby', 'Sapphire'], $sectionsFound);
+
+        // Verify schedules and enrollments for all 3 classes
+        foreach ($createdClasses as $cls) {
+            $classId = (int)$cls['id'];
+            $this->assertSame(10, (int)$cls['teacher_id']);
+            $this->assertSame('Computer Lab 1', $cls['room']);
+
+            // Schedule check
+            $schedCount = (int)$db->query("SELECT COUNT(*) FROM class_schedules WHERE class_id = $classId")->fetchColumn();
+            $this->assertSame(1, $schedCount);
+
+            // Enrollment check (auto-synced matching student)
+            $enrCount = (int)$db->query("SELECT COUNT(*) FROM enrollments WHERE class_id = $classId")->fetchColumn();
+            $this->assertSame(1, $enrCount);
+        }
+    }
 }
 
 

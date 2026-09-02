@@ -891,6 +891,37 @@ $page_title = 'Manage Classes';
             addClassModalEl.addEventListener('hidden.bs.modal', resetAddClassModal);
         }
         
+        function getEligibleSectionCheckboxes() {
+            const container = document.getElementById('sectionCheckboxesContainer');
+            if (!container) return [];
+            return Array.from(container.querySelectorAll('.section-checkbox:not(:disabled)'));
+        }
+
+        function getCheckedEligibleSections() {
+            const container = document.getElementById('sectionCheckboxesContainer');
+            if (!container) return [];
+            return Array.from(container.querySelectorAll('.section-checkbox:checked:not(:disabled)'))
+                .map(cb => (cb.value || '').trim())
+                .filter(Boolean);
+        }
+
+        function updateSelectAllButtonState() {
+            const btn = document.getElementById('selectAllSectionsBtn');
+            if (!btn) return;
+            const checkboxes = getEligibleSectionCheckboxes();
+            if (!checkboxes.length) {
+                btn.textContent = 'Select All';
+                return;
+            }
+            const allChecked = checkboxes.every(cb => cb.checked);
+            btn.textContent = allChecked ? 'Deselect All' : 'Select All';
+        }
+
+        function onSectionCheckboxChange() {
+            updateSelectAllButtonState();
+            renderSectionScheduleTabs();
+        }
+
         function updateSections() {
             const gradeLevel = document.getElementById('gradeLevel')?.value;
             const track = document.getElementById('classTrack')?.value;
@@ -908,19 +939,18 @@ $page_title = 'Manage Classes';
                         const pill = document.createElement('div');
                         pill.className = 'form-check form-check-inline m-0 border px-3 py-1 rounded shadow-sm app-section-pill';
                         pill.innerHTML = `
-                            <input class="form-check-input section-checkbox" type="checkbox" name="sections[]" value="${section.value}" id="sec_cb_${idx}" onchange="renderSectionScheduleTabs()">
+                            <input class="form-check-input section-checkbox" type="checkbox" name="sections[]" value="${escapeHtml(section.value)}" id="sec_cb_${idx}" onchange="onSectionCheckboxChange()">
                             <label class="form-check-label fw-medium ms-1" for="sec_cb_${idx}" style="cursor: pointer;">
-                                ${section.label}
+                                ${escapeHtml(section.label)}
                             </label>
                         `;
                         container.appendChild(pill);
                     });
                     if (list.length === 1) {
-                        const singleCb = container.querySelector('.section-checkbox');
+                        const singleCb = container.querySelector('.section-checkbox:not(:disabled)');
                         if (singleCb) singleCb.checked = true;
                     }
-                    const btn = document.getElementById('selectAllSectionsBtn');
-                    if (btn) btn.textContent = 'Select All';
+                    updateSelectAllButtonState();
                 } else {
                     if (toggleWrap) toggleWrap.style.display = 'none';
                     container.innerHTML = '<span class="text-muted small"><i class="bi bi-exclamation-circle me-1"></i>No sections found for this Grade & Track.</span>';
@@ -934,12 +964,11 @@ $page_title = 'Manage Classes';
         }
 
         function toggleAllSections() {
-            const checkboxes = document.querySelectorAll('.section-checkbox');
+            const checkboxes = getEligibleSectionCheckboxes();
             if (!checkboxes.length) return;
-            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            const allChecked = checkboxes.every(cb => cb.checked);
             checkboxes.forEach(cb => { cb.checked = !allChecked; });
-            const btn = document.getElementById('selectAllSectionsBtn');
-            if (btn) btn.textContent = allChecked ? 'Select All' : 'Deselect All';
+            updateSelectAllButtonState();
             renderSectionScheduleTabs();
         }
 
@@ -1062,24 +1091,23 @@ $page_title = 'Manage Classes';
         }
 
         function renderSectionScheduleTabs() {
-            const checkedBoxes = Array.from(document.querySelectorAll('.section-checkbox:checked'));
+            const checkedSections = getCheckedEligibleSections();
             const tabsContainer = document.getElementById('sectionSchedTabs');
             const contentContainer = document.getElementById('sectionSchedTabContent');
             if (!tabsContainer || !contentContainer) return;
 
-            if (checkedBoxes.length === 0) {
+            if (checkedSections.length === 0) {
                 tabsContainer.innerHTML = '<li class="nav-item"><span class="nav-link disabled text-muted small">No sections selected</span></li>';
                 contentContainer.innerHTML = '<div class="text-muted small text-center py-3"><i class="bi bi-info-circle me-1"></i>Check at least one target section above to configure its schedule.</div>';
                 return;
             }
 
-            const activeTabSection = tabsContainer.querySelector('.nav-link.active')?.dataset?.section || checkedBoxes[0].value;
+            const activeTabSection = tabsContainer.querySelector('.nav-link.active')?.dataset?.section || checkedSections[0];
             tabsContainer.innerHTML = '';
 
-            checkedBoxes.forEach((cb, index) => {
-                const secName = cb.value;
+            checkedSections.forEach((secName, index) => {
                 const cleanId = getCleanSectionId(secName);
-                const isActive = (secName === activeTabSection) || (index === 0 && !checkedBoxes.some(c => c.value === activeTabSection));
+                const isActive = (secName === activeTabSection) || (index === 0 && !checkedSections.includes(activeTabSection));
 
                 const li = document.createElement('li');
                 li.className = 'nav-item';
@@ -1125,7 +1153,7 @@ $page_title = 'Manage Classes';
             // Clean up panes for unchecked sections
             Array.from(contentContainer.children).forEach(pane => {
                 const paneId = pane.id;
-                const stillChecked = checkedBoxes.some(cb => `tab-pane-${getCleanSectionId(cb.value)}` === paneId);
+                const stillChecked = checkedSections.some(sec => `tab-pane-${getCleanSectionId(sec)}` === paneId);
                 if (!stillChecked) {
                     pane.remove();
                 }
@@ -1224,12 +1252,12 @@ $page_title = 'Manage Classes';
         }
 
         function copyFirstSectionScheduleToAll() {
-            const checkedBoxes = Array.from(document.querySelectorAll('.section-checkbox:checked'));
-            if (checkedBoxes.length < 2) {
+            const checkedSections = getCheckedEligibleSections();
+            if (checkedSections.length < 2) {
                 showNotification('Select at least 2 sections to copy schedule across them', 'info');
                 return;
             }
-            const firstSec = checkedBoxes[0].value;
+            const firstSec = checkedSections[0];
             const firstContainer = document.getElementById(`secScheduleRows_${getCleanSectionId(firstSec)}`);
             const firstRoom = document.getElementById(`secRoomInput_${getCleanSectionId(firstSec)}`)?.value || '';
             const firstRows = collectRowsFromContainer(firstContainer);
@@ -1239,8 +1267,7 @@ $page_title = 'Manage Classes';
                 return;
             }
 
-            checkedBoxes.slice(1).forEach(cb => {
-                const secName = cb.value;
+            checkedSections.slice(1).forEach(secName => {
                 const cleanId = getCleanSectionId(secName);
                 const targetCont = document.getElementById(`secScheduleRows_${cleanId}`);
                 if (targetCont) {
@@ -1257,12 +1284,12 @@ $page_title = 'Manage Classes';
         }
 
         function staggerSectionSchedules() {
-            const checkedBoxes = Array.from(document.querySelectorAll('.section-checkbox:checked'));
-            if (checkedBoxes.length < 2) {
+            const checkedSections = getCheckedEligibleSections();
+            if (checkedSections.length < 2) {
                 showNotification('Select at least 2 sections to stagger schedules', 'info');
                 return;
             }
-            const firstSec = checkedBoxes[0].value;
+            const firstSec = checkedSections[0];
             const firstContainer = document.getElementById(`secScheduleRows_${getCleanSectionId(firstSec)}`);
             const firstRoom = document.getElementById(`secRoomInput_${getCleanSectionId(firstSec)}`)?.value || '';
             const firstRows = collectRowsFromContainer(firstContainer);
@@ -1272,9 +1299,8 @@ $page_title = 'Manage Classes';
                 return;
             }
 
-            checkedBoxes.forEach((cb, index) => {
+            checkedSections.forEach((secName, index) => {
                 if (index === 0) return;
-                const secName = cb.value;
                 const cleanId = getCleanSectionId(secName);
                 const targetCont = document.getElementById(`secScheduleRows_${cleanId}`);
                 if (targetCont) {
@@ -1813,6 +1839,11 @@ $page_title = 'Manage Classes';
         window.onAddSecScheduleModeChange = onAddSecScheduleModeChange;
         window.addSecScheduleRow = addSecScheduleRow;
         window.removeAddSecScheduleRow = removeAddSecScheduleRow;
+        window.toggleAllSections = toggleAllSections;
+        window.updateSelectAllButtonState = updateSelectAllButtonState;
+        window.onSectionCheckboxChange = onSectionCheckboxChange;
+        window.getCheckedEligibleSections = getCheckedEligibleSections;
+        window.getEligibleSectionCheckboxes = getEligibleSectionCheckboxes;
 
         function viewClass(id) {
             window.location.href = 'admin_Class_Detail.php?id=' + id;
@@ -1861,7 +1892,7 @@ $page_title = 'Manage Classes';
             const className = toTitleCaseWords((formData.get('class_name') || '').toString().trim());
             const gradeLevel = (formData.get('grade_level') || '').toString().trim();
             
-            const checkedSections = Array.from(document.querySelectorAll('.section-checkbox:checked')).map(cb => cb.value.trim()).filter(Boolean);
+            const checkedSections = getCheckedEligibleSections();
 
             if (!className || !gradeLevel || checkedSections.length === 0) {
                 showNotification('Subject name, grade level, and at least one target section are required', 'warning');

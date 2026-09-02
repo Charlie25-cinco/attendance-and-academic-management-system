@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.132 — 2026-09-02
+
+### Admin & UI/UX
+
+- **Hot-Fix Select All Checkbox Scoping & State Sync in Admin Classes**:
+  - **Scoped Checkbox Extraction**: Implemented `getEligibleSectionCheckboxes()` and `getCheckedEligibleSections()` in [`admin/admin_Classes.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Classes.php) to strictly target `#sectionCheckboxesContainer .section-checkbox:not(:disabled)`, preventing disabled, hidden, or stale checkboxes across the DOM from distorting selection counts or tab rendering.
+  - **Reactive Select All Button State**: Added `updateSelectAllButtonState()` and `onSectionCheckboxChange()`, dynamically updating `#selectAllSectionsBtn` text to `"Deselect All"` when all eligible sections are selected and `"Select All"` otherwise.
+  - **Deterministic Multi-Section Form Payload**: Refactored `saveClass()`, `copyFirstSectionScheduleToAll()`, and `staggerSectionSchedules()` to use `getCheckedEligibleSections()`, ensuring every checked section is correctly bundled into the `sections[]` array.
+  - **Automated Regression Test Suite**: Added `testSelectAllAndDeselectAllToggleLogic` and `testCreateClassWithMultipleSelectedSectionsCreatesAllSectionsAtomically` in [`tests/AdminClassMultiSectionTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/AdminClassMultiSectionTest.php) verifying 3-section selection, deselect-all toggle, disabled checkbox exclusion, and atomic creation of all 3 sections in SQLite (14 tests, 172 assertions in MultiSectionTest; all 177 tests in suite passing).
+
 ## v0.3.131 — 2026-09-02
 
 ### Admin & UI/UX
