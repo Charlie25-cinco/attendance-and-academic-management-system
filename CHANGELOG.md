@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.116 — 2026-09-02
+
+### Feature & UI
+
+- **Profile Name Auto-Capitalization & Title Case Normalization**:
+  - Added `autocapitalize="words"` and autocomplete hints (`given-name`, `additional-name`, `family-name`) to First Name, Middle Name, and Last Name fields in [`includes/modals.php`](file:///c:/laragon/www/attendance-and-academic-management-system/includes/modals.php).
+  - Implemented live JavaScript `toTitleCase` formatters on `input` and `blur` events so names are automatically formatted as users type.
+  - Added Title Case server-side normalization (`mb_convert_case` with `MB_CASE_TITLE`) in [`api/routes/03-profile.php`](file:///c:/laragon/www/attendance-and-academic-management-system/api/routes/03-profile.php) to ensure consistency across the database and session headers.
+  - Added test suite in [`tests/ProfileNameCapitalizationTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/ProfileNameCapitalizationTest.php) (total test suite at 157 tests).
+
 ## v0.3.115 — 2026-09-02
 
 ### Performance & UI

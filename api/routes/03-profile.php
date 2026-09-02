@@ -61,17 +61,22 @@ if ($route === 'profile' && $method === 'POST') {
     foreach ($allowedFields as $field) {
         if (array_key_exists($field, $body)) {
             $value = trim((string)$body[$field]);
-            if ($field === 'first_name' || $field === 'last_name') {
-                if (!apiValidPersonName($value)) {
-                    apiJson(['ok' => false, 'message' => ucfirst(str_replace('_', ' ', $field)) . ' contains invalid characters'], 422);
+            if ($field === 'first_name' || $field === 'middle_name' || $field === 'last_name') {
+                if ($value !== '') {
+                    $value = mb_convert_case($value, MB_CASE_TITLE, 'UTF-8');
                 }
-                if (!apiHasMinimumLetters($value, 2)) {
-                    apiJson(['ok' => false, 'message' => ucfirst(str_replace('_', ' ', $field)) . ' must have at least 2 letters'], 422);
+                if ($field === 'first_name' || $field === 'last_name') {
+                    if (!apiValidPersonName($value)) {
+                        apiJson(['ok' => false, 'message' => ucfirst(str_replace('_', ' ', $field)) . ' contains invalid characters'], 422);
+                    }
+                    if (!apiHasMinimumLetters($value, 2)) {
+                        apiJson(['ok' => false, 'message' => ucfirst(str_replace('_', ' ', $field)) . ' must have at least 2 letters'], 422);
+                    }
                 }
-            }
-            if ($field === 'middle_name' && $value !== '') {
-                if (!apiValidMiddleName($value)) {
-                    apiJson(['ok' => false, 'message' => 'Middle name is invalid'], 422);
+                if ($field === 'middle_name' && $value !== '') {
+                    if (!apiValidMiddleName($value)) {
+                        apiJson(['ok' => false, 'message' => 'Middle name is invalid'], 422);
+                    }
                 }
             }
             if ($field === 'contact_number' && $value !== '') {

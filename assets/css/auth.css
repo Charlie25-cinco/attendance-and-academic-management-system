@@ -19,7 +19,14 @@
 
 body {
   min-height: 100vh;
-  font-family: "Manrope", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    "Manrope",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
 }
 
 .auth-container {
@@ -177,7 +184,10 @@ body {
   color: var(--auth-text);
   min-height: 48px;
   padding: 0.76rem 0.9rem 0.76rem 2.65rem;
-  transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    background 0.16s ease;
   width: 100%;
 }
 
@@ -392,7 +402,9 @@ body {
   gap: 5px;
   margin-top: 6px;
   min-height: 1.25rem;
-  transition: color 0.15s ease, opacity 0.15s ease;
+  transition:
+    color 0.15s ease,
+    opacity 0.15s ease;
 }
 
 .password-match-indicator.is-match {

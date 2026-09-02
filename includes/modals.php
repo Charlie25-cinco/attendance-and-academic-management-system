@@ -149,15 +149,15 @@
                     <div class="row">
                         <div class="col-md-4 mb-3">
                             <label class="form-label">First Name</label>
-                            <input type="text" class="form-control" id="profileFirstName" name="first_name" value="<?php echo htmlspecialchars($displayFirstName); ?>" required>
+                            <input type="text" class="form-control profile-name-input" id="profileFirstName" name="first_name" value="<?php echo htmlspecialchars($displayFirstName); ?>" autocapitalize="words" autocomplete="given-name" spellcheck="false" required>
                         </div>
                         <div class="col-md-4 mb-3">
                             <label class="form-label">Middle Name</label>
-                            <input type="text" class="form-control" id="profileMiddleName" name="middle_name" value="<?php echo htmlspecialchars($displayMiddleName); ?>">
+                            <input type="text" class="form-control profile-name-input" id="profileMiddleName" name="middle_name" value="<?php echo htmlspecialchars($displayMiddleName); ?>" autocapitalize="words" autocomplete="additional-name" spellcheck="false">
                         </div>
                         <div class="col-md-4 mb-3">
                             <label class="form-label">Last Name</label>
-                            <input type="text" class="form-control" id="profileLastName" name="last_name" value="<?php echo htmlspecialchars($_SESSION['last_name'] ?? ''); ?>" required>
+                            <input type="text" class="form-control profile-name-input" id="profileLastName" name="last_name" value="<?php echo htmlspecialchars($_SESSION['last_name'] ?? ''); ?>" autocapitalize="words" autocomplete="family-name" spellcheck="false" required>
                         </div>
                     </div>
                     <div class="mb-3">
@@ -272,6 +272,39 @@
         alertBox.textContent = message;
     }
 
+    function toTitleCase(str) {
+        if (!str) return '';
+        return str.replace(/\b([a-z\u00C0-\u017F])/gi, function (char) {
+            return char.toUpperCase();
+        });
+    }
+
+    document.querySelectorAll('.profile-name-input, #profileFirstName, #profileMiddleName, #profileLastName').forEach(function (input) {
+        input.addEventListener('blur', function () {
+            var val = (this.value || '').trim();
+            if (val) {
+                this.value = toTitleCase(val);
+            }
+        });
+        input.addEventListener('input', function () {
+            var val = this.value || '';
+            var pos = this.selectionStart;
+            if (val.length > 0 && pos === val.length) {
+                var words = val.split(/(\s+|-)/);
+                var formatted = words.map(function (w) {
+                    if (/^\s+$/.test(w) || w === '-') return w;
+                    return w.charAt(0).toUpperCase() + w.slice(1);
+                }).join('');
+                if (val !== formatted) {
+                    this.value = formatted;
+                    if (pos !== null) {
+                        this.setSelectionRange(pos, pos);
+                    }
+                }
+            }
+        });
+    });
+
     var newPassInput = document.getElementById('profileNewPassword');
     var confirmPassInput = document.getElementById('profileConfirmPassword');
     var matchIndicator = document.getElementById('profilePasswordMatchIndicator');
@@ -383,6 +416,9 @@
             new FormData(form).forEach(function (value, key) {
                 payload[key] = String(value || '');
             });
+            if (payload.first_name) payload.first_name = toTitleCase(payload.first_name.trim());
+            if (payload.middle_name) payload.middle_name = toTitleCase(payload.middle_name.trim());
+            if (payload.last_name) payload.last_name = toTitleCase(payload.last_name.trim());
             setProfileBusy(true);
             fetch(profileApiUrl(), {
                 method: 'POST',
