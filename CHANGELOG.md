@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.131 — 2026-09-02
+
+### Admin & UI/UX
+
+- **Hot-Fix Add Section Button & Group Modal Wiring**:
+  - **Resolved Missing Helper Errors**: Removed undefined `setupTimeInputFormatters(rowDiv)` call in `addSecScheduleRow()` and added in-scope `escapeHtml()` helper in [`admin/admin_Classes.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Classes.php).
+  - **Robust Bootstrap Modal Transitions**: Utilized `bootstrap.Modal.getOrCreateInstance()` across `#classGroupSectionsModal` and `#addSectionToGroupModal` to reliably toggle between the section list and the dedicated Add Section form without modal collision or backdrop freezing.
+  - **Immediate Section Dropdown Hydration**: Synchronously populated `#addSecModalSectionSelect` from `serverSections` with exact-group section exclusion and background API refresh.
+  - **Comprehensive Event Delegation & Verification**: Added input event formatting on `#addSectionToGroupModal` and validated full UI flow and event wiring with DOM simulation and PHPUnit suite (175 tests, 1,331 assertions passing).
+
 ## v0.3.130 — 2026-09-02
 
 ### Admin & Core

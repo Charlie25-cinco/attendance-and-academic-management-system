@@ -1412,15 +1412,47 @@ $page_title = 'Manage Classes';
             });
         }
 
+        const addSectionToGroupModalEl = document.getElementById('addSectionToGroupModal');
+        if (addSectionToGroupModalEl) {
+            addSectionToGroupModalEl.addEventListener('input', function (event) {
+                sanitizeScheduleNumericInput(event.target);
+            });
+        }
+
         function collectScheduleRows() {
             return collectRowsFromContainer(document.getElementById('scheduleRows'));
         }
 
+        function escapeHtml(value) {
+            if (value === null || value === undefined) return '';
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function getClassGroupSectionsModal() {
+            const el = document.getElementById('classGroupSectionsModal');
+            if (!el || !window.bootstrap?.Modal) return null;
+            return bootstrap.Modal.getOrCreateInstance(el);
+        }
+
+        function getAddSectionToGroupModal() {
+            const el = document.getElementById('addSectionToGroupModal');
+            if (!el || !window.bootstrap?.Modal) return null;
+            return bootstrap.Modal.getOrCreateInstance(el);
+        }
+
         const groupedClassesData = <?php echo json_encode($groupedClasses, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
         let activeGroupIndex = null;
+        window.groupedClassesData = groupedClassesData;
+        window.activeGroupIndex = activeGroupIndex;
 
         function openGroupedClassModal(index) {
             activeGroupIndex = index;
+            window.activeGroupIndex = index;
             const group = groupedClassesData[index];
             if (!group) return;
 
@@ -1484,22 +1516,21 @@ $page_title = 'Manage Classes';
                 });
             }
 
-            const modalEl = document.getElementById('classGroupSectionsModal');
-            if (modalEl) {
-                const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            const modal = getClassGroupSectionsModal();
+            if (modal) {
                 modal.show();
             }
         }
 
         function openAddSectionForGroup() {
-            if (activeGroupIndex === null || !groupedClassesData[activeGroupIndex]) return;
-            const group = groupedClassesData[activeGroupIndex];
+            const groupIndex = activeGroupIndex !== null ? activeGroupIndex : window.activeGroupIndex;
+            if (groupIndex === null || !groupedClassesData[groupIndex]) return;
+            const group = groupedClassesData[groupIndex];
 
             // Close group sections modal
-            const groupModalEl = document.getElementById('classGroupSectionsModal');
-            if (groupModalEl) {
-                const m = bootstrap.Modal.getInstance(groupModalEl);
-                if (m) m.hide();
+            const groupModal = getClassGroupSectionsModal();
+            if (groupModal) {
+                groupModal.hide();
             }
 
             // Set read-only subject context banner
@@ -1508,8 +1539,8 @@ $page_title = 'Manage Classes';
             const catBadgeEl = document.getElementById('addSecModalCategory');
             const trackBadgeEl = document.getElementById('addSecModalTrack');
 
-            if (subjNameEl) subjNameEl.textContent = group.class_name;
-            if (gradeLevelEl) gradeLevelEl.textContent = `Grade ${group.grade_level}`;
+            if (subjNameEl) subjNameEl.textContent = group.class_name || '--';
+            if (gradeLevelEl) gradeLevelEl.textContent = `Grade ${group.grade_level || '11'}`;
             if (catBadgeEl) {
                 catBadgeEl.textContent = group.subject_category
                     ? group.subject_category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
@@ -1523,8 +1554,7 @@ $page_title = 'Manage Classes';
 
             // Populate the section select based on active group's exact grouping identity:
             // exclude only sections belonging to this exact subject group
-            hydrateSectionsCache(serverSections);
-            loadSectionsCache().then(() => {
+            const populateSections = () => {
                 const allSections = getSectionsFor(group.grade_level, group.track);
                 const existingGroupSectionNames = (group.sections || []).map(s => (s.section || '').toString().toLowerCase().trim());
 
@@ -1557,6 +1587,12 @@ $page_title = 'Manage Classes';
                         if (submitBtn) submitBtn.disabled = false;
                     }
                 }
+            };
+
+            hydrateSectionsCache(serverSections);
+            populateSections();
+            loadSectionsCache().then(() => {
+                populateSections();
             });
 
             // Reset teacher, room, and schedule fields
@@ -1574,18 +1610,16 @@ $page_title = 'Manage Classes';
             addSecScheduleRow();
 
             // Open dedicated modal
-            const addSecModalEl = document.getElementById('addSectionToGroupModal');
-            if (addSecModalEl) {
-                const modal = bootstrap.Modal.getInstance(addSecModalEl) || new bootstrap.Modal(addSecModalEl);
-                modal.show();
+            const addSecModal = getAddSectionToGroupModal();
+            if (addSecModal) {
+                addSecModal.show();
             }
         }
 
         function backToGroupSectionsModal() {
-            const addSecModalEl = document.getElementById('addSectionToGroupModal');
-            if (addSecModalEl) {
-                const m = bootstrap.Modal.getInstance(addSecModalEl);
-                if (m) m.hide();
+            const addSecModal = getAddSectionToGroupModal();
+            if (addSecModal) {
+                addSecModal.hide();
             }
             if (activeGroupIndex !== null) {
                 openGroupedClassModal(activeGroupIndex);
@@ -1656,7 +1690,6 @@ $page_title = 'Manage Classes';
                 </div>
             `;
             container.appendChild(rowDiv);
-            setupTimeInputFormatters(rowDiv);
         }
 
         function removeAddSecScheduleRow(btn) {
@@ -1741,10 +1774,9 @@ $page_title = 'Manage Classes';
             .then(data => {
                 if (data.success) {
                     showNotification(data.message || `Section ${selectedSection} added successfully`, 'success');
-                    const addSecModalEl = document.getElementById('addSectionToGroupModal');
-                    if (addSecModalEl) {
-                        const m = bootstrap.Modal.getInstance(addSecModalEl);
-                        if (m) m.hide();
+                    const addSecModal = getAddSectionToGroupModal();
+                    if (addSecModal) {
+                        addSecModal.hide();
                     }
                     setTimeout(() => window.location.reload(), 600);
                 } else {
@@ -1766,10 +1798,9 @@ $page_title = 'Manage Classes';
         }
 
         function deleteSectionFromGroupModal(id, className, sectionName) {
-            const modalEl = document.getElementById('classGroupSectionsModal');
-            if (modalEl) {
-                const modal = bootstrap.Modal.getInstance(modalEl);
-                if (modal) modal.hide();
+            const groupModal = getClassGroupSectionsModal();
+            if (groupModal) {
+                groupModal.hide();
             }
             deleteClass(id, `${className} (Section ${sectionName})`);
         }
@@ -1779,6 +1810,9 @@ $page_title = 'Manage Classes';
         window.backToGroupSectionsModal = backToGroupSectionsModal;
         window.submitAddSectionToGroup = submitAddSectionToGroup;
         window.deleteSectionFromGroupModal = deleteSectionFromGroupModal;
+        window.onAddSecScheduleModeChange = onAddSecScheduleModeChange;
+        window.addSecScheduleRow = addSecScheduleRow;
+        window.removeAddSecScheduleRow = removeAddSecScheduleRow;
 
         function viewClass(id) {
             window.location.href = 'admin_Class_Detail.php?id=' + id;
