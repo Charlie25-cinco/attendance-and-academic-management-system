@@ -146,17 +146,21 @@
                                 </div>
                             </div>
                             <div class="row mt-1">
-                                <div class="col-md-6 mb-3">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label" for="editReferenceCode">Reference Code</label>
+                                    <input type="text" id="editReferenceCode" class="form-control" readonly style="background-color: #f8f9fa;">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label" for="editLrn">LRN <span class="text-danger">*</span> <small class="text-muted">(12 digits)</small></label>
+                                    <input type="text" name="lrn" id="editLrn" class="form-control" maxlength="12" placeholder="Enter 12-digit LRN" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required autocomplete="off">
+                                </div>
+                                <div class="col-md-4 mb-0">
                                     <label class="form-label" for="editSex">Sex <span class="text-danger">*</span></label>
                                     <select name="sex" id="editSex" class="form-select" required autocomplete="sex">
                                         <option value="">Select Sex</option>
                                         <option value="male">Male</option>
                                         <option value="female">Female</option>
                                     </select>
-                                </div>
-                                <div class="col-md-6 mb-0">
-                                    <label class="form-label" for="editLrn">LRN <span class="text-danger">*</span> <small class="text-muted">(12 digits)</small></label>
-                                    <input type="text" name="lrn" id="editLrn" class="form-control" maxlength="12" placeholder="Enter 12-digit LRN" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required autocomplete="off">
                                 </div>
                             </div>
                         </div>

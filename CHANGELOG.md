@@ -2,6 +2,15 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.142 — 2026-09-02
+
+### Fixed
+
+- **Student Reference-Code Visibility in Admin Enrollments & Manage Users Isolation**:
+  - **Manage Users Role Isolation**: Confirmed that [`admin/admin_Users.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Users.php) strictly excludes `role = 'student'` (`role NOT IN ('admin', 'student')`), and [`admin/admin_Users_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Users_Action.php) maintains all student-mutation guard clauses (`createUser`, `updateUser`, `deleteUser`, `resetUserPassword`, `setUserStatus`, `getUser`) directing student management to Enrollments.
+  - **Student Reference Code in Admin Enrollments**: Updated [`includes/modals/enrollment_modals.php`](file:///c:/laragon/www/attendance-and-academic-management-system/includes/modals/enrollment_modals.php) to display `#editReferenceCode` in `#editStudentModal` alongside LRN in Profile Updates, and updated [`admin/admin_Enrollments.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Enrollments.php) to populate `editReferenceCode` on modal launch while displaying student reference codes in the user list info and View Student modal.
+  - **Automated Regression Testing**: Added [`tests/AdminUsersStudentExclusionAndEnrollmentsRefCodeTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/AdminUsersStudentExclusionAndEnrollmentsRefCodeTest.php) verifying student exclusion from Manage Users, student reference-code querying/filtering in Enrollments, and presence of reference-code elements across table and modal templates.
+
 ## v0.3.141 — 2026-09-02
 
 ### Fixed

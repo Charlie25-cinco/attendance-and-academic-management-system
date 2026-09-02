@@ -546,6 +546,10 @@ if (isset($_GET['download_template'])) {
                     }
                     const s = data.student;
                     document.getElementById('editUserId').value = s.id;
+                    const refCodeInput = document.getElementById('editReferenceCode');
+                    if (refCodeInput) {
+                        refCodeInput.value = s.reference_code || '';
+                    }
                     document.getElementById('editFirstName').value = s.first_name || '';
                     document.getElementById('editMiddleName').value = s.middle_name || '';
                     document.getElementById('editLastName').value = s.last_name || '';
