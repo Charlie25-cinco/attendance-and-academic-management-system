@@ -442,56 +442,37 @@ function syncStudentEnrollments(PDO $db, int $studentId, int $gradeLevel, string
     }
 }
 
-function syncClassEnrollmentsForClass(PDO $db, int $classId, ?string $academicYear = null): void {
-    if ($classId <= 0) {
-        return;
-    }
-    static $syncedInRequest = [];
-    $connId = spl_object_id($db);
-    if (isset($syncedInRequest[$connId][$classId])) {
-        return;
-    }
-    $syncedInRequest[$connId][$classId] = true;
-
-    $stmt = $db->prepare("SELECT grade_level, section, track, curriculum, program FROM classes WHERE id = ? AND status = 'active' LIMIT 1");
-    $stmt->execute([$classId]);
-    $class = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$class) {
-        return;
-    }
-
-    $gradeLevel = (int)($class['grade_level'] ?? 0);
-    $section = trim((string)($class['section'] ?? ''));
-    $track = (string)($class['track'] ?? '');
-
-    if ($gradeLevel <= 0 || $section === '') {
-        return;
-    }
-
-    $academicYear = $academicYear ?: currentAcademicYear();
-    $curriculum = !empty($class['curriculum']) ? $class['curriculum'] : strengthenedShsCurriculum($gradeLevel, $academicYear);
-    $program = !empty($class['program']) ? $class['program'] : strengthenedShsProgram($gradeLevel, $track, $academicYear);
+function syncClassEnrollmentsByGradeSection($db, $classId, $gradeLevel, $section, ?string $track = null) {
+    $academicYear = currentAcademicYear();
+    $curriculum = strengthenedShsCurriculum((int)$gradeLevel, $academicYear);
+    $program = strengthenedShsProgram((int)$gradeLevel, $track, $academicYear);
     $semester = $curriculum === 'strengthened_shs' ? null : 1;
+
+    $sectionTrimmed = trim((string)$section);
+    if ($sectionTrimmed === '' || (int)$gradeLevel <= 0 || (int)$classId <= 0) {
+        return;
+    }
 
     $driver = (string)$db->getAttribute(PDO::ATTR_DRIVER_NAME);
     if ($driver === 'sqlite') {
         $sectionSql = "(LOWER(TRIM(COALESCE(u.section, ''))) = LOWER(TRIM(COALESCE(?, ''))))";
         $params = [
-            $classId, $academicYear, $semester, $curriculum, $program, date('Y-m-d H:i:s'),
-            $gradeLevel, $section,
+            (int)$classId, $academicYear, $semester, $curriculum, $program, date('Y-m-d H:i:s'),
+            (int)$gradeLevel, $sectionTrimmed,
             $track, $track, $track,
-            $classId, $academicYear
+            (int)$classId, $academicYear
         ];
     } else {
         $sectionSql = sectionMatchSql('u.section');
         $params = [
-            $classId, $academicYear, $semester, $curriculum, $program, date('Y-m-d H:i:s'),
-            $gradeLevel, $section, $section,
+            (int)$classId, $academicYear, $semester, $curriculum, $program, date('Y-m-d H:i:s'),
+            (int)$gradeLevel, $sectionTrimmed, $sectionTrimmed,
             $track, $track, $track,
-            $classId, $academicYear
+            (int)$classId, $academicYear
         ];
     }
 
+    // Enroll active/pending students whose profile matches class grade/section.
     $insert = $db->prepare("INSERT INTO enrollments (student_id, class_id, academic_year, semester, curriculum, program, status, enrolled_at)
                             SELECT u.id, ?, ?, ?, ?, ?, 'enrolled', ?
                             FROM users u
@@ -509,6 +490,30 @@ function syncClassEnrollmentsForClass(PDO $db, int $classId, ?string $academicYe
                                     AND COALESCE(e.status, 'enrolled') = 'enrolled'
                               )");
     $insert->execute($params);
+}
+
+function syncClassEnrollmentsForClass(PDO $db, int $classId): void {
+    if ($classId <= 0) {
+        return;
+    }
+    static $syncedInRequest = [];
+    $connId = spl_object_id($db);
+    if (isset($syncedInRequest[$connId][$classId])) {
+        return;
+    }
+    $syncedInRequest[$connId][$classId] = true;
+
+    $stmt = $db->prepare("SELECT grade_level, section, track FROM classes WHERE id = ? AND status = 'active' LIMIT 1");
+    $stmt->execute([$classId]);
+    $class = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$class || (int)($class['grade_level'] ?? 0) <= 0 || trim((string)($class['section'] ?? '')) === '') {
+        return;
+    }
+
+    syncClassEnrollmentsByGradeSection(
+        $db, $classId, (int)$class['grade_level'],
+        trim((string)$class['section']), $class['track'] ?? null
+    );
 }
 
 function autoLinkSf1Parent(PDO $db, int $studentId, array $row, string $academicYear, ?string $hashedPassword = null): ?array {

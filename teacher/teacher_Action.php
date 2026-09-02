@@ -1314,6 +1314,8 @@ function fetchClassStudents($db, $teacherId) {
             return;
         }
 
+        syncClassEnrollmentsForClass($db, $classId);
+
         $stmt = $db->prepare("SELECT u.id, u.reference_code, u.first_name, u.last_name
                               FROM enrollments e
                               JOIN users u ON u.id = e.student_id
@@ -1510,6 +1512,9 @@ function fetchGrades($db, $teacherId) {
 
         $tc = getTermColumnName($db);
         $weights = getClassWeights($db, $classId);
+
+        syncClassEnrollmentsForClass($db, $classId);
+
         if (gradeItemsTablesExist($db)) {
             $dateFrom = null; $dateTo = null;
             if ($gs === '4_quarter') {

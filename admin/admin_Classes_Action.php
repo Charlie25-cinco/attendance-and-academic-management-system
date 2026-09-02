@@ -239,61 +239,62 @@ function validateScheduleConflict($db, $incomingSegments, $gradeLevel, $section,
     return null;
 }
 
-function currentAcademicYearForClassSync() {
-    $year = (int)date('Y');
-    $month = (int)date('n');
-    $start = $month >= 6 ? $year : $year - 1;
-    return $start . '-' . ($start + 1);
+if (!function_exists('currentAcademicYearForClassSync')) {
+    function currentAcademicYearForClassSync() {
+        return currentAcademicYear();
+    }
 }
 
-function syncClassEnrollmentsByGradeSection($db, $classId, $gradeLevel, $section, ?string $track = null) {
-    $academicYear = currentAcademicYearForClassSync();
-    $curriculum = strengthenedShsCurriculum((int)$gradeLevel, $academicYear);
-    $program = strengthenedShsProgram((int)$gradeLevel, $track, $academicYear);
-    $semester = $curriculum === 'strengthened_shs' ? null : 1;
+if (!function_exists('syncClassEnrollmentsByGradeSection')) {
+    function syncClassEnrollmentsByGradeSection($db, $classId, $gradeLevel, $section, ?string $track = null) {
+        $academicYear = currentAcademicYear();
+        $curriculum = strengthenedShsCurriculum((int)$gradeLevel, $academicYear);
+        $program = strengthenedShsProgram((int)$gradeLevel, $track, $academicYear);
+        $semester = $curriculum === 'strengthened_shs' ? null : 1;
 
-    $sectionTrimmed = trim((string)$section);
-    if ($sectionTrimmed === '' || (int)$gradeLevel <= 0 || (int)$classId <= 0) {
-        return;
+        $sectionTrimmed = trim((string)$section);
+        if ($sectionTrimmed === '' || (int)$gradeLevel <= 0 || (int)$classId <= 0) {
+            return;
+        }
+
+        $driver = (string)$db->getAttribute(PDO::ATTR_DRIVER_NAME);
+        if ($driver === 'sqlite') {
+            $sectionSql = "(LOWER(TRIM(COALESCE(u.section, ''))) = LOWER(TRIM(COALESCE(?, ''))))";
+            $params = [
+                (int)$classId, $academicYear, $semester, $curriculum, $program, date('Y-m-d H:i:s'),
+                (int)$gradeLevel, $sectionTrimmed,
+                $track, $track, $track,
+                (int)$classId, $academicYear
+            ];
+        } else {
+            $sectionSql = sectionMatchSql('u.section');
+            $params = [
+                (int)$classId, $academicYear, $semester, $curriculum, $program, date('Y-m-d H:i:s'),
+                (int)$gradeLevel, $sectionTrimmed, $sectionTrimmed,
+                $track, $track, $track,
+                (int)$classId, $academicYear
+            ];
+        }
+
+        // Enroll active/pending students whose profile matches class grade/section.
+        $insert = $db->prepare("INSERT INTO enrollments (student_id, class_id, academic_year, semester, curriculum, program, status, enrolled_at)
+                                SELECT u.id, ?, ?, ?, ?, ?, 'enrolled', ?
+                                FROM users u
+                                WHERE u.role = 'student'
+                                  AND u.status IN ('active', 'pending')
+                                  AND u.grade_level = ?
+                                  AND {$sectionSql}
+                                  AND (? IS NULL OR TRIM(?) = '' OR u.track IS NULL OR TRIM(u.track) = '' OR LOWER(TRIM(u.track)) = LOWER(TRIM(?)))
+                                  AND NOT EXISTS (
+                                      SELECT 1
+                                      FROM enrollments e
+                                      WHERE e.student_id = u.id
+                                        AND e.class_id = ?
+                                        AND e.academic_year = ?
+                                        AND COALESCE(e.status, 'enrolled') = 'enrolled'
+                                  )");
+        $insert->execute($params);
     }
-
-    $driver = (string)$db->getAttribute(PDO::ATTR_DRIVER_NAME);
-    if ($driver === 'sqlite') {
-        $sectionSql = "(LOWER(TRIM(COALESCE(u.section, ''))) = LOWER(TRIM(COALESCE(?, ''))))";
-        $params = [
-            (int)$classId, $academicYear, $semester, $curriculum, $program, date('Y-m-d H:i:s'),
-            (int)$gradeLevel, $sectionTrimmed,
-            $track, $track, $track,
-            (int)$classId, $academicYear
-        ];
-    } else {
-        $sectionSql = sectionMatchSql('u.section');
-        $params = [
-            (int)$classId, $academicYear, $semester, $curriculum, $program, date('Y-m-d H:i:s'),
-            (int)$gradeLevel, $sectionTrimmed, $sectionTrimmed,
-            $track, $track, $track,
-            (int)$classId, $academicYear
-        ];
-    }
-
-    // Enroll active/pending students whose profile matches class grade/section.
-    $insert = $db->prepare("INSERT INTO enrollments (student_id, class_id, academic_year, semester, curriculum, program, status, enrolled_at)
-                            SELECT u.id, ?, ?, ?, ?, ?, 'enrolled', ?
-                            FROM users u
-                            WHERE u.role = 'student'
-                              AND u.status IN ('active', 'pending')
-                              AND u.grade_level = ?
-                              AND {$sectionSql}
-                              AND (? IS NULL OR TRIM(?) = '' OR u.track IS NULL OR TRIM(u.track) = '' OR LOWER(TRIM(u.track)) = LOWER(TRIM(?)))
-                              AND NOT EXISTS (
-                                  SELECT 1
-                                  FROM enrollments e
-                                  WHERE e.student_id = u.id
-                                    AND e.class_id = ?
-                                    AND e.academic_year = ?
-                                    AND COALESCE(e.status, 'enrolled') = 'enrolled'
-                              )");
-    $insert->execute($params);
 }
 
 function syncClassSchedules($db, $classId, $segments) {

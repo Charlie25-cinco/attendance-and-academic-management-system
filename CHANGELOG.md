@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.136 — 2026-09-02
+
+### Fixed
+
+- **Filipino Subject Roster Showing 0 Students**:
+  - **Root Cause**: The actual backend endpoints (`fetchClassStudents()` and `fetchGrades()` in [`teacher/teacher_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Action.php)) that the UI calls to render the class student list and grade roster had no enrollment synchronization, so existing SF1-imported students with 0 enrollment rows were never visible.
+  - **Eliminated Duplicate Implementation**: Removed the standalone `syncClassEnrollmentsForClass()` SQL implementation and replaced it with a thin wrapper that delegates to the existing canonical `syncClassEnrollmentsByGradeSection()`, now moved to [`functions/app-helpers.php`](file:///c:/laragon/www/attendance-and-academic-management-system/functions/app-helpers.php) for shared access across admin and teacher code paths.
+  - **Fixed Real UI Endpoints**: Added `syncClassEnrollmentsForClass()` calls to `fetchClassStudents()` and `fetchGrades()` in [`teacher/teacher_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Action.php) — the actual AJAX handlers that serve the teacher class roster and grade entry views.
+  - **Regression Test Against Real Query**: Replaced the test with `testExistingStudentAppearsInFetchClassStudentsQueryAfterSyncAndRemainsIdempotent` in [`tests/Sf1SubjectRosterEnrollmentTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/Sf1SubjectRosterEnrollmentTest.php) which exercises the exact `fetchClassStudents()` SQL query, verifies the `class_subjects` mapping, and confirms idempotency.
+
 ## v0.3.135 — 2026-09-02
 
 ### Admin & Core

@@ -284,7 +284,7 @@ final class Sf1SubjectRosterEnrollmentTest extends TestCase
         $this->assertSame(1, $enrolled);
     }
 
-    public function testExistingSf1ImportedStudentWithZeroEnrollmentsIsRepairedOnRosterLoadAndRemainsUnchangedOnSecondSync(): void
+    public function testExistingStudentAppearsInFetchClassStudentsQueryAfterSyncAndRemainsIdempotent(): void
     {
         // 1. Seed teacher Maria Santos (ID 10)
         $this->db->exec("INSERT INTO users (id, reference_code, email, first_name, last_name, role, status)
@@ -297,64 +297,73 @@ final class Sf1SubjectRosterEnrollmentTest extends TestCase
         // 3. Seed class_subjects mapping (class_id 15 -> teacher_id 10)
         $this->db->exec("INSERT INTO class_subjects (class_id, teacher_id) VALUES (15, 10)");
 
-        // 4. Seed an existing SF1-imported student (ID 201, "Jose Rizal") with Grade 11 Humility
-        // BUT with 0 initial enrollments (simulating student imported before v0.3.134)
+        // 4. Verify class_subjects mapping exists — this is the class/subject relationship
+        $csCount = (int)$this->db->query(
+            "SELECT COUNT(*) FROM class_subjects WHERE class_id = 15 AND teacher_id = 10"
+        )->fetchColumn();
+        $this->assertSame(1, $csCount, 'class_subjects mapping must exist for Filipino class');
+
+        // 5. Seed an existing SF1-imported student (ID 201) with Grade 11 Humility
+        //    but 0 initial enrollments (simulating student imported before v0.3.134)
         $this->db->exec("INSERT INTO users (id, reference_code, lrn, first_name, last_name, role, grade_level, section, track, status)
             VALUES (201, 'STU-2026-0201', '999988887777', 'Jose', 'Rizal', 'student', 11, 'Humility', 'academic', 'active')");
 
-        // 5. Assert that initially the student has 0 enrollments
-        $initialEnrollmentCount = (int)$this->db->query("SELECT COUNT(*) FROM enrollments WHERE student_id = 201")->fetchColumn();
-        $this->assertSame(0, $initialEnrollmentCount, 'Student must initially have zero enrollment records');
+        // 6. Assert 0 initial enrollments
+        $this->assertSame(
+            0,
+            (int)$this->db->query("SELECT COUNT(*) FROM enrollments WHERE student_id = 201")->fetchColumn(),
+            'Student must initially have zero enrollment records'
+        );
 
-        // 6. Assert that initially the raw roster join query returns 0 students
-        $rawRosterCount = (int)$this->db->query("SELECT COUNT(*) FROM users u
-            JOIN enrollments e ON e.student_id = u.id
-            JOIN classes c ON c.id = e.class_id
-            JOIN class_subjects cs ON cs.class_id = c.id
-            WHERE c.id = 15 AND cs.teacher_id = 10 AND e.status = 'enrolled'")->fetchColumn();
-        $this->assertSame(0, $rawRosterCount, 'Roster must initially be empty before on-demand sync');
+        // 7. Run the exact query from fetchClassStudents() in teacher_Action.php — must return 0 before sync
+        $rosterQuery = "SELECT u.id, u.reference_code, u.first_name, u.last_name
+                        FROM enrollments e
+                        JOIN users u ON u.id = e.student_id
+                        WHERE e.class_id = ? AND e.status = 'enrolled'
+                        ORDER BY u.last_name, u.first_name";
+        $stmt = $this->db->prepare($rosterQuery);
+        $stmt->execute([15]);
+        $this->assertCount(0, $stmt->fetchAll(PDO::FETCH_ASSOC), 'fetchClassStudents query must return 0 before sync');
 
-        // 7. On-demand roster load: tEnrollFetchActiveStudentIds triggers syncClassEnrollmentsForClass
-        $activeStudentIds = tEnrollFetchActiveStudentIds($this->db, 15);
+        // 8. Call syncClassEnrollmentsForClass — which delegates to syncClassEnrollmentsByGradeSection
+        syncClassEnrollmentsForClass($this->db, 15);
 
-        // 8. Verify the student was repaired and is now returned in active student IDs
-        $this->assertContains(201, $activeStudentIds);
+        // 9. Run the exact fetchClassStudents query again — Jose Rizal must now appear
+        $stmt->execute([15]);
+        $roster = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $this->assertCount(1, $roster, 'fetchClassStudents query must return 1 student after sync');
+        $this->assertSame(201, (int)$roster[0]['id']);
+        $this->assertSame('Jose', $roster[0]['first_name']);
+        $this->assertSame('Rizal', $roster[0]['last_name']);
 
-        // 9. Verify the enrollment record in the database
-        $stmt = $this->db->prepare("SELECT id, student_id, class_id, status, enrolled_at FROM enrollments WHERE student_id = 201 AND class_id = 15");
-        $stmt->execute();
-        $enrollment = $stmt->fetch(PDO::FETCH_ASSOC);
-
+        // 10. Verify enrollment record details
+        $enrollStmt = $this->db->prepare(
+            "SELECT id, student_id, class_id, status, enrolled_at FROM enrollments WHERE student_id = 201 AND class_id = 15"
+        );
+        $enrollStmt->execute();
+        $enrollment = $enrollStmt->fetch(PDO::FETCH_ASSOC);
         $this->assertNotEmpty($enrollment);
         $this->assertSame('enrolled', $enrollment['status']);
         $enrollmentId = (int)$enrollment['id'];
         $enrolledAt = (string)$enrollment['enrolled_at'];
 
-        // 10. Verify student now appears in full Filipino subject roster query
-        $rosterStmt = $this->db->prepare("SELECT u.id, u.reference_code, u.first_name, u.last_name
-            FROM users u
-            JOIN enrollments e ON e.student_id = u.id
-            JOIN classes c ON c.id = e.class_id
-            JOIN class_subjects cs ON cs.class_id = c.id
-            WHERE c.id = 15 AND cs.teacher_id = 10 AND e.status = 'enrolled' AND u.status = 'active'");
-        $rosterStmt->execute();
-        $roster = $rosterStmt->fetchAll(PDO::FETCH_ASSOC);
-
-        $this->assertCount(1, $roster);
-        $this->assertSame(201, (int)$roster[0]['id']);
-        $this->assertSame('Jose', $roster[0]['first_name']);
-        $this->assertSame('Rizal', $roster[0]['last_name']);
-
-        // 11. Run synchronization a second time (e.g. second page visit)
+        // 11. Run sync a second time — must remain idempotent (no duplicates)
         syncClassEnrollmentsForClass($this->db, 15);
-
-        // 12. Assert that enrollment record is unchanged and no duplicates exist
-        $totalForStudent = (int)$this->db->query("SELECT COUNT(*) FROM enrollments WHERE student_id = 201 AND class_id = 15")->fetchColumn();
-        $this->assertSame(1, $totalForStudent, 'Must not create duplicate enrollment records on repeated synchronization');
-
-        $stmt->execute();
-        $secondEnrollment = $stmt->fetch(PDO::FETCH_ASSOC);
+        $this->assertSame(
+            1,
+            (int)$this->db->query("SELECT COUNT(*) FROM enrollments WHERE student_id = 201 AND class_id = 15")->fetchColumn(),
+            'Must not create duplicate enrollment records on repeated synchronization'
+        );
+        $enrollStmt->execute();
+        $secondEnrollment = $enrollStmt->fetch(PDO::FETCH_ASSOC);
         $this->assertSame($enrollmentId, (int)$secondEnrollment['id']);
         $this->assertSame($enrolledAt, (string)$secondEnrollment['enrolled_at']);
+
+        // 12. Verify the fetchClassStudents query still returns exactly 1 after second sync
+        $stmt->execute([15]);
+        $rosterAfter = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $this->assertCount(1, $rosterAfter, 'fetchClassStudents query must still return 1 after second sync');
+        $this->assertSame(201, (int)$rosterAfter[0]['id']);
     }
 }
+
