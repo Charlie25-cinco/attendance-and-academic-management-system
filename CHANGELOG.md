@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.163 — 2026-09-03
+
+### Fixed
+
+- **Teacher Mobile Parent Chat & Activities Action Buttons UI**:
+  - **Instant Client-Side Parent & Sibling Student Search**: Added a sticky search bar with instant client-side filtering by parent name or linked student name(s) in [`teacher/teacher_Chat.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Chat.php), including clear/reset controls and an empty-search-state notification when no matching conversations exist.
+  - **Mobile List/Detail Navigation & Scroll Viewport Clearance**: Enhanced the mobile list/detail pattern in [`teacher/teacher_Chat.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Chat.php) with an explicit "← Parents" back navigation button in the conversation header and dynamic viewport sizing (`100dvh` / `100vh`) to prevent address bar clipping and allow smooth vertical scrolling.
+  - **Teacher Activities Responsive Flex & Overlap Fix**: Refactored grade activity card markup in [`teacher/teacher_Classes.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Classes.php) and added dedicated `.activity-actions` CSS in [`assets/css/role.css`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/css/role.css) to eliminate button overlap on `Record`, `Finish`, and `Delete` actions with clean wrapping, auto-stacking on narrow viewports, and $\ge 36\text{px}$ touch targets.
+  - **Automated UI & Regression Test Suite**: Added [`tests/TeacherChatAndActivityUiTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/TeacherChatAndActivityUiTest.php) covering search controls, client-side filtering logic across sibling learners, mobile back navigation, and responsive activity card actions.
+
 ## v0.3.162 — 2026-09-03
 
 ### Fixed

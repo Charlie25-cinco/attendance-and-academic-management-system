@@ -123,26 +123,34 @@ $page_title = 'Messages';
     <link rel="stylesheet" href="<?php echo appAssetPath('css/role.css'); ?>">
 <?php echo pwaHeadHtml(); ?>
 <style>
-.chat-layout { display:flex; gap:0; height:calc(100vh - 220px); min-height:400px; }
-.chat-list { width:300px; flex-shrink:0; overflow-y:auto; }
-.chat-window { flex:1; display:flex; flex-direction:column; }
+.chat-layout { display:flex; gap:0; height:calc(100vh - 220px); height:calc(100dvh - 200px); min-height:480px; }
+.chat-list { width:320px; flex-shrink:0; overflow-y:auto; -webkit-overflow-scrolling:touch; display:flex; flex-direction:column; }
+.chat-window { flex:1; display:flex; flex-direction:column; min-width:0; }
 .chat-list-item { cursor:pointer; }
-.chat-list-avatar { width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:.85rem; flex-shrink:0; }
+.chat-list-avatar { width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:.85rem; flex-shrink:0; }
 .chat-list-name { font-weight:600; font-size:.9rem; }
-.chat-list-sub { font-size:.78rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px; }
-.chat-header { padding:16px 20px; }
-.chat-messages { flex:1; overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column; gap:10px; }
-.chat-bubble { max-width:70%; padding:10px 14px; border-radius:16px; font-size:.9rem; line-height:1.5; word-break:break-word; }
+.chat-list-sub { font-size:.78rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.chat-header { padding:14px 18px; }
+.chat-messages { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:16px 20px; display:flex; flex-direction:column; gap:10px; }
+.chat-bubble { max-width:75%; padding:10px 14px; border-radius:16px; font-size:.9rem; line-height:1.5; word-break:break-word; }
 .chat-bubble.sent { border-bottom-right-radius:4px; align-self:flex-end; }
 .chat-bubble.received { border-bottom-left-radius:4px; align-self:flex-start; }
 .chat-time { font-size:.72rem; opacity:.65; margin-top:3px; }
 .chat-input-area { padding:14px 16px; }
 .chat-placeholder { flex:1; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:10px; }
+.teacher-chat-search-wrap { position:sticky; top:0; z-index:10; background:inherit; }
+.teacher-chat-back-btn { min-height:36px; display:inline-flex; align-items:center; justify-content:center; font-weight:600; font-size:.85rem; padding:.35rem .65rem; border-radius:8px; }
 @media (max-width:768px) {
-    .chat-list { width:100%; border-radius:12px; }
-    .chat-layout { flex-direction:column; }
-    .chat-window { border-radius:12px; min-height:350px; }
-    <?php if ($selectedParentId > 0): ?>.chat-list { display:none; }<?php endif; ?>
+    .chat-layout { flex-direction:column; height:calc(100vh - 180px); height:calc(100dvh - 160px); min-height:440px; }
+    .chat-list { width:100%; border-radius:16px; flex:1; height:100%; }
+    .chat-window { border-radius:16px; flex:1; height:100%; min-height:350px; }
+    <?php if ($selectedParentId > 0): ?>
+    .chat-list { display:none !important; }
+    .chat-window { display:flex !important; }
+    <?php else: ?>
+    .chat-window { display:none !important; }
+    .chat-list { display:flex !important; }
+    <?php endif; ?>
 }
 </style>
 </head>
@@ -185,6 +193,24 @@ $page_title = 'Messages';
                         <div class="teacher-chat-section-label">
                             <i class="bi bi-people me-1"></i>Parents (<?php echo count($conversations); ?>)
                         </div>
+                        <div class="teacher-chat-search-wrap px-3 py-2 border-bottom">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                                <input type="text" id="parentSearchInput" class="form-control bg-light border-start-0 border-end-0" placeholder="Search parent or student..." aria-label="Search conversations" autocomplete="off">
+                                <button class="btn btn-light border border-start-0 text-muted" type="button" id="clearParentSearchBtn" style="display: none;" title="Clear search" aria-label="Clear search" onclick="clearParentSearch()">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="chatSearchEmptyState" class="text-center text-muted py-5 px-3" style="display: none;">
+                            <i class="bi bi-search fs-2 d-block mb-2 text-secondary opacity-50"></i>
+                            <p class="mb-1 small fw-semibold text-dark chat-empty-search-title">No conversations found</p>
+                            <p class="mb-2 small text-muted">No parents or students matching "<span id="chatSearchQueryText" class="fw-medium text-dark"></span>"</p>
+                            <button type="button" class="btn btn-sm btn-outline-primary py-1 px-3" onclick="clearParentSearch()">
+                                <i class="bi bi-arrow-counterclockwise me-1"></i>Reset search
+                            </button>
+                        </div>
+                        <div id="chatConversationList" class="flex-grow-1 overflow-y-auto">
                         <?php if (empty($conversations)): ?>
                         <div class="text-center text-muted py-5 px-3">
                             <i class="bi bi-chat-dots" style="font-size:2rem;opacity:.3;"></i>
@@ -203,23 +229,30 @@ $page_title = 'Messages';
                         $unread = (int)($conv['unread_count'] ?? 0);
                         $lastMsg = trim((string)($conv['last_message'] ?? ''));
                         $isActive = (int)$conv['parent_id'] === $selectedParentId;
+                        $studentCount = count($conv['student_names'] ?? []);
+                        $studentLabel = $studentCount > 1 ? 'Students' : 'Student';
                         ?>
-                        <a href="?parent_id=<?php echo (int)$conv['parent_id']; ?>" class="teacher-chat-item chat-list-item text-decoration-none <?php echo $isActive ? 'active' : ''; ?>">
+                        <a href="?parent_id=<?php echo (int)$conv['parent_id']; ?>" 
+                           class="teacher-chat-item chat-list-item text-decoration-none <?php echo $isActive ? 'active' : ''; ?>"
+                           data-parent-name="<?php echo htmlspecialchars(strtolower($pName), ENT_QUOTES, 'UTF-8'); ?>"
+                           data-student-names="<?php echo htmlspecialchars(strtolower($sName), ENT_QUOTES, 'UTF-8'); ?>"
+                           data-parent-id="<?php echo (int)$conv['parent_id']; ?>">
                             <div class="teacher-chat-avatar chat-list-avatar"><?php echo htmlspecialchars($initials); ?></div>
-                            <div class="flex-grow-1 overflow-hidden">
+                            <div class="flex-grow-1 overflow-hidden min-w-0">
                                 <div class="d-flex justify-content-between align-items-center">
-                                    <div class="teacher-chat-name chat-list-name"><?php echo htmlspecialchars($pName); ?></div>
+                                    <div class="teacher-chat-name chat-list-name text-truncate"><?php echo htmlspecialchars($pName); ?></div>
                                     <?php if ($unread > 0): ?>
-                                    <span class="badge bg-danger rounded-pill"><?php echo $unread; ?></span>
+                                    <span class="badge bg-danger rounded-pill flex-shrink-0 ms-1"><?php echo $unread; ?></span>
                                     <?php endif; ?>
                                 </div>
-                                <div class="teacher-chat-sub chat-list-sub text-muted">Student: <?php echo htmlspecialchars($sName); ?></div>
+                                <div class="teacher-chat-sub chat-list-sub text-muted text-truncate" title="<?php echo htmlspecialchars($studentLabel . ': ' . $sName); ?>"><i class="bi bi-mortarboard me-1"></i><?php echo htmlspecialchars($studentLabel . ': ' . $sName); ?></div>
                                 <?php if ($lastMsg !== ''): ?>
-                                <div class="teacher-chat-sub chat-list-sub"><?php echo htmlspecialchars(mb_substr($lastMsg, 0, 40) . (mb_strlen($lastMsg) > 40 ? '...' : '')); ?></div>
+                                <div class="teacher-chat-sub chat-list-sub text-truncate"><?php echo htmlspecialchars(mb_substr($lastMsg, 0, 40) . (mb_strlen($lastMsg) > 40 ? '...' : '')); ?></div>
                                 <?php endif; ?>
                             </div>
                         </a>
                         <?php endforeach; ?>
+                        </div>
                     </div>
 
                     <!-- Chat Window -->
@@ -229,11 +262,13 @@ $page_title = 'Messages';
                         $pName = trim(($selectedConv['parent_first'] ?? '') . ' ' . ($selectedConv['parent_last'] ?? ''));
                         $sName = !empty($selectedConv['student_names']) ? implode(', ', $selectedConv['student_names']) : trim(($selectedConv['student_first'] ?? '') . ' ' . ($selectedConv['student_last'] ?? ''));
                         ?>
-                        <div class="chat-header teacher-chat-header d-flex align-items-center gap-3">
-                            <a href="teacher_Chat.php" class="btn btn-sm btn-outline-secondary d-lg-none"><i class="bi bi-arrow-left"></i></a>
-                            <div>
-                                <div class="fw-bold"><?php echo htmlspecialchars($pName); ?></div>
-                                <small class="text-muted">Parent of <?php echo htmlspecialchars($sName); ?> · Grade <?php echo (int)($selectedConv['grade_level'] ?? 0); ?> <?php echo htmlspecialchars($selectedConv['section'] ?? ''); ?></small>
+                        <div class="chat-header teacher-chat-header d-flex align-items-center gap-2">
+                            <a href="teacher_Chat.php" class="btn btn-sm btn-outline-primary d-md-none flex-shrink-0 teacher-chat-back-btn" aria-label="Back to conversations list" title="Back to conversations">
+                                <i class="bi bi-chevron-left me-1"></i><span>Parents</span>
+                            </a>
+                            <div class="overflow-hidden flex-grow-1 min-w-0">
+                                <div class="fw-bold teacher-chat-header-title text-truncate"><?php echo htmlspecialchars($pName); ?></div>
+                                <small class="text-muted d-block text-truncate">Parent of <?php echo htmlspecialchars($sName); ?> · Grade <?php echo (int)($selectedConv['grade_level'] ?? 0); ?> <?php echo htmlspecialchars($selectedConv['section'] ?? ''); ?></small>
                             </div>
                         </div>
                         <div class="chat-messages teacher-chat-messages" id="chatMessages">
@@ -352,6 +387,59 @@ $page_title = 'Messages';
     if (selectedParentId) {
         setInterval(loadNewMessages, 5000);
     }
+
+    // Client-side parent and student conversation search
+    const parentSearchInput = document.getElementById('parentSearchInput');
+    const clearParentSearchBtn = document.getElementById('clearParentSearchBtn');
+    const chatSearchEmptyState = document.getElementById('chatSearchEmptyState');
+    const chatSearchQueryText = document.getElementById('chatSearchQueryText');
+    const chatItems = document.querySelectorAll('.teacher-chat-item');
+
+    function filterParentConversations() {
+        if (!parentSearchInput) return;
+        const query = parentSearchInput.value.trim().toLowerCase();
+        if (clearParentSearchBtn) {
+            clearParentSearchBtn.style.display = query ? 'block' : 'none';
+        }
+
+        let visibleCount = 0;
+        chatItems.forEach(item => {
+            const parentName = (item.getAttribute('data-parent-name') || '').toLowerCase();
+            const studentNames = (item.getAttribute('data-student-names') || '').toLowerCase();
+
+            if (!query || parentName.includes(query) || studentNames.includes(query)) {
+                item.style.display = 'flex';
+                visibleCount++;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+
+        if (chatSearchEmptyState) {
+            if (query && visibleCount === 0) {
+                if (chatSearchQueryText) chatSearchQueryText.textContent = parentSearchInput.value.trim();
+                chatSearchEmptyState.style.display = 'block';
+            } else {
+                chatSearchEmptyState.style.display = 'none';
+            }
+        }
+    }
+
+    function clearParentSearch() {
+        if (!parentSearchInput) return;
+        parentSearchInput.value = '';
+        filterParentConversations();
+        parentSearchInput.focus();
+    }
+
+    if (parentSearchInput) {
+        parentSearchInput.addEventListener('input', filterParentConversations);
+    }
+    if (clearParentSearchBtn) {
+        clearParentSearchBtn.addEventListener('click', clearParentSearch);
+    }
+    window.filterParentConversations = filterParentConversations;
+    window.clearParentSearch = clearParentSearch;
     </script>
 </body>
 </html>

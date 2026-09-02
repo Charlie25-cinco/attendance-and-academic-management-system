@@ -3491,3 +3491,74 @@ body.dark-mode .admin-focus-card {
     flex-direction: column;
   }
 }
+
+/* Teacher Activity Card Actions */
+.activity-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.activity-actions .btn {
+  white-space: nowrap;
+  font-size: 0.82rem;
+  padding: 0.35rem 0.65rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+}
+
+@media (max-width: 767.98px) {
+  .activity-actions {
+    width: 100%;
+    justify-content: flex-start;
+    padding-top: 0.75rem;
+    margin-top: 0.25rem;
+    border-top: 1px solid rgba(148, 163, 184, 0.15);
+  }
+  .activity-actions .btn {
+    flex: 1 1 auto;
+  }
+}
+
+/* Teacher Chat Search & Mobile Navigation */
+.teacher-chat-search-wrap {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: inherit;
+}
+
+.teacher-chat-back-btn {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 8px;
+}
+
+body.dark-mode .teacher-chat-search-wrap {
+  border-color: rgba(148, 163, 184, 0.14) !important;
+}
+
+body.dark-mode #parentSearchInput {
+  background: rgba(30, 41, 59, 0.8) !important;
+  color: #e5e7eb !important;
+  border-color: rgba(148, 163, 184, 0.18) !important;
+}
+
+body.dark-mode .teacher-chat-search-wrap .input-group-text,
+body.dark-mode .teacher-chat-search-wrap .btn {
+  background: rgba(30, 41, 59, 0.8) !important;
+  color: #94a3b8 !important;
+  border-color: rgba(148, 163, 184, 0.18) !important;
+}
+
+body.dark-mode .chat-empty-search-title {
+  color: #e5e7eb !important;
+}
