@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.151 — 2026-09-03
+
+### Changed
+
+- **Consolidated PWA Install Action Exclusively in Settings**:
+  - **Header & Profile Cleanup**: Removed the top-bar header install button (`#pwaInstallBtn`) and profile dropdown item (`#headerPwaInstallDropdownItem`) from [`includes/header.php`](file:///c:/laragon/www/attendance-and-academic-management-system/includes/header.php) to reduce header visual clutter and centralize device application management.
+  - **Dedicated Settings Application Section**: Retained the "Application" install option (`#settingsPwaInstallSection` with `#settingsPwaInstallBtn`) exclusively within `#settingsModal` in [`includes/modals.php`](file:///c:/laragon/www/attendance-and-academic-management-system/includes/modals.php).
+  - **Streamlined JavaScript Bindings**: Refactored `window.bindPwaInstallButton()` in [`config/constants.php`](file:///c:/laragon/www/attendance-and-academic-management-system/config/constants.php) to bind the Settings install button directly while preserving `window._pwaInstallPrompt` and `window.showPwaInstallModal()` fallback handling.
+  - **Automated Regression Testing**: Updated [`tests/PwaInstallUiTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/PwaInstallUiTest.php) and [`tests/PwaAssetFreshnessTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/PwaAssetFreshnessTest.php) to verify that header/profile install elements are absent while Settings install controls and fallback guidance remain fully functional.
+
 ## v0.3.150 — 2026-09-03
 
 ### Fixed

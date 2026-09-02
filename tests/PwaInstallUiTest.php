@@ -8,21 +8,17 @@ use PHPUnit\Framework\TestCase;
 
 final class PwaInstallUiTest extends TestCase
 {
-    public function testHeaderRendersPwaInstallButtonsAndDropdownItemsVisiblyByDefault(): void
+    public function testHeaderDoesNotRenderPwaInstallButtonsOrDropdownItems(): void
     {
         $header = file_get_contents(__DIR__ . '/../includes/header.php');
         $this->assertIsString($header);
 
-        // Header quick action button is rendered without display:none
-        $this->assertStringContainsString('id="pwaInstallBtn"', $header);
-        $this->assertStringContainsString('title="Install App"', $header);
-        $this->assertStringNotContainsString('id="pwaInstallBtn" title="Install App" aria-label="Install App" style="display:none;"', $header);
+        // Header quick action button is removed
+        $this->assertStringNotContainsString('id="pwaInstallBtn"', $header);
 
-        // Header profile dropdown item is rendered without display:none
-        $this->assertStringContainsString('id="headerPwaInstallDropdownItem"', $header);
-        $this->assertStringContainsString('id="headerPwaInstallDropdownBtn"', $header);
-        $this->assertStringContainsString('Install App', $header);
-        $this->assertStringNotContainsString('<li id="headerPwaInstallDropdownItem" style="display:none;">', $header);
+        // Header profile dropdown item is removed
+        $this->assertStringNotContainsString('id="headerPwaInstallDropdownItem"', $header);
+        $this->assertStringNotContainsString('id="headerPwaInstallDropdownBtn"', $header);
     }
 
     public function testSettingsModalRendersPwaApplicationInstallSectionAndGuidanceModal(): void
@@ -47,7 +43,7 @@ final class PwaInstallUiTest extends TestCase
         $this->assertStringContainsString('id="pwaGuideStep3Title"', $modals);
     }
 
-    public function testConstantsRegistersPwaInstallPromptAndManagesAllUiSurfacesWithFallback(): void
+    public function testConstantsRegistersPwaInstallPromptAndManagesSettingsModalWithFallback(): void
     {
         $constants = file_get_contents(__DIR__ . '/../config/constants.php');
         $this->assertIsString($constants);
@@ -56,11 +52,11 @@ final class PwaInstallUiTest extends TestCase
         $this->assertStringContainsString('window.isPwaStandalone = function ()', $constants);
         $this->assertStringContainsString('window.showPwaInstallModal = function ()', $constants);
         $this->assertStringContainsString('window.bindPwaInstallButton = function ()', $constants);
-        $this->assertStringContainsString("document.getElementById('pwaInstallBtn')", $constants);
         $this->assertStringContainsString("document.getElementById('settingsPwaInstallSection')", $constants);
         $this->assertStringContainsString("document.getElementById('settingsPwaInstallBtn')", $constants);
-        $this->assertStringContainsString("document.getElementById('headerPwaInstallDropdownItem')", $constants);
-        $this->assertStringContainsString("document.getElementById('headerPwaInstallDropdownBtn')", $constants);
+        $this->assertStringNotContainsString("document.getElementById('pwaInstallBtn')", $constants);
+        $this->assertStringNotContainsString("document.getElementById('headerPwaInstallDropdownItem')", $constants);
+        $this->assertStringNotContainsString("document.getElementById('headerPwaInstallDropdownBtn')", $constants);
         $this->assertStringContainsString("window.addEventListener('beforeinstallprompt'", $constants);
         $this->assertStringContainsString("window.addEventListener('appinstalled'", $constants);
         $this->assertStringContainsString("window._pwaInstallPrompt.prompt()", $constants);

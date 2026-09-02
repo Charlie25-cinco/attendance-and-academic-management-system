@@ -99,12 +99,13 @@ final class PwaAssetFreshnessTest extends TestCase
         $this->assertStringContainsString('window._CACHE_NAME = \'bshs-ams-v37\';', $constants);
     }
 
-    public function testPwaInstallButtonBindsHeaderAndSettingsModals(): void
+    public function testPwaInstallButtonBindsSettingsModalAndGuidance(): void
     {
         $constants = file_get_contents(__DIR__ . '/../config/constants.php');
         $this->assertIsString($constants);
         $this->assertStringContainsString('window.bindPwaInstallButton', $constants);
         $this->assertStringContainsString('settingsPwaInstallSection', $constants);
-        $this->assertStringContainsString('headerPwaInstallDropdownItem', $constants);
+        $this->assertStringContainsString('settingsPwaInstallBtn', $constants);
+        $this->assertStringContainsString('showPwaInstallModal', $constants);
     }
 }

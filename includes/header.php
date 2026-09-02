@@ -426,11 +426,6 @@ try {
     </div>
 
     <div class="header-actions">
-        <!-- PWA Install -->
-        <button class="header-btn" id="pwaInstallBtn" type="button" title="Install App" aria-label="Install App">
-            <i class="bi bi-download"></i>
-        </button>
-
         <!-- Refresh -->
         <button class="header-btn" id="headerRefreshBtn" type="button" title="Refresh page" aria-label="Refresh page">
             <i class="bi bi-arrow-clockwise"></i>
@@ -503,7 +498,6 @@ try {
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#profileModal"><i class="bi bi-person me-2"></i>Profile</a></li>
                 <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#settingsModal"><i class="bi bi-gear me-2"></i>Settings</a></li>
-                <li id="headerPwaInstallDropdownItem"><a class="dropdown-item" href="#" id="headerPwaInstallDropdownBtn"><i class="bi bi-download me-2"></i>Install App</a></li>
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item text-danger" href="../auth/logout.php?csrf_token=<?php echo urlencode($csrfToken); ?>" id="headerLogoutLink"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
             </ul>

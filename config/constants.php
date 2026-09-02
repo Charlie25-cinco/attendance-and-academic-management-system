@@ -1050,21 +1050,11 @@ if ('serviceWorker' in navigator) {
 
     window.bindPwaInstallButton = function () {
         var isStandalone = window.isPwaStandalone();
-        var headerBtn = document.getElementById('pwaInstallBtn');
         var settingsSection = document.getElementById('settingsPwaInstallSection');
         var settingsBtn = document.getElementById('settingsPwaInstallBtn');
-        var dropdownItem = document.getElementById('headerPwaInstallDropdownItem');
-        var dropdownBtn = document.getElementById('headerPwaInstallDropdownBtn');
 
-        if (headerBtn) {
-            headerBtn.style.display = 'flex';
-            headerBtn.title = isStandalone ? 'App Installed' : 'Install App';
-        }
         if (settingsSection) {
             settingsSection.style.display = 'block';
-        }
-        if (dropdownItem) {
-            dropdownItem.style.display = 'block';
         }
         if (settingsBtn) {
             if (isStandalone) {
@@ -1076,33 +1066,31 @@ if ('serviceWorker' in navigator) {
                 settingsBtn.classList.remove('btn-outline-secondary');
                 settingsBtn.classList.add('btn-primary-custom');
             }
-        }
 
-        var buttons = [headerBtn, settingsBtn, dropdownBtn];
-        buttons.forEach(function (btn) {
-            if (!btn || btn.dataset.bound === '1') { return; }
-            btn.dataset.bound = '1';
-            btn.addEventListener('click', async function (e) {
-                if (e) e.preventDefault();
-                if (window._pwaInstallPrompt) {
-                    try {
-                        await window._pwaInstallPrompt.prompt();
-                        var choice = await window._pwaInstallPrompt.userChoice;
-                        if (choice && choice.outcome === 'accepted') {
+            if (settingsBtn.dataset.bound !== '1') {
+                settingsBtn.dataset.bound = '1';
+                settingsBtn.addEventListener('click', async function (e) {
+                    if (e) e.preventDefault();
+                    if (window._pwaInstallPrompt) {
+                        try {
+                            await window._pwaInstallPrompt.prompt();
+                            var choice = await window._pwaInstallPrompt.userChoice;
+                            if (choice && choice.outcome === 'accepted') {
+                                window._pwaInstallPrompt = null;
+                            }
+                        } catch (err) {
+                            console.warn('[PWA] Install prompt:', err);
+                            window.showPwaInstallModal();
+                        } finally {
                             window._pwaInstallPrompt = null;
+                            window.bindPwaInstallButton();
                         }
-                    } catch (err) {
-                        console.warn('[PWA] Install prompt:', err);
+                    } else {
                         window.showPwaInstallModal();
-                    } finally {
-                        window._pwaInstallPrompt = null;
-                        window.bindPwaInstallButton();
                     }
-                } else {
-                    window.showPwaInstallModal();
-                }
-            });
-        });
+                });
+            }
+        }
     };
     document.addEventListener('DOMContentLoaded', function () { window.bindPwaInstallButton(); });
     window.addEventListener('beforeinstallprompt', function (e) {
