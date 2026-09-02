@@ -29,12 +29,13 @@ function adminClassAuditLog($db, string $actionName, int $targetId = 0, array $d
 
     try {
         $stmt = $db->prepare("INSERT INTO admin_audit_logs (admin_user_id, action_name, target_type, target_id, details_json, created_at)
-                              VALUES (?, ?, 'class', ?, ?, NOW())");
+                              VALUES (?, ?, 'class', ?, ?, ?)");
         $stmt->execute([
             $adminUserId,
             $actionName,
             $targetId > 0 ? $targetId : null,
             !empty($details) ? json_encode($details, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : null,
+            date('Y-m-d H:i:s'),
         ]);
     } catch (Throwable $e) {
         error_log('Admin class audit log failed: ' . $e->getMessage());
@@ -253,7 +254,7 @@ function syncClassEnrollmentsByGradeSection($db, $classId, $gradeLevel, $section
 
     // Enroll active/pending students whose profile matches class grade/section.
     $insert = $db->prepare("INSERT INTO enrollments (student_id, class_id, academic_year, semester, curriculum, program, status, enrolled_at)
-                            SELECT u.id, ?, ?, ?, ?, ?, 'enrolled', NOW()
+                            SELECT u.id, ?, ?, ?, ?, ?, 'enrolled', ?
                             FROM users u
                             WHERE u.role = 'student'
                               AND u.status IN ('active', 'pending')
@@ -267,7 +268,7 @@ function syncClassEnrollmentsByGradeSection($db, $classId, $gradeLevel, $section
                                     AND e.class_id = ?
                                     AND COALESCE(e.status, 'enrolled') = 'enrolled'
                               )");
-    $insert->execute([(int)$classId, $academicYear, $semester, $curriculum, $program, (int)$gradeLevel, (string)$section, $track, $track, (int)$classId]);
+    $insert->execute([(int)$classId, $academicYear, $semester, $curriculum, $program, date('Y-m-d H:i:s'), (int)$gradeLevel, (string)$section, $track, $track, (int)$classId]);
 }
 
 function syncClassSchedules($db, $classId, $segments) {
@@ -279,12 +280,12 @@ function syncClassSchedules($db, $classId, $segments) {
     }
 
     $insert = $db->prepare("INSERT INTO class_schedules (class_id, day, start_time, end_time, created_at)
-                            VALUES (?, ?, ?, ?, NOW())");
+                            VALUES (?, ?, ?, ?, ?)");
     foreach ($segments as $seg) {
         if (empty($seg['day']) || empty($seg['start_time']) || empty($seg['end_time'])) {
             continue;
         }
-        $insert->execute([(int)$classId, $seg['day'], $seg['start_time'], $seg['end_time']]);
+        $insert->execute([(int)$classId, $seg['day'], $seg['start_time'], $seg['end_time'], date('Y-m-d H:i:s')]);
     }
 }
 
@@ -490,8 +491,8 @@ function createClass($db) {
             }
 
             if ($teacherId !== null) {
-                $csStmt = $db->prepare("INSERT INTO class_subjects (class_id, teacher_id, created_at) VALUES (?, ?, NOW())");
-                $csStmt->execute([$classId, $teacherId]);
+                $csStmt = $db->prepare("INSERT INTO class_subjects (class_id, teacher_id, created_at) VALUES (?, ?, ?)");
+                $csStmt->execute([$classId, $teacherId, date('Y-m-d H:i:s')]);
             }
             if (!empty($segments)) {
                 syncClassSchedules($db, $classId, $segments);
@@ -665,8 +666,8 @@ function updateClass($db) {
         
         $db->prepare("DELETE FROM class_subjects WHERE class_id = ?")->execute([(int)$classId]);
         if ($teacherId !== null) {
-            $csStmt = $db->prepare("INSERT INTO class_subjects (class_id, teacher_id, created_at) VALUES (?, ?, NOW())");
-            $csStmt->execute([(int)$classId, $teacherId]);
+            $csStmt = $db->prepare("INSERT INTO class_subjects (class_id, teacher_id, created_at) VALUES (?, ?, ?)");
+            $csStmt->execute([(int)$classId, $teacherId, date('Y-m-d H:i:s')]);
         }
 
         if (!empty($segments)) {
@@ -727,7 +728,7 @@ function updateClass($db) {
 
                 $db->prepare("DELETE FROM class_subjects WHERE class_id = ?")->execute([$existingExtraId]);
                 if ($teacherId !== null) {
-                    $db->prepare("INSERT INTO class_subjects (class_id, teacher_id, created_at) VALUES (?, ?, NOW())")->execute([$existingExtraId, $teacherId]);
+                    $db->prepare("INSERT INTO class_subjects (class_id, teacher_id, created_at) VALUES (?, ?, ?)")->execute([$existingExtraId, $teacherId, date('Y-m-d H:i:s')]);
                 }
                 syncClassSchedules($db, $existingExtraId, $segments);
                 syncClassEnrollmentsByGradeSection($db, $existingExtraId, $gradeLevel, $extraSection, $normalizedTrack);
@@ -763,7 +764,7 @@ function updateClass($db) {
                 $ins->execute($extraVals);
                 $newExtraId = (int)$db->lastInsertId();
                 if ($teacherId !== null) {
-                    $db->prepare("INSERT INTO class_subjects (class_id, teacher_id, created_at) VALUES (?, ?, NOW())")->execute([$newExtraId, $teacherId]);
+                    $db->prepare("INSERT INTO class_subjects (class_id, teacher_id, created_at) VALUES (?, ?, ?)")->execute([$newExtraId, $teacherId, date('Y-m-d H:i:s')]);
                 }
                 syncClassSchedules($db, $newExtraId, $segments);
                 syncClassEnrollmentsByGradeSection($db, $newExtraId, $gradeLevel, $extraSection, $normalizedTrack);

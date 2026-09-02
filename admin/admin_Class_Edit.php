@@ -413,24 +413,32 @@ $page_title = 'Edit Class - ' . $class['class_name'];
             const sectionSelect = document.getElementById('sectionSelect');
             if (!sectionSelect) return;
 
+            const previousVal = sectionSelect.value || currentSection;
             sectionSelect.innerHTML = '';
 
             if (gradeLevel) {
                 const list = getSectionsFor(gradeLevel, track);
-                sectionSelect.disabled = !list.length;
-                if (list.length) {
-                    sectionSelect.innerHTML = '<option value="">Select Primary Section</option>';
-                    list.forEach(section => {
-                        const option = document.createElement('option');
-                        option.value = section.value;
-                        option.textContent = section.label;
-                        if (section.value === currentSection) {
-                            option.selected = true;
-                        }
-                        sectionSelect.appendChild(option);
-                    });
-                } else {
-                    sectionSelect.innerHTML = '<option value="">No sections available</option>';
+                sectionSelect.disabled = false;
+                sectionSelect.innerHTML = '<option value="">Select Primary Section</option>';
+                let hasSelected = false;
+
+                list.forEach(section => {
+                    const option = document.createElement('option');
+                    option.value = section.value;
+                    option.textContent = section.label;
+                    if (section.value === previousVal || (!hasSelected && section.value === currentSection)) {
+                        option.selected = true;
+                        hasSelected = true;
+                    }
+                    sectionSelect.appendChild(option);
+                });
+
+                if (!hasSelected && currentSection) {
+                    const customOption = document.createElement('option');
+                    customOption.value = currentSection;
+                    customOption.textContent = currentSection;
+                    customOption.selected = true;
+                    sectionSelect.appendChild(customOption);
                 }
             } else {
                 sectionSelect.disabled = true;
@@ -656,7 +664,7 @@ $page_title = 'Edit Class - ' . $class['class_name'];
         document.addEventListener('DOMContentLoaded', function() {
             loadSectionsCache().then(() => {
                 updateSections();
-                buildSchedule();
+                populateScheduleFields();
             });
         });
         
@@ -666,11 +674,41 @@ $page_title = 'Edit Class - ' . $class['class_name'];
             const tbaCont = document.getElementById('editSchedTbaContainer');
             if (specCont) specCont.style.display = mode === 'specific' ? 'block' : 'none';
             if (tbaCont) tbaCont.style.display = mode === 'tba' ? 'block' : 'none';
+            if (mode === 'specific') {
+                const rows = document.querySelectorAll('#scheduleRows .schedule-row');
+                if (rows.length === 0) {
+                    populateScheduleFields();
+                }
+            }
         }
 
         function updateClass() {
             const form = document.getElementById('editClassForm');
+            if (!form) return;
             const formData = new FormData(form);
+
+            const className = (formData.get('class_name') || '').trim();
+            const gradeLevel = (formData.get('grade_level') || '').trim();
+            const section = (formData.get('section') || '').trim();
+            const category = (formData.get('subject_category') || '').trim();
+
+            if (!className) {
+                showNotification('Please enter a subject name', 'warning');
+                return;
+            }
+            if (!category) {
+                showNotification('Please select a subject category', 'warning');
+                return;
+            }
+            if (!gradeLevel) {
+                showNotification('Please select a grade level', 'warning');
+                return;
+            }
+            if (!section) {
+                showNotification('Please select a primary section', 'warning');
+                return;
+            }
+
             const ww = parseFloat(formData.get('ww_weight') || '0');
             const pt = parseFloat(formData.get('pt_weight') || '0');
             const qa = parseFloat(formData.get('assessment_weight') || '0');
@@ -731,7 +769,7 @@ $page_title = 'Edit Class - ' . $class['class_name'];
             .then(data => {
                 if (data.success) {
                     showNotification(data.message || 'Class updated successfully', 'success');
-                    setTimeout(() => window.location.href = 'admin_Class_Detail.php?id=<?php echo $classId; ?>', 1200);
+                    setTimeout(() => window.location.href = 'admin_Class_Detail.php?id=<?php echo $classId; ?>', 1000);
                 } else {
                     showNotification(data.message || 'Failed to update class', 'danger');
                 }

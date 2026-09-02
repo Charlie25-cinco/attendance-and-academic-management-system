@@ -2,6 +2,18 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.123 — 2026-09-02
+
+### Admin & Bug Fixes
+
+- **Fixed Edit Class Regression & Update Pipeline Integrity**:
+  - **Corrected Initialization Call**: Replaced the undefined `buildSchedule()` call in [`admin/admin_Class_Edit.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Class_Edit.php) with `populateScheduleFields()`, eliminating the JavaScript `ReferenceError` on page load that prevented schedule fields from populating.
+  - **Prevented Early Form Submission Abort**: Fixed the condition where empty schedule rows caused `updateClass()` to prematurely stop before dispatching the AJAX request.
+  - **Section Selection Fallback**: Enhanced `updateSections()` to preserve and fallback to the class's original section if it is not present in the dynamic sections cache, avoiding accidental blank selection.
+  - **Schedule Mode Dynamic Population**: Added automatic schedule field population when switching from TBA to `Time Slots` (`specific`) mode if the container is empty.
+  - **Database Compatibility**: Parameterized datetime values in [`admin/admin_Classes_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Classes_Action.php) across `class_subjects`, `class_schedules`, and `admin_audit_logs` for robust cross-database support.
+  - **Automated Regression Test Suite**: Added [`tests/AdminClassEditRegressionTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/AdminClassEditRegressionTest.php) (2 tests, 21 assertions) verifying updates for subject, teacher, section, schedule slots, TBA mode, room, category, grading weights, and optional multi-section sync (`apply_to_sections`).
+
 ## v0.3.122 — 2026-09-02
 
 ### Core & Real-Time Sync
