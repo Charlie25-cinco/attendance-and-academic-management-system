@@ -125,8 +125,8 @@ final class AdminUsersStudentExclusionAndEnrollmentsRefCodeTest extends TestCase
 
         $stmt->execute(['STU-2026-0002', 'maria.santos@students.balingasag.edu.ph', '123456789013', 'Maria', 'Santos', 'female', 12, 'PATIENCE', 'techpro', $now]);
 
-        // Query students as in getStudents
-        $search = 'STU-2026-0001';
+        // Query students searching by reference code
+        $searchRef = 'STU-2026-0001';
         $where = ["u.role = 'student'"];
         $where[] = "(u.first_name LIKE :search OR u.last_name LIKE :search OR u.lrn LIKE :search OR u.reference_code LIKE :search)";
         $whereClause = 'WHERE ' . implode(' AND ', $where);
@@ -134,13 +134,24 @@ final class AdminUsersStudentExclusionAndEnrollmentsRefCodeTest extends TestCase
         $query = "SELECT u.id, u.reference_code, u.first_name, u.last_name, u.lrn, u.sex, u.grade_level, u.section, u.track, u.status, u.created_at
                   FROM users u $whereClause";
         $stmt = $db->prepare($query);
-        $stmt->execute([':search' => "%{$search}%"]);
+        $stmt->execute([':search' => "%{$searchRef}%"]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $this->assertCount(1, $rows);
         $this->assertSame('STU-2026-0001', $rows[0]['reference_code']);
         $this->assertSame('Juan', $rows[0]['first_name']);
         $this->assertSame('123456789012', $rows[0]['lrn']);
+
+        // Query students searching by LRN
+        $searchLrn = '123456789013';
+        $stmt = $db->prepare($query);
+        $stmt->execute([':search' => "%{$searchLrn}%"]);
+        $rowsLrn = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $this->assertCount(1, $rowsLrn);
+        $this->assertSame('STU-2026-0002', $rowsLrn[0]['reference_code']);
+        $this->assertSame('Maria', $rowsLrn[0]['first_name']);
+        $this->assertSame('123456789013', $rowsLrn[0]['lrn']);
     }
 
     public function testEnrollmentsGetStudentReturnsReferenceCodeAndEnrolledClasses(): void
@@ -188,17 +199,23 @@ final class AdminUsersStudentExclusionAndEnrollmentsRefCodeTest extends TestCase
         $modalsPhp = file_get_contents(__DIR__ . '/../includes/modals/enrollment_modals.php');
         $this->assertIsString($modalsPhp);
 
-        // View Student Modal has #viewRefCode
+        // View Student Modal has #viewRefCode and #viewLrn
         $this->assertStringContainsString('id="viewRefCode"', $modalsPhp);
+        $this->assertStringContainsString('id="viewLrn"', $modalsPhp);
 
-        // Edit Student Modal has #editReferenceCode (readonly)
+        // Edit Student Modal has #editReferenceCode (readonly) and #editLrn
         $this->assertStringContainsString('id="editReferenceCode"', $modalsPhp);
+        $this->assertStringContainsString('id="editLrn"', $modalsPhp);
 
         $enrollmentsPhp = file_get_contents(__DIR__ . '/../admin/admin_Enrollments.php');
         $this->assertIsString($enrollmentsPhp);
 
-        // Table rendering populates reference code
+        // Table header has Reference Code as primary identifier column
+        $this->assertStringContainsString('<th>Reference Code</th>', $enrollmentsPhp);
+
+        // Table rendering populates reference code in first column and LRN in subtitle
         $this->assertStringContainsString('s.reference_code', $enrollmentsPhp);
+        $this->assertStringContainsString('s.lrn', $enrollmentsPhp);
 
         // viewStudent sets viewRefCode
         $this->assertStringContainsString("document.getElementById('viewRefCode').textContent = s.reference_code", $enrollmentsPhp);

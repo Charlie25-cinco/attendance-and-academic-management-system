@@ -2,6 +2,15 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.143 — 2026-09-02
+
+### Changed
+
+- **Primary Identifier Presentation in Admin Enrollments**:
+  - **Reference Code as Primary Column**: Updated the student table in [`admin/admin_Enrollments.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Enrollments.php) to display `Reference Code` as the first column header (`<th>Reference Code</th>`) and render each student's `reference_code` (e.g. `STU-2026-0001`) in the primary cell.
+  - **LRN Workflow Preservation**: Displayed `LRN: {lrn}` in the student user-list subtitle, while keeping LRN fully supported in View/Edit modals (`#viewLrn`, `#editLrn`), multi-criteria search (`search=...`), and SF1 import/export workflows.
+  - **Automated Regression Testing**: Updated [`tests/AdminUsersStudentExclusionAndEnrollmentsRefCodeTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/AdminUsersStudentExclusionAndEnrollmentsRefCodeTest.php) to verify table header markup, primary reference-code column rendering, LRN subtitle display, and multi-field search for reference code and LRN.
+
 ## v0.3.142 — 2026-09-02
 
 ### Fixed

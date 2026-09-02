@@ -173,7 +173,7 @@ if (isset($_GET['download_template'])) {
                         <table class="custom-table" id="studentsTable">
                             <thead>
                                 <tr>
-                                    <th>LRN</th>
+                                    <th>Reference Code</th>
                                     <th>Name</th>
                                     <th>Grade</th>
                                     <th>Section</th>
@@ -310,7 +310,7 @@ if (isset($_GET['download_template'])) {
             }
             tbody.innerHTML = students.map(s => `
                 <tr>
-                    <td><span class="text-muted small">${escHtml(s.lrn || '—')}</span></td>
+                    <td><span class="fw-medium">${escHtml(s.reference_code || '—')}</span></td>
                     <td>
                         <div class="user-list-item" style="padding:0;border:none;">
                             <div class="user-avatar-small" style="background:var(--warning-color);width:32px;height:32px;font-size:12px;">
@@ -318,7 +318,7 @@ if (isset($_GET['download_template'])) {
                             </div>
                             <div class="user-list-info">
                                 <h5>${escHtml(s.first_name + ' ' + s.last_name)}</h5>
-                                <p>${escHtml(s.reference_code || '')}</p>
+                                <p class="text-muted small mb-0">${escHtml(s.lrn ? 'LRN: ' + s.lrn : '')}</p>
                             </div>
                         </div>
                     </td>
