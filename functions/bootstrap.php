@@ -39,6 +39,28 @@ spl_autoload_register(function (string $class): void {
 
 if (PHP_SAPI !== 'cli') {
     require_once APP_ROOT . '/config/session.php';
+
+    if (empty($_SESSION['logged_in']) && !empty($_COOKIE['remember_token']) && function_exists('appAttemptRememberLogin')) {
+        try {
+            $dbInstance = new Database();
+            $dbConn = $dbInstance->getConnection();
+            if ($dbConn) {
+                $rememberUser = appAttemptRememberLogin($dbConn);
+                if ($rememberUser) {
+                    if (function_exists('getDefaultNewUserPassword') && password_verify(getDefaultNewUserPassword(), (string)$rememberUser['password'])) {
+                        appRememberRevokeByCookie($dbConn, (string)($_COOKIE['remember_token'] ?? ''));
+                        appAuthClearRememberCookie();
+                    } else {
+                        appEstablishLoginSession($dbConn, $rememberUser);
+                        appRememberIssueToken($dbConn, (int)$rememberUser['id']);
+                        unset($_SESSION['session_expired']);
+                    }
+                }
+            }
+        } catch (Throwable $e) {
+            error_log('Remember login bootstrap failed: ' . $e->getMessage());
+        }
+    }
 }
 
 if (PHP_SAPI !== 'cli') {

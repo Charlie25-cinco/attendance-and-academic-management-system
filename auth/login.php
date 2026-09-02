@@ -9,6 +9,10 @@ unset($__appRoot);
 
 // Include database configuration
 
+if (!empty($_SESSION['logged_in']) && !empty($_SESSION['role'])) {
+    redirectByRole((string)$_SESSION['role']);
+}
+
 $error = '';
 if (!empty($_SESSION['session_expired'])) {
     $error = 'Your session expired due to inactivity. Please login again.';
@@ -24,8 +28,10 @@ const REMEMBER_COOKIE_NAME = 'remember_token';
 const REMEMBER_TTL_SECONDS = 2592000;
 
 function authHasTable($db, $table) {
+    if (function_exists('dbHasTable')) {
+        return dbHasTable($db, $table);
+    }
     static $cache = [];
-    static $warned = [];
     if (isset($cache[$table])) return $cache[$table];
     try {
         $stmt = $db->prepare("SHOW TABLES LIKE ?");
@@ -33,13 +39,6 @@ function authHasTable($db, $table) {
         $cache[$table] = (bool)$stmt->fetch(PDO::FETCH_NUM);
     } catch (Throwable $e) {
         $cache[$table] = false;
-    }
-    if (!$cache[$table] && empty($warned[$table])) {
-        $warned[$table] = true;
-        $impact = $table === 'rate_limits'
-            ? 'Login rate limiting and lockout are disabled.'
-            : 'Related security checks are degraded.';
-        error_log('[SECURITY WARNING] Required table "' . $table . '" is missing. ' . $impact . ' Import database/schema.sql.');
     }
     return $cache[$table];
 }
@@ -92,7 +91,7 @@ function authSetThemeCookie($enabled) {
 }
 
 function authClearRememberCookie() {
-    authSetCookie(REMEMBER_COOKIE_NAME, '', time() - 3600);
+    appAuthClearRememberCookie();
 }
 
 function loginLogAttempt($db, $referenceCode, $success, $reason) {
@@ -108,63 +107,15 @@ function loginLogAttempt($db, $referenceCode, $success, $reason) {
 }
 
 function rememberRevokeByCookie($db, $cookieValue) {
-    if (!$db || !authHasTable($db, 'auth_remember_tokens')) return;
-    if (!is_string($cookieValue) || strpos($cookieValue, ':') === false) return;
-    [$selector, $validator] = explode(':', $cookieValue, 2);
-    if ($selector === '' || $validator === '') return;
-    $stmt = $db->prepare("UPDATE auth_remember_tokens SET revoked_at = NOW()
-                          WHERE selector = ? AND token_hash = ? AND revoked_at IS NULL");
-    $stmt->execute([$selector, hash('sha256', $validator)]);
+    appRememberRevokeByCookie($db, (string)$cookieValue);
 }
 
 function rememberIssueToken($db, $userId) {
-    if (!$db || !authHasTable($db, 'auth_remember_tokens')) return;
-    $selector = bin2hex(random_bytes(9));
-    $validator = bin2hex(random_bytes(32));
-    $hash = hash('sha256', $validator);
-    $expiresAt = date('Y-m-d H:i:s', time() + REMEMBER_TTL_SECONDS);
-
-    $stmt = $db->prepare("INSERT INTO auth_remember_tokens (user_id, selector, token_hash, expires_at, created_at, last_used_at)
-                          VALUES (?, ?, ?, ?, NOW(), NOW())");
-    $stmt->execute([(int)$userId, $selector, $hash, $expiresAt]);
-    authSetCookie(REMEMBER_COOKIE_NAME, $selector . ':' . $validator, time() + REMEMBER_TTL_SECONDS);
+    appRememberIssueToken($db, (int)$userId);
 }
 
 function establishLoginSession($db, $user) {
-    $updateQuery = "UPDATE users SET last_login = NOW() WHERE id = :id";
-    $updateStmt = $db->prepare($updateQuery);
-    $updateStmt->bindParam(':id', $user['id']);
-    $updateStmt->execute();
-
-    session_regenerate_id(true);
-    $_SESSION['user_id'] = $user['id'];
-    $_SESSION['reference_code'] = $user['reference_code'];
-    $_SESSION['email'] = $user['email'];
-    $_SESSION['first_name'] = $user['first_name'];
-    $_SESSION['last_name'] = $user['last_name'];
-    $_SESSION['role'] = $user['role'];
-    $_SESSION['logged_in'] = true;
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-    $_SESSION['last_activity'] = time();
-
-    $_SESSION['ui_dark_mode'] = 0;
-    try {
-        if ($db && authHasTable($db, 'user_settings')) {
-            $settingsStmt = $db->prepare("SELECT dark_mode
-                                          FROM user_settings
-                                          WHERE user_id = ?
-                                          LIMIT 1");
-            $settingsStmt->execute([(int)$user['id']]);
-            $darkMode = (int)($settingsStmt->fetchColumn() ?: 0) === 1 ? 1 : 0;
-            $_SESSION['ui_dark_mode'] = $darkMode;
-            authSetThemeCookie($darkMode === 1);
-        } else {
-            authSetThemeCookie(false);
-        }
-    } catch (Throwable $e) {
-        $_SESSION['ui_dark_mode'] = 0;
-        authSetThemeCookie(false);
-    }
+    appEstablishLoginSession($db, (array)$user);
 }
 
 function redirectByRole($role) {
@@ -179,45 +130,7 @@ function redirectByRole($role) {
 }
 
 function attemptRememberLogin($db) {
-    if (!$db || !authHasTable($db, 'auth_remember_tokens')) return null;
-    $cookie = (string)($_COOKIE[REMEMBER_COOKIE_NAME] ?? '');
-    if ($cookie === '' || strpos($cookie, ':') === false) return null;
-
-    [$selector, $validator] = explode(':', $cookie, 2);
-    if ($selector === '' || $validator === '') return null;
-
-    $stmt = $db->prepare("SELECT rt.id AS token_id, rt.token_hash, u.id, u.reference_code, u.email, u.password, u.first_name, u.last_name, u.role
-                          FROM auth_remember_tokens rt
-                          JOIN users u ON u.id = rt.user_id
-                          WHERE rt.selector = ?
-                          AND rt.revoked_at IS NULL
-                          AND rt.expires_at > NOW()
-                          AND u.status = 'active'
-                          LIMIT 1");
-    $stmt->execute([$selector]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$row) return null;
-
-    $valid = hash_equals((string)$row['token_hash'], hash('sha256', $validator));
-    if (!$valid) {
-        $revoke = $db->prepare("UPDATE auth_remember_tokens SET revoked_at = NOW() WHERE id = ?");
-        $revoke->execute([(int)$row['token_id']]);
-        authClearRememberCookie();
-        return null;
-    }
-
-    $touch = $db->prepare("UPDATE auth_remember_tokens SET last_used_at = NOW() WHERE id = ?");
-    $touch->execute([(int)$row['token_id']]);
-
-    return [
-        'id' => $row['id'],
-        'reference_code' => $row['reference_code'],
-        'email' => $row['email'],
-        'password' => $row['password'],
-        'first_name' => $row['first_name'],
-        'last_name' => $row['last_name'],
-        'role' => $row['role']
-    ];
+    return appAttemptRememberLogin($db);
 }
 
 $database = new Database();

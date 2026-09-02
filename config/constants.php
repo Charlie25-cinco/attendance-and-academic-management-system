@@ -1086,6 +1086,11 @@ if ('serviceWorker' in navigator) {
                             if (choice && choice.outcome === 'accepted') {
                                 window._pwaInstalled = true;
                                 window._pwaInstallPrompt = null;
+                                try {
+                                    if (window.localStorage) {
+                                        window.localStorage.setItem('bshs_pwa_first_open_pending', '1');
+                                    }
+                                } catch (err) {}
                             }
                         } catch (err) {
                             console.warn('[PWA] Install prompt:', err);
@@ -1117,6 +1122,11 @@ if ('serviceWorker' in navigator) {
     window.addEventListener('appinstalled', function () {
         window._pwaInstalled = true;
         window._pwaInstallPrompt = null;
+        try {
+            if (window.localStorage) {
+                window.localStorage.setItem('bshs_pwa_first_open_pending', '1');
+            }
+        } catch (err) {}
         window.bindPwaInstallButton();
     });
 </script>";

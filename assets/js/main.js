@@ -1550,6 +1550,11 @@ function initPwaPushFirstOpenPrompt() {
     return;
   }
 
+  // Consume any pending first-open flag
+  try {
+    localStorage.removeItem("bshs_pwa_first_open_pending");
+  } catch (_) {}
+
   const promptModal = bootstrap.Modal.getOrCreateInstance(modalEl);
   const allowBtn = document.getElementById("pushPromptAllowBtn");
   const denyBtn = document.getElementById("pushPromptDenyBtn");
@@ -1647,16 +1652,20 @@ function initPwaPushFirstOpenPrompt() {
     };
   }
 
-  window.setTimeout(() => {
-    if (
-      isInstalledPwa() &&
-      Notification.permission === "default" &&
-      (!dismissed ||
-        (dismissed === "later" && Date.now() - dismissedAt >= 86400000))
-    ) {
-      promptModal.show();
-    }
-  }, 400);
+  modalEl.addEventListener(
+    "hidden.bs.modal",
+    function () {
+      try {
+        var curDismissed = localStorage.getItem("bshs_push_prompt_dismissed");
+        if (!curDismissed) {
+          handleDismiss("later");
+        }
+      } catch (_) {}
+    },
+    { once: true },
+  );
+
+  promptModal.show();
 }
 
 window.showDeviceNotificationPrompt = function () {

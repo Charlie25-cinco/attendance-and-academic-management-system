@@ -19,20 +19,7 @@ if (empty($_SESSION['pending_password_change']) || empty($_SESSION['pending_user
 }
 
 function establishLoginSession($db, $user) {
-    $updateQuery = "UPDATE users SET last_login = NOW() WHERE id = :id";
-    $updateStmt = $db->prepare($updateQuery);
-    $updateStmt->bindParam(':id', $user['id']);
-    $updateStmt->execute();
-
-    session_regenerate_id(true);
-    $_SESSION['user_id'] = $user['id'];
-    $_SESSION['reference_code'] = $user['reference_code'];
-    $_SESSION['email'] = $user['email'];
-    $_SESSION['first_name'] = $user['first_name'];
-    $_SESSION['last_name'] = $user['last_name'];
-    $_SESSION['role'] = $user['role'];
-    $_SESSION['logged_in'] = true;
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    appEstablishLoginSession($db, (array)$user);
 }
 
 function redirectByRole($role) {

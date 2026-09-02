@@ -2,6 +2,18 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.158 — 2026-09-03
+
+### Fixed
+
+- **PWA Remember-Me Session Restoration, First-Standalone Push Modal Lifecycle & Closed-PWA Web Push**:
+  - **Canonical Remember-Me Token Operations**: Centralized remember-token issuance, validation, session establishment, and cookie revocation into canonical helper functions (`appAttemptRememberLogin`, `appEstablishLoginSession`, `appRememberIssueToken`, `appRememberRevokeByCookie`, `appAuthClearRememberCookie`) in [`functions/app-helpers.php`](file:///c:/laragon/www/attendance-and-academic-management-system/functions/app-helpers.php), eliminating duplicate auth implementations across `login.php`, `logout.php`, and `change-password.php`.
+  - **Bootstrap Session Auto-Restoration**: Updated [`functions/bootstrap.php`](file:///c:/laragon/www/attendance-and-academic-management-system/functions/bootstrap.php) to automatically restore authenticated server sessions via `appAttemptRememberLogin()` when reopening standalone PWA or navigating protected pages with a valid `remember_token` cookie, rotating the token and clearing any stale idle-timeout flags. Standard non-remembered sessions maintain their intended expiration.
+  - **PWA Launch Loop Prevention**: Added active session redirection at the top of [`auth/login.php`](file:///c:/laragon/www/attendance-and-academic-management-system/auth/login.php) so launching the PWA via `start_url: /auth/login.php` seamlessly routes authenticated users to their portal dashboard.
+  - **First Standalone Launch Push Modal Pending State**: Configured [`config/constants.php`](file:///c:/laragon/www/attendance-and-academic-management-system/config/constants.php) to record `bshs_pwa_first_open_pending = '1'` on `appinstalled` or prompt acceptance, which is consumed and displayed once by `initPwaPushFirstOpenPrompt()` in [`assets/js/main.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/main.js) upon first standalone launch without prompting regular browser visits.
+  - **Closed-PWA Web Push Verification**: Verified [`sw.js`](file:///c:/laragon/www/attendance-and-academic-management-system/sw.js) background `push` event handler and server-side VAPID payload targeting without active window clients.
+  - **Automated Regression Test Suite**: Added [`tests/PwaRememberMeSessionTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/PwaRememberMeSessionTest.php) covering Remember-Me token rotation, session restoration across window close, default password auto-login protection, active session redirection, full push prompt lifecycle simulation, and service worker push reception when the PWA is closed.
+
 ## v0.3.157 — 2026-09-03
 
 ### Fixed

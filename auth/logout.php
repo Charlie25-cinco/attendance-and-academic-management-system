@@ -14,34 +14,13 @@ if ($sessionToken === '' || $requestToken === '' || !hash_equals($sessionToken, 
     exit();
 }
 
-const REMEMBER_COOKIE_NAME = 'remember_token';
-
-function logoutRevokeRememberToken() {
-    $cookie = (string)($_COOKIE[REMEMBER_COOKIE_NAME] ?? '');
-    if ($cookie === '' || strpos($cookie, ':') === false) return;
-    [$selector, $validator] = explode(':', $cookie, 2);
-    if ($selector === '' || $validator === '') return;
-
-    $db = (new Database())->getConnection();
-    if (!$db) return;
-    try {
-        $hasTable = (bool)$db->query("SHOW TABLES LIKE 'auth_remember_tokens'")->fetch(PDO::FETCH_NUM);
-        if (!$hasTable) return;
-        $stmt = $db->prepare("UPDATE auth_remember_tokens
-                              SET revoked_at = NOW()
-                              WHERE selector = ? AND token_hash = ? AND revoked_at IS NULL");
-        $stmt->execute([$selector, hash('sha256', $validator)]);
-    } catch (Throwable $e) {
-        error_log("Logout remember-token revoke error: " . $e->getMessage());
-    }
+$db = (new Database())->getConnection();
+if ($db && function_exists('appRememberRevokeByCookie')) {
+    appRememberRevokeByCookie($db, (string)($_COOKIE['remember_token'] ?? ''));
 }
-
-function clearRememberCookie() {
-    setcookie(REMEMBER_COOKIE_NAME, '', appCookieParams(time() - 3600, true));
+if (function_exists('appAuthClearRememberCookie')) {
+    appAuthClearRememberCookie();
 }
-
-logoutRevokeRememberToken();
-clearRememberCookie();
 
 // Clear all session data.
 $_SESSION = [];

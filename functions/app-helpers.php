@@ -1477,3 +1477,136 @@ function refreshSessionPermissions(): void {
         $_SESSION['rbac_permissions'] = loadRbacPermissions($db, $_SESSION['role']);
     }
 }
+
+function appAuthClearRememberCookie(): void {
+    if (function_exists('appCookieParams')) {
+        setcookie('remember_token', '', appCookieParams(time() - 3600, true));
+    } else {
+        setcookie('remember_token', '', time() - 3600, '/');
+    }
+}
+
+function appRememberRevokeByCookie(PDO $db, string $cookieValue): void {
+    if (!function_exists('dbHasTable') || !dbHasTable($db, 'auth_remember_tokens')) { return; }
+    if ($cookieValue === '' || strpos($cookieValue, ':') === false) { return; }
+    [$selector, $validator] = explode(':', $cookieValue, 2);
+    if ($selector === '' || $validator === '') { return; }
+    $now = date('Y-m-d H:i:s');
+    $stmt = $db->prepare("UPDATE auth_remember_tokens SET revoked_at = ?
+                          WHERE selector = ? AND token_hash = ? AND revoked_at IS NULL");
+    $stmt->execute([$now, $selector, hash('sha256', $validator)]);
+}
+
+function appRememberIssueToken(PDO $db, int $userId): void {
+    if (!function_exists('dbHasTable') || !dbHasTable($db, 'auth_remember_tokens')) { return; }
+    $selector = bin2hex(random_bytes(9));
+    $validator = bin2hex(random_bytes(32));
+    $hash = hash('sha256', $validator);
+    $ttlSeconds = 2592000; // 30 days
+    $now = date('Y-m-d H:i:s');
+    $expiresAt = date('Y-m-d H:i:s', time() + $ttlSeconds);
+
+    $stmt = $db->prepare("INSERT INTO auth_remember_tokens (user_id, selector, token_hash, expires_at, created_at, last_used_at)
+                          VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt->execute([(int)$userId, $selector, $hash, $expiresAt, $now, $now]);
+    if (function_exists('appCookieParams')) {
+        setcookie('remember_token', $selector . ':' . $validator, appCookieParams(time() + $ttlSeconds, true));
+    } else {
+        setcookie('remember_token', $selector . ':' . $validator, time() + $ttlSeconds, '/');
+    }
+}
+
+function appEstablishLoginSession(PDO $db, array $user): void {
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
+    }
+    $now = date('Y-m-d H:i:s');
+    $updateQuery = "UPDATE users SET last_login = ? WHERE id = ?";
+    $updateStmt = $db->prepare($updateQuery);
+    $userId = (int)$user['id'];
+    $updateStmt->execute([$now, $userId]);
+
+    session_regenerate_id(true);
+    $_SESSION['user_id'] = (int)$user['id'];
+    $_SESSION['reference_code'] = (string)$user['reference_code'];
+    $_SESSION['email'] = (string)$user['email'];
+    $_SESSION['first_name'] = (string)$user['first_name'];
+    $_SESSION['last_name'] = (string)$user['last_name'];
+    $_SESSION['role'] = (string)$user['role'];
+    $_SESSION['logged_in'] = true;
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    $_SESSION['last_activity'] = time();
+
+    $_SESSION['ui_dark_mode'] = 0;
+    try {
+        if (function_exists('dbHasTable') && dbHasTable($db, 'user_settings')) {
+            $settingsStmt = $db->prepare("SELECT dark_mode FROM user_settings WHERE user_id = ? LIMIT 1");
+            $settingsStmt->execute([(int)$user['id']]);
+            $darkMode = (int)($settingsStmt->fetchColumn() ?: 0) === 1 ? 1 : 0;
+            $_SESSION['ui_dark_mode'] = $darkMode;
+            if (function_exists('appCookieParams')) {
+                setcookie('app_dark_mode', $darkMode === 1 ? '1' : '0', appCookieParams(time() + (86400 * 365), false));
+            }
+        }
+    } catch (Throwable $e) {
+        $_SESSION['ui_dark_mode'] = 0;
+    }
+}
+
+function appAttemptRememberLogin(?PDO $db = null): ?array {
+    if (!$db) {
+        if (!class_exists('Database')) { return null; }
+        try {
+            $db = (new Database())->getConnection();
+        } catch (Throwable $e) {
+            return null;
+        }
+    }
+    if (!$db instanceof PDO || !function_exists('dbHasTable') || !dbHasTable($db, 'auth_remember_tokens')) {
+        return null;
+    }
+    $cookie = (string)($_COOKIE['remember_token'] ?? '');
+    if ($cookie === '' || strpos($cookie, ':') === false) {
+        return null;
+    }
+
+    [$selector, $validator] = explode(':', $cookie, 2);
+    if ($selector === '' || $validator === '') {
+        return null;
+    }
+
+    $now = date('Y-m-d H:i:s');
+    $stmt = $db->prepare("SELECT rt.id AS token_id, rt.token_hash, u.id, u.reference_code, u.email, u.password, u.first_name, u.last_name, u.role
+                          FROM auth_remember_tokens rt
+                          JOIN users u ON u.id = rt.user_id
+                          WHERE rt.selector = ?
+                          AND rt.revoked_at IS NULL
+                          AND rt.expires_at > ?
+                          AND u.status = 'active'
+                          LIMIT 1");
+    $stmt->execute([$selector, $now]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$row) { return null; }
+
+    $valid = hash_equals((string)$row['token_hash'], hash('sha256', $validator));
+    if (!$valid) {
+        $revoke = $db->prepare("UPDATE auth_remember_tokens SET revoked_at = ? WHERE id = ?");
+        $revoke->execute([$now, (int)$row['token_id']]);
+        appAuthClearRememberCookie();
+        return null;
+    }
+
+    $touch = $db->prepare("UPDATE auth_remember_tokens SET last_used_at = ? WHERE id = ?");
+    $touch->execute([$now, (int)$row['token_id']]);
+
+    return [
+        'id' => (int)$row['id'],
+        'reference_code' => $row['reference_code'],
+        'email' => $row['email'],
+        'password' => $row['password'],
+        'first_name' => $row['first_name'],
+        'last_name' => $row['last_name'],
+        'role' => $row['role']
+    ];
+}
+
