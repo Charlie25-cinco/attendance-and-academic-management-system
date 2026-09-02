@@ -110,5 +110,27 @@ final class AdminClassMultiSectionTest extends TestCase
         $this->assertStringContainsString('data-field="start_ampm"', $classesHtml);
         $this->assertStringContainsString('min-width: 76px;', $classesHtml);
     }
+
+    public function testAdminClassesActionAtomicMultiSectionPreValidation(): void
+    {
+        $code = file_get_contents(__DIR__ . '/../admin/admin_Classes_Action.php');
+        $this->assertIsString($code);
+
+        // Verify transaction management
+        $this->assertStringContainsString('$db->beginTransaction()', $code);
+        $this->assertStringContainsString('$db->commit()', $code);
+        $this->assertStringContainsString('$db->rollBack()', $code);
+
+        // Verify pre-validation occurs before beginTransaction
+        $preValidationPos = strpos($code, 'PHASE 1: PRE-VALIDATION ACROSS ALL SECTIONS');
+        $transactionPos = strpos($code, '$db->beginTransaction()');
+        $this->assertNotFalse($preValidationPos);
+        $this->assertNotFalse($transactionPos);
+        $this->assertLessThan($transactionPos, $preValidationPos);
+
+        // Verify clear error return instead of silent skip
+        $this->assertStringNotContainsString('$skippedSections[] = ', $code);
+    }
 }
+
 

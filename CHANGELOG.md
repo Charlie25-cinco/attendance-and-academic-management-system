@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.127 — 2026-09-02
+
+### Admin & Core
+
+- **Fixed Multi-Section Class Creation with Pre-Validation and Atomic Transactions**:
+  - **Pre-Validation Across All Sections**: Refactored `createClass()` in [`admin/admin_Classes_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Classes_Action.php) to validate schedule formats, duplicate classes (`class_name` + `grade_level` + `section`), and section schedule conflicts across all selected sections _before_ making any database modifications.
+  - **Eliminated Silent Partial Skips**: Removed the loop skipping behavior that created partial subsets and returned false `success: true` messages; now returns a clear, actionable error whenever an individual section cannot be created.
+  - **Atomic Database Transactions**: Wrapped batch multi-section creation inside `$db->beginTransaction()` and `$db->commit()` with rollback on exception, ensuring all valid sections are created together or none are left in a partial state.
+  - **Automated Regression Test Suite**: Added `testAdminClassesActionAtomicMultiSectionPreValidation` in [`tests/AdminClassMultiSectionTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/AdminClassMultiSectionTest.php) (7 tests, 68 assertions).
+
 ## v0.3.126 — 2026-09-02
 
 ### Admin & UI/UX
