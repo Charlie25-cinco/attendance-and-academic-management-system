@@ -2,6 +2,15 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.135 — 2026-09-02
+
+### Admin & Core
+
+- **On-Demand Class Roster Synchronization for Existing SF1 Students**:
+  - **Explicit On-Demand Synchronization Helper**: Implemented `syncClassEnrollmentsForClass()` in [`functions/app-helpers.php`](file:///c:/laragon/www/attendance-and-academic-management-system/functions/app-helpers.php) with in-request per-connection caching to atomically and idempotently enroll active section students into specific active classes when requested.
+  - **Integrated Class Roster Loading Paths**: Wired `syncClassEnrollmentsForClass()` into [`admin/admin_Class_Detail.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Class_Detail.php), [`admin/admin_Classes_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Classes_Action.php), [`teacher/teacher_Enrollment_Helper.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Enrollment_Helper.php), and [`teacher/teacher_Grades.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Grades.php), ensuring existing students with matching Grade & Section data (e.g. Grade 11 Humility) who lack enrollment rows are automatically repaired and visible in subject rosters (such as Filipino) without requiring SF1 re-import.
+  - **Automated Regression Test Suite**: Added `testExistingSf1ImportedStudentWithZeroEnrollmentsIsRepairedOnRosterLoadAndRemainsUnchangedOnSecondSync` in [`tests/Sf1SubjectRosterEnrollmentTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/Sf1SubjectRosterEnrollmentTest.php) verifying zero-enrollment student repair on roster load and strict idempotency on second synchronization (6 tests, 31 assertions; all 187 tests passing in full suite).
+
 ## v0.3.134 — 2026-09-02
 
 ### Admin & Core

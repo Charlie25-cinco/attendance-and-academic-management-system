@@ -887,6 +887,8 @@ function exportSf2(PDO $db): void {
         exit();
     }
 
+    syncClassEnrollmentsForClass($db, (int)$classId);
+
     $academicYearStart = $month >= 6 ? $year : $year - 1;
     $sf2AcademicYear = $academicYearStart . '-' . ($academicYearStart + 1);
 

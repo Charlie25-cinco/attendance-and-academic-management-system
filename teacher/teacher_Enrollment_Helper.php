@@ -23,6 +23,9 @@ if (!function_exists('tEnrollActiveUsersJoinSql')) {
 
 if (!function_exists('tEnrollFetchActiveStudentIds')) {
     function tEnrollFetchActiveStudentIds($db, $classId) {
+        if (function_exists('syncClassEnrollmentsForClass')) {
+            syncClassEnrollmentsForClass($db, (int)$classId);
+        }
         $stmt = $db->prepare(tEnrollActiveStudentsSubquerySql());
         $stmt->execute([(int)$classId, (int)$classId]);
         return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
@@ -31,6 +34,9 @@ if (!function_exists('tEnrollFetchActiveStudentIds')) {
 
 if (!function_exists('tEnrollFetchActiveTermMap')) {
     function tEnrollFetchActiveTermMap($db, $classId) {
+        if (function_exists('syncClassEnrollmentsForClass')) {
+            syncClassEnrollmentsForClass($db, (int)$classId);
+        }
         $sql = "SELECT e.student_id, e.academic_year, e.semester
                 FROM enrollments e
                 JOIN (
@@ -57,6 +63,9 @@ if (!function_exists('tEnrollFetchActiveTermMap')) {
 
 if (!function_exists('tEnrollFetchStudentsWithAttendance')) {
     function tEnrollFetchStudentsWithAttendance($db, $classId, $date, $sex = '') {
+        if (function_exists('syncClassEnrollmentsForClass')) {
+            syncClassEnrollmentsForClass($db, (int)$classId);
+        }
         $sex = strtolower(trim((string)$sex));
         if (!in_array($sex, ['male', 'female'], true)) {
             $sex = '';
@@ -91,6 +100,9 @@ if (!function_exists('tEnrollFetchStudentsWithAttendance')) {
 
 if (!function_exists('tEnrollFetchAdvisoryStudentsWithAttendance')) {
     function tEnrollFetchAdvisoryStudentsWithAttendance($db, $classId, $date) {
+        if (function_exists('syncClassEnrollmentsForClass')) {
+            syncClassEnrollmentsForClass($db, (int)$classId);
+        }
         $query = "SELECT DISTINCT u.id, u.reference_code, u.first_name, u.last_name,
                   CASE
                     WHEN COALESCE(ar.absent_count, 0) > 0 THEN 'absent'

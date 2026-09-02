@@ -35,6 +35,8 @@ if (!$class) {
     exit();
 }
 
+syncClassEnrollmentsForClass($db, (int)$classId);
+
 // Fetch enrolled students
 $studentsQuery = "SELECT u.id, u.first_name, u.last_name, u.reference_code, e.enrolled_at
                   FROM enrollments e

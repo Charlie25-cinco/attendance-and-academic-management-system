@@ -442,6 +442,75 @@ function syncStudentEnrollments(PDO $db, int $studentId, int $gradeLevel, string
     }
 }
 
+function syncClassEnrollmentsForClass(PDO $db, int $classId, ?string $academicYear = null): void {
+    if ($classId <= 0) {
+        return;
+    }
+    static $syncedInRequest = [];
+    $connId = spl_object_id($db);
+    if (isset($syncedInRequest[$connId][$classId])) {
+        return;
+    }
+    $syncedInRequest[$connId][$classId] = true;
+
+    $stmt = $db->prepare("SELECT grade_level, section, track, curriculum, program FROM classes WHERE id = ? AND status = 'active' LIMIT 1");
+    $stmt->execute([$classId]);
+    $class = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$class) {
+        return;
+    }
+
+    $gradeLevel = (int)($class['grade_level'] ?? 0);
+    $section = trim((string)($class['section'] ?? ''));
+    $track = (string)($class['track'] ?? '');
+
+    if ($gradeLevel <= 0 || $section === '') {
+        return;
+    }
+
+    $academicYear = $academicYear ?: currentAcademicYear();
+    $curriculum = !empty($class['curriculum']) ? $class['curriculum'] : strengthenedShsCurriculum($gradeLevel, $academicYear);
+    $program = !empty($class['program']) ? $class['program'] : strengthenedShsProgram($gradeLevel, $track, $academicYear);
+    $semester = $curriculum === 'strengthened_shs' ? null : 1;
+
+    $driver = (string)$db->getAttribute(PDO::ATTR_DRIVER_NAME);
+    if ($driver === 'sqlite') {
+        $sectionSql = "(LOWER(TRIM(COALESCE(u.section, ''))) = LOWER(TRIM(COALESCE(?, ''))))";
+        $params = [
+            $classId, $academicYear, $semester, $curriculum, $program, date('Y-m-d H:i:s'),
+            $gradeLevel, $section,
+            $track, $track, $track,
+            $classId, $academicYear
+        ];
+    } else {
+        $sectionSql = sectionMatchSql('u.section');
+        $params = [
+            $classId, $academicYear, $semester, $curriculum, $program, date('Y-m-d H:i:s'),
+            $gradeLevel, $section, $section,
+            $track, $track, $track,
+            $classId, $academicYear
+        ];
+    }
+
+    $insert = $db->prepare("INSERT INTO enrollments (student_id, class_id, academic_year, semester, curriculum, program, status, enrolled_at)
+                            SELECT u.id, ?, ?, ?, ?, ?, 'enrolled', ?
+                            FROM users u
+                            WHERE u.role = 'student'
+                              AND u.status IN ('active', 'pending')
+                              AND u.grade_level = ?
+                              AND {$sectionSql}
+                              AND (? IS NULL OR TRIM(?) = '' OR u.track IS NULL OR TRIM(u.track) = '' OR LOWER(TRIM(u.track)) = LOWER(TRIM(?)))
+                              AND NOT EXISTS (
+                                  SELECT 1
+                                  FROM enrollments e
+                                  WHERE e.student_id = u.id
+                                    AND e.class_id = ?
+                                    AND e.academic_year = ?
+                                    AND COALESCE(e.status, 'enrolled') = 'enrolled'
+                              )");
+    $insert->execute($params);
+}
+
 function autoLinkSf1Parent(PDO $db, int $studentId, array $row, string $academicYear, ?string $hashedPassword = null): ?array {
     $guardianName = trim((string)($row['guardian_name'] ?? ''));
     $fatherName = trim((string)($row['father_name'] ?? ''));

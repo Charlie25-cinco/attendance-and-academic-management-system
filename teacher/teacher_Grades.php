@@ -86,6 +86,10 @@ if ($db) {
             }
         }
 
+        if ($selectedGradeClassId > 0 && function_exists('syncClassEnrollmentsForClass')) {
+            syncClassEnrollmentsForClass($db, $selectedGradeClassId);
+        }
+
         if ($hasGradeTerm) {
             $tc = 'term';
             $has_quarter = dbHasColumn($db, 'grades', 'quarter');
