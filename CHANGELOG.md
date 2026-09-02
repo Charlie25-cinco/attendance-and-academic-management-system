@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.150 — 2026-09-03
+
+### Fixed
+
+- **Visible by Default PWA Install Controls & Platform Guidance Fallback**:
+  - **Always-Visible PWA Controls**: Removed `style="display:none;"` from `#pwaInstallBtn` and `#headerPwaInstallDropdownItem` in [`includes/header.php`](file:///c:/laragon/www/attendance-and-academic-management-system/includes/header.php) and `#settingsPwaInstallSection` in [`includes/modals.php`](file:///c:/laragon/www/attendance-and-academic-management-system/includes/modals.php), ensuring install controls are visibly rendered by default without waiting for `beforeinstallprompt`.
+  - **Contextual Installation Guidance Modal**: Added `#pwaInstallModal` to [`includes/modals.php`](file:///c:/laragon/www/attendance-and-academic-management-system/includes/modals.php) with tailored step-by-step instructions for iOS Safari ("Add to Home Screen"), Desktop/Android browsers (address bar / browser menu install), and standalone already-installed status.
+  - **Unified Fallback Execution**: Updated `window.bindPwaInstallButton()` and `window.showPwaInstallModal()` in [`config/constants.php`](file:///c:/laragon/www/attendance-and-academic-management-system/config/constants.php) to trigger native `prompt()` when `_pwaInstallPrompt` is available, and open `#pwaInstallModal` when manual installation or browser fallback is required.
+  - **Automated Regression Testing**: Updated [`tests/PwaInstallUiTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/PwaInstallUiTest.php) verifying default visible rendering, modal guidance markup, and JS prompt/fallback bindings.
+
 ## v0.3.149 — 2026-09-03
 
 ### Fixed

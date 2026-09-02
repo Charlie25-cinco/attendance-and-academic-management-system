@@ -8,39 +8,53 @@ use PHPUnit\Framework\TestCase;
 
 final class PwaInstallUiTest extends TestCase
 {
-    public function testHeaderRendersPwaInstallButtonsAndDropdownItems(): void
+    public function testHeaderRendersPwaInstallButtonsAndDropdownItemsVisiblyByDefault(): void
     {
         $header = file_get_contents(__DIR__ . '/../includes/header.php');
         $this->assertIsString($header);
 
-        // Header quick action button
+        // Header quick action button is rendered without display:none
         $this->assertStringContainsString('id="pwaInstallBtn"', $header);
         $this->assertStringContainsString('title="Install App"', $header);
+        $this->assertStringNotContainsString('id="pwaInstallBtn" title="Install App" aria-label="Install App" style="display:none;"', $header);
 
-        // Header profile dropdown item
+        // Header profile dropdown item is rendered without display:none
         $this->assertStringContainsString('id="headerPwaInstallDropdownItem"', $header);
         $this->assertStringContainsString('id="headerPwaInstallDropdownBtn"', $header);
         $this->assertStringContainsString('Install App', $header);
+        $this->assertStringNotContainsString('<li id="headerPwaInstallDropdownItem" style="display:none;">', $header);
     }
 
-    public function testSettingsModalRendersPwaApplicationInstallSection(): void
+    public function testSettingsModalRendersPwaApplicationInstallSectionAndGuidanceModal(): void
     {
         $modals = file_get_contents(__DIR__ . '/../includes/modals.php');
         $this->assertIsString($modals);
 
+        // Settings modal install section is rendered without display:none
         $this->assertStringContainsString('id="settingsPwaInstallSection"', $modals);
         $this->assertStringContainsString('id="settingsPwaInstallBtn"', $modals);
         $this->assertStringContainsString('class="settings-option"', $modals);
         $this->assertStringContainsString('Install App', $modals);
         $this->assertStringContainsString('Application', $modals);
+        $this->assertStringNotContainsString('<div id="settingsPwaInstallSection" class="mt-4" style="display:none;">', $modals);
+
+        // PWA install guidance modal exists with fallback steps
+        $this->assertStringContainsString('id="pwaInstallModal"', $modals);
+        $this->assertStringContainsString('id="pwaInstallModalTitle"', $modals);
+        $this->assertStringContainsString('id="pwaInstallModalSubtitle"', $modals);
+        $this->assertStringContainsString('id="pwaGuideStep1Title"', $modals);
+        $this->assertStringContainsString('id="pwaGuideStep2Title"', $modals);
+        $this->assertStringContainsString('id="pwaGuideStep3Title"', $modals);
     }
 
-    public function testConstantsRegistersPwaInstallPromptAndManagesAllUiSurfaces(): void
+    public function testConstantsRegistersPwaInstallPromptAndManagesAllUiSurfacesWithFallback(): void
     {
         $constants = file_get_contents(__DIR__ . '/../config/constants.php');
         $this->assertIsString($constants);
 
         $this->assertStringContainsString('window._pwaInstallPrompt = null;', $constants);
+        $this->assertStringContainsString('window.isPwaStandalone = function ()', $constants);
+        $this->assertStringContainsString('window.showPwaInstallModal = function ()', $constants);
         $this->assertStringContainsString('window.bindPwaInstallButton = function ()', $constants);
         $this->assertStringContainsString("document.getElementById('pwaInstallBtn')", $constants);
         $this->assertStringContainsString("document.getElementById('settingsPwaInstallSection')", $constants);
@@ -50,6 +64,7 @@ final class PwaInstallUiTest extends TestCase
         $this->assertStringContainsString("window.addEventListener('beforeinstallprompt'", $constants);
         $this->assertStringContainsString("window.addEventListener('appinstalled'", $constants);
         $this->assertStringContainsString("window._pwaInstallPrompt.prompt()", $constants);
+        $this->assertStringContainsString("window.showPwaInstallModal()", $constants);
     }
 
     public function testServiceWorkerRegistrationIsNotPreemptedOnFreshLoadWithoutController(): void

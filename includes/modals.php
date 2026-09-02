@@ -124,7 +124,7 @@
                     </span>
                 </div>
 
-                <div id="settingsPwaInstallSection" class="mt-4" style="display:none;">
+                <div id="settingsPwaInstallSection" class="mt-4">
                     <div class="settings-group-title">Application</div>
                     <div class="settings-option">
                         <span class="settings-option-main">
@@ -143,6 +143,50 @@
             <div class="modal-footer app-modal-footer settings-modal-footer">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
                 <button type="button" class="btn btn-primary-custom px-4" id="saveSettingsBtn">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PWA Install Guidance Modal -->
+<div class="modal fade" id="pwaInstallModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content app-modal-content">
+            <div class="modal-header app-modal-header">
+                <div>
+                    <div class="app-modal-kicker"><i class="bi bi-phone"></i>Application</div>
+                    <h5 class="modal-title mb-0" id="pwaInstallModalTitle">Install BSHS AMS</h5>
+                    <p class="app-modal-subtitle mb-0" id="pwaInstallModalSubtitle">Install the app on your device for fast access and offline reliability.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body app-modal-body" id="pwaInstallModalBody">
+                <div class="pwa-install-guide">
+                    <div class="d-flex align-items-start gap-3 mb-3">
+                        <div class="pwa-guide-step-num bg-primary text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width:28px;height:28px;font-weight:600;font-size:13px;">1</div>
+                        <div>
+                            <div class="fw-semibold text-body" id="pwaGuideStep1Title">Open Browser Menu or Address Bar</div>
+                            <div class="text-muted small" id="pwaGuideStep1Desc">Look for the Install icon in the address bar, or tap your browser's menu (⋮ / ⋯).</div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-start gap-3 mb-3">
+                        <div class="pwa-guide-step-num bg-primary text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width:28px;height:28px;font-weight:600;font-size:13px;">2</div>
+                        <div>
+                            <div class="fw-semibold text-body" id="pwaGuideStep2Title">Select "Install BSHS AMS" or "Add to Home Screen"</div>
+                            <div class="text-muted small" id="pwaGuideStep2Desc">Choose the install option to begin adding the application to your home screen or desktop.</div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="pwa-guide-step-num bg-primary text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width:28px;height:28px;font-weight:600;font-size:13px;">3</div>
+                        <div>
+                            <div class="fw-semibold text-body" id="pwaGuideStep3Title">Confirm Installation</div>
+                            <div class="text-muted small" id="pwaGuideStep3Desc">Confirm the prompt. BSHS AMS will launch like a native application with offline support.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer app-modal-footer">
+                <button type="button" class="btn btn-primary-custom px-4" data-bs-dismiss="modal">Got It</button>
             </div>
         </div>
     </div>

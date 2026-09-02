@@ -992,8 +992,64 @@ if ('serviceWorker' in navigator) {
             });
     });
     window._pwaInstallPrompt = null;
+    window.isPwaStandalone = function () {
+        return Boolean((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true);
+    };
+
+    window.showPwaInstallModal = function () {
+        var modalEl = document.getElementById('pwaInstallModal');
+        var isStandalone = window.isPwaStandalone();
+        var isIos = /iphone|ipad|ipod/i.test(navigator.userAgent || '') && !window.MSStream;
+
+        var titleEl = document.getElementById('pwaInstallModalTitle');
+        var subtitleEl = document.getElementById('pwaInstallModalSubtitle');
+        var step1Title = document.getElementById('pwaGuideStep1Title');
+        var step1Desc = document.getElementById('pwaGuideStep1Desc');
+        var step2Title = document.getElementById('pwaGuideStep2Title');
+        var step2Desc = document.getElementById('pwaGuideStep2Desc');
+        var step3Title = document.getElementById('pwaGuideStep3Title');
+        var step3Desc = document.getElementById('pwaGuideStep3Desc');
+
+        if (isStandalone) {
+            if (titleEl) titleEl.textContent = 'Application Already Installed';
+            if (subtitleEl) subtitleEl.textContent = 'BSHS AMS is currently running as an installed application on this device.';
+            if (step1Title) step1Title.textContent = 'Installed & Active';
+            if (step1Desc) step1Desc.textContent = 'You are already using the installed PWA standalone version.';
+            if (step2Title) step2Title.textContent = 'Quick Access Ready';
+            if (step2Desc) step2Desc.textContent = 'Launch the app directly from your home screen or application launcher.';
+            if (step3Title) step3Title.textContent = 'Offline Reliability';
+            if (step3Desc) step3Desc.textContent = 'Essential caching and offline sync are automatically active.';
+        } else if (isIos) {
+            if (titleEl) titleEl.textContent = 'Install on iOS (iPhone / iPad)';
+            if (subtitleEl) subtitleEl.textContent = 'Follow these steps to add BSHS AMS to your Home Screen in Safari:';
+            if (step1Title) step1Title.textContent = 'Tap the Share Button';
+            if (step1Desc) step1Desc.textContent = 'Tap the Share icon (square with arrow) at the bottom or top of Safari.';
+            if (step2Title) step2Title.textContent = 'Select \"Add to Home Screen\"';
+            if (step2Desc) step2Desc.textContent = 'Scroll down the options list and select \"Add to Home Screen\".';
+            if (step3Title) step3Title.textContent = 'Tap \"Add\"';
+            if (step3Desc) step3Desc.textContent = 'Confirm by tapping \"Add\" in the upper-right corner.';
+        } else {
+            if (titleEl) titleEl.textContent = 'Install BSHS AMS';
+            if (subtitleEl) subtitleEl.textContent = 'Install BSHS AMS on this device for quick access and offline reliability.';
+            if (step1Title) step1Title.textContent = 'Open Browser Menu or Address Bar';
+            if (step1Desc) step1Desc.textContent = 'Look for the Install icon in your browser address bar or tap the menu (⋮ / ⋯).';
+            if (step2Title) step2Title.textContent = 'Select \"Install BSHS AMS\" or \"Add to Home Screen\"';
+            if (step2Desc) step2Desc.textContent = 'Choose the install option to add the application to your device.';
+            if (step3Title) step3Title.textContent = 'Confirm & Launch';
+            if (step3Desc) step3Desc.textContent = 'Accept the confirmation. The app will launch in its own standalone window.';
+        }
+
+        if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            var modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            modal.show();
+        } else if (modalEl) {
+            modalEl.classList.add('show');
+            modalEl.style.display = 'block';
+        }
+    };
+
     window.bindPwaInstallButton = function () {
-        var isInstallable = Boolean(window._pwaInstallPrompt);
+        var isStandalone = window.isPwaStandalone();
         var headerBtn = document.getElementById('pwaInstallBtn');
         var settingsSection = document.getElementById('settingsPwaInstallSection');
         var settingsBtn = document.getElementById('settingsPwaInstallBtn');
@@ -1001,13 +1057,25 @@ if ('serviceWorker' in navigator) {
         var dropdownBtn = document.getElementById('headerPwaInstallDropdownBtn');
 
         if (headerBtn) {
-            headerBtn.style.display = isInstallable ? 'flex' : 'none';
+            headerBtn.style.display = 'flex';
+            headerBtn.title = isStandalone ? 'App Installed' : 'Install App';
         }
         if (settingsSection) {
-            settingsSection.style.display = isInstallable ? 'block' : 'none';
+            settingsSection.style.display = 'block';
         }
         if (dropdownItem) {
-            dropdownItem.style.display = isInstallable ? 'block' : 'none';
+            dropdownItem.style.display = 'block';
+        }
+        if (settingsBtn) {
+            if (isStandalone) {
+                settingsBtn.innerHTML = '<i class=\"bi bi-check2-circle me-1\"></i>Installed';
+                settingsBtn.classList.remove('btn-primary-custom');
+                settingsBtn.classList.add('btn-outline-secondary');
+            } else {
+                settingsBtn.innerHTML = '<i class=\"bi bi-download me-1\"></i>Install';
+                settingsBtn.classList.remove('btn-outline-secondary');
+                settingsBtn.classList.add('btn-primary-custom');
+            }
         }
 
         var buttons = [headerBtn, settingsBtn, dropdownBtn];
@@ -1016,18 +1084,22 @@ if ('serviceWorker' in navigator) {
             btn.dataset.bound = '1';
             btn.addEventListener('click', async function (e) {
                 if (e) e.preventDefault();
-                if (!window._pwaInstallPrompt) { return; }
-                try {
-                    await window._pwaInstallPrompt.prompt();
-                    var choice = await window._pwaInstallPrompt.userChoice;
-                    if (choice && choice.outcome === 'accepted') {
+                if (window._pwaInstallPrompt) {
+                    try {
+                        await window._pwaInstallPrompt.prompt();
+                        var choice = await window._pwaInstallPrompt.userChoice;
+                        if (choice && choice.outcome === 'accepted') {
+                            window._pwaInstallPrompt = null;
+                        }
+                    } catch (err) {
+                        console.warn('[PWA] Install prompt:', err);
+                        window.showPwaInstallModal();
+                    } finally {
                         window._pwaInstallPrompt = null;
+                        window.bindPwaInstallButton();
                     }
-                } catch (err) {
-                    console.warn('[PWA] Install prompt:', err);
-                } finally {
-                    window._pwaInstallPrompt = null;
-                    window.bindPwaInstallButton();
+                } else {
+                    window.showPwaInstallModal();
                 }
             });
         });
