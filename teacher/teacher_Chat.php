@@ -48,7 +48,24 @@ if ($db) {
             ORDER BY last_message_at DESC, u_student.last_name ASC
         ");
         $stmt->execute([$teacherId, $teacherId, $teacherId, $teacherId, $teacherId, $teacherId]);
-        $conversations = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $rawConversations = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $conversationsByParent = [];
+        foreach ($rawConversations as $row) {
+            $pid = (int)($row['parent_id'] ?? 0);
+            if ($pid <= 0) {
+                continue;
+            }
+            $studentName = trim(($row['student_first'] ?? '') . ' ' . ($row['student_last'] ?? ''));
+            if (!isset($conversationsByParent[$pid])) {
+                $row['student_names'] = $studentName !== '' ? [$studentName] : [];
+                $conversationsByParent[$pid] = $row;
+            } else {
+                if ($studentName !== '' && !in_array($studentName, $conversationsByParent[$pid]['student_names'], true)) {
+                    $conversationsByParent[$pid]['student_names'][] = $studentName;
+                }
+            }
+        }
+        $conversations = array_values($conversationsByParent);
     } catch (Throwable $e) {
         error_log('Teacher_Chat conversations error: ' . $e->getMessage());
     }
@@ -182,7 +199,7 @@ $page_title = 'Messages';
                         $initials = strtoupper(($pFirst !== '' ? $pFirst[0] : '') . ($pLast !== '' ? $pLast[0] : 'P'));
                         $sFirst = trim((string)($conv['student_first'] ?? ''));
                         $sLast = trim((string)($conv['student_last'] ?? ''));
-                        $sName = trim("$sFirst $sLast");
+                        $sName = !empty($conv['student_names']) ? implode(', ', $conv['student_names']) : trim("$sFirst $sLast");
                         $unread = (int)($conv['unread_count'] ?? 0);
                         $lastMsg = trim((string)($conv['last_message'] ?? ''));
                         $isActive = (int)$conv['parent_id'] === $selectedParentId;
@@ -210,7 +227,7 @@ $page_title = 'Messages';
                         <?php if ($selectedConv): ?>
                         <?php
                         $pName = trim(($selectedConv['parent_first'] ?? '') . ' ' . ($selectedConv['parent_last'] ?? ''));
-                        $sName = trim(($selectedConv['student_first'] ?? '') . ' ' . ($selectedConv['student_last'] ?? ''));
+                        $sName = !empty($selectedConv['student_names']) ? implode(', ', $selectedConv['student_names']) : trim(($selectedConv['student_first'] ?? '') . ' ' . ($selectedConv['student_last'] ?? ''));
                         ?>
                         <div class="chat-header teacher-chat-header d-flex align-items-center gap-3">
                             <a href="teacher_Chat.php" class="btn btn-sm btn-outline-secondary d-lg-none"><i class="bi bi-arrow-left"></i></a>

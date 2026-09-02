@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.160 — 2026-09-03
+
+### Fixed
+
+- **Many-to-Many Parent/Student Relationship Support & Sibling Conversation Consolidation**:
+  - **Removed Artificial Single-Parent Application Validation**: Removed artificial validation checks in [`admin/admin_Users_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Users_Action.php) (`createUser` and `updateUser`) and [`src/User/UserValidationHelper.php`](file:///c:/laragon/www/attendance-and-academic-management-system/src/User/UserValidationHelper.php) (`getStudentParentConflicts`) that previously prevented a student from being linked to multiple parents/guardians (e.g., Father, Mother, Guardian) in compliance with DepEd SF1 and school guidelines, while preserving student existence, minimum selection, and `UNIQUE(parent_id, student_id)` duplicate pair prevention.
+  - **Teacher & Parent Chat Sibling Conversation Aggregation**: Consolidated chat conversation lists in [`teacher/teacher_Chat.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Chat.php) (by `parent_id`) and [`parent/Parent_Chat.php`](file:///c:/laragon/www/attendance-and-academic-management-system/parent/Parent_Chat.php) (by `teacher_id`) to aggregate multiple sibling students under a single conversation thread with comma-separated student names, preventing duplicate conversation list entries when a parent has multiple children enrolled in an advisory section.
+  - **Safe Parameter Binding in Parent API**: Parameterized child ID binding in [`api/routes/09-parent.php`](file:///c:/laragon/www/attendance-and-academic-management-system/api/routes/09-parent.php) for class list queries across all associated children.
+  - **Regression Test Coverage**: Added [`tests/ParentStudentRelationshipTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/ParentStudentRelationshipTest.php) and updated [`tests/ReportAndUserHelpersTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/ReportAndUserHelpersTest.php) to verify 1:N parent-to-student links, N:1 multi-parent links per student, duplicate pair constraint prevention, notification recipient deduplication, and chat sibling aggregation.
+
 ## v0.3.159 — 2026-09-03
 
 ### Fixed

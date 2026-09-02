@@ -97,36 +97,14 @@ class UserValidationHelper
         return (int)$stmt->fetchColumn() === count($studentIds);
     }
 
+    /**
+     * Preserved for backward compatibility. In accordance with DepEd SF1 and school
+     * record guidelines, learners are permitted to be linked with multiple parents/guardians
+     * (e.g. Father, Mother, Guardian).
+     */
     public static function getStudentParentConflicts(PDO $db, array $studentIds, int $excludeParentId = 0): array
     {
-        $studentIds = array_values(array_filter(array_map('intval', $studentIds), fn($id) => $id > 0));
-        if (empty($studentIds)) {
-            return [];
-        }
-        $placeholders = implode(',', array_fill(0, count($studentIds), '?'));
-        $params = $studentIds;
-        $sql = "SELECT u.first_name AS student_first, u.last_name AS student_last,
-                       p.first_name AS parent_first, p.last_name AS parent_last
-                FROM parent_students ps
-                JOIN users u ON u.id = ps.student_id
-                JOIN users p ON p.id = ps.parent_id
-                WHERE ps.student_id IN ($placeholders) AND p.status <> 'inactive'";
-        if ($excludeParentId > 0) {
-            $sql .= " AND ps.parent_id <> ?";
-            $params[] = $excludeParentId;
-        }
-        $sql .= " GROUP BY ps.student_id, u.first_name, u.last_name, p.first_name, p.last_name";
-        $stmt = $db->prepare($sql);
-        $stmt->execute($params);
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $conflicts = [];
-        foreach ($rows as $row) {
-            $studentName = trim((string)($row['student_first'] ?? '') . ' ' . (string)($row['student_last'] ?? ''));
-            if ($studentName !== '') {
-                $conflicts[] = $studentName;
-            }
-        }
-        return array_values(array_unique(array_filter($conflicts)));
+        return [];
     }
 }
 

@@ -131,13 +131,12 @@ final class ReportAndUserHelpersTest extends TestCase
         $this->assertFalse(UserValidationHelper::areValidStudents($db, [$studentId, 9999]));
         $this->assertFalse(UserValidationHelper::areValidStudents($db, []));
 
-        // 3. Parent student conflict test
+        // 3. Parent student relationship test (multiple parents permitted per DepEd SF1)
         $db->exec("INSERT INTO parent_students (parent_id, student_id) VALUES ($parentId, $studentId)");
         $conflicts = UserValidationHelper::getStudentParentConflicts($db, [$studentId]);
-        $this->assertCount(1, $conflicts);
-        $this->assertStringContainsString('Juan Dela Cruz', $conflicts[0]);
+        $this->assertEmpty($conflicts);
 
-        // Exclude current parent should return no conflicts
+        // Exclude current parent also returns no conflicts
         $noConflicts = UserValidationHelper::getStudentParentConflicts($db, [$studentId], $parentId);
         $this->assertEmpty($noConflicts);
     }

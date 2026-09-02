@@ -90,12 +90,13 @@ if ($route === 'parent-progress' && $method === 'GET') {
         ];
     }
 
+    $placeholders = !empty($childIds) ? implode(',', array_fill(0, count($childIds), '?')) : '0';
     $classListStmt = $db->prepare("SELECT DISTINCT c.id, c.class_name, c.grade_level, c.section
                                    FROM enrollments e
                                    JOIN classes c ON c.id = e.class_id
-                                   WHERE e.student_id IN (" . implode(',', $childIds) . ") AND COALESCE(e.status, 'enrolled') = 'enrolled' AND c.status = 'active'
+                                   WHERE e.student_id IN ($placeholders) AND COALESCE(e.status, 'enrolled') = 'enrolled' AND c.status = 'active'
                                    ORDER BY c.grade_level, c.section, c.class_name");
-    $classListStmt->execute();
+    $classListStmt->execute(!empty($childIds) ? $childIds : []);
     $classList = $classListStmt->fetchAll(PDO::FETCH_ASSOC);
 
     apiJson([

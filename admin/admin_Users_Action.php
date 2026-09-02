@@ -176,11 +176,6 @@ function createUser($db) {
                 echo json_encode(['success' => false, 'message' => 'One or more selected students are invalid']);
                 return;
             }
-            $conflicts = getStudentParentConflicts($db, $linkedStudentIds, 0);
-            if (!empty($conflicts)) {
-                echo json_encode(['success' => false, 'message' => 'These students are already linked to another parent: ' . implode(', ', $conflicts)]);
-                return;
-            }
         }
 
         $checkStmt = $db->prepare("SELECT id FROM users WHERE reference_code = ?");
@@ -549,11 +544,6 @@ function updateUser($db) {
         if ($userRole === 'parent' && !empty($linkedStudentIds)) {
             if (!areValidStudents($db, $linkedStudentIds)) {
                 echo json_encode(['success' => false, 'message' => 'One or more selected students are invalid']);
-                return;
-            }
-            $conflicts = getStudentParentConflicts($db, $linkedStudentIds, $userId);
-            if (!empty($conflicts)) {
-                echo json_encode(['success' => false, 'message' => 'These students are already linked to another parent: ' . implode(', ', $conflicts)]);
                 return;
             }
         }
