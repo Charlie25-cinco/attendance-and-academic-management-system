@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.153 — 2026-09-03
+
+### Fixed
+
+- **In-Flight Tap Guard & Resilient Modal Transition for Settings PWA Install**:
+  - **In-Flight Tap Guard**: Added `window._pwaInstallInProgress` guard in `window.triggerPwaInstall()` within [`config/constants.php`](file:///c:/laragon/www/attendance-and-academic-management-system/config/constants.php) to drop repeated rapid taps while an action is in progress.
+  - **Robust Fallback Modal Transition**: Enhanced `window.showPwaInstallModal()` to dismiss `#settingsModal` with both `hidden.bs.modal` event unbinding and a 350ms timeout fallback, guaranteeing `#pwaInstallModal` is shown without being skipped or hung by dropped transitions.
+  - **Safe State Restoration**: Ensured `window._pwaInstallInProgress` is always cleared in `finally` and modal presentation callbacks so fallback and prompt paths are never permanently locked out.
+  - **Automated Regression Testing**: Updated [`tests/PwaInstallUiTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/PwaInstallUiTest.php) verifying in-flight tap guarding, native prompt handling, and resilient modal lifecycle sequencing.
+
 ## v0.3.152 — 2026-09-03
 
 ### Fixed

@@ -69,13 +69,25 @@ final class PwaInstallUiTest extends TestCase
         $constants = file_get_contents(__DIR__ . '/../config/constants.php');
         $this->assertIsString($constants);
 
+        // Assert in-flight tap guard
+        $this->assertStringContainsString('window._pwaInstallInProgress = false;', $constants);
+        $this->assertStringContainsString('if (window._pwaInstallInProgress) {', $constants);
+        $this->assertStringContainsString('window._pwaInstallInProgress = true;', $constants);
+        $this->assertStringContainsString('window._pwaInstallInProgress = false;', $constants);
+
         // Assert single document delegated click dispatcher
         $this->assertStringContainsString("document.addEventListener('click', function (e) {", $constants);
         $this->assertStringContainsString("e.target.closest('#settingsPwaInstallBtn')", $constants);
         $this->assertStringContainsString('window.triggerPwaInstall(e);', $constants);
 
-        // Assert modal lifecycle sequencing on settings modal
-        $this->assertStringContainsString("settingsModalEl.addEventListener('hidden.bs.modal', function onSettingsHidden() {", $constants);
+        // Assert native prompt handling with userChoice
+        $this->assertStringContainsString('await window._pwaInstallPrompt.prompt();', $constants);
+        $this->assertStringContainsString('var choice = await window._pwaInstallPrompt.userChoice;', $constants);
+        $this->assertStringContainsString("choice.outcome === 'accepted'", $constants);
+
+        // Assert modal lifecycle sequencing on settings modal with timeout fallback
+        $this->assertStringContainsString("settingsModalEl.addEventListener('hidden.bs.modal', onSettingsHidden);", $constants);
+        $this->assertStringContainsString('setTimeout(showTargetModal, 350);', $constants);
         $this->assertStringContainsString('showTargetModal();', $constants);
     }
 

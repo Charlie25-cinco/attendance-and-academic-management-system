@@ -992,6 +992,7 @@ if ('serviceWorker' in navigator) {
             });
     });
     window._pwaInstallPrompt = null;
+    window._pwaInstallInProgress = false;
     window.isPwaStandalone = function () {
         return Boolean((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true);
     };
@@ -1000,6 +1001,11 @@ if ('serviceWorker' in navigator) {
         if (e && typeof e.preventDefault === 'function') {
             e.preventDefault();
         }
+        if (window._pwaInstallInProgress) {
+            return;
+        }
+        window._pwaInstallInProgress = true;
+
         if (window._pwaInstallPrompt) {
             try {
                 await window._pwaInstallPrompt.prompt();
@@ -1010,18 +1016,24 @@ if ('serviceWorker' in navigator) {
             } catch (err) {
                 console.warn('[PWA] Install prompt error:', err);
                 window.showPwaInstallModal();
+                return;
             } finally {
                 window._pwaInstallPrompt = null;
+                window._pwaInstallInProgress = false;
                 window.bindPwaInstallButton();
             }
-        } else {
-            window.showPwaInstallModal();
+            return;
         }
+
+        window.showPwaInstallModal();
     };
 
     window.showPwaInstallModal = function () {
         var modalEl = document.getElementById('pwaInstallModal');
-        if (!modalEl) { return; }
+        if (!modalEl) {
+            window._pwaInstallInProgress = false;
+            return;
+        }
         var isStandalone = window.isPwaStandalone();
         var isIos = /iphone|ipad|ipod/i.test(navigator.userAgent || '') && !window.MSStream;
 
@@ -1063,7 +1075,11 @@ if ('serviceWorker' in navigator) {
             if (step3Desc) step3Desc.textContent = 'Accept the confirmation. The app will launch in its own standalone window.';
         }
 
+        var targetShown = false;
         var showTargetModal = function () {
+            if (targetShown) { return; }
+            targetShown = true;
+            window._pwaInstallInProgress = false;
             if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
                 var modal = bootstrap.Modal.getOrCreateInstance ? bootstrap.Modal.getOrCreateInstance(modalEl) : (bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl));
                 modal.show();
@@ -1077,10 +1093,12 @@ if ('serviceWorker' in navigator) {
         if (settingsModalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
             var smInstance = bootstrap.Modal.getInstance(settingsModalEl);
             if (smInstance && (settingsModalEl.classList.contains('show') || settingsModalEl.style.display === 'block')) {
-                settingsModalEl.addEventListener('hidden.bs.modal', function onSettingsHidden() {
+                var onSettingsHidden = function () {
                     settingsModalEl.removeEventListener('hidden.bs.modal', onSettingsHidden);
                     showTargetModal();
-                });
+                };
+                settingsModalEl.addEventListener('hidden.bs.modal', onSettingsHidden);
+                setTimeout(showTargetModal, 350);
                 smInstance.hide();
                 return;
             }
