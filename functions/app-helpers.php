@@ -684,6 +684,21 @@ function sectionMatchSql(string $leftColumn = 'section', ?string $rightColumn = 
         . " OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE({$left}, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE({$right}, ''), '(', 1))))";
 }
 
+function sf1NormalizeSectionName(string $name): string {
+    $s = trim(strtolower($name));
+    if ($s === '') {
+        return '';
+    }
+    // Strip parenthetical descriptors: e.g. "Humility (Academic)", "Humility (STEM)" -> "Humility"
+    $s = preg_replace('/\s*\([^)]*\)\s*$/', '', $s);
+    // Strip grade level prefixes: e.g. "Grade 11 - Humility", "11 - Humility", "G11 Humility", "11-Humility" -> "Humility"
+    $s = preg_replace('/^(?:grade\s*|g)?(?:11|12)\s*[-:]*\s*/i', '', $s);
+    // Strip track/strand dash suffixes: e.g. "Humility - Academic", "Humility - STEM", "Humility - TVL" -> "Humility"
+    $s = preg_replace('/\s*[-:]\s*(?:academic|techpro|stem|humss|abm|gas|tvl|ict|he|agri-fishery|industrial\s*arts)\s*$/i', '', $s);
+    $s = trim(preg_replace('/\s+/', ' ', $s));
+    return $s !== '' ? $s : trim(strtolower($name));
+}
+
 function appEnsureUserNotificationsTable(PDO $db): void {
     static $readyConnections = [];
     $connectionId = spl_object_id($db);

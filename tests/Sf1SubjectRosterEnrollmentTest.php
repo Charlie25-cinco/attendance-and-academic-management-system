@@ -516,6 +516,86 @@ final class Sf1SubjectRosterEnrollmentTest extends TestCase
         }
     }
 
+    public function testSf1ImportResolvesUiCreatedSectionWithGradePrefixAndEnrollsInExistingClass(): void
+    {
+        // 1. Seed UI-created section 'HUMILITY' (Grade 11, Academic)
+        $this->db->exec("INSERT INTO sections (name, grade_level, track, curriculum, program)
+            VALUES ('HUMILITY', 11, 'academic', 'strengthened_shs', 'academic_strengthened')");
+        $existingSectionId = (int)$this->db->lastInsertId();
+
+        // 2. Seed active Filipino class connected to section 'HUMILITY'
+        $this->db->exec("INSERT INTO classes (class_name, grade_level, section, track, teacher_id, status)
+            VALUES ('Filipino', 11, 'HUMILITY', 'academic', 10, 'active')");
+        $existingClassId = (int)$this->db->lastInsertId();
+        $this->db->exec("INSERT INTO class_subjects (class_id, teacher_id) VALUES ({$existingClassId}, 10)");
+
+        // 3. Create real SF1 CSV with DepEd section formatting 'Grade 11 - HUMILITY'
+        $csvPath = tempnam(sys_get_temp_dir(), 'sf1_prefix_test_') . '.csv';
+        $csvContent = "LRN,Last Name,First Name,Middle Name,Ext,Sex,Grade Level,Section,Birth Date,Street,Barangay,Municipality,Province,Contact,Father,Mother,Guardian,Relationship,Track\n"
+            . "987654321098,Del Pilar,Marcelo,,,Male,11,Grade 11 - HUMILITY,2008-08-30,Purok 2,Poblacion,Balingasag,Misamis Oriental,09123456780,Julian Hilario,Blasa Gatmaytan,,,Academic\n";
+        file_put_contents($csvPath, $csvContent);
+
+        try {
+            $parsed = parseSf1UploadedFile([
+                'tmp_name' => $csvPath,
+                'name'     => 'SF1_Grade11_Humility_DepEd.csv',
+            ]);
+            $this->assertNotEmpty($parsed['students']);
+            $this->assertSame('Grade 11 - HUMILITY', $parsed['students'][0]['section']);
+
+            // 4. Commit SF1 students
+            $commitResult = commitSf1Students($this->db, $parsed['students'], '2026-2027');
+            $this->assertTrue($commitResult['success']);
+            $this->assertSame(1, $commitResult['created']);
+            $this->assertSame(0, $commitResult['sections_created'], 'Must reuse existing UI-created HUMILITY section without creating duplicate');
+            $this->assertSame(0, $commitResult['errors']);
+
+            // 5. Verify sections table count remains exactly 1
+            $allSections = $this->db->query("SELECT id, name, grade_level, track FROM sections")->fetchAll(PDO::FETCH_ASSOC);
+            $this->assertCount(1, $allSections, 'Sections table must contain zero duplicate sections');
+            $this->assertSame($existingSectionId, (int)$allSections[0]['id']);
+            $this->assertSame('HUMILITY', $allSections[0]['name']);
+
+            // 6. Verify student is assigned canonical section name 'HUMILITY'
+            $student = $this->db->query("SELECT id, lrn, section, grade_level, track FROM users WHERE lrn = '987654321098'")->fetch(PDO::FETCH_ASSOC);
+            $this->assertNotEmpty($student);
+            $this->assertSame('HUMILITY', $student['section']);
+            $studentId = (int)$student['id'];
+
+            // 7. Verify student is enrolled in existing Filipino class
+            $enrollment = $this->db->query("SELECT id, student_id, class_id, status FROM enrollments WHERE student_id = {$studentId} AND class_id = {$existingClassId}")->fetch(PDO::FETCH_ASSOC);
+            $this->assertNotEmpty($enrollment);
+            $this->assertSame('enrolled', $enrollment['status']);
+
+            // 8. Verify class roster query contains Marcelo Del Pilar
+            $rosterQuery = "SELECT u.id, u.first_name, u.last_name
+                            FROM enrollments e
+                            JOIN users u ON u.id = e.student_id
+                            WHERE e.class_id = ? AND e.status = 'enrolled'";
+            $stmt = $this->db->prepare($rosterQuery);
+            $stmt->execute([$existingClassId]);
+            $roster = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $this->assertCount(1, $roster);
+            $this->assertSame('Marcelo', $roster[0]['first_name']);
+            $this->assertSame('Del Pilar', $roster[0]['last_name']);
+
+            // 9. Verify Grade 12 and TechPro isolation
+            $g12Section = ensureSf1Section($this->db, 'Grade 12 - HUMILITY', 12, 'academic', '2026-2027');
+            $this->assertTrue($g12Section['created'], 'Grade 12 Humility must be created as a separate section');
+            $this->assertNotSame($existingSectionId, (int)$g12Section['id']);
+
+            $techproSection = ensureSf1Section($this->db, 'HUMILITY', 11, 'techpro', '2026-2027');
+            $this->assertTrue($techproSection['created'], 'TechPro Humility must be created as a separate section');
+            $this->assertNotSame($existingSectionId, (int)$techproSection['id']);
+
+            $this->assertSame(3, (int)$this->db->query("SELECT COUNT(*) FROM sections")->fetchColumn());
+        } finally {
+            if (file_exists($csvPath)) {
+                @unlink($csvPath);
+            }
+        }
+    }
+
     public function testEnsureSf1SectionDoesNotResolveDifferentOrBlankTrackAsAcademic(): void
     {
         // 1. Seed Section Integrity for Grade 11 TechPro and Section Courage with blank track

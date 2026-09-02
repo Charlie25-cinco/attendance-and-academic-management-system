@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.139 — 2026-09-02
+
+### Fixed
+
+- **Reliable SF1 Section Resolver & UI-Created Section Reuse**:
+  - **Narrowly Scoped Section Normalizer (`sf1NormalizeSectionName()`)**: Added `sf1NormalizeSectionName()` in [`functions/app-helpers.php`](file:///c:/laragon/www/attendance-and-academic-management-system/functions/app-helpers.php) to strip standard DepEd formatting artifacts (grade prefixes such as `Grade 11 - `, `11 - `, `G11 - `, parenthetical track descriptors like `(Academic)`, `(STEM)`, and dash suffixes like `- STEM`) while preserving legitimate section names.
+  - **Context-Strict Candidate Resolution**: Updated `ensureSf1Section()` in [`admin/admin_SF1_Import_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_SF1_Import_Action.php) to evaluate candidate sections for the exact `grade_level` and `track` using exact name matching first and normalized matching second, resolving UI-created sections (`HUMILITY`) when importing SF1 files formatted as `Grade 11 - HUMILITY` without creating duplicate section records.
+  - **Safe Word-Boundary Track Parsing**: Enhanced `sf1GetTrack()` with `\b` word boundary regex to recognize TVL/TechPro and Academic strand abbreviations accurately without false-positive matches on unrelated text.
+  - **End-to-End Regression Testing**: Added `testSf1ImportResolvesUiCreatedSectionWithGradePrefixAndEnrollsInExistingClass` in [`tests/Sf1SubjectRosterEnrollmentTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/Sf1SubjectRosterEnrollmentTest.php) verifying that an SF1 import containing `Grade 11 - HUMILITY` reuses a UI-created `HUMILITY` section, enrolls the student into the existing class roster, creates zero duplicate sections, and maintains Grade 12 / TechPro isolation.
+
 ## v0.3.138 — 2026-09-02
 
 ### Fixed

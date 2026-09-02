@@ -54,13 +54,14 @@ function sf1NormalizeSex(string $value): string {
 }
 
 function sf1GetTrack(array $row): string {
-    $raw = $row['track'] ?? '';
+    $raw = (string)($row['track'] ?? '');
     if ($raw !== '') {
-        $lower = strtolower($raw);
-        if (str_contains($lower, 'techpro') || str_contains($lower, 'technical') || str_contains($lower, 'professional') || str_contains($lower, 'tvl')) {
+        if (preg_match('/\b(techpro|technical|professional|tvl|ict|he|home\s+economics|agri(?:-|\s+)fishery|industrial\s+arts|vocational)\b/i', $raw)) {
             return 'techpro';
         }
-        if (str_contains($lower, 'academic')) return 'academic';
+        if (preg_match('/\b(academic|stem|humss|abm|gas)\b/i', $raw)) {
+            return 'academic';
+        }
     }
     return 'academic';
 }
@@ -82,7 +83,8 @@ function ensureSf1Section(PDO $db, string $section, int $gradeLevel, string $tra
     }
 
     $trackNorm = in_array(strtolower(trim($track)), ['academic', 'techpro'], true) ? strtolower(trim($track)) : 'academic';
-    $cacheKey = spl_object_id($db) . '|' . strtolower($gradeLevel . '|' . $trackNorm . '|' . $sectionTrimmed);
+    $normalizedTarget = sf1NormalizeSectionName($sectionTrimmed);
+    $cacheKey = spl_object_id($db) . '|' . $gradeLevel . '|' . $trackNorm . '|' . $normalizedTarget;
     if (isset($resolvedCache[$cacheKey])) {
         return $resolvedCache[$cacheKey];
     }
@@ -90,37 +92,44 @@ function ensureSf1Section(PDO $db, string $section, int $gradeLevel, string $tra
     $curriculum = strengthenedShsCurriculum($gradeLevel, $academicYear);
     $program = strengthenedShsProgram($gradeLevel, $trackNorm, $academicYear);
 
-    $driver = (string)$db->getAttribute(PDO::ATTR_DRIVER_NAME);
-    if ($driver === 'sqlite') {
-        $sectionSql = "(LOWER(TRIM(COALESCE(name, ''))) = LOWER(TRIM(COALESCE(?, ''))))";
-        $params = [$gradeLevel, $trackNorm, $sectionTrimmed];
-    } else {
-        $sectionSql = sectionMatchSql('name');
-        $params = [$gradeLevel, $trackNorm, $sectionTrimmed, $sectionTrimmed];
-    }
-
     // 1. Resolve existing section strictly using grade level, track, and normalized section name
     $stmt = $db->prepare("SELECT id, name, grade_level, track, curriculum, program
                           FROM sections
                           WHERE grade_level = ?
-                            AND LOWER(TRIM(track)) = LOWER(TRIM(?))
-                            AND ({$sectionSql})
-                          LIMIT 1");
-    $stmt->execute($params);
-    $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+                            AND LOWER(TRIM(track)) = LOWER(TRIM(?))");
+    $stmt->execute([$gradeLevel, $trackNorm]);
+    $candidates = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    if ($existing) {
-        $secId = (int)$existing['id'];
-        $secName = (string)$existing['name'];
+    $matched = null;
+    // Prefer exact name match first
+    foreach ($candidates as $cand) {
+        if (strtolower(trim((string)$cand['name'])) === strtolower($sectionTrimmed)) {
+            $matched = $cand;
+            break;
+        }
+    }
+    // Fall back to normalized section name match (e.g. 'Grade 11 - HUMILITY' <=> 'HUMILITY')
+    if (!$matched) {
+        foreach ($candidates as $cand) {
+            if (sf1NormalizeSectionName((string)$cand['name']) === $normalizedTarget) {
+                $matched = $cand;
+                break;
+            }
+        }
+    }
+
+    if ($matched) {
+        $secId = (int)$matched['id'];
+        $secName = (string)$matched['name'];
 
         // Backfill missing curriculum/program on existing section if needed
         $updates = [];
         $updateParams = [];
-        if (empty($existing['curriculum']) && !empty($curriculum)) {
+        if (empty($matched['curriculum']) && !empty($curriculum)) {
             $updates[] = "curriculum = ?";
             $updateParams[] = $curriculum;
         }
-        if (empty($existing['program']) && !empty($program)) {
+        if (empty($matched['program']) && !empty($program)) {
             $updates[] = "program = ?";
             $updateParams[] = $program;
         }
@@ -161,13 +170,15 @@ function ensureSf1Section(PDO $db, string $section, int $gradeLevel, string $tra
         }
 
         // In case of a race condition or unique constraint, resolve the existing record for this grade & track
-        $fallback = $db->prepare("SELECT id, name FROM sections WHERE grade_level = ? AND LOWER(TRIM(track)) = LOWER(TRIM(?)) AND LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 1");
-        $fallback->execute([$gradeLevel, $trackNorm, $sectionTrimmed]);
-        $row = $fallback->fetch(PDO::FETCH_ASSOC);
-        if ($row) {
-            $result = ['id' => (int)$row['id'], 'name' => (string)$row['name'], 'created' => false];
-            $resolvedCache[$cacheKey] = $result;
-            return $result;
+        $fallback = $db->prepare("SELECT id, name, grade_level, track, curriculum, program FROM sections WHERE grade_level = ? AND LOWER(TRIM(track)) = LOWER(TRIM(?))");
+        $fallback->execute([$gradeLevel, $trackNorm]);
+        $fbCandidates = $fallback->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($fbCandidates as $cand) {
+            if (sf1NormalizeSectionName((string)$cand['name']) === $normalizedTarget || strtolower(trim((string)$cand['name'])) === strtolower($sectionTrimmed)) {
+                $result = ['id' => (int)$cand['id'], 'name' => (string)$cand['name'], 'created' => false];
+                $resolvedCache[$cacheKey] = $result;
+                return $result;
+            }
         }
 
         throw $e;
