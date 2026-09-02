@@ -23,6 +23,28 @@ final class AdminClassMultiSectionTest extends TestCase
         $this->assertStringContainsString('copyFirstSectionScheduleToAll()', $html);
     }
 
+    public function testAdminClassesCardButtonsAndScriptIntegrity(): void
+    {
+        $html = file_get_contents(__DIR__ . '/../admin/admin_Classes.php');
+        $this->assertIsString($html);
+
+        // Verify card buttons markup
+        $this->assertStringContainsString('onclick="viewClass(', $html);
+        $this->assertStringContainsString('onclick="editClass(', $html);
+        $this->assertStringContainsString('onclick=\'deleteClass(', $html);
+
+        // Verify JavaScript action functions exist
+        $this->assertStringContainsString('function viewClass(id)', $html);
+        $this->assertStringContainsString('function editClass(id)', $html);
+        $this->assertStringContainsString('function deleteClass(id, className)', $html);
+        $this->assertStringContainsString('function handleDelete(id)', $html);
+
+        // Verify no duplicate const addClassModalEl declaration
+        $matches = [];
+        preg_match_all('/const\s+addClassModalEl\s*=/i', $html, $matches);
+        $this->assertCount(1, $matches[0], 'addClassModalEl should only be declared once as const');
+    }
+
     public function testAdminClassesActionSupportsMultiSectionArrayAndScheduleModes(): void
     {
         $code = file_get_contents(__DIR__ . '/../admin/admin_Classes_Action.php');

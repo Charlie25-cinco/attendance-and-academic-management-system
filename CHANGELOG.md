@@ -2,6 +2,15 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.125 — 2026-09-02
+
+### Admin & Bug Fixes
+
+- **Fixed Class Card Action Buttons Clickability on Manage Classes**:
+  - **Eliminated Script Syntax Error**: Removed redundant `const addClassModalEl` declaration in [`admin/admin_Classes.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Classes.php) line 1133 that was causing an `Uncaught SyntaxError` and halting script execution on page load.
+  - **Restored Global Button Handlers**: Verified that `viewClass()`, `editClass()`, `deleteClass()`, `handleDelete()`, and `saveClass()` initialize and attach to `window`, restoring responsiveness for all card buttons across desktop and mobile.
+  - **Regression Test**: Added `testAdminClassesCardButtonsAndScriptIntegrity` to [`tests/AdminClassMultiSectionTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/AdminClassMultiSectionTest.php) to prevent script syntax regressions.
+
 ## v0.3.124 — 2026-09-02
 
 ### Core & Notifications

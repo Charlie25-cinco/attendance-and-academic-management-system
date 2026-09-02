@@ -1130,7 +1130,6 @@ $page_title = 'Manage Classes';
             target.value = cleaned;
         }
 
-        const addClassModalEl = document.getElementById('addClassModal');
         if (addClassModalEl) {
             addClassModalEl.addEventListener('input', function (event) {
                 sanitizeScheduleNumericInput(event.target);
