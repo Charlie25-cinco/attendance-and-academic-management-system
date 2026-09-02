@@ -152,7 +152,14 @@ function ensureSf1Section(PDO $db, string $section, int $gradeLevel, string $tra
         $result = ['id' => $newId, 'name' => $sectionTrimmed, 'created' => true];
         $resolvedCache[$cacheKey] = $result;
         return $result;
-    } catch (Throwable $e) {
+    } catch (PDOException $e) {
+        $code = (string)$e->getCode();
+        $msg = $e->getMessage();
+        $isUniqueViolation = ($code === '23000' || str_contains($msg, 'Duplicate') || str_contains($msg, 'UNIQUE constraint failed') || str_contains($msg, 'Integrity constraint violation'));
+        if (!$isUniqueViolation) {
+            throw $e;
+        }
+
         // In case of a race condition or unique constraint, resolve the existing record for this grade & track
         $fallback = $db->prepare("SELECT id, name FROM sections WHERE grade_level = ? AND track = ? AND LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 1");
         $fallback->execute([$gradeLevel, $trackNorm, $sectionTrimmed]);
@@ -163,9 +170,7 @@ function ensureSf1Section(PDO $db, string $section, int $gradeLevel, string $tra
             return $result;
         }
 
-        $result = ['id' => 0, 'name' => $sectionTrimmed, 'created' => false];
-        $resolvedCache[$cacheKey] = $result;
-        return $result;
+        throw $e;
     }
 }
 
@@ -462,23 +467,8 @@ if ($action === 'preview' || (isset($_FILES['sf1_file']) && $action !== 'commit'
     }
 }
 
-// -------------------------------------------------------------
-// 2. ACTION: COMMIT (Insert Reviewed/Edited Students into DB)
-// -------------------------------------------------------------
-if ($action === 'commit') {
-    $studentsRaw = $_POST['students'] ?? [];
-    if (is_string($studentsRaw)) {
-        $students = json_decode($studentsRaw, true) ?: [];
-    } else {
-        $students = is_array($studentsRaw) ? $studentsRaw : [];
-    }
-
-    if (empty($students)) {
-        echo json_encode(['success' => false, 'message' => 'No student data provided to commit.']);
-        exit();
-    }
-
-    $academicYear = trim((string)($_POST['academic_year'] ?? date('Y') . '-' . (date('Y') + 1)));
+function commitSf1Students(PDO $db, array $students, string $academicYear = '2026-2027'): array {
+    $academicYear = trim($academicYear);
     if (!preg_match('/^\d{4}-\d{4}$/', $academicYear)) {
         $academicYear = date('Y') . '-' . (date('Y') + 1);
     }
@@ -598,10 +588,11 @@ if ($action === 'commit') {
         $curriculum = strengthenedShsCurriculum($gradeLevel, $academicYear);
         $program = strengthenedShsProgram($gradeLevel, $track, $academicYear);
 
+        $now = date('Y-m-d H:i:s');
         try {
             $insertStmt = $db->prepare("INSERT INTO users
                 (reference_code, email, lrn, password, first_name, middle_name, last_name, name_extension, sex, date_of_birth, religion, contact_number, address, house_street, barangay, municipality, province, father_name, mother_name, guardian_name, guardian_relationship, grade_level, section, track, curriculum, program, role, status, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'student', 'active', NOW(), NOW())");
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'student', 'active', ?, ?)");
             $insertStmt->execute([
                 $refCode, $email, $lrn, $hashedPassword,
                 $firstName, $middleName ?: null, $lastName,
@@ -611,7 +602,8 @@ if ($action === 'commit') {
                 $houseStreet ?: null, $barangay ?: null, $municipality ?: null, $province ?: null,
                 $fatherName ?: null, $motherName ?: null,
                 $guardianName ?: null, $guardianRelationship ?: null,
-                $gradeLevel, $canonicalSection, $track, $curriculum, $program
+                $gradeLevel, $canonicalSection, $track, $curriculum, $program,
+                $now, $now
             ]);
 
             $newUserId = (int)$db->lastInsertId();
@@ -670,6 +662,27 @@ if ($action === 'commit') {
         'success'          => (bool)$results['success'],
     ]);
 
+    return $results;
+}
+
+// -------------------------------------------------------------
+// 2. ACTION: COMMIT (Insert Reviewed/Edited Students into DB)
+// -------------------------------------------------------------
+if ($action === 'commit') {
+    $studentsRaw = $_POST['students'] ?? [];
+    if (is_string($studentsRaw)) {
+        $students = json_decode($studentsRaw, true) ?: [];
+    } else {
+        $students = is_array($studentsRaw) ? $studentsRaw : [];
+    }
+
+    if (empty($students)) {
+        echo json_encode(['success' => false, 'message' => 'No student data provided to commit.']);
+        exit();
+    }
+
+    $academicYear = trim((string)($_POST['academic_year'] ?? date('Y') . '-' . (date('Y') + 1)));
+    $results = commitSf1Students($db, $students, $academicYear);
     echo json_encode($results);
     exit();
 }
