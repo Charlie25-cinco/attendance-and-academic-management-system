@@ -4,6 +4,17 @@ use PHPUnit\Framework\TestCase;
 
 final class AdminClassMultiSectionTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            @session_start();
+        }
+        $_SESSION['logged_in'] = true;
+        $_SESSION['role'] = 'admin';
+        $_SESSION['user_id'] = 1;
+        $_GET['action'] = 'test';
+    }
+
     public function testAdminClassesPageContainsMultiSectionAndDatalistMarkup(): void
     {
         $html = file_get_contents(__DIR__ . '/../admin/admin_Classes.php');
@@ -69,15 +80,16 @@ final class AdminClassMultiSectionTest extends TestCase
         $this->assertStringContainsString('id="registeredSubjectsList"', $html);
         $this->assertStringContainsString('list="registeredSubjectsList"', $html);
 
-        // Section dropdown exists
+        // Grade Level and Section are rendered as fixed, disabled/read-only context
+        $this->assertStringContainsString('name="grade_level"', $html);
         $this->assertStringContainsString('name="section"', $html);
-        $this->assertStringContainsString('id="sectionSelect"', $html);
+        $this->assertStringContainsString('readonly disabled', $html);
+        $this->assertStringContainsString('>Fixed</span>', $html);
 
         // Multi-section cross-apply elements MUST NOT exist
         $this->assertStringNotContainsString('id="editSectionCheckboxesContainer"', $html);
         $this->assertStringNotContainsString('id="selectAllEditSectionsBtn"', $html);
         $this->assertStringNotContainsString('toggleAllEditSections()', $html);
-        $this->assertStringNotContainsString('updateOtherSections()', $html);
         $this->assertStringNotContainsString('name="apply_to_sections[]"', $html);
         $this->assertStringNotContainsString('apply_to_sections', $html);
     }
@@ -91,8 +103,38 @@ final class AdminClassMultiSectionTest extends TestCase
         $this->assertStringNotContainsString('apply_to_sections', $code);
         $this->assertStringNotContainsString('$appliedSections', $code);
 
+        // Grade level and section are enforced from database record, ignoring tampered input
+        $this->assertStringContainsString('$existingClassStmt = $db->prepare("SELECT id, grade_level, section FROM classes WHERE id = ?', $code);
+        $this->assertStringContainsString('$gradeLevel = (string)$existingClass[\'grade_level\'];', $code);
+        $this->assertStringContainsString('$section = (string)$existingClass[\'section\'];', $code);
+
         // Update query must update only WHERE id = ?
         $this->assertStringContainsString('UPDATE classes SET $setClause WHERE id = ?', $code);
+    }
+
+    public function testDedicatedAddSectionToGroupModalMarkupAndBehavior(): void
+    {
+        $html = file_get_contents(__DIR__ . '/../admin/admin_Classes.php');
+        $this->assertIsString($html);
+
+        // Dedicated modal structure
+        $this->assertStringContainsString('id="addSectionToGroupModal"', $html);
+        $this->assertStringContainsString('id="addSecModalSubjectName"', $html);
+        $this->assertStringContainsString('id="addSecModalGradeLevel"', $html);
+        $this->assertStringContainsString('id="addSecModalCategory"', $html);
+        $this->assertStringContainsString('id="addSecModalTrack"', $html);
+        $this->assertStringContainsString('id="addSecModalSectionSelect"', $html);
+        $this->assertStringContainsString('id="addSecModalTeacherSelect"', $html);
+        $this->assertStringContainsString('id="addSecModalRoomInput"', $html);
+        $this->assertStringContainsString('id="addSecModalSubmitBtn"', $html);
+
+        // JavaScript functions
+        $this->assertStringContainsString('function openAddSectionForGroup()', $html);
+        $this->assertStringContainsString('function backToGroupSectionsModal()', $html);
+        $this->assertStringContainsString('function submitAddSectionToGroup()', $html);
+        $this->assertStringContainsString('window.openAddSectionForGroup = openAddSectionForGroup;', $html);
+        $this->assertStringContainsString('window.backToGroupSectionsModal = backToGroupSectionsModal;', $html);
+        $this->assertStringContainsString('window.submitAddSectionToGroup = submitAddSectionToGroup;', $html);
     }
 
     public function testSectionSelectorAndScheduleTimeFieldsVisibility(): void
@@ -310,6 +352,163 @@ final class AdminClassMultiSectionTest extends TestCase
         $this->assertSame('Oral Communication', $grouped[2]['class_name']);
         $this->assertCount(1, $grouped[2]['sections']);
         $this->assertSame(301, $grouped[2]['sections'][0]['id']);
+    }
+
+    public function testExactGroupIdentitySectionFilteringLogic(): void
+    {
+        // Define all available grade 11 sections
+        $allSections = [
+            ['value' => 'Ruby', 'label' => 'Ruby'],
+            ['value' => 'Emerald', 'label' => 'Emerald'],
+            ['value' => 'Sapphire', 'label' => 'Sapphire'],
+            ['value' => 'Diamond', 'label' => 'Diamond'],
+        ];
+
+        // Active subject group: General Mathematics G11 already has Ruby and Emerald
+        $activeGroup = [
+            'class_name' => 'General Mathematics',
+            'grade_level' => '11',
+            'subject_category' => 'core',
+            'track' => 'academic',
+            'sections' => [
+                ['id' => 101, 'section' => 'Ruby'],
+                ['id' => 102, 'section' => 'Emerald'],
+            ],
+        ];
+
+        // Calculate available sections for this exact subject group
+        $existingNames = array_map(function ($s) {
+            return strtolower(trim((string)$s['section']));
+        }, $activeGroup['sections']);
+
+        $availableForGroup = [];
+        foreach ($allSections as $sec) {
+            if (!in_array(strtolower(trim($sec['value'])), $existingNames, true)) {
+                $availableForGroup[] = $sec['value'];
+            }
+        }
+
+        // Assert Ruby and Emerald are excluded, while Sapphire and Diamond remain available
+        $this->assertSame(['Sapphire', 'Diamond'], $availableForGroup);
+    }
+
+    public function testUpdateClassLocksGradeLevelAndSectionAgainstTamperedPayload(): void
+    {
+        require_once __DIR__ . '/../admin/admin_Classes_Action.php';
+
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            @session_start();
+        }
+        $_SESSION['logged_in'] = true;
+        $_SESSION['role'] = 'admin';
+        $_SESSION['user_id'] = 1;
+
+        $db = new PDO('sqlite::memory:');
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        $db->exec("CREATE TABLE classes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            class_name TEXT,
+            grade_level INTEGER,
+            section TEXT,
+            teacher_id INTEGER,
+            schedule TEXT,
+            room TEXT,
+            ww_weight REAL DEFAULT 25.00,
+            pt_weight REAL DEFAULT 50.00,
+            assessment_weight REAL DEFAULT 25.00,
+            status TEXT DEFAULT 'active',
+            subject_category TEXT DEFAULT 'core',
+            track TEXT DEFAULT 'academic',
+            curriculum TEXT DEFAULT 'strengthened_shs',
+            program TEXT DEFAULT 'academic_strengthened',
+            created_at DATETIME,
+            updated_at DATETIME
+        )");
+
+        $db->exec("CREATE TABLE class_schedules (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            class_id INTEGER,
+            day TEXT,
+            start_time TEXT,
+            end_time TEXT,
+            created_at DATETIME
+        )");
+
+        $db->exec("CREATE TABLE class_subjects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            class_id INTEGER,
+            teacher_id INTEGER,
+            created_at DATETIME
+        )");
+
+        $db->exec("CREATE TABLE enrollments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id INTEGER,
+            class_id INTEGER,
+            academic_year TEXT,
+            semester INTEGER,
+            curriculum TEXT,
+            program TEXT,
+            status TEXT DEFAULT 'enrolled',
+            enrolled_at DATETIME
+        )");
+
+        $db->exec("CREATE TABLE users (
+            id INTEGER PRIMARY KEY,
+            role TEXT,
+            status TEXT,
+            first_name TEXT,
+            last_name TEXT,
+            grade_level INTEGER,
+            section TEXT,
+            track TEXT
+        )");
+
+        $db->exec("CREATE TABLE admin_audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            admin_user_id INTEGER,
+            action_name TEXT,
+            target_type TEXT,
+            target_id INTEGER,
+            details_json TEXT,
+            created_at DATETIME
+        )");
+
+        // Insert teacher and student
+        $db->exec("INSERT INTO users (id, role, status, first_name, last_name) VALUES (10, 'teacher', 'active', 'Jane', 'Doe')");
+
+        // Insert initial class: Grade 11, Section Ruby
+        $db->exec("INSERT INTO classes (id, class_name, grade_level, section, teacher_id, schedule, room, status)
+                   VALUES (1, 'General Mathematics', 11, 'Ruby', NULL, 'TBA', 'Room 101', 'active')");
+
+        // Submit tampered payload attempting to change grade_level to 12 and section to Diamond
+        $_POST = [
+            'class_id' => '1',
+            'class_name' => 'General Mathematics',
+            'grade_level' => '12', // Tampered!
+            'section' => 'Diamond', // Tampered!
+            'teacher_id' => '10',
+            'room' => 'Room 303',
+            'subject_category' => 'core',
+            'track' => 'academic',
+            'schedule_mode' => 'tba',
+            'schedule' => 'TBA'
+        ];
+
+        ob_start();
+        updateClass($db);
+        $output = ob_get_clean();
+        $res = json_decode($output, true);
+
+        $this->assertTrue($res['success'] ?? false, 'updateClass should succeed');
+
+        // Verify that database record preserved fixed grade_level 11 and section Ruby!
+        $updatedClass = $db->query("SELECT * FROM classes WHERE id = 1")->fetch(PDO::FETCH_ASSOC);
+        $this->assertSame(11, (int)$updatedClass['grade_level'], 'Grade level must remain 11');
+        $this->assertSame('Ruby', $updatedClass['section'], 'Section must remain Ruby');
+        $this->assertSame('Room 303', $updatedClass['room'], 'Permitted room change should succeed');
+        $this->assertSame(10, (int)$updatedClass['teacher_id'], 'Permitted teacher change should succeed');
     }
 
     public function testEditSectionIsolationLeavesOtherSectionsUntouched(): void

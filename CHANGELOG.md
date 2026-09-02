@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.130 — 2026-09-02
+
+### Admin & Core
+
+- **Dedicated Section-Focused Add Section Modal & Fixed Grade/Section Edit Protection**:
+  - **Dedicated `#addSectionToGroupModal`**: Replaced generic `#addClassModal` delegation when adding sections to an existing subject offering in [`admin/admin_Classes.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Classes.php). Features an inherited read-only subject context banner (Subject Name, Grade Level, Category, and Track) and collects section-specific fields: Target Section, Teacher, Schedule (builder vs TBA), and Room.
+  - **Exact Subject Group Identity Filtering**: Filtered target sections selector against the active group's exact identity (`class_name`, `grade_level`, `subject_category`, `track`, `program`, `status`): only sections already assigned to this exact subject group are excluded, keeping sections assigned to other subjects selectable.
+  - **Fixed Grade Level & Section Protection in Edit**: Rendered `Grade Level` and `Section` as fixed, disabled/read-only context in [`admin/admin_Class_Edit.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Class_Edit.php). Enforced in `updateClass()` in [`admin/admin_Classes_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Classes_Action.php) by locking `grade_level` and `section` to the database record's existing values for the targeted `$classId`, preventing tampered client payloads from altering grade or section.
+  - **Automated Regression Test Suite**: Updated [`tests/AdminClassMultiSectionTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/AdminClassMultiSectionTest.php) and [`tests/AdminClassEditRegressionTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/AdminClassEditRegressionTest.php) with tests verifying dedicated modal structure, group-identity section filtering, backend duplicate prevention, tamper-proof fixed grade/section enforcement, and strict section edit isolation (12 tests, 135 assertions in MultiSectionTest; all 175 tests passing).
+
 ## v0.3.129 — 2026-09-02
 
 ### Admin & Core

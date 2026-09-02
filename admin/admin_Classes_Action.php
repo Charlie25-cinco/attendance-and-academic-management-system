@@ -545,9 +545,26 @@ function createClass($db) {
 function updateClass($db) {
     try {
         $classId = $_POST['class_id'] ?? '';
+        if (empty($classId)) {
+            echo json_encode(['success' => false, 'message' => 'Class ID is required']);
+            return;
+        }
+
+        // Fetch existing class record to strictly enforce fixed grade_level and section
+        $existingClassStmt = $db->prepare("SELECT id, grade_level, section FROM classes WHERE id = ? AND status = 'active' LIMIT 1");
+        $existingClassStmt->execute([(int)$classId]);
+        $existingClass = $existingClassStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$existingClass) {
+            echo json_encode(['success' => false, 'message' => 'Class not found or inactive']);
+            return;
+        }
+
+        // Grade level and section are fixed properties of this section record
+        $gradeLevel = (string)$existingClass['grade_level'];
+        $section = (string)$existingClass['section'];
+
         $className = normalizeSubjectNameValue($_POST['class_name'] ?? '');
-        $gradeLevel = $_POST['grade_level'] ?? '';
-        $section = $_POST['section'] ?? '';
         $scheduleMode = $_POST['schedule_mode'] ?? '';
         $scheduleRowsRaw = $_POST['schedule_rows'] ?? '';
         $scheduleRows = [];

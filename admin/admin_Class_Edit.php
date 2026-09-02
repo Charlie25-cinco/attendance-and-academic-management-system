@@ -158,7 +158,7 @@ $page_title = 'Edit Class - ' . $class['class_name'];
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Track</label>
-                            <select name="track" id="classTrack" class="form-select" onchange="updateSections()">
+                            <select name="track" id="classTrack" class="form-select">
                                 <option value="">Select Track</option>
                                 <option value="academic" <?php echo (($class['track'] ?? '') === 'academic') ? 'selected' : ''; ?>>Academic Track (Strengthened)</option>
                                 <option value="techpro" <?php echo (($class['track'] ?? '') === 'techpro') ? 'selected' : ''; ?>>Technical Professional</option>
@@ -168,18 +168,14 @@ $page_title = 'Edit Class - ' . $class['class_name'];
                         
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label class="form-label">Grade Level <span class="text-danger">*</span></label>
-                                <select name="grade_level" id="gradeLevel" class="form-select" required onchange="updateSections()">
-                                    <option value="">Select</option>
-                                    <option value="11" <?php echo $class['grade_level'] == '11' ? 'selected' : ''; ?>>Grade 11</option>
-                                    <option value="12" <?php echo $class['grade_level'] == '12' ? 'selected' : ''; ?>>Grade 12</option>
-                                </select>
+                                <label class="form-label">Grade Level <span class="badge bg-secondary-subtle text-muted ms-1" style="font-size: 11px;">Fixed</span></label>
+                                <input type="text" class="form-control bg-light" value="Grade <?php echo htmlspecialchars($class['grade_level']); ?>" readonly disabled>
+                                <input type="hidden" name="grade_level" id="gradeLevel" value="<?php echo htmlspecialchars($class['grade_level']); ?>">
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label class="form-label">Section <span class="text-danger">*</span></label>
-                                <select name="section" id="sectionSelect" class="form-select" required>
-                                    <option value="">Select Grade & Track First</option>
-                                </select>
+                                <label class="form-label">Section <span class="badge bg-secondary-subtle text-muted ms-1" style="font-size: 11px;">Fixed</span></label>
+                                <input type="text" class="form-control bg-light" value="<?php echo htmlspecialchars($class['section']); ?>" readonly disabled>
+                                <input type="hidden" name="section" id="sectionSelect" value="<?php echo htmlspecialchars($class['section']); ?>">
                             </div>
                         </div>
                         
@@ -395,42 +391,7 @@ $page_title = 'Edit Class - ' . $class['class_name'];
         const scheduleRowsData = <?php echo json_encode($scheduleRows); ?>;
         
         function updateSections() {
-            const gradeLevel = document.getElementById('gradeLevel')?.value;
-            const track = document.getElementById('classTrack')?.value;
-            const sectionSelect = document.getElementById('sectionSelect');
-            if (!sectionSelect) return;
-
-            const previousVal = sectionSelect.value || currentSection;
-            sectionSelect.innerHTML = '';
-
-            if (gradeLevel) {
-                const list = getSectionsFor(gradeLevel, track);
-                sectionSelect.disabled = false;
-                sectionSelect.innerHTML = '<option value="">Select Primary Section</option>';
-                let hasSelected = false;
-
-                list.forEach(section => {
-                    const option = document.createElement('option');
-                    option.value = section.value;
-                    option.textContent = section.label;
-                    if (section.value === previousVal || (!hasSelected && section.value === currentSection)) {
-                        option.selected = true;
-                        hasSelected = true;
-                    }
-                    sectionSelect.appendChild(option);
-                });
-
-                if (!hasSelected && currentSection) {
-                    const customOption = document.createElement('option');
-                    customOption.value = currentSection;
-                    customOption.textContent = currentSection;
-                    customOption.selected = true;
-                    sectionSelect.appendChild(customOption);
-                }
-            } else {
-                sectionSelect.disabled = true;
-                sectionSelect.innerHTML = '<option value="">Select Grade & Track First</option>';
-            }
+            // Grade level and section are fixed for existing class records
         }
         
         function addScheduleRow(row = {}) {

@@ -708,6 +708,98 @@ $page_title = 'Manage Classes';
         </div>
     </div>
 
+    <!-- Dedicated Add Section to Subject Group Modal -->
+    <div class="modal fade" id="addSectionToGroupModal" tabindex="-1" aria-labelledby="addSecModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+            <div class="modal-content app-modal-content">
+                <div class="modal-header app-modal-header">
+                    <div>
+                        <div class="app-modal-kicker"><i class="bi bi-plus-circle me-1"></i>Add Section to Class Group</div>
+                        <h5 class="modal-title mb-0" id="addSecModalTitle">Add Section</h5>
+                        <p class="app-modal-subtitle" id="addSecModalSubtitle">Add a new section for this subject offering.</p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body app-modal-body">
+                    <!-- Read-Only Subject Group Context Banner -->
+                    <div class="p-3 mb-3 border rounded bg-light d-flex flex-wrap align-items-center justify-content-between gap-2">
+                        <div>
+                            <span class="text-muted small d-block">Subject / Class Offering</span>
+                            <h5 class="mb-0 fw-bold text-dark" id="addSecModalSubjectName">--</h5>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <span class="badge bg-primary px-2 py-1" id="addSecModalGradeLevel">Grade 11</span>
+                            <span class="badge bg-secondary-subtle text-dark border px-2 py-1" id="addSecModalCategory">Core</span>
+                            <span class="badge bg-secondary-subtle text-dark border px-2 py-1" id="addSecModalTrack">Academic Track</span>
+                        </div>
+                    </div>
+
+                    <form id="addSectionToGroupForm">
+                        <div class="mb-3">
+                            <label class="form-label">Target Section <span class="text-danger">*</span></label>
+                            <select name="section" id="addSecModalSectionSelect" class="form-select" required>
+                                <option value="">Select Target Section</option>
+                            </select>
+                            <div id="addSecModalAllAssignedAlert" class="alert alert-info py-2 px-3 small mt-2 d-none">
+                                <i class="bi bi-info-circle me-1"></i>All available sections for this Grade Level & Track already have this subject.
+                            </div>
+                            <small class="text-muted">Only sections not already assigned to this subject group are listed.</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Assigned Teacher</label>
+                            <select name="teacher_id" id="addSecModalTeacherSelect" class="form-select">
+                                <option value="">-- No Teacher Assigned --</option>
+                                <?php foreach ($availableTeachers as $t): ?>
+                                    <option value="<?php echo (int)$t['id']; ?>">
+                                        <?php echo htmlspecialchars($t['last_name'] . ', ' . $t['first_name'] . ($t['email'] ? ' (' . $t['email'] . ')' : '')); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <small class="text-muted">Assign an instructor to this section (optional).</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Room / Location</label>
+                            <input type="text" name="room" id="addSecModalRoomInput" class="form-control" placeholder="e.g. Room 101 / Science Lab">
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label mb-0">Class Schedule</label>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <input type="radio" class="btn-check" name="add_sec_sched_mode" id="addSecSchedModeSpecific" value="specific" checked onchange="onAddSecScheduleModeChange('specific')">
+                                    <label class="btn btn-outline-primary" for="addSecSchedModeSpecific">Specific Schedule</label>
+                                    <input type="radio" class="btn-check" name="add_sec_sched_mode" id="addSecSchedModeTba" value="tba" onchange="onAddSecScheduleModeChange('tba')">
+                                    <label class="btn btn-outline-primary" for="addSecSchedModeTba">Set to TBA</label>
+                                </div>
+                            </div>
+                            <div id="addSecSchedSpecificWrap">
+                                <div id="addSecScheduleRows" class="d-flex flex-column gap-2 mb-2">
+                                    <!-- Populated by JS -->
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" type="button" onclick="addSecScheduleRow()">
+                                    <i class="bi bi-plus-circle me-1"></i>Add Schedule Day
+                                </button>
+                            </div>
+                            <div id="addSecSchedTbaWrap" class="p-3 border rounded bg-light text-muted small d-none">
+                                <i class="bi bi-clock me-1"></i>Schedule will be marked as To Be Announced (TBA).
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer app-modal-footer d-flex justify-content-between">
+                    <button type="button" class="btn btn-outline-secondary" onclick="backToGroupSectionsModal()">
+                        <i class="bi bi-arrow-left me-1"></i>Back to Sections
+                    </button>
+                    <button type="button" class="btn btn-primary" id="addSecModalSubmitBtn" onclick="submitAddSectionToGroup()">
+                        <i class="bi bi-plus-circle me-1"></i>Add Section
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <?php include '../includes/delete_modal.php'; ?>
 
     <script>
@@ -1410,59 +1502,267 @@ $page_title = 'Manage Classes';
                 if (m) m.hide();
             }
 
-            // Open addClassModal
-            const addModal = getAddClassModal();
-            if (!addModal) return;
+            // Set read-only subject context banner
+            const subjNameEl = document.getElementById('addSecModalSubjectName');
+            const gradeLevelEl = document.getElementById('addSecModalGradeLevel');
+            const catBadgeEl = document.getElementById('addSecModalCategory');
+            const trackBadgeEl = document.getElementById('addSecModalTrack');
 
-            resetAddClassModal();
-
-            // Pre-populate with group attributes
-            const nameInput = document.getElementById('addSubjectNameInput');
-            if (nameInput) nameInput.value = group.class_name;
-
-            const catSelect = document.getElementById('subjectCategorySelect');
-            if (catSelect && group.subject_category) {
-                catSelect.value = group.subject_category;
+            if (subjNameEl) subjNameEl.textContent = group.class_name;
+            if (gradeLevelEl) gradeLevelEl.textContent = `Grade ${group.grade_level}`;
+            if (catBadgeEl) {
+                catBadgeEl.textContent = group.subject_category
+                    ? group.subject_category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                    : 'Core Subject';
+            }
+            if (trackBadgeEl) {
+                trackBadgeEl.textContent = group.track
+                    ? `${group.track.charAt(0).toUpperCase() + group.track.slice(1)} Track`
+                    : 'Academic Track';
             }
 
-            const gradeSelect = document.getElementById('gradeLevel');
-            if (gradeSelect) {
-                gradeSelect.value = group.grade_level;
-            }
-
-            const trackSelect = document.getElementById('classTrack');
-            if (trackSelect && group.track) {
-                trackSelect.value = group.track;
-            }
-
-            // Populate sections and disable already existing sections in this group
+            // Populate the section select based on active group's exact grouping identity:
+            // exclude only sections belonging to this exact subject group
             hydrateSectionsCache(serverSections);
             loadSectionsCache().then(() => {
-                updateSections();
-                const existingSectionNames = (group.sections || []).map(s => (s.section || '').toString().toLowerCase().trim());
-                const container = document.getElementById('sectionCheckboxesContainer');
-                if (container) {
-                    container.querySelectorAll('.section-checkbox').forEach(cb => {
-                        const val = (cb.value || '').toString().toLowerCase().trim();
-                        if (existingSectionNames.includes(val)) {
-                            cb.checked = false;
-                            cb.disabled = true;
-                            const pill = cb.closest('.app-section-pill');
-                            if (pill) {
-                                pill.classList.add('opacity-50');
-                                pill.title = 'Section already exists in this subject group';
-                                const label = pill.querySelector('label');
-                                if (label && !label.querySelector('.badge-already-added')) {
-                                    label.innerHTML += ' <span class="badge bg-secondary-subtle text-muted border ms-1 badge-already-added" style="font-size: 10px;">Already Added</span>';
-                                }
-                            }
+                const allSections = getSectionsFor(group.grade_level, group.track);
+                const existingGroupSectionNames = (group.sections || []).map(s => (s.section || '').toString().toLowerCase().trim());
+
+                const sectionSelect = document.getElementById('addSecModalSectionSelect');
+                const alertEl = document.getElementById('addSecModalAllAssignedAlert');
+                const submitBtn = document.getElementById('addSecModalSubmitBtn');
+
+                if (sectionSelect) {
+                    sectionSelect.innerHTML = '<option value="">Select Target Section</option>';
+                    let availableCount = 0;
+
+                    allSections.forEach(sec => {
+                        const secValNorm = (sec.value || '').toString().toLowerCase().trim();
+                        if (!existingGroupSectionNames.includes(secValNorm)) {
+                            const opt = document.createElement('option');
+                            opt.value = sec.value;
+                            opt.textContent = sec.label;
+                            sectionSelect.appendChild(opt);
+                            availableCount++;
                         }
                     });
+
+                    if (availableCount === 0) {
+                        sectionSelect.disabled = true;
+                        if (alertEl) alertEl.classList.remove('d-none');
+                        if (submitBtn) submitBtn.disabled = true;
+                    } else {
+                        sectionSelect.disabled = false;
+                        if (alertEl) alertEl.classList.add('d-none');
+                        if (submitBtn) submitBtn.disabled = false;
+                    }
                 }
-                renderSectionScheduleTabs();
             });
 
-            addModal.show();
+            // Reset teacher, room, and schedule fields
+            const teacherSelect = document.getElementById('addSecModalTeacherSelect');
+            if (teacherSelect) teacherSelect.value = '';
+
+            const roomInput = document.getElementById('addSecModalRoomInput');
+            if (roomInput) roomInput.value = '';
+
+            const schedModeSpecific = document.getElementById('addSecSchedModeSpecific');
+            if (schedModeSpecific) schedModeSpecific.checked = true;
+            onAddSecScheduleModeChange('specific');
+
+            resetAddSecScheduleRows();
+            addSecScheduleRow();
+
+            // Open dedicated modal
+            const addSecModalEl = document.getElementById('addSectionToGroupModal');
+            if (addSecModalEl) {
+                const modal = bootstrap.Modal.getInstance(addSecModalEl) || new bootstrap.Modal(addSecModalEl);
+                modal.show();
+            }
+        }
+
+        function backToGroupSectionsModal() {
+            const addSecModalEl = document.getElementById('addSectionToGroupModal');
+            if (addSecModalEl) {
+                const m = bootstrap.Modal.getInstance(addSecModalEl);
+                if (m) m.hide();
+            }
+            if (activeGroupIndex !== null) {
+                openGroupedClassModal(activeGroupIndex);
+            }
+        }
+
+        function onAddSecScheduleModeChange(mode) {
+            const specWrap = document.getElementById('addSecSchedSpecificWrap');
+            const tbaWrap = document.getElementById('addSecSchedTbaWrap');
+            if (mode === 'tba') {
+                if (specWrap) specWrap.classList.add('d-none');
+                if (tbaWrap) tbaWrap.classList.remove('d-none');
+            } else {
+                if (specWrap) specWrap.classList.remove('d-none');
+                if (tbaWrap) tbaWrap.classList.add('d-none');
+            }
+        }
+
+        function resetAddSecScheduleRows() {
+            const container = document.getElementById('addSecScheduleRows');
+            if (container) container.innerHTML = '';
+        }
+
+        function addSecScheduleRow(row = {}) {
+            const container = document.getElementById('addSecScheduleRows');
+            if (!container) return;
+
+            const rowDiv = document.createElement('div');
+            rowDiv.className = 'row g-2 align-items-center schedule-row add-sec-sched-row';
+            rowDiv.innerHTML = `
+                <div class="col-12 col-sm-3">
+                    <select class="form-select schedule-day" data-field="day">
+                        <option value="">Select</option>
+                        <option value="Mon" ${row.day === 'Mon' ? 'selected' : ''}>Mon</option>
+                        <option value="Tue" ${row.day === 'Tue' ? 'selected' : ''}>Tue</option>
+                        <option value="Wed" ${row.day === 'Wed' ? 'selected' : ''}>Wed</option>
+                        <option value="Thu" ${row.day === 'Thu' ? 'selected' : ''}>Thu</option>
+                        <option value="Fri" ${row.day === 'Fri' ? 'selected' : ''}>Fri</option>
+                        <option value="Sat" ${row.day === 'Sat' ? 'selected' : ''}>Sat</option>
+                    </select>
+                </div>
+                <div class="col-12 col-sm-4">
+                    <div class="input-group schedule-time-group">
+                        <input type="text" inputmode="numeric" pattern="\\d*" maxlength="2" class="form-control schedule-time" data-field="start_hour" placeholder="HH" value="${escapeHtml(row.start_hour || '')}">
+                        <span class="input-group-text">:</span>
+                        <input type="text" inputmode="numeric" pattern="\\d*" maxlength="2" class="form-control schedule-time" data-field="start_min" placeholder="MM" value="${escapeHtml(row.start_min || '')}">
+                        <select class="form-select schedule-time" data-field="start_ampm" style="min-width: 76px; max-width: 76px;">
+                            <option value="AM" ${row.start_ampm === 'AM' ? 'selected' : ''}>AM</option>
+                            <option value="PM" ${row.start_ampm === 'PM' ? 'selected' : ''}>PM</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 col-sm-4">
+                    <div class="input-group schedule-time-group">
+                        <input type="text" inputmode="numeric" pattern="\\d*" maxlength="2" class="form-control schedule-time" data-field="end_hour" placeholder="HH" value="${escapeHtml(row.end_hour || '')}">
+                        <span class="input-group-text">:</span>
+                        <input type="text" inputmode="numeric" pattern="\\d*" maxlength="2" class="form-control schedule-time" data-field="end_min" placeholder="MM" value="${escapeHtml(row.end_min || '')}">
+                        <select class="form-select schedule-time" data-field="end_ampm" style="min-width: 76px; max-width: 76px;">
+                            <option value="AM" ${row.end_ampm === 'AM' ? 'selected' : ''}>AM</option>
+                            <option value="PM" ${row.end_ampm === 'PM' ? 'selected' : ''}>PM</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 col-sm-1 d-flex justify-content-end">
+                    <button type="button" class="btn btn-outline-danger btn-sm schedule-remove w-100" onclick="removeAddSecScheduleRow(this)">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            `;
+            container.appendChild(rowDiv);
+            setupTimeInputFormatters(rowDiv);
+        }
+
+        function removeAddSecScheduleRow(btn) {
+            const row = btn.closest('.add-sec-sched-row');
+            if (row) {
+                const container = document.getElementById('addSecScheduleRows');
+                if (container && container.querySelectorAll('.add-sec-sched-row').length > 1) {
+                    row.remove();
+                } else if (container) {
+                    row.querySelectorAll('input').forEach(i => i.value = '');
+                    row.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+                }
+            }
+        }
+
+        function collectAddSecScheduleRows() {
+            return collectRowsFromContainer(document.getElementById('addSecScheduleRows'));
+        }
+
+        function submitAddSectionToGroup() {
+            if (activeGroupIndex === null || !groupedClassesData[activeGroupIndex]) return;
+            const group = groupedClassesData[activeGroupIndex];
+
+            const sectionSelect = document.getElementById('addSecModalSectionSelect');
+            const selectedSection = sectionSelect ? sectionSelect.value.trim() : '';
+            if (!selectedSection) {
+                showNotification('Please select a target section', 'warning');
+                return;
+            }
+
+            const teacherSelect = document.getElementById('addSecModalTeacherSelect');
+            const teacherId = teacherSelect ? teacherSelect.value : '';
+
+            const roomInput = document.getElementById('addSecModalRoomInput');
+            const room = roomInput ? roomInput.value.trim() : '';
+
+            const schedModeTba = document.getElementById('addSecSchedModeTba');
+            const isTba = schedModeTba && schedModeTba.checked;
+
+            let scheduleRows = [];
+            if (!isTba) {
+                scheduleRows = collectAddSecScheduleRows();
+                if (scheduleRows.length === 0) {
+                    showNotification('Please add at least one schedule row (or select "Set to TBA")', 'warning');
+                    return;
+                }
+            }
+
+            const formData = new FormData();
+            if (window.APP_CSRF_TOKEN) {
+                formData.append('csrf_token', window.APP_CSRF_TOKEN);
+            }
+            formData.append('class_name', group.class_name);
+            formData.append('grade_level', group.grade_level);
+            formData.append('subject_category', group.subject_category || 'core');
+            formData.append('track', group.track || 'academic');
+            formData.append('sections[]', selectedSection);
+            if (teacherId) {
+                formData.append('teacher_id', teacherId);
+            }
+            if (room) {
+                formData.append('room', room);
+            }
+            formData.append('schedule_mode', isTba ? 'tba' : 'uniform');
+            if (isTba) {
+                formData.append('schedule', 'TBA');
+            } else {
+                formData.append('schedule_rows', JSON.stringify(scheduleRows));
+            }
+
+            const submitBtn = document.getElementById('addSecModalSubmitBtn');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>Adding...';
+            }
+
+            fetch('admin_Classes_Action.php?action=create', {
+                method: 'POST',
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(data.message || `Section ${selectedSection} added successfully`, 'success');
+                    const addSecModalEl = document.getElementById('addSectionToGroupModal');
+                    if (addSecModalEl) {
+                        const m = bootstrap.Modal.getInstance(addSecModalEl);
+                        if (m) m.hide();
+                    }
+                    setTimeout(() => window.location.reload(), 600);
+                } else {
+                    showNotification(data.message || 'Failed to add section', 'danger');
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = '<i class="bi bi-plus-circle me-1"></i>Add Section';
+                    }
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                showNotification('An error occurred while adding section', 'danger');
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="bi bi-plus-circle me-1"></i>Add Section';
+                }
+            });
         }
 
         function deleteSectionFromGroupModal(id, className, sectionName) {
@@ -1476,6 +1776,8 @@ $page_title = 'Manage Classes';
 
         window.openGroupedClassModal = openGroupedClassModal;
         window.openAddSectionForGroup = openAddSectionForGroup;
+        window.backToGroupSectionsModal = backToGroupSectionsModal;
+        window.submitAddSectionToGroup = submitAddSectionToGroup;
         window.deleteSectionFromGroupModal = deleteSectionFromGroupModal;
 
         function viewClass(id) {

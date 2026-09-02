@@ -25,9 +25,10 @@ final class AdminClassEditRegressionTest extends TestCase
         $this->assertStringNotContainsString('buildSchedule();', $html);
         $this->assertStringContainsString('function populateScheduleFields()', $html);
 
-        // Verify section fallback logic
-        $this->assertStringContainsString('customOption.value = currentSection;', $html);
-        $this->assertStringContainsString('customOption.selected = true;', $html);
+        // Verify Grade Level and Section are rendered as fixed context
+        $this->assertStringContainsString('Grade Level <span class="badge bg-secondary-subtle text-muted ms-1" style="font-size: 11px;">Fixed</span>', $html);
+        $this->assertStringContainsString('Section <span class="badge bg-secondary-subtle text-muted ms-1" style="font-size: 11px;">Fixed</span>', $html);
+        $this->assertStringContainsString('readonly disabled', $html);
 
         // Verify schedule mode toggle row auto-population
         $this->assertStringContainsString("if (mode === 'specific')", $html);
