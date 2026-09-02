@@ -729,7 +729,7 @@ function updateNotificationState(action, id = 0) {
   });
 }
 
-function setHeaderNotificationCount(count) {
+function setHeaderNotificationCount(count, shouldPulse = false) {
   const bell = document.querySelector('[aria-label="View notifications"]');
   if (!bell) return;
   let badge = document.getElementById("headerNotificationBadge");
@@ -738,13 +738,21 @@ function setHeaderNotificationCount(count) {
     if (badge) badge.remove();
     return;
   }
+  const isNewBadge = !badge;
   if (!badge) {
     badge = document.createElement("span");
     badge.id = "headerNotificationBadge";
     badge.className = "notification-badge";
     bell.appendChild(badge);
   }
+  const oldCount = Number.parseInt(badge.textContent || "0", 10) || 0;
   badge.textContent = String(unread);
+
+  if (shouldPulse || unread > oldCount || isNewBadge) {
+    badge.classList.remove("badge-pulse");
+    void badge.offsetWidth;
+    badge.classList.add("badge-pulse");
+  }
 }
 
 function focusNotificationTarget() {
@@ -867,10 +875,8 @@ function initHeaderNotificationActions() {
   }
 }
 
-let lastKnownNotificationIds = null;
-
-function renderLiveNotifications(items, unreadCount) {
-  setHeaderNotificationCount(unreadCount);
+function renderLiveNotifications(items, unreadCount, shouldPulse = false) {
+  setHeaderNotificationCount(unreadCount, shouldPulse);
   const scrollContainer = document.querySelector(
     ".header-notification-scroll-body",
   );
@@ -919,50 +925,158 @@ function renderLiveNotifications(items, unreadCount) {
   initHeaderNotificationActions();
 }
 
-function pollNotificationsLive() {
-  if (document.hidden) return;
-  appFetchJson("notifications")
-    .then((data) => {
-      if (!data || !data.ok) return;
-      const items = data.notifications || data.items || [];
-      const currentIds = new Set(items.map((it) => it.id));
-      const unreadCount = Number(data.unread_count || 0);
+const LiveNotificationPoller = {
+  intervalMs: 20000,
+  minIntervalMs: 15000,
+  maxIntervalMs: 60000,
+  currentIntervalMs: 20000,
+  timerId: null,
+  isPolling: false,
+  lastPollTime: 0,
+  seenNotificationIds: null,
+  abortController: null,
 
-      if (lastKnownNotificationIds !== null) {
-        const newUnread = items.filter(
-          (it) =>
-            !lastKnownNotificationIds.has(it.id) &&
-            Number(it.is_read || 0) === 0,
-        );
-        if (newUnread.length > 0) {
-          const newest = newUnread[0];
-          showNotification(`${newest.title}: ${newest.subtitle}`, "info");
-          window.dispatchEvent(
-            new CustomEvent("ams:notificationReceived", {
-              detail: { items: items, newCount: newUnread.length },
-            }),
-          );
+  init() {
+    if (typeof window === "undefined") return;
+    const bell = document.querySelector('[aria-label="View notifications"]');
+    if (!bell) return;
+
+    this.seenNotificationIds = new Set();
+    document.querySelectorAll("[data-notification-row]").forEach((row) => {
+      const id = Number(row.getAttribute("data-notification-row") || "0");
+      if (id > 0) this.seenNotificationIds.add(id);
+    });
+
+    this.bindEvents();
+    this.start();
+  },
+
+  bindEvents() {
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        this.stop();
+      } else {
+        const now = Date.now();
+        if (now - this.lastPollTime >= this.minIntervalMs) {
+          this.poll();
         }
+        this.start();
       }
-      lastKnownNotificationIds = currentIds;
-      renderLiveNotifications(items, unreadCount);
+    });
+
+    window.addEventListener("online", () => {
+      this.currentIntervalMs = this.intervalMs;
+      this.poll();
+      this.start();
+    });
+
+    window.addEventListener("offline", () => {
+      this.stop();
+    });
+  },
+
+  start() {
+    this.stop();
+    if (typeof navigator !== "undefined" && !navigator.onLine) return;
+    if (document.hidden) return;
+
+    this.timerId = window.setInterval(() => {
+      this.poll();
+    }, this.currentIntervalMs);
+  },
+
+  stop() {
+    if (this.timerId) {
+      window.clearInterval(this.timerId);
+      this.timerId = null;
+    }
+    if (this.abortController && this.isPolling) {
+      try {
+        this.abortController.abort();
+      } catch (e) {}
+      this.abortController = null;
+      this.isPolling = false;
+    }
+  },
+
+  poll() {
+    if (this.isPolling || document.hidden || (typeof navigator !== "undefined" && !navigator.onLine)) {
+      return Promise.resolve();
+    }
+
+    this.isPolling = true;
+    this.lastPollTime = Date.now();
+    this.abortController = typeof AbortController !== "undefined" ? new AbortController() : null;
+
+    let timeoutId = null;
+    if (this.abortController) {
+      timeoutId = window.setTimeout(() => {
+        try {
+          if (this.abortController) this.abortController.abort();
+        } catch (e) {}
+      }, 10000);
+    }
+
+    return appFetchJson("notifications", {
+      signal: this.abortController ? this.abortController.signal : undefined,
     })
-    .catch(() => {});
-}
+      .then((data) => {
+        if (timeoutId) window.clearTimeout(timeoutId);
+        if (!data || !data.ok) {
+          this.currentIntervalMs = Math.min(this.currentIntervalMs * 1.5, this.maxIntervalMs);
+          return;
+        }
+
+        this.currentIntervalMs = this.intervalMs;
+        const items = data.notifications || data.items || [];
+        const unreadCount = Number(data.unread_count || 0);
+        let hasNewUnread = false;
+
+        if (this.seenNotificationIds !== null) {
+          const newUnread = items.filter(
+            (it) =>
+              !this.seenNotificationIds.has(Number(it.id)) &&
+              Number(it.is_read || 0) === 0,
+          );
+
+          if (newUnread.length > 0) {
+            hasNewUnread = true;
+            const newest = newUnread[0];
+            showNotification(`${newest.title}: ${newest.subtitle}`, "info");
+
+            window.dispatchEvent(
+              new CustomEvent("ams:notificationReceived", {
+                detail: {
+                  items: items,
+                  newItems: newUnread,
+                  newCount: newUnread.length,
+                  unreadCount: unreadCount,
+                },
+              }),
+            );
+          }
+        }
+
+        items.forEach((it) => {
+          if (it && it.id) this.seenNotificationIds.add(Number(it.id));
+        });
+
+        renderLiveNotifications(items, unreadCount, hasNewUnread);
+      })
+      .catch((err) => {
+        if (timeoutId) window.clearTimeout(timeoutId);
+        if (err && err.name === "AbortError") return;
+        this.currentIntervalMs = Math.min(this.currentIntervalMs * 1.5, this.maxIntervalMs);
+      })
+      .finally(() => {
+        this.isPolling = false;
+        this.abortController = null;
+      });
+  },
+};
 
 function initLiveNotificationPoller() {
-  if (
-    typeof window === "undefined" ||
-    !document.querySelector('[aria-label="View notifications"]')
-  )
-    return;
-  const initialRows = document.querySelectorAll("[data-notification-row]");
-  lastKnownNotificationIds = new Set(
-    Array.from(initialRows).map((r) =>
-      Number(r.getAttribute("data-notification-row") || "0"),
-    ),
-  );
-  window.setInterval(pollNotificationsLive, 15000);
+  LiveNotificationPoller.init();
 }
 
 function setSettingsBusy(isBusy) {

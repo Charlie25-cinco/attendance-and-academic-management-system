@@ -2,6 +2,19 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.122 — 2026-09-02
+
+### Core & Real-Time Sync
+
+- **Real-Time Notification Polling & Non-Blocking Updates (Without Full Page Reload)**:
+  - **Live Poller (`assets/js/main.js`)**: Implemented `LiveNotificationPoller` with a 20-second background polling cycle against `api/notifications`.
+  - **Tab Visibility & Offline Lifecycle**: Automatically pauses polling when the tab is hidden (`document.hidden`) or offline, and immediately resumes / polls on tab focus (`visibilitychange`) or reconnection (`online`).
+  - **Overlapping Request Guard & AbortController**: Prevents stacked requests using an `isPolling` lock and a 10s `AbortController` timeout with exponential backoff on network failures.
+  - **Deduplication & Badge Animation**: Seeded `seenNotificationIds` on initial load to avoid duplicate toast alerts, and added `@keyframes badgePulse` in [`assets/css/main.css`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/css/main.css) for smooth visual feedback upon new incoming alerts.
+  - **Modular Custom Event**: Dispatches `ams:notificationReceived` with updated notification items for targeted, non-disruptive widget updates across pages.
+  - **Preserved Security & Isolation**: Fully retains CSRF headers, session auth, user data isolation (`WHERE user_id = ?`), 60s initial render caching, and PWA offline-first attendance recording.
+  - **Automated Tests**: Added [`tests/RealtimeNotificationPollingTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/RealtimeNotificationPollingTest.php) (3 tests, 19 assertions) and verified with 164 passing tests across the entire test suite.
+
 ## v0.3.121 — 2026-09-02
 
 ### Performance & Core Optimization
