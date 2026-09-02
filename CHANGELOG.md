@@ -2,6 +2,14 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.155 — 2026-09-03
+
+### Fixed
+
+- **Resolved Inline JavaScript Syntax Errors in PWA Head Script & Verified DOM Runtime**:
+  - **Identified & Fixed Script Syntax Errors**: Discovered and resolved an unescaped `});` token and an unmatched closing brace `}` in the inline script of `pwaHeadHtml()` within [`config/constants.php`](file:///c:/laragon/www/attendance-and-academic-management-system/config/constants.php) that previously caused browser JavaScript engines to abort execution with a `SyntaxError` before `window.bindPwaInstallButton()` and `_pwaInstallPrompt` could ever be defined or bound.
+  - **Deterministic Runtime Execution Test**: Added `testPwaHeadScriptExecutesWithoutSyntaxErrorsAndHandlesInstallClick` to [`tests/PwaInstallUiTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/PwaInstallUiTest.php) which executes the exact PHP-rendered JavaScript in a Node.js mock DOM environment, asserting zero syntax errors, successful `DOMContentLoaded` binding, fallback modal display on click without prompt, and native `_pwaInstallPrompt.prompt()` invocation with `userChoice` resolution.
+
 ## v0.3.154 — 2026-09-03
 
 ### Fixed

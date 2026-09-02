@@ -990,7 +990,7 @@ if ('serviceWorker' in navigator) {
                     })
                     .catch(function (e) { console.warn('[PWA] SW:', e); });
             });
-    });
+    }
     window._pwaInstallPrompt = null;
     window.isPwaStandalone = function () {
         return Boolean((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true);
@@ -1103,7 +1103,6 @@ if ('serviceWorker' in navigator) {
         window._pwaInstallPrompt = null;
         window.bindPwaInstallButton();
     });
-}
 </script>";
     $html .= $swScript;
     return $html;

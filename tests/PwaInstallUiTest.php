@@ -135,4 +135,149 @@ final class PwaInstallUiTest extends TestCase
             );
         }
     }
+
+    public function testPwaHeadScriptExecutesWithoutSyntaxErrorsAndHandlesInstallClick(): void
+    {
+        require_once __DIR__ . '/../config/constants.php';
+        $html = pwaHeadHtml();
+        $this->assertIsString($html);
+
+        $startTag = '<script>';
+        $endTag = '</script>';
+        $startIndex = strrpos($html, $startTag);
+        $this->assertNotFalse($startIndex);
+        $startIndex += strlen($startTag);
+        $endIndex = strrpos($html, $endTag);
+        $this->assertNotFalse($endIndex);
+
+        $pwaScript = substr($html, $startIndex, $endIndex - $startIndex);
+        $this->assertNotEmpty($pwaScript);
+
+        // Run node runtime evaluation to ensure zero syntax errors and verify actual DOM click execution
+        $nodeScript = "
+        const pwaScript = " . json_encode($pwaScript) . ";
+        class MockElement {
+            constructor(id, tagName = 'div') {
+                this.id = id;
+                this.tagName = tagName;
+                this.style = {};
+                this.dataset = {};
+                this.classList = {
+                    classes: new Set(),
+                    add: (c) => this.classList.classes.add(c),
+                    remove: (c) => this.classList.classes.delete(c),
+                    contains: (c) => this.classList.classes.has(c)
+                };
+                this.listeners = {};
+                this.innerHTML = '';
+                this.textContent = '';
+            }
+            addEventListener(event, fn) {
+                if (!this.listeners[event]) this.listeners[event] = [];
+                this.listeners[event].push(fn);
+            }
+            removeEventListener(event, fn) {
+                if (this.listeners[event]) {
+                    this.listeners[event] = this.listeners[event].filter(f => f !== fn);
+                }
+            }
+            async dispatchEvent(event, data) {
+                if (this.listeners[event]) {
+                    for (const fn of this.listeners[event]) {
+                        await fn(data || { preventDefault: () => {} });
+                    }
+                }
+            }
+        }
+
+        class MockDocument {
+            constructor() {
+                this.elements = {};
+                this.listeners = {};
+            }
+            getElementById(id) {
+                return this.elements[id] || null;
+            }
+            addEventListener(event, fn) {
+                if (!this.listeners[event]) this.listeners[event] = [];
+                this.listeners[event].push(fn);
+            }
+            async dispatchEvent(event, data) {
+                if (this.listeners[event]) {
+                    for (const fn of this.listeners[event]) {
+                        await fn(data || { preventDefault: () => {} });
+                    }
+                }
+            }
+        }
+
+        async function run() {
+            const doc = new MockDocument();
+            doc.elements['settingsPwaInstallSection'] = new MockElement('settingsPwaInstallSection');
+            doc.elements['settingsPwaInstallBtn'] = new MockElement('settingsPwaInstallBtn', 'button');
+            doc.elements['pwaInstallModal'] = new MockElement('pwaInstallModal');
+            doc.elements['pwaInstallModalTitle'] = new MockElement('pwaInstallModalTitle');
+            doc.elements['pwaInstallModalSubtitle'] = new MockElement('pwaInstallModalSubtitle');
+
+            let modalShown = false;
+            const mockBootstrap = {
+                Modal: {
+                    getInstance: (el) => ({ show: () => { modalShown = true; } })
+                }
+            };
+
+            const mockWindow = {
+                matchMedia: () => ({ matches: false }),
+                navigator: { standalone: false, userAgent: 'Chrome/Desktop' },
+                addEventListener: (event, fn) => doc.addEventListener(event, fn),
+                document: doc,
+                bootstrap: mockBootstrap
+            };
+
+            const fn = new Function('window', 'document', 'navigator', 'bootstrap', pwaScript);
+            fn(mockWindow, doc, mockWindow.navigator, mockBootstrap);
+
+            // Trigger DOMContentLoaded
+            await doc.dispatchEvent('DOMContentLoaded');
+            if (doc.elements['settingsPwaInstallBtn'].dataset.bound !== '1') {
+                process.exit(10);
+            }
+
+            // Click without prompt -> modal shown
+            modalShown = false;
+            await doc.elements['settingsPwaInstallBtn'].dispatchEvent('click');
+            if (!modalShown) {
+                process.exit(11);
+            }
+
+            // Click with prompt -> prompt called
+            let promptCalled = false;
+            await doc.dispatchEvent('beforeinstallprompt', {
+                preventDefault: () => {},
+                prompt: async () => { promptCalled = true; },
+                userChoice: Promise.resolve({ outcome: 'accepted' })
+            });
+
+            modalShown = false;
+            await doc.elements['settingsPwaInstallBtn'].dispatchEvent('click');
+            if (!promptCalled) {
+                process.exit(12);
+            }
+            if (mockWindow._pwaInstallPrompt !== null) {
+                process.exit(13);
+            }
+
+            process.exit(0);
+        }
+        run();
+        ";
+
+        $tmpFile = tempnam(sys_get_temp_dir(), 'pwa_test_') . '.js';
+        file_put_contents($tmpFile, $nodeScript);
+
+        exec('node ' . escapeshellarg($tmpFile) . ' 2>&1', $output, $returnCode);
+        @unlink($tmpFile);
+
+        $this->assertSame(0, $returnCode, 'PWA script execution failed with code ' . $returnCode . ': ' . implode("\n", $output));
+    }
 }
