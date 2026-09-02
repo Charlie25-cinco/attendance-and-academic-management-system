@@ -107,11 +107,11 @@ final class AdminUsersStudentExclusionAndEnrollmentsRefCodeTest extends TestCase
         $this->assertIsString($usersActionPhp);
 
         // Verify getUser explicitly blocks student details
-        $this->assertStringContainsString("if ($user['role'] === 'student') {", $usersActionPhp);
-        $this->assertStringContainsString("'Student details are not available in Manage Users'", $usersActionPhp);
+        $this->assertStringContainsString('if ($user[\'role\'] === \'student\') {', $usersActionPhp);
+        $this->assertStringContainsString('Student details are not available in Manage Users', $usersActionPhp);
 
         // Verify createUser, updateUser, deleteUser, resetUserPassword, setUserStatus block students
-        $this->assertStringContainsString("'Students must be managed through the Enrollments page'", $usersActionPhp);
+        $this->assertStringContainsString('Students must be managed through the Enrollments page', $usersActionPhp);
     }
 
     public function testEnrollmentsStudentListingAndReferenceCodeSearch(): void
