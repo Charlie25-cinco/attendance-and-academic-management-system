@@ -50,6 +50,16 @@ if ($teacherStmt) {
     $availableTeachers = $teacherStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
 
+$availableSubjects = [];
+if (dbHasTable($db, 'subjects')) {
+    $subjectRows = $db->query("SELECT id, subject_name, subject_code, subject_category, track, grade_level
+                               FROM subjects
+                               ORDER BY subject_name ASC");
+    if ($subjectRows) {
+        $availableSubjects = $subjectRows->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+}
+
 $assignedTeacherId = (int)($class['teacher_id'] ?? 0);
 if ($assignedTeacherId <= 0) {
     $csCheck = $db->prepare("SELECT teacher_id FROM class_subjects WHERE class_id = ? LIMIT 1");
@@ -123,12 +133,18 @@ $page_title = 'Edit Class - ' . $class['class_name'];
                         <input type="hidden" name="class_id" value="<?php echo $classId; ?>">
                         
                         <div class="mb-3">
-                            <label class="form-label">Class Name <span class="text-danger">*</span></label>
-                            <input type="text" name="class_name" class="form-control" value="<?php echo htmlspecialchars($class['class_name']); ?>" required>
+                            <label class="form-label">Subject Name <span class="text-danger">*</span></label>
+                            <input type="text" id="editSubjectNameInput" name="class_name" class="form-control" value="<?php echo htmlspecialchars($class['class_name']); ?>" list="registeredSubjectsList" required autocomplete="off">
+                            <datalist id="registeredSubjectsList">
+                                <?php foreach ($availableSubjects as $subj): ?>
+                                    <option value="<?php echo htmlspecialchars($subj['subject_name']); ?>" data-category="<?php echo htmlspecialchars($subj['subject_category'] ?? ''); ?>" data-track="<?php echo htmlspecialchars($subj['track'] ?? ''); ?>" data-grade="<?php echo htmlspecialchars((string)($subj['grade_level'] ?? '')); ?>"><?php echo htmlspecialchars($subj['subject_code'] . ' - ' . $subj['subject_name']); ?></option>
+                                <?php endforeach; ?>
+                            </datalist>
+                            <small class="text-muted">Type custom name or choose from standard DepEd subjects to auto-fill category.</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Subject Category <span class="text-danger">*</span></label>
-                            <select name="subject_category" class="form-select" onchange="onSubjectCategoryChange(this)" required>
+                            <select name="subject_category" id="subjectCategorySelect" class="form-select" onchange="onSubjectCategoryChange(this)" required>
                                 <option value="">Select Category</option>
                                 <option value="core" <?php echo (($class['subject_category'] ?? '') === 'core') ? 'selected' : ''; ?>>Core Subject</option>
                                 <option value="academic_elective" <?php echo (($class['subject_category'] ?? '') === 'academic_elective') ? 'selected' : ''; ?>>Academic Elective / Specialized</option>
@@ -160,11 +176,24 @@ $page_title = 'Edit Class - ' . $class['class_name'];
                                 </select>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label class="form-label">Section <span class="text-danger">*</span></label>
-                                <select name="section" id="sectionSelect" class="form-select" required>
+                                <label class="form-label">Primary Section <span class="text-danger">*</span></label>
+                                <select name="section" id="sectionSelect" class="form-select" required onchange="updateOtherSections()">
                                     <option value="">Select Grade & Track First</option>
                                 </select>
                             </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label mb-0 fw-semibold">Also Apply to Other Sections (Optional)</label>
+                                <div id="editSectionSelectAllWrap" style="display: none;">
+                                    <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" id="selectAllEditSectionsBtn" style="font-size: 11px;" onclick="toggleAllEditSections()">Select All</button>
+                                </div>
+                            </div>
+                            <div id="editSectionCheckboxesContainer" class="p-3 border rounded bg-light d-flex flex-wrap gap-2 align-items-center" style="min-height: 46px;">
+                                <span class="text-muted small"><i class="bi bi-info-circle me-1"></i>No other sections available to apply to.</span>
+                            </div>
+                            <small class="text-muted">Check any other sections to copy or sync this subject's teacher, schedule, room, category, and grading weights to them simultaneously.</small>
                         </div>
                         
                         <div class="mb-3">
@@ -274,13 +303,32 @@ $page_title = 'Edit Class - ' . $class['class_name'];
             return value.replace(/\b\w/g, ch => ch.toUpperCase());
         }
 
-        const editClassNameInput = document.querySelector('input[name="class_name"]');
-        if (editClassNameInput) {
-            editClassNameInput.addEventListener('input', function () {
+        const registeredSubjects = <?php echo json_encode($availableSubjects ?? []); ?>;
+        const editSubjectNameInput = document.getElementById('editSubjectNameInput') || document.querySelector('input[name="class_name"]');
+        if (editSubjectNameInput) {
+            editSubjectNameInput.addEventListener('input', function () {
                 const start = this.selectionStart;
                 const end = this.selectionEnd;
                 this.value = autoCapitalizeFirstLetter(this.value);
                 this.setSelectionRange(start, end);
+            });
+            editSubjectNameInput.addEventListener('change', function () {
+                const val = (this.value || '').trim().toLowerCase();
+                if (!val || !Array.isArray(registeredSubjects)) return;
+                const match = registeredSubjects.find(s => (s.subject_name || '').toLowerCase() === val || (s.subject_code || '').toLowerCase() === val);
+                if (match) {
+                    this.value = match.subject_name;
+                    const catSelect = document.getElementById('subjectCategorySelect');
+                    if (catSelect && match.subject_category) {
+                        catSelect.value = match.subject_category;
+                        onSubjectCategoryChange(catSelect);
+                    }
+                    const trackSelect = document.getElementById('classTrack');
+                    if (trackSelect && match.track) {
+                        trackSelect.value = match.track;
+                        updateSections();
+                    }
+                }
             });
         }
 
@@ -346,9 +394,10 @@ $page_title = 'Edit Class - ' . $class['class_name'];
         const scheduleRowsData = <?php echo json_encode($scheduleRows); ?>;
         
         function updateSections() {
-            const gradeLevel = document.getElementById('gradeLevel').value;
-            const track = document.getElementById('classTrack').value;
+            const gradeLevel = document.getElementById('gradeLevel')?.value;
+            const track = document.getElementById('classTrack')?.value;
             const sectionSelect = document.getElementById('sectionSelect');
+            if (!sectionSelect) return;
 
             sectionSelect.innerHTML = '';
 
@@ -356,7 +405,7 @@ $page_title = 'Edit Class - ' . $class['class_name'];
                 const list = getSectionsFor(gradeLevel, track);
                 sectionSelect.disabled = !list.length;
                 if (list.length) {
-                    sectionSelect.innerHTML = '<option value="">Select Section</option>';
+                    sectionSelect.innerHTML = '<option value="">Select Primary Section</option>';
                     list.forEach(section => {
                         const option = document.createElement('option');
                         option.value = section.value;
@@ -373,6 +422,54 @@ $page_title = 'Edit Class - ' . $class['class_name'];
                 sectionSelect.disabled = true;
                 sectionSelect.innerHTML = '<option value="">Select Grade & Track First</option>';
             }
+
+            updateOtherSections();
+        }
+
+        function updateOtherSections() {
+            const gradeLevel = document.getElementById('gradeLevel')?.value;
+            const track = document.getElementById('classTrack')?.value;
+            const primarySection = document.getElementById('sectionSelect')?.value || '';
+            const container = document.getElementById('editSectionCheckboxesContainer');
+            const toggleWrap = document.getElementById('editSectionSelectAllWrap');
+            if (!container) return;
+
+            container.innerHTML = '';
+
+            if (gradeLevel) {
+                const list = getSectionsFor(gradeLevel, track).filter(s => s.value !== primarySection);
+                if (list.length) {
+                    if (toggleWrap) toggleWrap.style.display = 'block';
+                    list.forEach((section, idx) => {
+                        const pill = document.createElement('div');
+                        pill.className = 'form-check form-check-inline m-0 border px-3 py-1 rounded bg-white shadow-sm';
+                        pill.innerHTML = `
+                            <input class="form-check-input edit-section-checkbox" type="checkbox" name="apply_to_sections[]" value="${section.value}" id="edit_sec_cb_${idx}">
+                            <label class="form-check-label fw-medium ms-1" for="edit_sec_cb_${idx}" style="cursor: pointer;">
+                                ${section.label}
+                            </label>
+                        `;
+                        container.appendChild(pill);
+                    });
+                    const btn = document.getElementById('selectAllEditSectionsBtn');
+                    if (btn) btn.textContent = 'Select All';
+                } else {
+                    if (toggleWrap) toggleWrap.style.display = 'none';
+                    container.innerHTML = '<span class="text-muted small"><i class="bi bi-info-circle me-1"></i>No other sections in this Grade Level & Track.</span>';
+                }
+            } else {
+                if (toggleWrap) toggleWrap.style.display = 'none';
+                container.innerHTML = '<span class="text-muted small"><i class="bi bi-info-circle me-1"></i>Select Grade Level first.</span>';
+            }
+        }
+
+        function toggleAllEditSections() {
+            const checkboxes = document.querySelectorAll('.edit-section-checkbox');
+            if (!checkboxes.length) return;
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            checkboxes.forEach(cb => { cb.checked = !allChecked; });
+            const btn = document.getElementById('selectAllEditSectionsBtn');
+            if (btn) btn.textContent = allChecked ? 'Select All' : 'Deselect All';
         }
         
         function addScheduleRow(row = {}) {
@@ -584,12 +681,14 @@ $page_title = 'Edit Class - ' . $class['class_name'];
                 });
             });
 
-            if (scheduleRows.length === 0) {
-                showNotification('Please add at least one schedule row', 'warning');
-                return;
-            }
             formData.append('schedule_rows', JSON.stringify(scheduleRows));
             
+            formData.delete('apply_to_sections[]');
+            document.querySelectorAll('.edit-section-checkbox:checked').forEach(cb => {
+                const secVal = cb.value.trim();
+                if (secVal) formData.append('apply_to_sections[]', secVal);
+            });
+
             fetch('admin_Classes_Action.php?action=update', {
                 method: 'POST',
                 body: formData
@@ -597,8 +696,8 @@ $page_title = 'Edit Class - ' . $class['class_name'];
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    showNotification('Class updated successfully', 'success');
-                    setTimeout(() => window.location.href = 'admin_Class_Detail.php?id=<?php echo $classId; ?>', 1000);
+                    showNotification(data.message || 'Class updated successfully', 'success');
+                    setTimeout(() => window.location.href = 'admin_Class_Detail.php?id=<?php echo $classId; ?>', 1200);
                 } else {
                     showNotification(data.message || 'Failed to update class', 'danger');
                 }

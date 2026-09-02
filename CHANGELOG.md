@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.119 — 2026-09-02
+
+### Admin & Feature
+
+- **Edit Class Subject Autocomplete & Multi-Section Apply/Sync**:
+  - Connected Subject Name input in [`admin/admin_Class_Edit.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Class_Edit.php) to `<datalist id="registeredSubjectsList">` populated with official subjects from the DepEd `subjects` registry table, auto-populating subject category, track, and weights on selection.
+  - Added an interactive **"Also Apply to Other Sections"** multi-section selector with a **"Select All"** toggle on the Edit Class page, allowing admins to optionally sync or copy class updates (teacher, schedule, room, category, and grading weights) across other sections in one action.
+  - Enhanced `updateClass` in [`admin/admin_Classes_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Classes_Action.php) to update the primary class and apply/insert matching classes across any selected additional sections, keeping schedules and enrollments synchronized.
+  - Added unit test cases to [`tests/AdminClassMultiSectionTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/AdminClassMultiSectionTest.php) (total test suite at 162 tests).
+
 ## v0.3.118 — 2026-09-02
 
 ### Admin & Feature
