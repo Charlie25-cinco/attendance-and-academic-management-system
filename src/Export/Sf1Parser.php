@@ -95,7 +95,11 @@ class Sf1Parser {
                 str_contains($markerText, 'ADVISER SIGNATURE') ||
                 str_contains($markerText, 'SCHOOL NAME') ||
                 str_contains($markerText, 'SCHOOL ID') ||
-                str_contains($markerText, 'TRACK AND STRAND')
+                str_contains($markerText, 'TRACK AND STRAND') ||
+                str_contains($markerText, 'INFORMATION REQUIRED') ||
+                str_contains($markerText, 'GUIDELINES') ||
+                str_contains($markerText, 'INSTRUCTIONS') ||
+                str_contains($markerText, 'END OF SCHOOL YEAR')
             ) {
                 continue;
             }
@@ -188,6 +192,7 @@ class Sf1Parser {
     private function sf1Lrn(array $data, int $row): string {
         $columnA = $this->cell($data, $row, 0);
         $columnB = $this->cell($data, $row, 1);
+        $columnC = $this->cell($data, $row, 2);
         if (preg_match('/^\d{12}$/', preg_replace('/\D/', '', $columnA))) {
             return $columnA;
         }
@@ -197,7 +202,7 @@ class Sf1Parser {
         if (preg_match('/^\d{12}$/', preg_replace('/\D/', '', $columnC))) {
             return $columnC;
         }
-        return $columnA !== '' ? $columnA : $columnB;
+        return $columnA !== '' ? $columnA : ($columnB !== '' ? $columnB : $columnC);
     }
 
     public static function parseLearnerName(string $value): array {

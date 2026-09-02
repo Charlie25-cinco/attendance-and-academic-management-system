@@ -293,4 +293,28 @@ final class Sf1ParserTest extends TestCase
             @unlink($path);
         }
     }
+
+    public function testSf1LrnReadsColumnsABCWithoutUndefinedVariable(): void
+    {
+        $reflection = new ReflectionClass(\BshsAms\Export\Sf1Parser::class);
+        $parser = $reflection->newInstanceWithoutConstructor();
+        $method = $reflection->getMethod('sf1Lrn');
+        $method->setAccessible(true);
+
+        // Column A has 12-digit LRN
+        $dataA = [['123456789012', '', '']];
+        $this->assertSame('123456789012', $method->invoke($parser, $dataA, 0));
+
+        // Column B has 12-digit LRN
+        $dataB = [['', '123456789013', '']];
+        $this->assertSame('123456789013', $method->invoke($parser, $dataB, 0));
+
+        // Column C has 12-digit LRN
+        $dataC = [['', '', '123456789014']];
+        $this->assertSame('123456789014', $method->invoke($parser, $dataC, 0));
+
+        // Fallback when no 12-digit number matches
+        $dataFallback = [['ABC', '', '']];
+        $this->assertSame('ABC', $method->invoke($parser, $dataFallback, 0));
+    }
 }

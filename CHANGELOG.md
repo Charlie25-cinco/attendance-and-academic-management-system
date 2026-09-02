@@ -2,6 +2,17 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.146 — 2026-09-02
+
+### Fixed
+
+- **SF1 Re-Import Parent Linking, `sf1Lrn()` Bugfix & Non-Student Row Filtering**:
+  - **Existing Student Multi-Parent Processing on Re-Import**: Updated `commitSf1Students()` in [`admin/admin_SF1_Import_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_SF1_Import_Action.php) to execute `autoLinkSf1Parents()` on existing students, creating any missing parent accounts and idempotently linking all distinct Father, Mother, and Guardian records without duplicating student or parent accounts.
+  - **Non-Destructive Field Backfill**: Selectively updated parent names, contact numbers, and address components on existing student records only when non-empty SF1 values are provided, ensuring existing database values are never overwritten by blanks.
+  - **`sf1Lrn()` Variable Scope Fix**: Explicitly defined `$columnC = $this->cell($data, $row, 2);` in [`src/Export/Sf1Parser.php`](file:///c:/laragon/www/attendance-and-academic-management-system/src/Export/Sf1Parser.php) to eliminate undefined variable notices during 12-digit LRN extraction across columns A, B, and C.
+  - **Instructional & Footer Non-Student Row Filtering**: Filtered out guideline, summary, and signature rows (e.g. `Information Required`, `Summary Table`, `Prepared by`, etc., with no LRN) in [`src/Export/Sf1Parser.php`](file:///c:/laragon/www/attendance-and-academic-management-system/src/Export/Sf1Parser.php) and [`admin/admin_SF1_Import_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_SF1_Import_Action.php) so they are cleanly skipped instead of producing validation errors.
+  - **Automated Regression Testing**: Added [`tests/Sf1ReimportAndMultiParentTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/Sf1ReimportAndMultiParentTest.php) and updated [`tests/Sf1ParserTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/Sf1ParserTest.php) covering existing student re-imports with multi-parent links, repeated re-import idempotency, non-destructive backfill, `sf1Lrn()` verification, and non-student row filtering.
+
 ## v0.3.145 — 2026-09-02
 
 ### Fixed

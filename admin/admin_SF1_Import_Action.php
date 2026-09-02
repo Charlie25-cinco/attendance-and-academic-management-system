@@ -265,10 +265,34 @@ function parseSf1UploadedFile(array $file): array {
 
         while (($row = fgetcsv($handle)) !== false) {
             if (count(array_filter($row, function($v) { return trim($v) !== ''; })) === 0) continue;
+            $rowCombined = strtoupper(implode(' ', array_map('strval', $row)));
+            if (
+                str_contains($rowCombined, 'INFORMATION REQUIRED') ||
+                str_contains($rowCombined, 'GUIDELINES') ||
+                str_contains($rowCombined, 'INSTRUCTIONS') ||
+                str_contains($rowCombined, 'SUMMARY TABLE') ||
+                str_contains($rowCombined, 'TOTAL MALE') ||
+                str_contains($rowCombined, 'TOTAL FEMALE') ||
+                str_contains($rowCombined, 'COMBINED') ||
+                str_contains($rowCombined, 'PREPARED BY') ||
+                str_contains($rowCombined, 'ADVISER SIGNATURE') ||
+                str_contains($rowCombined, 'LIST OF LEARNERS') ||
+                str_contains($rowCombined, '<===')
+            ) {
+                continue;
+            }
+
+            $rawLrn = preg_replace('/\D/', '', (string)($row[$colMap['lrn']] ?? ''));
+            $rawLast = trim((string)($row[$colMap['last_name']] ?? ''));
+            $rawFirst = trim((string)($row[$colMap['first_name']] ?? ''));
+            if ($rawLrn === '' && ($rawLast === '' || $rawFirst === '')) {
+                continue;
+            }
+
             $importRows[] = [
-                'lrn'              => preg_replace('/\D/', '', (string)($row[$colMap['lrn']] ?? '')),
-                'last_name'        => trim((string)($row[$colMap['last_name']] ?? '')),
-                'first_name'       => trim((string)($row[$colMap['first_name']] ?? '')),
+                'lrn'              => $rawLrn,
+                'last_name'        => $rawLast,
+                'first_name'       => $rawFirst,
                 'middle_name'      => $colMap['middle_name'] !== false ? trim((string)($row[$colMap['middle_name']] ?? '')) : '',
                 'name_extension'   => $colMap['name_extension'] !== false ? trim((string)($row[$colMap['name_extension']] ?? '')) : '',
                 'sex'              => $colMap['sex'] !== false ? trim((string)($row[$colMap['sex']] ?? '')) : '',
@@ -363,10 +387,27 @@ if ($action === 'preview' || (isset($_FILES['sf1_file']) && $action !== 'commit'
 
         $idx = 0;
         foreach ($rawStudents as $row) {
-            $idx++;
             $lrn = preg_replace('/\D/', '', (string)($row['lrn'] ?? ''));
             $lastName = trim((string)($row['last_name'] ?? ''));
             $firstName = trim((string)($row['first_name'] ?? ''));
+            $rowCombined = strtoupper($lrn . ' ' . $lastName . ' ' . $firstName . ' ' . (string)($row['middle_name'] ?? ''));
+            if (
+                str_contains($rowCombined, 'INFORMATION REQUIRED') ||
+                str_contains($rowCombined, 'GUIDELINES') ||
+                str_contains($rowCombined, 'INSTRUCTIONS') ||
+                str_contains($rowCombined, 'SUMMARY TABLE') ||
+                str_contains($rowCombined, 'TOTAL MALE') ||
+                str_contains($rowCombined, 'TOTAL FEMALE') ||
+                str_contains($rowCombined, 'PREPARED BY') ||
+                str_contains($rowCombined, 'ADVISER SIGNATURE')
+            ) {
+                continue;
+            }
+            if ($lrn === '' && ($lastName === '' || $firstName === '')) {
+                continue;
+            }
+
+            $idx++;
             $middleName = trim((string)($row['middle_name'] ?? ''));
             $nameExtension = trim((string)($row['name_extension'] ?? ''));
             $sex = sf1NormalizeSex((string)($row['sex'] ?? ''));
@@ -501,10 +542,27 @@ function commitSf1Students(PDO $db, array $students, string $academicYear = '202
     ];
 
     foreach ($students as $row) {
-        $rowNum++;
         $lrn = preg_replace('/\D/', '', (string)($row['lrn'] ?? ''));
         $lastName = trim((string)($row['last_name'] ?? ''));
         $firstName = trim((string)($row['first_name'] ?? ''));
+        $rowCombined = strtoupper($lrn . ' ' . $lastName . ' ' . $firstName . ' ' . (string)($row['middle_name'] ?? ''));
+        if (
+            str_contains($rowCombined, 'INFORMATION REQUIRED') ||
+            str_contains($rowCombined, 'GUIDELINES') ||
+            str_contains($rowCombined, 'INSTRUCTIONS') ||
+            str_contains($rowCombined, 'SUMMARY TABLE') ||
+            str_contains($rowCombined, 'TOTAL MALE') ||
+            str_contains($rowCombined, 'TOTAL FEMALE') ||
+            str_contains($rowCombined, 'PREPARED BY') ||
+            str_contains($rowCombined, 'ADVISER SIGNATURE')
+        ) {
+            continue;
+        }
+        if ($lrn === '' && ($lastName === '' || $firstName === '')) {
+            continue;
+        }
+
+        $rowNum++;
         $middleName = trim((string)($row['middle_name'] ?? ''));
         $nameExtension = trim((string)($row['name_extension'] ?? ''));
         $sex = strtolower(trim((string)($row['sex'] ?? '')));
@@ -593,15 +651,50 @@ function commitSf1Students(PDO $db, array $students, string $academicYear = '202
         if ($existingUser) {
             $existingUserId = (int)$existingUser['id'];
             try {
+                $parentInfoMsg = '';
                 if ($existingUserId > 0) {
                     syncStudentEnrollments($db, $existingUserId, $gradeLevel, $canonicalSection, $track, $academicYear);
+
+                    // Safely backfill non-empty parent/address/contact fields on the existing student
+                    $updates = [];
+                    $updateParams = [];
+                    if ($fatherName !== '') { $updates[] = "father_name = ?"; $updateParams[] = $fatherName; }
+                    if ($motherName !== '') { $updates[] = "mother_name = ?"; $updateParams[] = $motherName; }
+                    if ($guardianName !== '') { $updates[] = "guardian_name = ?"; $updateParams[] = $guardianName; }
+                    if ($guardianRelationship !== '') { $updates[] = "guardian_relationship = ?"; $updateParams[] = $guardianRelationship; }
+                    if ($contactNumber !== '') { $updates[] = "contact_number = ?"; $updateParams[] = $contactNumber; }
+                    if ($houseStreet !== '') { $updates[] = "house_street = ?"; $updateParams[] = $houseStreet; }
+                    if ($barangay !== '') { $updates[] = "barangay = ?"; $updateParams[] = $barangay; }
+                    if ($municipality !== '') { $updates[] = "municipality = ?"; $updateParams[] = $municipality; }
+                    if ($province !== '') { $updates[] = "province = ?"; $updateParams[] = $province; }
+                    if ($address !== '') { $updates[] = "address = ?"; $updateParams[] = $address; }
+                    if (!empty($updates)) {
+                        $updates[] = "updated_at = ?";
+                        $updateParams[] = date('Y-m-d H:i:s');
+                        $updateParams[] = $existingUserId;
+                        $db->prepare("UPDATE users SET " . implode(', ', $updates) . " WHERE id = ?")->execute($updateParams);
+                    }
+
+                    // Process and link parent/guardian records for existing student
+                    $parentLinks = autoLinkSf1Parents($db, $existingUserId, $row, $academicYear, $hashedPassword);
+                    if (!empty($parentLinks)) {
+                        $parentRefCodes = [];
+                        foreach ($parentLinks as $pLink) {
+                            if (!empty($pLink['is_new'])) {
+                                $results['parents_created']++;
+                            }
+                            $results['parents_linked']++;
+                            $parentRefCodes[] = $pLink['parent_ref_code'];
+                        }
+                        $parentInfoMsg = ' | Parent account(s) linked (' . implode(', ', $parentRefCodes) . ')';
+                    }
                 }
                 $results['rows'][] = [
                     'row'     => $rowNum,
                     'lrn'     => $lrn,
                     'name'    => "$firstName $lastName",
                     'status'  => 'skipped',
-                    'message' => 'LRN already registered in system (' . $existingUser['first_name'] . ' ' . $existingUser['last_name'] . ').'
+                    'message' => 'LRN already registered in system (' . $existingUser['first_name'] . ' ' . $existingUser['last_name'] . ")$parentInfoMsg"
                 ];
                 $results['skipped']++;
             } catch (Throwable $e) {
