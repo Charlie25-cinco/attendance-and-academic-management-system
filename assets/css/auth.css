@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
+/* Core Typography & Fast Rendering: Local system-ui fallback stack */
 
 :root {
   --auth-bg: #f5f7fa;
@@ -19,6 +19,7 @@
 
 body {
   min-height: 100vh;
+  font-family: "Manrope", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 .auth-container {

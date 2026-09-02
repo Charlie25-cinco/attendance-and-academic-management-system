@@ -899,7 +899,7 @@ function pwaHeadHtml(): string {
     $html .= '<link rel="icon" type="image/png" sizes="192x192" href="' . htmlspecialchars($faviconUrl, ENT_QUOTES, 'UTF-8') . '">' . "\n";
     $html .= '<link rel="preconnect" href="https://fonts.googleapis.com">' . "\n";
     $html .= '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' . "\n";
-    $html .= '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" media="print" onload="this.media=\'all\'">' . "\n";
+    $html .= '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap" media="print" onload="this.media=\'all\'">' . "\n";
     $isDark = function_exists('appUiDarkModeEnabled') && appUiDarkModeEnabled();
     $html .= '<style id="app-theme-critical-dark">'
         . 'html.dark-mode,body.dark-mode{background-color:#111827 !important;color:#e5e7eb !important;}'
@@ -924,12 +924,12 @@ function pwaHeadHtml(): string {
         . '.app-top-progress.is-finishing{opacity:0;transition:width .32s cubic-bezier(0.4,0,0.2,1),opacity .28s ease .12s;}'
         . '</style>' . "\n";
     $html .= '<script>'
-        . 'window._CACHE_NAME="bshs-ams-v36";'
+        . 'window._CACHE_NAME="bshs-ams-v37";'
         . '</script>' . "\n";
 
     $swScript = "
 <script>
-window._CACHE_NAME = 'bshs-ams-v36';
+window._CACHE_NAME = 'bshs-ams-v37';
 if ('serviceWorker' in navigator) {
         var desiredScript = '" . htmlspecialchars($serviceWorkerUrl, ENT_QUOTES, 'UTF-8') . "';
         var desiredScope = '" . htmlspecialchars($scopeUrl, ENT_QUOTES, 'UTF-8') . "';

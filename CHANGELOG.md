@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.115 — 2026-09-02
+
+### Performance & UI
+
+- **Purged Legacy Modal Loaders & Optimized Site/Auth Fonts**:
+  - Removed render-blocking `@import` font declarations from [`assets/css/Site.css`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/css/Site.css) and [`assets/css/auth.css`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/css/auth.css), replacing them with native `system-ui` fallback stacks.
+  - Unified asynchronous font loading in `pwaHeadHtml()` in [`config/constants.php`](file:///c:/laragon/www/attendance-and-academic-management-system/config/constants.php) for both `Manrope` and `Poppins` fonts.
+  - Bumped PWA service worker cache version to `bshs-ams-v37` across [`sw.js`](file:///c:/laragon/www/attendance-and-academic-management-system/sw.js), [`assets/js/main.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/main.js), and [`assets/js/offlineStorage.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/offlineStorage.js) to automatically purge legacy public site modal overlays across all clients.
+  - Expanded unit test coverage in [`tests/PerformanceOptimizationTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/PerformanceOptimizationTest.php) and [`tests/PwaAssetFreshnessTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/PwaAssetFreshnessTest.php) (total test suite at 153 tests).
+
 ## v0.3.114 — 2026-09-02
 
 ### Performance & Optimization

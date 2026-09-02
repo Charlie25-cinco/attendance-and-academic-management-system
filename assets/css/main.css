@@ -3637,7 +3637,11 @@ body.dark-mode .notification-close:hover {
   padding: 1.25rem 1.5rem 1rem;
   border-bottom: 0;
   background:
-    radial-gradient(circle at top right, rgba(59, 130, 246, 0.22), transparent 32%),
+    radial-gradient(
+      circle at top right,
+      rgba(59, 130, 246, 0.22),
+      transparent 32%
+    ),
     linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%);
 }
 
@@ -3767,7 +3771,11 @@ body.dark-mode .notification-close:hover {
 
 .app-modal-danger .app-modal-header {
   background:
-    radial-gradient(circle at top right, rgba(239, 68, 68, 0.2), transparent 34%),
+    radial-gradient(
+      circle at top right,
+      rgba(239, 68, 68, 0.2),
+      transparent 34%
+    ),
     linear-gradient(135deg, #fff1f2 0%, #fff7ed 100%);
 }
 
@@ -3784,7 +3792,11 @@ body.dark-mode .app-modal-content {
 
 body.dark-mode .app-modal-header {
   background:
-    radial-gradient(circle at top right, rgba(96, 165, 250, 0.16), transparent 32%),
+    radial-gradient(
+      circle at top right,
+      rgba(96, 165, 250, 0.16),
+      transparent 32%
+    ),
     linear-gradient(135deg, #111827 0%, #0f172a 100%);
 }
 
@@ -3822,7 +3834,11 @@ body.dark-mode .app-modal-footer {
 
 body.dark-mode .app-modal-danger .app-modal-header {
   background:
-    radial-gradient(circle at top right, rgba(248, 113, 113, 0.2), transparent 34%),
+    radial-gradient(
+      circle at top right,
+      rgba(248, 113, 113, 0.2),
+      transparent 34%
+    ),
     linear-gradient(135deg, #1f2937 0%, #111827 100%);
 }
 
