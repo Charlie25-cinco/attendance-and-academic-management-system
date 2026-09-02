@@ -424,27 +424,72 @@ $page_title = 'Manage Classes';
                                 </div>
                             </div>
                             <div class="app-modal-panel">
-                                <div class="app-modal-panel-title"><i class="bi bi-calendar-week"></i>Schedule and Room</div>
-                                <div class="row g-2 align-items-end schedule-header-row">
-                                    <div class="col-12 col-sm-3">
-                                        <div class="form-label small text-muted mb-0">Day</div>
+                                <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                                    <div class="app-modal-panel-title mb-0"><i class="bi bi-calendar-week"></i>Schedule and Room</div>
+                                    <div class="btn-group btn-group-sm" role="group" id="scheduleModeGroup">
+                                        <input type="radio" class="btn-check" name="schedule_mode" id="schedModePerSection" value="per_section" autocomplete="off" checked onchange="onScheduleModeChange()">
+                                        <label class="btn btn-outline-primary" for="schedModePerSection" title="Configure individual schedule and room per selected section"><i class="bi bi-collection me-1"></i>Per Section</label>
+
+                                        <input type="radio" class="btn-check" name="schedule_mode" id="schedModeUniform" value="uniform" autocomplete="off" onchange="onScheduleModeChange()">
+                                        <label class="btn btn-outline-secondary" for="schedModeUniform" title="Use the same schedule for all selected sections"><i class="bi bi-intersect me-1"></i>Same for All</label>
+
+                                        <input type="radio" class="btn-check" name="schedule_mode" id="schedModeTba" value="tba" autocomplete="off" onchange="onScheduleModeChange()">
+                                        <label class="btn btn-outline-secondary" for="schedModeTba" title="Mark schedule as TBA and configure later"><i class="bi bi-clock-history me-1"></i>Set Later (TBA)</label>
                                     </div>
-                                    <div class="col-12 col-sm-4">
-                                        <div class="form-label small text-muted mb-0">Start</div>
-                                    </div>
-                                    <div class="col-12 col-sm-4">
-                                        <div class="form-label small text-muted mb-0">End</div>
-                                    </div>
-                                    <div class="col-12 col-sm-1"></div>
                                 </div>
-                                <div id="scheduleRows" class="d-flex flex-column gap-2 mt-1"></div>
-                                <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addScheduleRow()">
-                                    <i class="bi bi-plus-circle me-1"></i>Add time slot
-                                </button>
-                                <small class="text-muted d-block mt-2">Add one row per day and time range, like Mon 7:00-8:00 or Tue 8:00-9:00.</small>
-                                <div class="mt-3 mb-0">
-                                    <label class="form-label">Room</label>
-                                    <input type="text" id="addRoomInput" name="room" class="form-control" placeholder="e.g., Room 101">
+
+                                <!-- Set Later (TBA) Container -->
+                                <div id="schedTbaContainer" class="p-3 border rounded bg-light text-center" style="display: none;">
+                                    <div class="text-muted"><i class="bi bi-clock-history text-primary fs-3 d-block mb-1"></i>Classes will be created with schedule marked as <strong>TBA</strong>. You can configure individual section schedules anytime later in <em>Edit Class</em>.</div>
+                                    <div class="mt-2">
+                                        <label class="form-label small text-muted">Default Room (Optional)</label>
+                                        <input type="text" id="addRoomTbaInput" class="form-control form-control-sm text-center mx-auto" style="max-width: 250px;" placeholder="e.g., Room 101 or TBA">
+                                    </div>
+                                </div>
+
+                                <!-- Uniform Schedule Container (Single schedule used for all selected sections) -->
+                                <div id="schedUniformContainer" style="display: none;">
+                                    <div class="row g-2 align-items-end schedule-header-row">
+                                        <div class="col-12 col-sm-3">
+                                            <div class="form-label small text-muted mb-0">Day</div>
+                                        </div>
+                                        <div class="col-12 col-sm-4">
+                                            <div class="form-label small text-muted mb-0">Start</div>
+                                        </div>
+                                        <div class="col-12 col-sm-4">
+                                            <div class="form-label small text-muted mb-0">End</div>
+                                        </div>
+                                        <div class="col-12 col-sm-1"></div>
+                                    </div>
+                                    <div id="scheduleRows" class="d-flex flex-column gap-2 mt-1"></div>
+                                    <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addScheduleRow()">
+                                        <i class="bi bi-plus-circle me-1"></i>Add time slot
+                                    </button>
+                                    <small class="text-muted d-block mt-2">Add one row per day and time range, like Mon 7:00-8:00 or Tue 8:00-9:00.</small>
+                                    <div class="mt-3 mb-0">
+                                        <label class="form-label">Room</label>
+                                        <input type="text" id="addRoomInput" name="room" class="form-control" placeholder="e.g., Room 101">
+                                    </div>
+                                </div>
+
+                                <!-- Per-Section Schedule Container (Dedicated tabs per selected section) -->
+                                <div id="schedPerSectionContainer">
+                                    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                                        <ul class="nav nav-pills nav-fill p-1 bg-light rounded border flex-grow-1" id="sectionSchedTabs" role="tablist" style="gap: 4px;">
+                                            <!-- Dynamic section tabs -->
+                                        </ul>
+                                    </div>
+                                    <div class="d-flex justify-content-end mb-2 gap-2">
+                                        <button type="button" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size: 11px;" onclick="copyFirstSectionScheduleToAll()" title="Copy first section time slots to all sections">
+                                            <i class="bi bi-copy me-1"></i>Copy 1st Tab to All
+                                        </button>
+                                        <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2" style="font-size: 11px;" onclick="staggerSectionSchedules()" title="Shift start and end hours by +1 hour across sections">
+                                            <i class="bi bi-clock-history me-1"></i>Stagger Times (+1 hr)
+                                        </button>
+                                    </div>
+                                    <div class="tab-content border rounded p-3 bg-white" id="sectionSchedTabContent">
+                                        <!-- Dynamic tab panes per section -->
+                                    </div>
                                 </div>
                             </div>
                             <div class="app-modal-panel">
@@ -587,7 +632,7 @@ $page_title = 'Manage Classes';
                         const pill = document.createElement('div');
                         pill.className = 'form-check form-check-inline m-0 border px-3 py-1 rounded bg-white shadow-sm';
                         pill.innerHTML = `
-                            <input class="form-check-input section-checkbox" type="checkbox" name="sections[]" value="${section.value}" id="sec_cb_${idx}">
+                            <input class="form-check-input section-checkbox" type="checkbox" name="sections[]" value="${section.value}" id="sec_cb_${idx}" onchange="renderSectionScheduleTabs()">
                             <label class="form-check-label fw-medium ms-1" for="sec_cb_${idx}" style="cursor: pointer;">
                                 ${section.label}
                             </label>
@@ -608,6 +653,8 @@ $page_title = 'Manage Classes';
                 if (toggleWrap) toggleWrap.style.display = 'none';
                 container.innerHTML = '<span class="text-muted small"><i class="bi bi-info-circle me-1"></i>Please select Grade Level first to view sections.</span>';
             }
+
+            renderSectionScheduleTabs();
         }
 
         function toggleAllSections() {
@@ -617,6 +664,7 @@ $page_title = 'Manage Classes';
             checkboxes.forEach(cb => { cb.checked = !allChecked; });
             const btn = document.getElementById('selectAllSectionsBtn');
             if (btn) btn.textContent = allChecked ? 'Select All' : 'Deselect All';
+            renderSectionScheduleTabs();
         }
 
         document.addEventListener('DOMContentLoaded', function () {
@@ -718,6 +766,292 @@ $page_title = 'Manage Classes';
             });
         }
 
+        function onScheduleModeChange() {
+            const mode = document.querySelector('input[name="schedule_mode"]:checked')?.value || 'per_section';
+            const perSecWrap = document.getElementById('schedPerSectionContainer');
+            const uniformWrap = document.getElementById('schedUniformContainer');
+            const tbaWrap = document.getElementById('schedTbaContainer');
+
+            if (perSecWrap) perSecWrap.style.display = mode === 'per_section' ? 'block' : 'none';
+            if (uniformWrap) uniformWrap.style.display = mode === 'uniform' ? 'block' : 'none';
+            if (tbaWrap) tbaWrap.style.display = mode === 'tba' ? 'block' : 'none';
+
+            if (mode === 'per_section') {
+                renderSectionScheduleTabs();
+            }
+        }
+
+        function getCleanSectionId(sectionName) {
+            return 'sec_' + String(sectionName || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+        }
+
+        function renderSectionScheduleTabs() {
+            const checkedBoxes = Array.from(document.querySelectorAll('.section-checkbox:checked'));
+            const tabsContainer = document.getElementById('sectionSchedTabs');
+            const contentContainer = document.getElementById('sectionSchedTabContent');
+            if (!tabsContainer || !contentContainer) return;
+
+            if (checkedBoxes.length === 0) {
+                tabsContainer.innerHTML = '<li class="nav-item"><span class="nav-link disabled text-muted small">No sections selected</span></li>';
+                contentContainer.innerHTML = '<div class="text-muted small text-center py-3"><i class="bi bi-info-circle me-1"></i>Check at least one target section above to configure its schedule.</div>';
+                return;
+            }
+
+            const activeTabSection = tabsContainer.querySelector('.nav-link.active')?.dataset?.section || checkedBoxes[0].value;
+            tabsContainer.innerHTML = '';
+
+            checkedBoxes.forEach((cb, index) => {
+                const secName = cb.value;
+                const cleanId = getCleanSectionId(secName);
+                const isActive = (secName === activeTabSection) || (index === 0 && !checkedBoxes.some(c => c.value === activeTabSection));
+
+                const li = document.createElement('li');
+                li.className = 'nav-item';
+                li.innerHTML = `
+                    <button class="nav-link py-1 px-3 ${isActive ? 'active' : ''}" id="tab-btn-${cleanId}" data-bs-toggle="pill" data-bs-target="#tab-pane-${cleanId}" type="button" role="tab" data-section="${escapeHtml(secName)}">
+                        <i class="bi bi-person-video3 me-1"></i>${escapeHtml(secName)}
+                    </button>
+                `;
+                tabsContainer.appendChild(li);
+
+                let existingPane = document.getElementById(`tab-pane-${cleanId}`);
+                if (!existingPane) {
+                    const pane = document.createElement('div');
+                    pane.className = `tab-pane fade ${isActive ? 'show active' : ''}`;
+                    pane.id = `tab-pane-${cleanId}`;
+                    pane.setAttribute('role', 'tabpanel');
+                    pane.innerHTML = `
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0 fw-semibold text-primary"><i class="bi bi-calendar3 me-1"></i>Schedule for Section ${escapeHtml(secName)}</h6>
+                        </div>
+                        <div class="row g-2 align-items-end schedule-header-row">
+                            <div class="col-12 col-sm-3"><div class="form-label small text-muted mb-0">Day</div></div>
+                            <div class="col-12 col-sm-4"><div class="form-label small text-muted mb-0">Start</div></div>
+                            <div class="col-12 col-sm-4"><div class="form-label small text-muted mb-0">End</div></div>
+                            <div class="col-12 col-sm-1"></div>
+                        </div>
+                        <div id="secScheduleRows_${cleanId}" class="d-flex flex-column gap-2 mt-1 sec-schedule-rows" data-section="${escapeHtml(secName)}"></div>
+                        <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addSectionScheduleRow('${escapeHtml(secName)}')">
+                            <i class="bi bi-plus-circle me-1"></i>Add time slot for ${escapeHtml(secName)}
+                        </button>
+                        <div class="mt-3 mb-0">
+                            <label class="form-label">Room for Section ${escapeHtml(secName)}</label>
+                            <input type="text" id="secRoomInput_${cleanId}" class="form-control form-control-sm sec-room-input" data-section="${escapeHtml(secName)}" placeholder="e.g., Room 101">
+                        </div>
+                    `;
+                    contentContainer.appendChild(pane);
+                    addSectionScheduleRow(secName);
+                } else {
+                    existingPane.className = `tab-pane fade ${isActive ? 'show active' : ''}`;
+                }
+            });
+
+            // Clean up panes for unchecked sections
+            Array.from(contentContainer.children).forEach(pane => {
+                const paneId = pane.id;
+                const stillChecked = checkedBoxes.some(cb => `tab-pane-${getCleanSectionId(cb.value)}` === paneId);
+                if (!stillChecked) {
+                    pane.remove();
+                }
+            });
+        }
+
+        function addSectionScheduleRow(secName, row = {}) {
+            const cleanId = getCleanSectionId(secName);
+            const container = document.getElementById(`secScheduleRows_${cleanId}`);
+            if (!container) return;
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'row g-2 align-items-center schedule-row';
+            wrapper.innerHTML = `
+                <div class="col-12 col-sm-3">
+                    <select class="form-select form-select-sm schedule-day" data-field="day">
+                        <option value="">Select</option>
+                        <option value="Mon">Mon</option>
+                        <option value="Tue">Tue</option>
+                        <option value="Wed">Wed</option>
+                        <option value="Thu">Thu</option>
+                        <option value="Fri">Fri</option>
+                    </select>
+                </div>
+                <div class="col-12 col-sm-4">
+                    <div class="input-group input-group-sm schedule-time-group">
+                        <input type="text" inputmode="numeric" pattern="\\d*" maxlength="2" class="form-control schedule-time" data-field="start_hour" placeholder="HH">
+                        <span class="input-group-text">:</span>
+                        <input type="text" inputmode="numeric" pattern="\\d*" maxlength="2" class="form-control schedule-time" data-field="start_min" placeholder="MM">
+                        <select class="form-select schedule-time" data-field="start_ampm" style="max-width: 65px;">
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 col-sm-4">
+                    <div class="input-group input-group-sm schedule-time-group">
+                        <input type="text" inputmode="numeric" pattern="\\d*" maxlength="2" class="form-control schedule-time" data-field="end_hour" placeholder="HH">
+                        <span class="input-group-text">:</span>
+                        <input type="text" inputmode="numeric" pattern="\\d*" maxlength="2" class="form-control schedule-time" data-field="end_min" placeholder="MM">
+                        <select class="form-select schedule-time" data-field="end_ampm" style="max-width: 65px;">
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 col-sm-1 d-grid">
+                    <button type="button" class="btn btn-outline-danger btn-sm schedule-remove" title="Remove" onclick="removeScheduleRow(this)">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+            `;
+            container.appendChild(wrapper);
+
+            const setValue = (selector, value) => {
+                const el = wrapper.querySelector(selector);
+                if (el && value !== undefined && value !== null && value !== '') {
+                    el.value = value;
+                }
+            };
+            setValue('[data-field="day"]', row.day);
+            setValue('[data-field="start_hour"]', row.start_hour);
+            setValue('[data-field="start_min"]', row.start_min);
+            setValue('[data-field="start_ampm"]', row.start_ampm);
+            setValue('[data-field="end_hour"]', row.end_hour);
+            setValue('[data-field="end_min"]', row.end_min);
+            setValue('[data-field="end_ampm"]', row.end_ampm);
+        }
+
+        function collectRowsFromContainer(container) {
+            if (!container) return [];
+            const rows = [];
+            container.querySelectorAll('.schedule-row').forEach(row => {
+                const day = row.querySelector('[data-field="day"]')?.value?.trim() || '';
+                const startHour = row.querySelector('[data-field="start_hour"]')?.value?.trim() || '';
+                const startMin = row.querySelector('[data-field="start_min"]')?.value?.trim() || '';
+                const startAmPm = row.querySelector('[data-field="start_ampm"]')?.value || 'AM';
+                const endHour = row.querySelector('[data-field="end_hour"]')?.value?.trim() || '';
+                const endMin = row.querySelector('[data-field="end_min"]')?.value?.trim() || '';
+                const endAmPm = row.querySelector('[data-field="end_ampm"]')?.value || 'AM';
+
+                if (!day && !startHour && !endHour) {
+                    return;
+                }
+                rows.push({
+                    day,
+                    start_hour: startHour,
+                    start_min: startMin || '00',
+                    start_ampm: startAmPm,
+                    end_hour: endHour,
+                    end_min: endMin || '00',
+                    end_ampm: endAmPm
+                });
+            });
+            return rows;
+        }
+
+        function copyFirstSectionScheduleToAll() {
+            const checkedBoxes = Array.from(document.querySelectorAll('.section-checkbox:checked'));
+            if (checkedBoxes.length < 2) {
+                showNotification('Select at least 2 sections to copy schedule across them', 'info');
+                return;
+            }
+            const firstSec = checkedBoxes[0].value;
+            const firstContainer = document.getElementById(`secScheduleRows_${getCleanSectionId(firstSec)}`);
+            const firstRoom = document.getElementById(`secRoomInput_${getCleanSectionId(firstSec)}`)?.value || '';
+            const firstRows = collectRowsFromContainer(firstContainer);
+
+            if (firstRows.length === 0) {
+                showNotification(`Please fill in at least one schedule row for ${firstSec} first`, 'warning');
+                return;
+            }
+
+            checkedBoxes.slice(1).forEach(cb => {
+                const secName = cb.value;
+                const cleanId = getCleanSectionId(secName);
+                const targetCont = document.getElementById(`secScheduleRows_${cleanId}`);
+                if (targetCont) {
+                    targetCont.innerHTML = '';
+                    firstRows.forEach(r => addSectionScheduleRow(secName, r));
+                }
+                const roomInp = document.getElementById(`secRoomInput_${cleanId}`);
+                if (roomInp && !roomInp.value) {
+                    roomInp.value = firstRoom;
+                }
+            });
+
+            showNotification(`Schedule from ${firstSec} copied to all sections`, 'success');
+        }
+
+        function staggerSectionSchedules() {
+            const checkedBoxes = Array.from(document.querySelectorAll('.section-checkbox:checked'));
+            if (checkedBoxes.length < 2) {
+                showNotification('Select at least 2 sections to stagger schedules', 'info');
+                return;
+            }
+            const firstSec = checkedBoxes[0].value;
+            const firstContainer = document.getElementById(`secScheduleRows_${getCleanSectionId(firstSec)}`);
+            const firstRoom = document.getElementById(`secRoomInput_${getCleanSectionId(firstSec)}`)?.value || '';
+            const firstRows = collectRowsFromContainer(firstContainer);
+
+            if (firstRows.length === 0) {
+                showNotification(`Please set schedule rows for ${firstSec} first`, 'warning');
+                return;
+            }
+
+            checkedBoxes.forEach((cb, index) => {
+                if (index === 0) return;
+                const secName = cb.value;
+                const cleanId = getCleanSectionId(secName);
+                const targetCont = document.getElementById(`secScheduleRows_${cleanId}`);
+                if (targetCont) {
+                    targetCont.innerHTML = '';
+                    firstRows.forEach(r => {
+                        const shift = (h, ampm, offset) => {
+                            let hour24 = parseInt(h || '0', 10);
+                            if (ampm === 'PM' && hour24 !== 12) hour24 += 12;
+                            if (ampm === 'AM' && hour24 === 12) hour24 = 0;
+                            hour24 = (hour24 + offset) % 24;
+                            const newAmPm = hour24 >= 12 ? 'PM' : 'AM';
+                            let newHour = hour24 % 12;
+                            if (newHour === 0) newHour = 12;
+                            return { hour: String(newHour), ampm: newAmPm };
+                        };
+
+                        const sShift = shift(r.start_hour, r.start_ampm, index);
+                        const eShift = shift(r.end_hour, r.end_ampm, index);
+
+                        addSectionScheduleRow(secName, {
+                            day: r.day,
+                            start_hour: sShift.hour,
+                            start_min: r.start_min,
+                            start_ampm: sShift.ampm,
+                            end_hour: eShift.hour,
+                            end_min: r.end_min,
+                            end_ampm: eShift.ampm
+                        });
+                    });
+                }
+                const roomInp = document.getElementById(`secRoomInput_${cleanId}`);
+                if (roomInp && !roomInp.value) {
+                    roomInp.value = firstRoom;
+                }
+            });
+
+            showNotification('Section schedules staggered by +' + 1 + ' hour per section', 'success');
+        }
+
+        function collectPerSectionSchedules(sections) {
+            const map = {};
+            sections.forEach(secName => {
+                const cleanId = getCleanSectionId(secName);
+                const container = document.getElementById(`secScheduleRows_${cleanId}`);
+                const roomInput = document.getElementById(`secRoomInput_${cleanId}`);
+                map[secName] = {
+                    schedule_rows: collectRowsFromContainer(container),
+                    room: (roomInput?.value || '').trim()
+                };
+            });
+            return map;
+        }
+
         function addScheduleRow(row = {}) {
             const container = document.getElementById('scheduleRows');
             if (!container) return;
@@ -796,39 +1130,17 @@ $page_title = 'Manage Classes';
             target.value = cleaned;
         }
 
-        const scheduleRowsEl = document.getElementById('scheduleRows');
-        if (scheduleRowsEl) {
-            scheduleRowsEl.addEventListener('input', function (event) {
+        const addClassModalEl = document.getElementById('addClassModal');
+        if (addClassModalEl) {
+            addClassModalEl.addEventListener('input', function (event) {
                 sanitizeScheduleNumericInput(event.target);
             });
         }
 
         function collectScheduleRows() {
-            const rows = [];
-            document.querySelectorAll('#scheduleRows .schedule-row').forEach(row => {
-                const day = row.querySelector('[data-field="day"]')?.value?.trim() || '';
-                const startHour = row.querySelector('[data-field="start_hour"]')?.value?.trim() || '';
-                const startMin = row.querySelector('[data-field="start_min"]')?.value?.trim() || '';
-                const startAmPm = row.querySelector('[data-field="start_ampm"]')?.value || 'AM';
-                const endHour = row.querySelector('[data-field="end_hour"]')?.value?.trim() || '';
-                const endMin = row.querySelector('[data-field="end_min"]')?.value?.trim() || '';
-                const endAmPm = row.querySelector('[data-field="end_ampm"]')?.value || 'AM';
-
-                if (!day && !startHour && !endHour) {
-                    return;
-                }
-                rows.push({
-                    day,
-                    start_hour: startHour,
-                    start_min: startMin || '00',
-                    start_ampm: startAmPm,
-                    end_hour: endHour,
-                    end_min: endMin || '00',
-                    end_ampm: endAmPm
-                });
-            });
-            return rows;
+            return collectRowsFromContainer(document.getElementById('scheduleRows'));
         }
+
         function viewClass(id) {
             window.location.href = 'admin_Class_Detail.php?id=' + id;
         }
@@ -896,12 +1208,37 @@ $page_title = 'Manage Classes';
                 return;
             }
 
-            const scheduleRows = collectScheduleRows();
-            if (scheduleRows.length === 0) {
-                showNotification('Please add at least one schedule row', 'warning');
-                return;
+            const scheduleMode = document.querySelector('input[name="schedule_mode"]:checked')?.value || 'per_section';
+            formData.set('schedule_mode', scheduleMode);
+
+            if (scheduleMode === 'tba') {
+                formData.set('room', document.getElementById('addRoomTbaInput')?.value?.trim() || 'TBA');
+                formData.delete('schedule_rows');
+                formData.delete('section_schedules');
+            } else if (scheduleMode === 'uniform') {
+                const scheduleRows = collectScheduleRows();
+                if (scheduleRows.length === 0) {
+                    showNotification('Please add at least one schedule row for uniform schedule', 'warning');
+                    return;
+                }
+                formData.set('schedule_rows', JSON.stringify(scheduleRows));
+                formData.set('room', document.getElementById('addRoomInput')?.value?.trim() || '');
+            } else {
+                // per_section mode
+                const perSecMap = collectPerSectionSchedules(checkedSections);
+                let missingSec = '';
+                for (const sec of checkedSections) {
+                    if (!perSecMap[sec] || !perSecMap[sec].schedule_rows || perSecMap[sec].schedule_rows.length === 0) {
+                        missingSec = sec;
+                        break;
+                    }
+                }
+                if (missingSec) {
+                    showNotification(`Please add at least one schedule row for section "${missingSec}" (or choose TBA mode)`, 'warning');
+                    return;
+                }
+                formData.set('section_schedules', JSON.stringify(perSecMap));
             }
-            formData.append('schedule_rows', JSON.stringify(scheduleRows));
 
             if (createClassBtn) {
                 createClassBtn.disabled = true;
@@ -915,7 +1252,7 @@ $page_title = 'Manage Classes';
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    showNotification('Class created successfully', 'success');
+                    showNotification(data.message || 'Class created successfully', 'success');
                     const modal = getAddClassModal();
                     if (modal) modal.hide();
                     setTimeout(() => location.reload(), 1000);

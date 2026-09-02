@@ -2,6 +2,17 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.120 — 2026-09-02
+
+### Admin & Feature
+
+- **Hybrid Schedule Modes (Per-Section Schedules, Uniform, & TBA Mode)**:
+  - Added dedicated **Per Section**, **Same for All**, and **Set Later (TBA)** schedule modes in the Admin "Add Class" modal ([`admin/admin_Classes.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Classes.php)).
+  - Implemented dynamic per-section schedule tabs and rooms with **"Copy 1st Tab to All"** and **"Stagger Times (+1 hr)"** quick shortcuts to easily schedule consecutive sections without time conflicts.
+  - Added **"Set to TBA"** quick toggle in [`admin/admin_Class_Edit.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Class_Edit.php) to allow clearing or delaying timetable configuration without breaking enrollment sync.
+  - Enhanced `createClass` and `updateClass` in [`admin/admin_Classes_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Classes_Action.php) to process per-section schedules map (`section_schedules`) and TBA mode without false schedule conflicts.
+  - Expanded unit test assertions in [`tests/AdminClassMultiSectionTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/AdminClassMultiSectionTest.php) (36 assertions).
+
 ## v0.3.119 — 2026-09-02
 
 ### Admin & Feature

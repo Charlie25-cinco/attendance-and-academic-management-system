@@ -210,24 +210,38 @@ $page_title = 'Edit Class - ' . $class['class_name'];
                         </div>
                         
                         <div class="mb-3">
-                            <label class="form-label">Schedule</label>
-                            <div class="row g-2 align-items-end schedule-header-row">
-                                <div class="col-12 col-sm-3">
-                                    <div class="form-label small text-muted mb-0">Day</div>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label mb-0">Schedule</label>
+                                <div class="btn-group btn-group-sm" role="group" id="editScheduleModeGroup">
+                                    <input type="radio" class="btn-check" name="schedule_mode" id="editSchedModeSpecific" value="specific" autocomplete="off" <?php echo (strtoupper(trim((string)$class['schedule'])) !== 'TBA' && !empty($scheduleRows)) ? 'checked' : ''; ?> onchange="onEditScheduleModeChange()">
+                                    <label class="btn btn-outline-primary" for="editSchedModeSpecific"><i class="bi bi-calendar3 me-1"></i>Time Slots</label>
+
+                                    <input type="radio" class="btn-check" name="schedule_mode" id="editSchedModeTba" value="tba" autocomplete="off" <?php echo (strtoupper(trim((string)$class['schedule'])) === 'TBA' || empty($scheduleRows)) ? 'checked' : ''; ?> onchange="onEditScheduleModeChange()">
+                                    <label class="btn btn-outline-secondary" for="editSchedModeTba"><i class="bi bi-clock-history me-1"></i>Set to TBA</label>
                                 </div>
-                                <div class="col-12 col-sm-4">
-                                    <div class="form-label small text-muted mb-0">Start</div>
-                                </div>
-                                <div class="col-12 col-sm-4">
-                                    <div class="form-label small text-muted mb-0">End</div>
-                                </div>
-                                <div class="col-12 col-sm-1"></div>
                             </div>
-                            <div id="scheduleRows" class="d-flex flex-column gap-2 mt-1"></div>
-                            <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addScheduleRow()">
-                                <i class="bi bi-plus-circle me-1"></i>Add time slot
-                            </button>
-                            <small class="text-muted d-block mt-2">Add one row per day/time (e.g., Mon 7:00-8:00, Tue 8:00-9:00).</small>
+                            <div id="editSchedSpecificContainer" style="<?php echo (strtoupper(trim((string)$class['schedule'])) === 'TBA' || empty($scheduleRows)) ? 'display: none;' : ''; ?>">
+                                <div class="row g-2 align-items-end schedule-header-row">
+                                    <div class="col-12 col-sm-3">
+                                        <div class="form-label small text-muted mb-0">Day</div>
+                                    </div>
+                                    <div class="col-12 col-sm-4">
+                                        <div class="form-label small text-muted mb-0">Start</div>
+                                    </div>
+                                    <div class="col-12 col-sm-4">
+                                        <div class="form-label small text-muted mb-0">End</div>
+                                    </div>
+                                    <div class="col-12 col-sm-1"></div>
+                                </div>
+                                <div id="scheduleRows" class="d-flex flex-column gap-2 mt-1"></div>
+                                <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addScheduleRow()">
+                                    <i class="bi bi-plus-circle me-1"></i>Add time slot
+                                </button>
+                                <small class="text-muted d-block mt-2">Add one row per day/time (e.g., Mon 7:00-8:00, Tue 8:00-9:00).</small>
+                            </div>
+                            <div id="editSchedTbaContainer" class="p-3 border rounded bg-light text-center" style="<?php echo (strtoupper(trim((string)$class['schedule'])) === 'TBA' || empty($scheduleRows)) ? '' : 'display: none;'; ?>">
+                                <span class="text-muted small"><i class="bi bi-clock-history me-1"></i>Schedule will be saved as <strong>TBA</strong>.</span>
+                            </div>
                         </div>
                         
                         <div class="mb-3">
@@ -646,6 +660,14 @@ $page_title = 'Edit Class - ' . $class['class_name'];
             });
         });
         
+        function onEditScheduleModeChange() {
+            const mode = document.querySelector('input[name="schedule_mode"]:checked')?.value || 'specific';
+            const specCont = document.getElementById('editSchedSpecificContainer');
+            const tbaCont = document.getElementById('editSchedTbaContainer');
+            if (specCont) specCont.style.display = mode === 'specific' ? 'block' : 'none';
+            if (tbaCont) tbaCont.style.display = mode === 'tba' ? 'block' : 'none';
+        }
+
         function updateClass() {
             const form = document.getElementById('editClassForm');
             const formData = new FormData(form);
@@ -657,31 +679,43 @@ $page_title = 'Edit Class - ' . $class['class_name'];
                 return;
             }
             
-            const scheduleRows = [];
-            document.querySelectorAll('#scheduleRows .schedule-row').forEach(row => {
-                const day = row.querySelector('[data-field="day"]')?.value?.trim() || '';
-                const startHour = row.querySelector('[data-field="start_hour"]')?.value?.trim() || '';
-                const startMin = row.querySelector('[data-field="start_min"]')?.value?.trim() || '';
-                const startAmPm = row.querySelector('[data-field="start_ampm"]')?.value || 'AM';
-                const endHour = row.querySelector('[data-field="end_hour"]')?.value?.trim() || '';
-                const endMin = row.querySelector('[data-field="end_min"]')?.value?.trim() || '';
-                const endAmPm = row.querySelector('[data-field="end_ampm"]')?.value || 'AM';
+            const scheduleMode = document.querySelector('input[name="schedule_mode"]:checked')?.value || 'specific';
+            formData.set('schedule_mode', scheduleMode);
 
-                if (!day && !startHour && !endHour) {
+            if (scheduleMode === 'tba') {
+                formData.delete('schedule_rows');
+                formData.set('schedule', 'TBA');
+            } else {
+                const scheduleRows = [];
+                document.querySelectorAll('#scheduleRows .schedule-row').forEach(row => {
+                    const day = row.querySelector('[data-field="day"]')?.value?.trim() || '';
+                    const startHour = row.querySelector('[data-field="start_hour"]')?.value?.trim() || '';
+                    const startMin = row.querySelector('[data-field="start_min"]')?.value?.trim() || '';
+                    const startAmPm = row.querySelector('[data-field="start_ampm"]')?.value || 'AM';
+                    const endHour = row.querySelector('[data-field="end_hour"]')?.value?.trim() || '';
+                    const endMin = row.querySelector('[data-field="end_min"]')?.value?.trim() || '';
+                    const endAmPm = row.querySelector('[data-field="end_ampm"]')?.value || 'AM';
+
+                    if (!day && !startHour && !endHour) {
+                        return;
+                    }
+                    scheduleRows.push({
+                        day,
+                        start_hour: startHour,
+                        start_min: startMin || '00',
+                        start_ampm: startAmPm,
+                        end_hour: endHour,
+                        end_min: endMin || '00',
+                        end_ampm: endAmPm
+                    });
+                });
+
+                if (scheduleRows.length === 0) {
+                    showNotification('Please add at least one schedule row (or select "Set to TBA")', 'warning');
                     return;
                 }
-                scheduleRows.push({
-                    day,
-                    start_hour: startHour,
-                    start_min: startMin || '00',
-                    start_ampm: startAmPm,
-                    end_hour: endHour,
-                    end_min: endMin || '00',
-                    end_ampm: endAmPm
-                });
-            });
-
-            formData.append('schedule_rows', JSON.stringify(scheduleRows));
+                formData.append('schedule_rows', JSON.stringify(scheduleRows));
+            }
             
             formData.delete('apply_to_sections[]');
             document.querySelectorAll('.edit-section-checkbox:checked').forEach(cb => {

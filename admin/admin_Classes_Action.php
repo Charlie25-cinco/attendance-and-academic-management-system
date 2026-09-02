@@ -307,13 +307,42 @@ function createClass($db) {
             echo json_encode(['success' => false, 'message' => $scheduleError]);
             return;
         }
-        if (empty($segments)) {
-            $segments = parseScheduleSegmentsFromString($_POST['schedule'] ?? '');
+        // Support schedule modes: per_section, uniform, tba
+        $scheduleMode = $_POST['schedule_mode'] ?? 'uniform';
+        $sectionSchedulesRaw = $_POST['section_schedules'] ?? '';
+        $sectionSchedules = [];
+        if ($sectionSchedulesRaw !== '') {
+            $decoded = json_decode((string)$sectionSchedulesRaw, true);
+            if (is_array($decoded)) {
+                $sectionSchedules = $decoded;
+            }
         }
-        if (empty($segments)) {
-            echo json_encode(['success' => false, 'message' => 'Please add at least one schedule row']);
-            return;
+
+        $commonSegments = [];
+        if ($scheduleMode === 'uniform') {
+            $scheduleRowsRaw = $_POST['schedule_rows'] ?? '';
+            $scheduleRows = [];
+            if ($scheduleRowsRaw !== '') {
+                $decoded = json_decode((string)$scheduleRowsRaw, true);
+                if (is_array($decoded)) {
+                    $scheduleRows = $decoded;
+                }
+            }
+            $scheduleError = '';
+            $commonSegments = normalizeScheduleRows($scheduleRows, $scheduleError);
+            if ($scheduleError !== '') {
+                echo json_encode(['success' => false, 'message' => $scheduleError]);
+                return;
+            }
+            if (empty($commonSegments)) {
+                $commonSegments = parseScheduleSegmentsFromString($_POST['schedule'] ?? '');
+            }
+            if (empty($commonSegments)) {
+                echo json_encode(['success' => false, 'message' => 'Please add at least one schedule row']);
+                return;
+            }
         }
+
         // Support both multi-section array and single section string
         $sections = [];
         if (isset($_POST['sections']) && is_array($_POST['sections'])) {
@@ -322,7 +351,6 @@ function createClass($db) {
             $sections = [trim((string)$_POST['section'])];
         }
 
-        $schedule = scheduleSummaryFromSegments($segments);
         $room = normalizeRoomValue($_POST['room'] ?? '');
         $track = trim((string)($_POST['track'] ?? ''));
         $subjectCategory = trim((string)($_POST['subject_category'] ?? ''));
@@ -360,14 +388,48 @@ function createClass($db) {
         $firstClassId = null;
 
         foreach ($sections as $section) {
-            $scheduleConflict = validateScheduleConflict($db, $segments, $gradeLevel, $section, null);
-            if ($scheduleConflict !== null) {
-                if (count($sections) === 1) {
-                    echo json_encode(['success' => false, 'message' => $scheduleConflict]);
-                    return;
+            $segments = [];
+            $sectionRoom = $room;
+            $schedule = 'TBA';
+
+            if ($scheduleMode === 'tba') {
+                $schedule = 'TBA';
+                $sectionRoom = $room ?: 'TBA';
+                $segments = [];
+            } elseif ($scheduleMode === 'per_section') {
+                $secData = $sectionSchedules[$section] ?? [];
+                $secRows = $secData['schedule_rows'] ?? [];
+                $secRoom = normalizeRoomValue($secData['room'] ?? $room);
+                $secErr = '';
+                $segments = normalizeScheduleRows($secRows, $secErr);
+                if ($secErr !== '' && !empty($secRows)) {
+                    $skippedSections[] = "{$section} ({$secErr})";
+                    continue;
                 }
-                $skippedSections[] = "{$section} (schedule conflict)";
-                continue;
+                if (empty($segments)) {
+                    $schedule = 'TBA';
+                    $sectionRoom = $secRoom ?: 'TBA';
+                } else {
+                    $schedule = scheduleSummaryFromSegments($segments);
+                    $sectionRoom = $secRoom;
+                }
+            } else {
+                // uniform
+                $segments = $commonSegments;
+                $schedule = scheduleSummaryFromSegments($segments);
+                $sectionRoom = $room;
+            }
+
+            if (!empty($segments)) {
+                $scheduleConflict = validateScheduleConflict($db, $segments, $gradeLevel, $section, null);
+                if ($scheduleConflict !== null) {
+                    if (count($sections) === 1) {
+                        echo json_encode(['success' => false, 'message' => $scheduleConflict]);
+                        return;
+                    }
+                    $skippedSections[] = "{$section} (schedule conflict)";
+                    continue;
+                }
             }
 
             // Allow multiple subjects per section; only block exact duplicate subject+section.
@@ -389,7 +451,7 @@ function createClass($db) {
             }
 
             $columns = ['class_name', 'grade_level', 'section', 'teacher_id', 'schedule', 'room', 'ww_weight', 'pt_weight', 'assessment_weight', 'status', 'created_at'];
-            $values = [$className, $gradeLevel, $section, $teacherId, $schedule, $room, $wwWeight, $ptWeight, $assessmentWeight, 'active', date('Y-m-d H:i:s')];
+            $values = [$className, $gradeLevel, $section, $teacherId, $schedule, $sectionRoom, $wwWeight, $ptWeight, $assessmentWeight, 'active', date('Y-m-d H:i:s')];
 
             $hasSubjectCategory = dbHasColumn($db, 'classes', 'subject_category');
             if ($hasSubjectCategory) {
@@ -431,13 +493,16 @@ function createClass($db) {
                 $csStmt = $db->prepare("INSERT INTO class_subjects (class_id, teacher_id, created_at) VALUES (?, ?, NOW())");
                 $csStmt->execute([$classId, $teacherId]);
             }
-            syncClassSchedules($db, $classId, $segments);
+            if (!empty($segments)) {
+                syncClassSchedules($db, $classId, $segments);
+            }
             syncClassEnrollmentsByGradeSection($db, $classId, $gradeLevel, $section, $normalizedTrack);
             adminClassAuditLog($db, 'create_class', $classId, [
                 'class_name' => $className,
                 'grade_level' => $gradeLevel,
                 'section' => $section,
                 'teacher_id' => $teacherId,
+                'schedule' => $schedule,
             ]);
 
             $createdSections[] = $section;
@@ -476,6 +541,7 @@ function updateClass($db) {
         $className = normalizeSubjectNameValue($_POST['class_name'] ?? '');
         $gradeLevel = $_POST['grade_level'] ?? '';
         $section = $_POST['section'] ?? '';
+        $scheduleMode = $_POST['schedule_mode'] ?? '';
         $scheduleRowsRaw = $_POST['schedule_rows'] ?? '';
         $scheduleRows = [];
         if ($scheduleRowsRaw !== '') {
@@ -485,19 +551,28 @@ function updateClass($db) {
             }
         }
         $scheduleError = '';
-        $segments = normalizeScheduleRows($scheduleRows, $scheduleError);
-        if ($scheduleError !== '') {
-            echo json_encode(['success' => false, 'message' => $scheduleError]);
-            return;
+        $segments = [];
+        $schedule = 'TBA';
+
+        if ($scheduleMode === 'tba' || (isset($_POST['schedule']) && strtoupper(trim((string)$_POST['schedule'])) === 'TBA')) {
+            $schedule = 'TBA';
+            $segments = [];
+        } else {
+            $segments = normalizeScheduleRows($scheduleRows, $scheduleError);
+            if ($scheduleError !== '' && !empty($scheduleRows)) {
+                echo json_encode(['success' => false, 'message' => $scheduleError]);
+                return;
+            }
+            if (empty($segments)) {
+                $segments = parseScheduleSegmentsFromString($_POST['schedule'] ?? '');
+            }
+            if (!empty($segments)) {
+                $schedule = scheduleSummaryFromSegments($segments);
+            } else {
+                $schedule = 'TBA';
+            }
         }
-        if (empty($segments)) {
-            $segments = parseScheduleSegmentsFromString($_POST['schedule'] ?? '');
-        }
-        if (empty($segments)) {
-            echo json_encode(['success' => false, 'message' => 'Please add at least one schedule row']);
-            return;
-        }
-        $schedule = scheduleSummaryFromSegments($segments);
+
         $room = normalizeRoomValue($_POST['room'] ?? '');
         $track = trim((string)($_POST['track'] ?? ''));
         $subjectCategory = trim((string)($_POST['subject_category'] ?? ''));
@@ -520,10 +595,12 @@ function updateClass($db) {
             return;
         }
 
-        $scheduleConflict = validateScheduleConflict($db, $segments, $gradeLevel, $section, (int)$classId);
-        if ($scheduleConflict !== null) {
-            echo json_encode(['success' => false, 'message' => $scheduleConflict]);
-            return;
+        if (!empty($segments)) {
+            $scheduleConflict = validateScheduleConflict($db, $segments, $gradeLevel, $section, (int)$classId);
+            if ($scheduleConflict !== null) {
+                echo json_encode(['success' => false, 'message' => $scheduleConflict]);
+                return;
+            }
         }
         
         // Allow multiple subjects per section; only block exact duplicate subject+section.
@@ -592,7 +669,11 @@ function updateClass($db) {
             $csStmt->execute([(int)$classId, $teacherId]);
         }
 
-        syncClassSchedules($db, $classId, $segments);
+        if (!empty($segments)) {
+            syncClassSchedules($db, $classId, $segments);
+        } else {
+            $db->prepare("DELETE FROM class_schedules WHERE class_id = ?")->execute([(int)$classId]);
+        }
         syncClassEnrollmentsByGradeSection($db, $classId, $gradeLevel, $section, $normalizedTrack);
         
         adminClassAuditLog($db, 'update_class', (int)$classId, [
@@ -600,6 +681,7 @@ function updateClass($db) {
             'grade_level' => $gradeLevel,
             'section' => $section,
             'teacher_id' => $teacherId,
+            'schedule' => $schedule,
         ]);
 
         $appliedSections = [];
