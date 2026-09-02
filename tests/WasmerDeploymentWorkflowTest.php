@@ -14,6 +14,11 @@ final class WasmerDeploymentWorkflowTest extends TestCase
         $this->assertStringContainsString('wasmer_ignore = Path(".wasmerignore")', $workflow);
         $this->assertStringContainsString('timeout-minutes: 40', $workflow);
         $this->assertStringContainsString('wasmer login "${WASMER_TOKEN}"', $workflow);
+        $this->assertStringContainsString('max_install_attempts=5', $workflow);
+        $this->assertStringContainsString('for install_attempt in $(seq 1 "$max_install_attempts")', $workflow);
+        $this->assertStringContainsString('--retry-all-errors', $workflow);
+        $this->assertStringContainsString('https://get.wasmer.io', $workflow);
+        $this->assertStringContainsString('https://raw.githubusercontent.com/wasmerio/wasmer-install/master/install.sh', $workflow);
         $this->assertStringContainsString('max_attempts=5', $workflow);
         $this->assertStringContainsString('for attempt in $(seq 1 "$max_attempts")', $workflow);
         $this->assertStringContainsString('if wasmer deploy --non-interactive --token="${WASMER_TOKEN}"; then', $workflow);

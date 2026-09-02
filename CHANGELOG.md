@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.145 — 2026-09-02
+
+### Fixed
+
+- **Resilient Wasmer CLI Installation in Deployment Workflow**:
+  - **Installer Transient Error Retries**: Replaced the one-shot `curl https://get.wasmer.io -sSfL | sh` command in [`.github/workflows/wasmer-deploy.yml`](file:///c:/laragon/www/attendance-and-academic-management-system/.github/workflows/wasmer-deploy.yml) with a bounded 5-attempt retry loop using connection timeouts, `--retry-all-errors`, and a secondary fallback URL (`https://raw.githubusercontent.com/wasmerio/wasmer-install/master/install.sh`) to prevent transient network/TLS resets (`curl: (35) Recv failure: Connection reset by peer`) from aborting the workflow before `wasmer login` and `wasmer deploy` execute.
+  - **Executable Verification**: Verified existence and executable permissions on `$WASMER_DIR/bin/wasmer` before proceeding to authentication.
+  - **Strict Error Handling & Deployment Invariants**: Preserved `set -e`/`pipefail` failure handling, secret validation, linting, testing, dependency pruning, and the 5-attempt deployment retry loop.
+  - **Automated Regression Testing**: Updated [`tests/WasmerDeploymentWorkflowTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/WasmerDeploymentWorkflowTest.php) to verify installer retries, fallback URLs, curl retry flags, and workflow structure.
+
 ## v0.3.144 — 2026-09-02
 
 ### Fixed

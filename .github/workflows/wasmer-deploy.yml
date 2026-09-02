@@ -22,7 +22,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: "8.3"
           extensions: pdo, mbstring, zip, dom
           coverage: none
 
@@ -125,9 +125,41 @@ jobs:
         if: github.ref == 'refs/heads/main' && env.WASMER_TOKEN != ''
         shell: bash
         run: |
-          curl https://get.wasmer.io -sSfL | sh
           export WASMER_DIR="$HOME/.wasmer"
           export PATH="$WASMER_DIR/bin:$PATH"
+
+          # Install Wasmer CLI with bounded retries against transient network/TLS connection resets
+          installer_tmp="$(mktemp -t wasmer-install.XXXXXX.sh)"
+          install_success=0
+          max_install_attempts=5
+          for install_attempt in $(seq 1 "$max_install_attempts"); do
+            echo "Wasmer CLI installation attempt ${install_attempt}/${max_install_attempts}"
+            if command -v wasmer >/dev/null 2>&1; then
+              install_success=1
+              break
+            fi
+            if curl --connect-timeout 15 --max-time 60 --retry 3 --retry-delay 2 --retry-all-errors -sSfL "https://get.wasmer.io" -o "$installer_tmp" || \
+               curl --connect-timeout 15 --max-time 60 --retry 3 --retry-delay 2 --retry-all-errors -sSfL "https://raw.githubusercontent.com/wasmerio/wasmer-install/master/install.sh" -o "$installer_tmp"; then
+              if [ -s "$installer_tmp" ] && sh "$installer_tmp"; then
+                if [ -x "$WASMER_DIR/bin/wasmer" ]; then
+                  install_success=1
+                  echo "Wasmer CLI installed successfully."
+                  break
+                fi
+              fi
+            fi
+            echo "Wasmer CLI installation attempt ${install_attempt} failed."
+            if [ "$install_attempt" -eq "$max_install_attempts" ]; then
+              rm -f "$installer_tmp"
+              echo "::error::Wasmer CLI installation failed after ${max_install_attempts} attempts."
+              exit 1
+            fi
+            sleep_sec=$((install_attempt * 5))
+            echo "Retrying Wasmer installation in ${sleep_sec} seconds..."
+            sleep "$sleep_sec"
+          done
+          rm -f "$installer_tmp"
+
           export WASMER_TOKEN="${WASMER_TOKEN}"
           if wasmer login "${WASMER_TOKEN}"; then
             echo "Wasmer CLI authenticated successfully."
@@ -153,4 +185,3 @@ jobs:
           WASMER_TOKEN: ${{ secrets.WASMER_TOKEN }}
           WASMER_OWNER: ${{ secrets.WASMER_OWNER }}
           WASMER_APP_NAME: ${{ secrets.WASMER_APP_NAME }}
-
