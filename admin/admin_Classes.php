@@ -368,15 +368,12 @@ $page_title = 'Manage Classes';
                 endif;
                 foreach ($groupedClasses as $index => $group): 
                     $gradient = $gradients[$index % count($gradients)];
-                    $isMultiSection = count($group['sections']) > 1;
                     $sectionCount = count($group['sections']);
                     $sectionNames = implode(', ', array_column($group['sections'], 'section'));
                     $singleSection = $group['sections'][0];
 
                     // Determine teacher summary
-                    if (!$isMultiSection) {
-                        $teacherSummary = $singleSection['teacher_name'];
-                    } elseif (count($group['teachers']) === 1) {
+                    if (count($group['teachers']) === 1) {
                         $teacherSummary = $group['teachers'][0];
                     } elseif (count($group['teachers']) > 1) {
                         $teacherSummary = 'Multiple Teachers (' . count($group['teachers']) . ')';
@@ -385,9 +382,7 @@ $page_title = 'Manage Classes';
                     }
 
                     // Determine schedule summary
-                    if (!$isMultiSection) {
-                        $scheduleSummary = $singleSection['schedule'];
-                    } elseif (count($group['schedules']) === 1) {
+                    if (count($group['schedules']) === 1) {
                         $scheduleSummary = $group['schedules'][0];
                     } elseif (count($group['schedules']) > 1) {
                         $scheduleSummary = 'Varies by section (' . $sectionCount . ' schedules)';
@@ -396,9 +391,7 @@ $page_title = 'Manage Classes';
                     }
 
                     // Determine room summary
-                    if (!$isMultiSection) {
-                        $roomSummary = $singleSection['room'];
-                    } elseif (count($group['rooms']) === 1) {
+                    if (count($group['rooms']) === 1) {
                         $roomSummary = $group['rooms'][0];
                     } elseif (count($group['rooms']) > 1) {
                         $roomSummary = 'Varies by section';
@@ -407,7 +400,7 @@ $page_title = 'Manage Classes';
                     }
                 ?>
                 <div class="col-md-6 col-lg-4">
-                    <div class="class-card <?php echo $isMultiSection ? 'class-card-grouped' : ''; ?>">
+                    <div class="class-card class-card-grouped">
                         <div class="class-card-header" style="background: <?php echo $gradient; ?>; cursor: pointer;" onclick="openGroupedClassModal(<?php echo $index; ?>)" title="Click to view sections or add section">
                             <div class="class-card-icon"><i class="bi bi-journal-bookmark"></i></div>
                         </div>
@@ -416,20 +409,14 @@ $page_title = 'Manage Classes';
                                 <h4 class="class-card-title mb-0 cursor-pointer text-primary" style="cursor: pointer;" onclick="openGroupedClassModal(<?php echo $index; ?>)" title="Click to view sections or add section">
                                     <?php echo htmlspecialchars($group['class_name']); ?>
                                 </h4>
-                                <?php if ($isMultiSection): ?>
-                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-semibold flex-shrink-0" style="cursor: pointer;" onclick="openGroupedClassModal(<?php echo $index; ?>)">
-                                        <i class="bi bi-collection me-1"></i><?php echo $sectionCount; ?> Sections
-                                    </span>
-                                <?php endif; ?>
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-semibold flex-shrink-0" style="cursor: pointer;" onclick="openGroupedClassModal(<?php echo $index; ?>)">
+                                    <i class="bi bi-collection me-1"></i><?php echo $sectionCount; ?> <?php echo $sectionCount === 1 ? 'Section' : 'Sections'; ?>
+                                </span>
                             </div>
 
-                            <?php if (!$isMultiSection): ?>
-                                <p class="class-card-subtitle" style="cursor: pointer;" onclick="openGroupedClassModal(<?php echo $index; ?>)">Grade <?php echo htmlspecialchars($group['grade_level']); ?> - <?php echo htmlspecialchars($singleSection['section']); ?></p>
-                            <?php else: ?>
-                                <p class="class-card-subtitle text-primary fw-medium" style="cursor: pointer;" onclick="openGroupedClassModal(<?php echo $index; ?>)">
-                                    Grade <?php echo htmlspecialchars($group['grade_level']); ?> · Sections: <?php echo htmlspecialchars($sectionNames); ?>
-                                </p>
-                            <?php endif; ?>
+                            <p class="class-card-subtitle text-primary fw-medium" style="cursor: pointer;" onclick="openGroupedClassModal(<?php echo $index; ?>)">
+                                Grade <?php echo htmlspecialchars($group['grade_level']); ?> · <?php echo $sectionCount === 1 ? 'Section: ' : 'Sections: '; ?><?php echo htmlspecialchars($sectionNames); ?>
+                            </p>
 
                             <?php if (!empty($group['subject_category'])): ?>
                                 <p class="text-muted small mb-1"><i class="bi bi-tags me-1"></i><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $group['subject_category']))); ?></p>
@@ -445,27 +432,15 @@ $page_title = 'Manage Classes';
                             <p class="text-muted small mb-3"><i class="bi bi-geo-alt me-1"></i><?php echo htmlspecialchars($roomSummary); ?></p>
                             
                             <div class="class-card-stats mb-3">
-                                <?php if (!$isMultiSection): ?>
-                                    <span class="class-card-stat"><i class="bi bi-people"></i> <?php echo $group['total_students']; ?> Students</span>
-                                <?php else: ?>
-                                    <span class="class-card-stat"><i class="bi bi-people"></i> Total: <?php echo $group['total_students']; ?> Students</span>
-                                    <span class="class-card-stat"><i class="bi bi-collection"></i> <?php echo $sectionCount; ?> Sections</span>
-                                <?php endif; ?>
+                                <span class="class-card-stat"><i class="bi bi-people"></i> Total: <?php echo $group['total_students']; ?> Students</span>
+                                <span class="class-card-stat"><i class="bi bi-collection"></i> <?php echo $sectionCount; ?> <?php echo $sectionCount === 1 ? 'Section' : 'Sections'; ?></span>
                             </div>
 
-                            <?php if (!$isMultiSection): ?>
-                                <div class="d-flex gap-2 mb-2">
-                                    <button class="btn btn-sm btn-primary-custom flex-fill" onclick="viewClass(<?php echo $singleSection['id']; ?>)">View</button>
-                                    <button class="btn btn-sm btn-secondary-custom flex-fill" onclick="editClass(<?php echo $singleSection['id']; ?>)">Edit</button>
-                                    <button class="btn btn-sm btn-danger" onclick='deleteClass(<?php echo (int)$singleSection["id"]; ?>, <?php echo json_encode((string)$group["class_name"]); ?>)'><i class="bi bi-trash"></i></button>
-                                </div>
-                            <?php else: ?>
-                                <div class="d-flex gap-2 mb-2">
-                                    <button class="btn btn-sm btn-primary-custom w-100" onclick="openGroupedClassModal(<?php echo $index; ?>)">
-                                        <i class="bi bi-collection me-1"></i>View & Manage Sections (<?php echo $sectionCount; ?>)
-                                    </button>
-                                </div>
-                            <?php endif; ?>
+                            <div class="d-flex gap-2 mb-2">
+                                <button class="btn btn-sm btn-primary-custom w-100" onclick="openGroupedClassModal(<?php echo $index; ?>)">
+                                    <i class="bi bi-collection me-1"></i>View & Manage Sections (<?php echo $sectionCount; ?>)
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

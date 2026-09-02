@@ -39,16 +39,17 @@ final class AdminClassMultiSectionTest extends TestCase
         $html = file_get_contents(__DIR__ . '/../admin/admin_Classes.php');
         $this->assertIsString($html);
 
-        // Verify card buttons markup
-        $this->assertStringContainsString('onclick="viewClass(', $html);
-        $this->assertStringContainsString('onclick="editClass(', $html);
-        $this->assertStringContainsString('onclick=\'deleteClass(', $html);
+        // Verify grouped card action markup
+        $this->assertStringContainsString('class-card class-card-grouped', $html);
+        $this->assertStringContainsString('View & Manage Sections', $html);
+        $this->assertStringContainsString('openGroupedClassModal(', $html);
 
         // Verify JavaScript action functions exist
         $this->assertStringContainsString('function viewClass(id)', $html);
         $this->assertStringContainsString('function editClass(id)', $html);
         $this->assertStringContainsString('function deleteClass(id, className)', $html);
         $this->assertStringContainsString('function handleDelete(id)', $html);
+        $this->assertStringContainsString('function openGroupedClassModal(index)', $html);
 
         // Verify no duplicate const addClassModalEl declaration
         $matches = [];
@@ -190,7 +191,7 @@ final class AdminClassMultiSectionTest extends TestCase
 
         // Verify presentation layer grouping logic
         $this->assertStringContainsString('$groupedClasses = [];', $code);
-        $this->assertStringContainsString('$isMultiSection = count($group[\'sections\']) > 1;', $code);
+        $this->assertStringContainsString('class-card class-card-grouped', $code);
         $this->assertStringContainsString('View & Manage Sections', $code);
         $this->assertStringContainsString('openGroupedClassModal(', $code);
 
@@ -203,10 +204,6 @@ final class AdminClassMultiSectionTest extends TestCase
         $this->assertStringContainsString('admin_Class_Detail.php?id=${sec.id}', $code);
         $this->assertStringContainsString('admin_Class_Edit.php?id=${sec.id}', $code);
         $this->assertStringContainsString('deleteSectionFromGroupModal(', $code);
-
-        // Verify single-section card retains direct actions
-        $this->assertStringContainsString('viewClass(<?php echo $singleSection[\'id\']; ?>)', $code);
-        $this->assertStringContainsString('editClass(<?php echo $singleSection[\'id\']; ?>)', $code);
 
         // Functional test: verify grouping behavior with matching and differing attributes
         $sampleClasses = [
@@ -776,7 +773,173 @@ final class AdminClassMultiSectionTest extends TestCase
             $this->assertSame(1, $enrCount);
         }
     }
+
+    public function testSingleSectionClassIsPresentedAsGroupedCard(): void
+    {
+        // Simulate a single section class record
+        $classes = [
+            [
+                'id' => 10,
+                'class_name' => 'General Chemistry',
+                'grade_level' => 11,
+                'section' => 'Ruby',
+                'subject_category' => 'core',
+                'track' => 'academic',
+                'program' => 'academic_strengthened',
+                'teacher_name' => 'Dr. Elena Santos',
+                'schedule' => 'Mon 8:00 AM - 9:00 AM',
+                'room' => 'Science Lab 1',
+                'status' => 'active',
+                'student_count' => 38,
+            ]
+        ];
+
+        // Apply grouping algorithm from admin_Classes.php
+        $groupedClasses = [];
+        foreach ($classes as $classRow) {
+            $normName = strtolower(trim((string)($classRow['class_name'] ?? '')));
+            $normGrade = (string)($classRow['grade_level'] ?? '');
+            $normCategory = strtolower(trim((string)($classRow['subject_category'] ?? 'core')));
+            $normTrack = strtolower(trim((string)($classRow['track'] ?? 'academic')));
+            $normProgram = strtolower(trim((string)($classRow['program'] ?? '')));
+            $normStatus = strtolower(trim((string)($classRow['status'] ?? 'active')));
+
+            $groupKey = implode('|', [$normName, $normGrade, $normCategory, $normTrack, $normProgram, $normStatus]);
+            if (!isset($groupedClasses[$groupKey])) {
+                $groupedClasses[$groupKey] = [
+                    'group_key' => $groupKey,
+                    'class_name' => $classRow['class_name'],
+                    'grade_level' => $classRow['grade_level'],
+                    'sections' => [],
+                    'total_students' => 0,
+                    'teachers' => [],
+                    'schedules' => [],
+                    'rooms' => [],
+                ];
+            }
+            $groupedClasses[$groupKey]['sections'][] = $classRow;
+            $groupedClasses[$groupKey]['total_students'] += (int)($classRow['student_count'] ?? 0);
+            if (!empty($classRow['teacher_name'])) $groupedClasses[$groupKey]['teachers'][] = $classRow['teacher_name'];
+            if (!empty($classRow['schedule'])) $groupedClasses[$groupKey]['schedules'][] = $classRow['schedule'];
+            if (!empty($classRow['room'])) $groupedClasses[$groupKey]['rooms'][] = $classRow['room'];
+        }
+        $groupedClasses = array_values($groupedClasses);
+
+        $this->assertCount(1, $groupedClasses, 'Exactly 1 grouped card must be created for a single-section subject');
+        $group = $groupedClasses[0];
+        $this->assertCount(1, $group['sections']);
+        $this->assertSame(38, $group['total_students']);
+        $this->assertSame(['Dr. Elena Santos'], $group['teachers']);
+        $this->assertSame(['Science Lab 1'], $group['rooms']);
+
+        // Verify card display properties
+        $sectionCount = count($group['sections']);
+        $sectionNames = implode(', ', array_column($group['sections'], 'section'));
+        $this->assertSame(1, $sectionCount);
+        $this->assertSame('Ruby', $sectionNames);
+
+        $badgeText = $sectionCount . ' ' . ($sectionCount === 1 ? 'Section' : 'Sections');
+        $this->assertSame('1 Section', $badgeText);
+
+        $subtitleText = 'Grade ' . $group['grade_level'] . ' · ' . ($sectionCount === 1 ? 'Section: ' : 'Sections: ') . $sectionNames;
+        $this->assertSame('Grade 11 · Section: Ruby', $subtitleText);
+
+        $btnText = 'View & Manage Sections (' . $sectionCount . ')';
+        $this->assertSame('View & Manage Sections (1)', $btnText);
+    }
+
+    public function testSubsequentSectionAdditionConsolidatesIntoSameGroupedCard(): void
+    {
+        // 1. Initial subject offering with Section A (Ruby)
+        $classes = [
+            [
+                'id' => 10,
+                'class_name' => 'General Chemistry',
+                'grade_level' => 11,
+                'section' => 'Ruby',
+                'subject_category' => 'core',
+                'track' => 'academic',
+                'program' => 'academic_strengthened',
+                'teacher_name' => 'Dr. Elena Santos',
+                'schedule' => 'Mon 8:00 AM - 9:00 AM',
+                'room' => 'Science Lab 1',
+                'status' => 'active',
+                'student_count' => 38,
+            ]
+        ];
+
+        // 2. Add Section B (Emerald) to the same subject offering
+        $classes[] = [
+            'id' => 11,
+            'class_name' => 'General Chemistry',
+            'grade_level' => 11,
+            'section' => 'Emerald',
+            'subject_category' => 'core',
+            'track' => 'academic',
+            'program' => 'academic_strengthened',
+            'teacher_name' => 'Prof. Juan Ramos',
+            'schedule' => 'Tue 9:00 AM - 10:00 AM',
+            'room' => 'Science Lab 2',
+            'status' => 'active',
+            'student_count' => 42,
+        ];
+
+        // Apply grouping algorithm
+        $groupedClasses = [];
+        foreach ($classes as $classRow) {
+            $normName = strtolower(trim((string)($classRow['class_name'] ?? '')));
+            $normGrade = (string)($classRow['grade_level'] ?? '');
+            $normCategory = strtolower(trim((string)($classRow['subject_category'] ?? 'core')));
+            $normTrack = strtolower(trim((string)($classRow['track'] ?? 'academic')));
+            $normProgram = strtolower(trim((string)($classRow['program'] ?? '')));
+            $normStatus = strtolower(trim((string)($classRow['status'] ?? 'active')));
+
+            $groupKey = implode('|', [$normName, $normGrade, $normCategory, $normTrack, $normProgram, $normStatus]);
+            if (!isset($groupedClasses[$groupKey])) {
+                $groupedClasses[$groupKey] = [
+                    'group_key' => $groupKey,
+                    'class_name' => $classRow['class_name'],
+                    'grade_level' => $classRow['grade_level'],
+                    'sections' => [],
+                    'total_students' => 0,
+                    'teachers' => [],
+                    'schedules' => [],
+                    'rooms' => [],
+                ];
+            }
+            $groupedClasses[$groupKey]['sections'][] = $classRow;
+            $groupedClasses[$groupKey]['total_students'] += (int)($classRow['student_count'] ?? 0);
+            if (!empty($classRow['teacher_name']) && !in_array($classRow['teacher_name'], $groupedClasses[$groupKey]['teachers'], true)) {
+                $groupedClasses[$groupKey]['teachers'][] = $classRow['teacher_name'];
+            }
+            if (!empty($classRow['schedule']) && !in_array($classRow['schedule'], $groupedClasses[$groupKey]['schedules'], true)) {
+                $groupedClasses[$groupKey]['schedules'][] = $classRow['schedule'];
+            }
+            if (!empty($classRow['room']) && !in_array($classRow['room'], $groupedClasses[$groupKey]['rooms'], true)) {
+                $groupedClasses[$groupKey]['rooms'][] = $classRow['room'];
+            }
+        }
+        $groupedClasses = array_values($groupedClasses);
+
+        // Must still be exactly 1 card, not 2 separate cards
+        $this->assertCount(1, $groupedClasses, 'Adding Section B must consolidate into the same grouped card');
+        $group = $groupedClasses[0];
+        $this->assertCount(2, $group['sections']);
+        $this->assertSame(80, $group['total_students']);
+        $this->assertSame(['Dr. Elena Santos', 'Prof. Juan Ramos'], $group['teachers']);
+
+        $sectionCount = count($group['sections']);
+        $sectionNames = implode(', ', array_column($group['sections'], 'section'));
+        $this->assertSame(2, $sectionCount);
+        $this->assertSame('Ruby, Emerald', $sectionNames);
+
+        $badgeText = $sectionCount . ' ' . ($sectionCount === 1 ? 'Section' : 'Sections');
+        $this->assertSame('2 Sections', $badgeText);
+
+        $subtitleText = 'Grade ' . $group['grade_level'] . ' · ' . ($sectionCount === 1 ? 'Section: ' : 'Sections: ') . $sectionNames;
+        $this->assertSame('Grade 11 · Sections: Ruby, Emerald', $subtitleText);
+
+        $btnText = 'View & Manage Sections (' . $sectionCount . ')';
+        $this->assertSame('View & Manage Sections (2)', $btnText);
+    }
 }
-
-
-

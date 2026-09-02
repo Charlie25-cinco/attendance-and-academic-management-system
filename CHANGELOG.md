@@ -2,6 +2,15 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.162 — 2026-09-03
+
+### Fixed
+
+- **Unified Grouped Class Card Presentation in Admin Classes**:
+  - **Unconditional Grouped Card Layout in `admin_Classes.php`**: Updated [`admin/admin_Classes.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Classes.php) to present every subject/grade identity as a grouped class card (`class-card class-card-grouped`), removing the conditional bifurcation that made grouped styling depend on having multiple sections.
+  - **Single & Multi-Section Presentation Consistency**: A subject offering with a single section (e.g. Section A) now renders consistently with section count badges, subtitle indicators, and a "View & Manage Sections (1)" action button opening the Grouped Class Sections Modal. When additional sections (e.g. Section B) are added to the offering, they consolidate into that exact same card (`2 Sections`), maintaining full access to per-section View Details, Edit, Delete, and "+ Add Section" actions.
+  - **Automated Regression Test Suite**: Updated [`tests/AdminClassMultiSectionTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/AdminClassMultiSectionTest.php) with tests for 1-section grouped card rendering, multi-section consolidation, and modal action triggers.
+
 ## v0.3.161 — 2026-09-03
 
 ### Fixed
