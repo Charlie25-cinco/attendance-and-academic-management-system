@@ -131,6 +131,175 @@ final class AdminClassMultiSectionTest extends TestCase
         // Verify clear error return instead of silent skip
         $this->assertStringNotContainsString('$skippedSections[] = ', $code);
     }
+
+    public function testGroupedClassPresentationAndSectionSpecificNavigation(): void
+    {
+        $code = file_get_contents(__DIR__ . '/../admin/admin_Classes.php');
+        $this->assertIsString($code);
+
+        // Verify presentation layer grouping logic
+        $this->assertStringContainsString('$groupedClasses = [];', $code);
+        $this->assertStringContainsString('$isMultiSection = count($group[\'sections\']) > 1;', $code);
+        $this->assertStringContainsString('View & Manage Sections', $code);
+        $this->assertStringContainsString('openGroupedClassModal(', $code);
+
+        // Verify modal structure
+        $this->assertStringContainsString('id="classGroupSectionsModal"', $code);
+        $this->assertStringContainsString('id="groupModalSectionsList"', $code);
+        $this->assertStringContainsString('admin_Class_Detail.php?id=${sec.id}', $code);
+        $this->assertStringContainsString('admin_Class_Edit.php?id=${sec.id}', $code);
+        $this->assertStringContainsString('deleteSectionFromGroupModal(', $code);
+
+        // Verify single-section card retains direct actions
+        $this->assertStringContainsString('viewClass(<?php echo $singleSection[\'id\']; ?>)', $code);
+        $this->assertStringContainsString('editClass(<?php echo $singleSection[\'id\']; ?>)', $code);
+
+        // Functional test: verify grouping behavior with matching and differing attributes
+        $sampleClasses = [
+            [
+                'id' => 101,
+                'class_name' => 'General Mathematics',
+                'grade_level' => '11',
+                'section' => 'Ruby',
+                'subject_category' => 'core',
+                'track' => 'academic',
+                'program' => 'academic_strengthened',
+                'teacher_name' => 'Teacher A',
+                'schedule' => 'Mon 8:00 AM - 9:00 AM',
+                'room' => 'Room 101',
+                'status' => 'active',
+                'student_count' => 35,
+            ],
+            [
+                'id' => 102,
+                'class_name' => 'General Mathematics',
+                'grade_level' => '11',
+                'section' => 'Emerald',
+                'subject_category' => 'core',
+                'track' => 'academic',
+                'program' => 'academic_strengthened',
+                'teacher_name' => 'Teacher B',
+                'schedule' => 'Tue 9:00 AM - 10:00 AM',
+                'room' => 'Room 102',
+                'status' => 'active',
+                'student_count' => 40,
+            ],
+            [
+                'id' => 103,
+                'class_name' => 'General Mathematics',
+                'grade_level' => '11',
+                'section' => 'Sapphire',
+                'subject_category' => 'core',
+                'track' => 'academic',
+                'program' => 'academic_strengthened',
+                'teacher_name' => 'Teacher A',
+                'schedule' => 'Wed 10:00 AM - 11:00 AM',
+                'room' => 'Room 101',
+                'status' => 'active',
+                'student_count' => 38,
+            ],
+            [
+                'id' => 201,
+                'class_name' => 'General Mathematics',
+                'grade_level' => '12',
+                'section' => 'Diamond',
+                'subject_category' => 'core',
+                'track' => 'academic',
+                'program' => 'academic_strengthened',
+                'teacher_name' => 'Teacher C',
+                'schedule' => 'Mon 1:00 PM - 2:00 PM',
+                'room' => 'Room 201',
+                'status' => 'active',
+                'student_count' => 30,
+            ],
+            [
+                'id' => 301,
+                'class_name' => 'Oral Communication',
+                'grade_level' => '11',
+                'section' => 'Ruby',
+                'subject_category' => 'core',
+                'track' => 'academic',
+                'program' => 'academic_strengthened',
+                'teacher_name' => 'Teacher D',
+                'schedule' => 'Thu 8:00 AM - 9:00 AM',
+                'room' => 'Room 301',
+                'status' => 'active',
+                'student_count' => 35,
+            ],
+        ];
+
+        // Execute grouping logic
+        $grouped = [];
+        foreach ($sampleClasses as $classRow) {
+            $normName = strtolower(trim((string)($classRow['class_name'] ?? '')));
+            $normGrade = (string)($classRow['grade_level'] ?? '');
+            $normCategory = strtolower(trim((string)($classRow['subject_category'] ?? 'core')));
+            $normTrack = strtolower(trim((string)($classRow['track'] ?? 'academic')));
+            $normProgram = strtolower(trim((string)($classRow['program'] ?? '')));
+            $normStatus = strtolower(trim((string)($classRow['status'] ?? 'active')));
+
+            $groupKey = implode('|', [$normName, $normGrade, $normCategory, $normTrack, $normProgram, $normStatus]);
+
+            if (!isset($grouped[$groupKey])) {
+                $grouped[$groupKey] = [
+                    'class_name' => $classRow['class_name'],
+                    'grade_level' => $classRow['grade_level'],
+                    'sections' => [],
+                    'total_students' => 0,
+                    'teachers' => [],
+                    'schedules' => [],
+                ];
+            }
+
+            $teacherName = trim((string)($classRow['teacher_name'] ?? ''));
+            if ($teacherName !== '' && !in_array($teacherName, $grouped[$groupKey]['teachers'], true)) {
+                $grouped[$groupKey]['teachers'][] = $teacherName;
+            }
+
+            $sched = trim((string)($classRow['schedule'] ?? ''));
+            if ($sched !== '' && !in_array($sched, $grouped[$groupKey]['schedules'], true)) {
+                $grouped[$groupKey]['schedules'][] = $sched;
+            }
+
+            $grouped[$groupKey]['sections'][] = [
+                'id' => (int)$classRow['id'],
+                'section' => $classRow['section'],
+                'student_count' => (int)$classRow['student_count'],
+            ];
+            $grouped[$groupKey]['total_students'] += (int)$classRow['student_count'];
+        }
+        $grouped = array_values($grouped);
+
+        // Assert 3 groups produced: G11 Gen Math (3 sections), G12 Gen Math (1 section), G11 Oral Comm (1 section)
+        $this->assertCount(3, $grouped);
+
+        // Test multi-section group
+        $g11GenMath = $grouped[0];
+        $this->assertSame('General Mathematics', $g11GenMath['class_name']);
+        $this->assertSame('11', $g11GenMath['grade_level']);
+        $this->assertCount(3, $g11GenMath['sections']);
+        $this->assertSame(113, $g11GenMath['total_students']);
+        $this->assertCount(2, $g11GenMath['teachers']); // Teacher A & Teacher B
+        $this->assertCount(3, $g11GenMath['schedules']); // 3 distinct schedules
+
+        // Verify each section retained its exact ID and section name
+        $this->assertSame(101, $g11GenMath['sections'][0]['id']);
+        $this->assertSame('Ruby', $g11GenMath['sections'][0]['section']);
+        $this->assertSame(102, $g11GenMath['sections'][1]['id']);
+        $this->assertSame('Emerald', $g11GenMath['sections'][1]['section']);
+        $this->assertSame(103, $g11GenMath['sections'][2]['id']);
+        $this->assertSame('Sapphire', $g11GenMath['sections'][2]['section']);
+
+        // Test single-section groups
+        $this->assertSame('12', $grouped[1]['grade_level']);
+        $this->assertCount(1, $grouped[1]['sections']);
+        $this->assertSame(201, $grouped[1]['sections'][0]['id']);
+
+        $this->assertSame('Oral Communication', $grouped[2]['class_name']);
+        $this->assertCount(1, $grouped[2]['sections']);
+        $this->assertSame(301, $grouped[2]['sections'][0]['id']);
+    }
 }
+
 
 

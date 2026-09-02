@@ -145,6 +145,75 @@ if ($db) {
     }
     $stmt->execute();
     $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Presentation-layer grouping: group section-specific records by subject and grade-level identity
+    $groupedClasses = [];
+    foreach ($classes as $classRow) {
+        $normName = strtolower(trim((string)($classRow['class_name'] ?? '')));
+        $normGrade = (string)($classRow['grade_level'] ?? '');
+        $normCategory = strtolower(trim((string)($classRow['subject_category'] ?? 'core')));
+        $normTrack = strtolower(trim((string)($classRow['track'] ?? 'academic')));
+        $normProgram = strtolower(trim((string)($classRow['program'] ?? '')));
+        $normStatus = strtolower(trim((string)($classRow['status'] ?? 'active')));
+
+        $groupKey = implode('|', [
+            $normName,
+            $normGrade,
+            $normCategory,
+            $normTrack,
+            $normProgram,
+            $normStatus,
+        ]);
+
+        if (!isset($groupedClasses[$groupKey])) {
+            $groupedClasses[$groupKey] = [
+                'group_key' => $groupKey,
+                'class_name' => $classRow['class_name'],
+                'grade_level' => $classRow['grade_level'],
+                'subject_category' => $classRow['subject_category'] ?? null,
+                'track' => $classRow['track'] ?? null,
+                'program' => $classRow['program'] ?? null,
+                'curriculum' => $classRow['curriculum'] ?? null,
+                'status' => $classRow['status'] ?? 'active',
+                'sections' => [],
+                'total_students' => 0,
+                'teachers' => [],
+                'schedules' => [],
+                'rooms' => [],
+                'primary_id' => (int)$classRow['id'],
+            ];
+        }
+
+        $teacherName = trim((string)($classRow['teacher_name'] ?? ''));
+        if ($teacherName !== '' && !in_array($teacherName, $groupedClasses[$groupKey]['teachers'], true)) {
+            $groupedClasses[$groupKey]['teachers'][] = $teacherName;
+        }
+
+        $sched = trim((string)($classRow['schedule'] ?? ''));
+        if ($sched !== '' && $sched !== 'No schedule set' && $sched !== 'TBA' && !in_array($sched, $groupedClasses[$groupKey]['schedules'], true)) {
+            $groupedClasses[$groupKey]['schedules'][] = $sched;
+        }
+
+        $room = trim((string)($classRow['room'] ?? ''));
+        if ($room !== '' && $room !== 'No room assigned' && $room !== 'TBA' && !in_array($room, $groupedClasses[$groupKey]['rooms'], true)) {
+            $groupedClasses[$groupKey]['rooms'][] = $room;
+        }
+
+        $groupedClasses[$groupKey]['sections'][] = [
+            'id' => (int)$classRow['id'],
+            'section' => $classRow['section'],
+            'student_count' => (int)($classRow['student_count'] ?? 0),
+            'schedule' => $classRow['schedule'] ?: 'No schedule set',
+            'room' => $classRow['room'] ?: 'No room assigned',
+            'teacher_name' => $classRow['teacher_name'] ?: 'No Teacher Assigned',
+            'teacher_id' => $classRow['teacher_id'] ?? null,
+            'status' => $classRow['status'] ?? 'active',
+        ];
+        $groupedClasses[$groupKey]['total_students'] += (int)($classRow['student_count'] ?? 0);
+    }
+    $groupedClasses = array_values($groupedClasses);
+} else {
+    $groupedClasses = [];
 }
 
 $current_role = 'admin';
@@ -181,9 +250,14 @@ $page_title = 'Manage Classes';
         .app-section-pill { background-color: var(--ui-surface, #ffffff); border-color: var(--ui-border-soft, #e8edf3); color: var(--ui-text, #172033); }
         .app-section-pill .form-check-label { color: inherit; }
         body.dark-mode .app-section-pill { background-color: #182230 !important; border-color: #344054 !important; color: #f2f4f7 !important; }
-        body.dark-mode .app-section-pill .form-check-label { color: #f2f4f7 !important; }
         body.dark-mode #sectionSchedTabs { background-color: #111b2a !important; border-color: #293548 !important; }
         body.dark-mode #sectionSchedTabContent { background-color: #182230 !important; border-color: #293548 !important; color: #f2f4f7; }
+        .class-card-grouped { border: 1px solid rgba(var(--primary-rgb, 37, 99, 235), 0.25); }
+        .app-group-section-item { transition: all 0.2s ease; border-color: #e5e7eb; }
+        .app-group-section-item:hover { border-color: var(--primary-color, #2563eb) !important; box-shadow: 0 4px 12px rgba(0,0,0,0.06) !important; }
+        body.dark-mode .app-group-section-item { background-color: #182230 !important; border-color: #344054 !important; color: #f2f4f7 !important; }
+        body.dark-mode .app-group-section-item h6 { color: #f2f4f7 !important; }
+        body.dark-mode .app-group-meta-bar { background-color: #182230 !important; border-color: #344054 !important; color: #f2f4f7 !important; }
     </style>
 <?php echo pwaHeadHtml(); ?>
 </head>
@@ -279,7 +353,7 @@ $page_title = 'Manage Classes';
                     'linear-gradient(135deg, #8b5cf6, #7c3aed)',
                     'linear-gradient(135deg, #ec4899, #db2777)'
                 ];
-                if (empty($classes)):
+                if (empty($groupedClasses)):
                 ?>
                 <div class="col-12">
                     <div class="content-card">
@@ -292,37 +366,106 @@ $page_title = 'Manage Classes';
                 </div>
                 <?php
                 endif;
-                foreach ($classes as $index => $class): 
+                foreach ($groupedClasses as $index => $group): 
                     $gradient = $gradients[$index % count($gradients)];
+                    $isMultiSection = count($group['sections']) > 1;
+                    $sectionCount = count($group['sections']);
+                    $sectionNames = implode(', ', array_column($group['sections'], 'section'));
+                    $singleSection = $group['sections'][0];
+
+                    // Determine teacher summary
+                    if (!$isMultiSection) {
+                        $teacherSummary = $singleSection['teacher_name'];
+                    } elseif (count($group['teachers']) === 1) {
+                        $teacherSummary = $group['teachers'][0];
+                    } elseif (count($group['teachers']) > 1) {
+                        $teacherSummary = 'Multiple Teachers (' . count($group['teachers']) . ')';
+                    } else {
+                        $teacherSummary = 'No Teacher Assigned';
+                    }
+
+                    // Determine schedule summary
+                    if (!$isMultiSection) {
+                        $scheduleSummary = $singleSection['schedule'];
+                    } elseif (count($group['schedules']) === 1) {
+                        $scheduleSummary = $group['schedules'][0];
+                    } elseif (count($group['schedules']) > 1) {
+                        $scheduleSummary = 'Varies by section (' . $sectionCount . ' schedules)';
+                    } else {
+                        $scheduleSummary = 'No schedule set';
+                    }
+
+                    // Determine room summary
+                    if (!$isMultiSection) {
+                        $roomSummary = $singleSection['room'];
+                    } elseif (count($group['rooms']) === 1) {
+                        $roomSummary = $group['rooms'][0];
+                    } elseif (count($group['rooms']) > 1) {
+                        $roomSummary = 'Varies by section';
+                    } else {
+                        $roomSummary = 'No room assigned';
+                    }
                 ?>
                 <div class="col-md-6 col-lg-4">
-                    <div class="class-card">
-                        <div class="class-card-header" style="background: <?php echo $gradient; ?>">
+                    <div class="class-card <?php echo $isMultiSection ? 'class-card-grouped' : ''; ?>">
+                        <div class="class-card-header" style="background: <?php echo $gradient; ?>; <?php echo $isMultiSection ? 'cursor: pointer;' : ''; ?>" <?php echo $isMultiSection ? 'onclick="openGroupedClassModal(' . $index . ')"' : ''; ?>>
                             <div class="class-card-icon"><i class="bi bi-journal-bookmark"></i></div>
                         </div>
                         <div class="class-card-body">
-                            <h4 class="class-card-title"><?php echo htmlspecialchars($class['class_name']); ?></h4>
-                            <p class="class-card-subtitle">Grade <?php echo htmlspecialchars($class['grade_level']); ?> - <?php echo htmlspecialchars($class['section']); ?></p>
-                            <?php if (!empty($class['subject_category'])): ?>
-                                <p class="text-muted small mb-1"><i class="bi bi-tags me-1"></i><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $class['subject_category']))); ?></p>
+                            <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
+                                <h4 class="class-card-title mb-0 <?php echo $isMultiSection ? 'cursor-pointer text-primary' : ''; ?>" <?php echo $isMultiSection ? 'style="cursor: pointer;" onclick="openGroupedClassModal(' . $index . ')"' : ''; ?>>
+                                    <?php echo htmlspecialchars($group['class_name']); ?>
+                                </h4>
+                                <?php if ($isMultiSection): ?>
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-semibold flex-shrink-0" style="cursor: pointer;" onclick="openGroupedClassModal(<?php echo $index; ?>)">
+                                        <i class="bi bi-collection me-1"></i><?php echo $sectionCount; ?> Sections
+                                    </span>
+                                <?php endif; ?>
+                            </div>
+
+                            <?php if (!$isMultiSection): ?>
+                                <p class="class-card-subtitle">Grade <?php echo htmlspecialchars($group['grade_level']); ?> - <?php echo htmlspecialchars($singleSection['section']); ?></p>
+                            <?php else: ?>
+                                <p class="class-card-subtitle text-primary fw-medium" style="cursor: pointer;" onclick="openGroupedClassModal(<?php echo $index; ?>)">
+                                    Grade <?php echo htmlspecialchars($group['grade_level']); ?> · Sections: <?php echo htmlspecialchars($sectionNames); ?>
+                                </p>
                             <?php endif; ?>
-                            <?php if (!empty($class['track'])): ?>
-                                <p class="text-muted small mb-1"><i class="bi bi-diagram-3 me-1"></i><?php echo htmlspecialchars(ucfirst($class['track'])); ?> Track</p>
+
+                            <?php if (!empty($group['subject_category'])): ?>
+                                <p class="text-muted small mb-1"><i class="bi bi-tags me-1"></i><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $group['subject_category']))); ?></p>
                             <?php endif; ?>
-                            <?php if (!empty($class['program'])): ?>
-                                <p class="text-muted small mb-1"><i class="bi bi-mortarboard me-1"></i><?php echo htmlspecialchars(strengthenedShsProgramLabel($class['program'])); ?></p>
+                            <?php if (!empty($group['track'])): ?>
+                                <p class="text-muted small mb-1"><i class="bi bi-diagram-3 me-1"></i><?php echo htmlspecialchars(ucfirst($group['track'])); ?> Track</p>
                             <?php endif; ?>
-                            <p class="text-muted small mb-1"><i class="bi bi-person me-1"></i><?php echo htmlspecialchars($class['teacher_name'] ?: 'No Teacher Assigned'); ?></p>
-                            <p class="text-muted small mb-2"><i class="bi bi-clock me-1"></i><?php echo htmlspecialchars($class['schedule'] ?: 'No schedule set'); ?></p>
-                            <p class="text-muted small mb-3"><i class="bi bi-geo-alt me-1"></i><?php echo htmlspecialchars($class['room'] ?: 'No room assigned'); ?></p>
+                            <?php if (!empty($group['program'])): ?>
+                                <p class="text-muted small mb-1"><i class="bi bi-mortarboard me-1"></i><?php echo htmlspecialchars(strengthenedShsProgramLabel($group['program'])); ?></p>
+                            <?php endif; ?>
+                            <p class="text-muted small mb-1"><i class="bi bi-person me-1"></i><?php echo htmlspecialchars($teacherSummary); ?></p>
+                            <p class="text-muted small mb-2"><i class="bi bi-clock me-1"></i><?php echo htmlspecialchars($scheduleSummary); ?></p>
+                            <p class="text-muted small mb-3"><i class="bi bi-geo-alt me-1"></i><?php echo htmlspecialchars($roomSummary); ?></p>
+                            
                             <div class="class-card-stats mb-3">
-                                <span class="class-card-stat"><i class="bi bi-people"></i> <?php echo $class['student_count']; ?> Students</span>
+                                <?php if (!$isMultiSection): ?>
+                                    <span class="class-card-stat"><i class="bi bi-people"></i> <?php echo $group['total_students']; ?> Students</span>
+                                <?php else: ?>
+                                    <span class="class-card-stat"><i class="bi bi-people"></i> Total: <?php echo $group['total_students']; ?> Students</span>
+                                    <span class="class-card-stat"><i class="bi bi-collection"></i> <?php echo $sectionCount; ?> Sections</span>
+                                <?php endif; ?>
                             </div>
-                            <div class="d-flex gap-2 mb-2">
-                                <button class="btn btn-sm btn-primary-custom flex-fill" onclick="viewClass(<?php echo $class['id']; ?>)">View</button>
-                                <button class="btn btn-sm btn-secondary-custom flex-fill" onclick="editClass(<?php echo $class['id']; ?>)">Edit</button>
-                                <button class="btn btn-sm btn-danger" onclick='deleteClass(<?php echo (int)$class['id']; ?>, <?php echo json_encode((string)$class["class_name"]); ?>)'><i class="bi bi-trash"></i></button>
-                            </div>
+
+                            <?php if (!$isMultiSection): ?>
+                                <div class="d-flex gap-2 mb-2">
+                                    <button class="btn btn-sm btn-primary-custom flex-fill" onclick="viewClass(<?php echo $singleSection['id']; ?>)">View</button>
+                                    <button class="btn btn-sm btn-secondary-custom flex-fill" onclick="editClass(<?php echo $singleSection['id']; ?>)">Edit</button>
+                                    <button class="btn btn-sm btn-danger" onclick='deleteClass(<?php echo (int)$singleSection["id"]; ?>, <?php echo json_encode((string)$group["class_name"]); ?>)'><i class="bi bi-trash"></i></button>
+                                </div>
+                            <?php else: ?>
+                                <div class="d-flex gap-2 mb-2">
+                                    <button class="btn btn-sm btn-primary-custom w-100" onclick="openGroupedClassModal(<?php echo $index; ?>)">
+                                        <i class="bi bi-collection me-1"></i>View & Manage Sections (<?php echo $sectionCount; ?>)
+                                    </button>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -525,6 +668,37 @@ $page_title = 'Manage Classes';
                 <div class="modal-footer app-modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-primary" id="createClassBtn" onclick="saveClass()">Create Class</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grouped Class Sections Modal -->
+    <div class="modal fade" id="classGroupSectionsModal" tabindex="-1" aria-labelledby="groupModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+            <div class="modal-content app-modal-content">
+                <div class="modal-header app-modal-header">
+                    <div>
+                        <div class="app-modal-kicker"><i class="bi bi-collection"></i>Grouped Subject Class</div>
+                        <h5 class="modal-title mb-0" id="groupModalTitle">Class Sections</h5>
+                        <p class="app-modal-subtitle" id="groupModalSubtitle">Select a section to view details, update settings, or manage grades and attendance.</p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body app-modal-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded border app-group-meta-bar">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-primary px-2 py-1" id="groupModalSectionCountBadge">0 Sections</span>
+                            <span class="badge bg-secondary-subtle text-dark border px-2 py-1" id="groupModalTotalStudentsBadge">0 Total Students</span>
+                        </div>
+                        <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Each section maintains a separate database record</small>
+                    </div>
+                    <div id="groupModalSectionsList" class="d-flex flex-column gap-2">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+                <div class="modal-footer app-modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
@@ -1145,6 +1319,91 @@ $page_title = 'Manage Classes';
         function collectScheduleRows() {
             return collectRowsFromContainer(document.getElementById('scheduleRows'));
         }
+
+        const groupedClassesData = <?php echo json_encode($groupedClasses, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+
+        function openGroupedClassModal(index) {
+            const group = groupedClassesData[index];
+            if (!group) return;
+
+            const modalTitle = document.getElementById('groupModalTitle');
+            const modalSubtitle = document.getElementById('groupModalSubtitle');
+            const countBadge = document.getElementById('groupModalSectionCountBadge');
+            const studentBadge = document.getElementById('groupModalTotalStudentsBadge');
+            const sectionsList = document.getElementById('groupModalSectionsList');
+
+            if (modalTitle) modalTitle.textContent = group.class_name;
+            if (modalSubtitle) {
+                let sub = `Grade ${group.grade_level}`;
+                if (group.subject_category) {
+                    sub += ` · ${group.subject_category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`;
+                }
+                if (group.track) {
+                    sub += ` · ${group.track.charAt(0).toUpperCase() + group.track.slice(1)} Track`;
+                }
+                modalSubtitle.textContent = sub;
+            }
+            if (countBadge) {
+                countBadge.textContent = `${group.sections.length} Sections`;
+            }
+            if (studentBadge) {
+                studentBadge.textContent = `${group.total_students} Total Students`;
+            }
+
+            if (sectionsList) {
+                sectionsList.innerHTML = '';
+                group.sections.forEach(sec => {
+                    const row = document.createElement('div');
+                    row.className = 'p-3 border rounded bg-white d-flex flex-wrap align-items-center justify-content-between gap-3 shadow-sm app-group-section-item';
+                    row.innerHTML = `
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center flex-shrink-0" style="width: 42px; height: 42px; font-size: 18px;">
+                                <i class="bi bi-person-video3"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-1 fw-bold text-dark">Section: ${escapeHtml(sec.section)}</h6>
+                                <div class="small text-muted d-flex flex-wrap gap-2">
+                                    <span><i class="bi bi-people me-1"></i><strong>${sec.student_count}</strong> students</span>
+                                    <span><i class="bi bi-person me-1"></i>${escapeHtml(sec.teacher_name)}</span>
+                                    <span><i class="bi bi-clock me-1"></i>${escapeHtml(sec.schedule)}</span>
+                                    <span><i class="bi bi-geo-alt me-1"></i>${escapeHtml(sec.room)}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2 align-items-center flex-shrink-0">
+                            <a href="admin_Class_Detail.php?id=${sec.id}" class="btn btn-sm btn-primary-custom" title="View Class Details for Section ${escapeHtml(sec.section)}">
+                                <i class="bi bi-eye me-1"></i>View Details
+                            </a>
+                            <a href="admin_Class_Edit.php?id=${sec.id}" class="btn btn-sm btn-outline-secondary" title="Edit Class for Section ${escapeHtml(sec.section)}">
+                                <i class="bi bi-pencil me-1"></i>Edit
+                            </a>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteSectionFromGroupModal(${sec.id}, '${escapeHtml(group.class_name)}', '${escapeHtml(sec.section)}')" title="Delete Class for Section ${escapeHtml(sec.section)}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                    sectionsList.appendChild(row);
+                });
+            }
+
+            const modalEl = document.getElementById('classGroupSectionsModal');
+            if (modalEl) {
+                const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                modal.show();
+            }
+        }
+
+        function deleteSectionFromGroupModal(id, className, sectionName) {
+            const modalEl = document.getElementById('classGroupSectionsModal');
+            if (modalEl) {
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+            }
+            deleteClass(id, `${className} (Section ${sectionName})`);
+        }
+
+        window.openGroupedClassModal = openGroupedClassModal;
+        window.deleteSectionFromGroupModal = deleteSectionFromGroupModal;
 
         function viewClass(id) {
             window.location.href = 'admin_Class_Detail.php?id=' + id;

@@ -2,6 +2,17 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.128 — 2026-09-02
+
+### Admin & Presentation
+
+- **Consolidated Multi-Section Class Card Presentation & Section Selection Modal**:
+  - **Presentation Layer Grouping**: Grouped compatible section-specific class records by subject identity (`class_name`, `grade_level`, `subject_category`, `track`, `program`, `status`) in [`admin/admin_Classes.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Classes.php) while preserving 100% separated database records per section.
+  - **Clean Multi-Section Card UI**: Rendered multi-section cards with consolidated section names (`Sections: Ruby, Emerald, Sapphire`), section count pills, summarized total student enrollment, and unified `View & Manage Sections (N)` action.
+  - **Interactive Section Modal (`#classGroupSectionsModal`)**: Clicking a grouped card or action button opens a dedicated modal detailing each section with its enrolled student count, assigned teacher, schedule, and room, complete with section-specific `View Details` (`admin_Class_Detail.php?id=<id>`), `Edit` (`admin_Class_Edit.php?id=<id>`), and `Delete` actions.
+  - **Preserved Single-Section Direct Actions**: Single-section cards preserve direct `View`, `Edit`, and `Delete` actions.
+  - **Automated Regression Suite**: Added `testGroupedClassPresentationAndSectionSpecificNavigation` to [`tests/AdminClassMultiSectionTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/AdminClassMultiSectionTest.php) (8 tests, 99 assertions).
+
 ## v0.3.127 — 2026-09-02
 
 ### Admin & Core
