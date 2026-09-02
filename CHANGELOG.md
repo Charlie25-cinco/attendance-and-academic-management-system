@@ -2,6 +2,15 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.140 — 2026-09-02
+
+### Added
+
+- **Enrolled Student Count Display on Admin Section Cards**:
+  - **Accurate Unique Student Counting in `list` Action**: Updated `list` action in [`admin/admin_Sections_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Sections_Action.php) to return `student_count` for each section using `COUNT(DISTINCT e.student_id)` filtered strictly by active classes (`c.status = 'active'`) and active enrollments (`e.status = 'enrolled'`) matching section grade level, name, and track, ensuring students enrolled in multiple classes within a section are counted exactly once.
+  - **Section Card UI Integration**: Updated section-card rendering in [`admin/admin_Sections.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Sections.php) to display `.class-card-stats` with `<i class="bi bi-people"></i> ${Number(s.student_count || 0)} Students`, handling empty sections cleanly as `0 Students` while maintaining consistent card design.
+  - **Automated Regression Testing**: Created [`tests/AdminSectionsTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/AdminSectionsTest.php) verifying markup presence, zero-student sections, one-student sections, deduplicated counting for multi-class students, exclusion of dropped/inactive enrollments, and grade/track filtering.
+
 ## v0.3.139 — 2026-09-02
 
 ### Fixed

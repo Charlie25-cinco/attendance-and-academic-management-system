@@ -584,7 +584,7 @@ final class Sf1SubjectRosterEnrollmentTest extends TestCase
             $this->assertTrue($g12Section['created'], 'Grade 12 Humility must be created as a separate section');
             $this->assertNotSame($existingSectionId, (int)$g12Section['id']);
 
-            $techproSection = ensureSf1Section($this->db, 'HUMILITY', 11, 'techpro', '2026-2027');
+            $techproSection = ensureSf1Section($this->db, 'Grade 11 - HUMILITY (TechPro)', 11, 'techpro', '2026-2027');
             $this->assertTrue($techproSection['created'], 'TechPro Humility must be created as a separate section');
             $this->assertNotSame($existingSectionId, (int)$techproSection['id']);
 

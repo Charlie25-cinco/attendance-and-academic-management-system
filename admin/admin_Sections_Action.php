@@ -38,25 +38,47 @@ try {
             $gradeFilter = trim((string)($_GET['grade_level'] ?? ''));
             $trackFilter = trim((string)($_GET['track'] ?? ''));
 
-            $sql = "SELECT id, name, grade_level, track, curriculum, program, created_at FROM sections WHERE 1=1";
+            $driver = strtolower((string)$db->getAttribute(PDO::ATTR_DRIVER_NAME));
+            $sectionMatch = ($driver === 'sqlite')
+                ? "LOWER(TRIM(COALESCE(c.section, ''))) = LOWER(TRIM(COALESCE(s.name, '')))"
+                : sectionMatchSql('c.section', 's.name');
+
+            $sql = "SELECT s.id, s.name, s.grade_level, s.track, s.curriculum, s.program, s.created_at,
+                           (
+                               SELECT COUNT(DISTINCT e.student_id)
+                               FROM enrollments e
+                               JOIN classes c ON c.id = e.class_id
+                               WHERE e.status = 'enrolled'
+                                 AND c.status = 'active'
+                                 AND c.grade_level = s.grade_level
+                                 AND ({$sectionMatch})
+                                 AND (c.track IS NULL OR TRIM(c.track) = '' OR LOWER(TRIM(c.track)) = LOWER(TRIM(s.track)))
+                           ) AS student_count
+                    FROM sections s
+                    WHERE 1=1";
             $params = [];
 
             if ($gradeFilter !== '') {
-                $sql .= " AND grade_level = :grade_level";
+                $sql .= " AND s.grade_level = :grade_level";
                 $params[':grade_level'] = (int)$gradeFilter;
             }
             if ($trackFilter !== '') {
-                $sql .= " AND track = :track";
+                $sql .= " AND s.track = :track";
                 $params[':track'] = $trackFilter;
             }
 
-            $sql .= " ORDER BY grade_level, track, name";
+            $sql .= " ORDER BY s.grade_level, s.track, s.name";
             $stmt = $db->prepare($sql);
             foreach ($params as $key => $value) {
                 $stmt->bindValue($key, $value);
             }
             $stmt->execute();
             $sections = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($sections as &$sec) {
+                $sec['student_count'] = (int)($sec['student_count'] ?? 0);
+            }
+            unset($sec);
 
             echo json_encode(['success' => true, 'sections' => $sections]);
             break;

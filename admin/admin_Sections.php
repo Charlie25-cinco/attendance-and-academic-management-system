@@ -211,7 +211,10 @@ $page_title = 'Sections';
                                 </div>
                                 <div class="class-card-body">
                                     <h4 class="class-card-title">Grade ${s.grade_level} — ${escHtml(s.name)}</h4>
-                                    <p class="text-muted small mb-3"><span class="track-badge track-${s.track}">${trackLabel}</span></p>
+                                    <p class="text-muted small mb-2"><span class="track-badge track-${s.track}">${trackLabel}</span></p>
+                                    <div class="class-card-stats mb-3">
+                                        <span class="class-card-stat"><i class="bi bi-people"></i> ${Number(s.student_count || 0)} Students</span>
+                                    </div>
                                     <div class="d-flex gap-2">
                                         <button class="btn btn-sm btn-outline-primary flex-fill" onclick="editSection(${s.id}, '${escHtml(s.name)}', ${s.grade_level}, '${s.track}')">
                                             <i class="bi bi-pencil"></i> Edit
