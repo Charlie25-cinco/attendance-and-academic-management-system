@@ -2,6 +2,17 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.126 — 2026-09-02
+
+### Admin & UI/UX
+
+- **Fixed Section Selector & Schedule Time Fields Visibility on Manage Classes**:
+  - **Scoped Sidebar Link Styling**: Scoped global `.nav-link` selectors in [`assets/css/main.css`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/css/main.css) to `.sidebar .nav-link` and `.sidebar-nav .nav-link`, eliminating white-on-white text collisions on modal nav pills and `#sectionSchedTabs`.
+  - **Explicit Dropdown Option Contrast**: Added dedicated `.form-select option` and `select option` rules across light and dark modes in [`assets/css/main.css`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/css/main.css) to guarantee crisp text and background readability in normal and opened states.
+  - **Schedule Time Controls Readability**: Enhanced `.schedule-time-group`, centering `HH` and `MM` inputs with high-contrast placeholders (`#98a2b3` / `#667085`), bold typography, and expanding `AM/PM` dropdown width to 76px to eliminate icon clipping.
+  - **Section Pills & Tab Panes Theme Support**: Added `.app-section-pill` styles ensuring target section checkboxes and schedule tab panes render with high-contrast text and surfaces across light and dark modes in [`admin/admin_Classes.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Classes.php) and [`admin/admin_Class_Edit.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Class_Edit.php).
+  - **Automated Regression Suite**: Added `testSectionSelectorAndScheduleTimeFieldsVisibility` to [`tests/AdminClassMultiSectionTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/AdminClassMultiSectionTest.php) (6 tests, 60 assertions).
+
 ## v0.3.125 — 2026-09-02
 
 ### Admin & Bug Fixes

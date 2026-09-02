@@ -163,13 +163,13 @@ $page_title = 'Manage Classes';
     <link rel="stylesheet" href="<?php echo appAssetPath('css/role.css'); ?>">
     <style>
         .schedule-row .input-group .form-control { min-width: 56px; }
-        .schedule-row .input-group-text { min-width: 18px; justify-content: center; }
-        .schedule-header-row .form-label { min-height: 20px; }
+        .schedule-row .input-group-text { min-width: 18px; justify-content: center; font-weight: 700; }
+        .schedule-header-row .form-label { min-height: 20px; font-weight: 600; }
         .schedule-row .form-control,
         .schedule-row .form-select { height: 42px; }
         .schedule-time-group { flex-wrap: nowrap; }
-        .schedule-time-group .form-control { flex: 0 0 56px; width: 56px; }
-        .schedule-time-group .form-select { flex: 0 0 70px; width: 70px; }
+        .schedule-time-group .form-control { flex: 0 0 56px; width: 56px; text-align: center; font-weight: 600; }
+        .schedule-time-group .form-select { flex: 0 0 76px; width: 76px; min-width: 76px; text-align: center; font-weight: 700; padding-left: 8px; padding-right: 24px; }
         .schedule-time-group .input-group-text { flex: 0 0 18px; width: 18px; }
         .schedule-row .schedule-remove { height: 42px; padding: 0; }
         @media (max-width: 575.98px) {
@@ -178,6 +178,12 @@ $page_title = 'Manage Classes';
         }
         #addClassModal .modal-dialog { max-width: 980px; width: 95vw; }
         #addClassModal .modal-body { overflow-x: auto; }
+        .app-section-pill { background-color: var(--ui-surface, #ffffff); border-color: var(--ui-border-soft, #e8edf3); color: var(--ui-text, #172033); }
+        .app-section-pill .form-check-label { color: inherit; }
+        body.dark-mode .app-section-pill { background-color: #182230 !important; border-color: #344054 !important; color: #f2f4f7 !important; }
+        body.dark-mode .app-section-pill .form-check-label { color: #f2f4f7 !important; }
+        body.dark-mode #sectionSchedTabs { background-color: #111b2a !important; border-color: #293548 !important; }
+        body.dark-mode #sectionSchedTabContent { background-color: #182230 !important; border-color: #293548 !important; color: #f2f4f7; }
     </style>
 <?php echo pwaHeadHtml(); ?>
 </head>
@@ -630,7 +636,7 @@ $page_title = 'Manage Classes';
                     if (toggleWrap) toggleWrap.style.display = 'block';
                     list.forEach((section, idx) => {
                         const pill = document.createElement('div');
-                        pill.className = 'form-check form-check-inline m-0 border px-3 py-1 rounded bg-white shadow-sm';
+                        pill.className = 'form-check form-check-inline m-0 border px-3 py-1 rounded shadow-sm app-section-pill';
                         pill.innerHTML = `
                             <input class="form-check-input section-checkbox" type="checkbox" name="sections[]" value="${section.value}" id="sec_cb_${idx}" onchange="renderSectionScheduleTabs()">
                             <label class="form-check-label fw-medium ms-1" for="sec_cb_${idx}" style="cursor: pointer;">
@@ -879,7 +885,7 @@ $page_title = 'Manage Classes';
                         <input type="text" inputmode="numeric" pattern="\\d*" maxlength="2" class="form-control schedule-time" data-field="start_hour" placeholder="HH">
                         <span class="input-group-text">:</span>
                         <input type="text" inputmode="numeric" pattern="\\d*" maxlength="2" class="form-control schedule-time" data-field="start_min" placeholder="MM">
-                        <select class="form-select schedule-time" data-field="start_ampm" style="max-width: 65px;">
+                        <select class="form-select schedule-time" data-field="start_ampm" style="min-width: 76px; max-width: 76px;">
                             <option value="AM">AM</option>
                             <option value="PM">PM</option>
                         </select>
@@ -890,7 +896,7 @@ $page_title = 'Manage Classes';
                         <input type="text" inputmode="numeric" pattern="\\d*" maxlength="2" class="form-control schedule-time" data-field="end_hour" placeholder="HH">
                         <span class="input-group-text">:</span>
                         <input type="text" inputmode="numeric" pattern="\\d*" maxlength="2" class="form-control schedule-time" data-field="end_min" placeholder="MM">
-                        <select class="form-select schedule-time" data-field="end_ampm" style="max-width: 65px;">
+                        <select class="form-select schedule-time" data-field="end_ampm" style="min-width: 76px; max-width: 76px;">
                             <option value="AM">AM</option>
                             <option value="PM">PM</option>
                         </select>
@@ -1073,7 +1079,7 @@ $page_title = 'Manage Classes';
                         <input type="text" inputmode="numeric" pattern="\\d*" maxlength="2" class="form-control schedule-time" data-field="start_hour" placeholder="HH">
                         <span class="input-group-text">:</span>
                         <input type="text" inputmode="numeric" pattern="\\d*" maxlength="2" class="form-control schedule-time" data-field="start_min" placeholder="MM">
-                        <select class="form-select schedule-time" data-field="start_ampm" style="max-width: 70px;">
+                        <select class="form-select schedule-time" data-field="start_ampm" style="min-width: 76px; max-width: 76px;">
                             <option value="AM">AM</option>
                             <option value="PM">PM</option>
                         </select>
@@ -1084,7 +1090,7 @@ $page_title = 'Manage Classes';
                         <input type="text" inputmode="numeric" pattern="\\d*" maxlength="2" class="form-control schedule-time" data-field="end_hour" placeholder="HH">
                         <span class="input-group-text">:</span>
                         <input type="text" inputmode="numeric" pattern="\\d*" maxlength="2" class="form-control schedule-time" data-field="end_min" placeholder="MM">
-                        <select class="form-select schedule-time" data-field="end_ampm" style="max-width: 70px;">
+                        <select class="form-select schedule-time" data-field="end_ampm" style="min-width: 76px; max-width: 76px;">
                             <option value="AM">AM</option>
                             <option value="PM">PM</option>
                         </select>

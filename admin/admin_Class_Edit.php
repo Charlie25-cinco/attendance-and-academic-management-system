@@ -94,13 +94,13 @@ $page_title = 'Edit Class - ' . $class['class_name'];
     <link rel="stylesheet" href="<?php echo appAssetPath('css/role.css'); ?>">
     <style>
         .schedule-row .input-group .form-control { min-width: 56px; }
-        .schedule-row .input-group-text { min-width: 18px; justify-content: center; }
-        .schedule-header-row .form-label { min-height: 20px; }
+        .schedule-row .input-group-text { min-width: 18px; justify-content: center; font-weight: 700; }
+        .schedule-header-row .form-label { min-height: 20px; font-weight: 600; }
         .schedule-row .form-control,
         .schedule-row .form-select { height: 42px; }
         .schedule-time-group { flex-wrap: nowrap; }
-        .schedule-time-group .form-control { flex: 0 0 56px; width: 56px; }
-        .schedule-time-group .form-select { flex: 0 0 70px; width: 70px; }
+        .schedule-time-group .form-control { flex: 0 0 56px; width: 56px; text-align: center; font-weight: 600; }
+        .schedule-time-group .form-select { flex: 0 0 76px; width: 76px; min-width: 76px; text-align: center; font-weight: 700; padding-left: 8px; padding-right: 24px; }
         .schedule-time-group .input-group-text { flex: 0 0 18px; width: 18px; }
         .schedule-row .schedule-remove { height: 42px; padding: 0; }
         @media (max-width: 575.98px) {
@@ -515,7 +515,7 @@ $page_title = 'Edit Class - ' . $class['class_name'];
                         <input type="text" inputmode="numeric" pattern="\\d*" maxlength="2" class="form-control schedule-time" data-field="start_hour" placeholder="HH">
                         <span class="input-group-text">:</span>
                         <input type="text" inputmode="numeric" pattern="\\d*" maxlength="2" class="form-control schedule-time" data-field="start_min" placeholder="MM">
-                        <select class="form-select schedule-time" data-field="start_ampm" style="max-width: 70px;">
+                        <select class="form-select schedule-time" data-field="start_ampm" style="min-width: 76px; max-width: 76px;">
                             <option value="AM">AM</option>
                             <option value="PM">PM</option>
                         </select>
@@ -526,7 +526,7 @@ $page_title = 'Edit Class - ' . $class['class_name'];
                         <input type="text" inputmode="numeric" pattern="\\d*" maxlength="2" class="form-control schedule-time" data-field="end_hour" placeholder="HH">
                         <span class="input-group-text">:</span>
                         <input type="text" inputmode="numeric" pattern="\\d*" maxlength="2" class="form-control schedule-time" data-field="end_min" placeholder="MM">
-                        <select class="form-select schedule-time" data-field="end_ampm" style="max-width: 70px;">
+                        <select class="form-select schedule-time" data-field="end_ampm" style="min-width: 76px; max-width: 76px;">
                             <option value="AM">AM</option>
                             <option value="PM">PM</option>
                         </select>

@@ -85,4 +85,30 @@ final class AdminClassMultiSectionTest extends TestCase
         $this->assertStringContainsString('and applied to', $code);
         $this->assertStringContainsString('$scheduleMode === \'tba\'', $code);
     }
+
+    public function testSectionSelectorAndScheduleTimeFieldsVisibility(): void
+    {
+        $css = file_get_contents(__DIR__ . '/../assets/css/main.css');
+        $this->assertIsString($css);
+
+        // Verify sidebar nav-link scoping (should not match global unscoped .nav-link {)
+        $this->assertStringContainsString('.sidebar .nav-link {', $css);
+        $this->assertStringContainsString('.form-select option,', $css);
+        $this->assertStringContainsString('select option {', $css);
+        $this->assertStringContainsString('body.dark-mode .form-select option,', $css);
+        $this->assertStringContainsString('.nav-pills .nav-link {', $css);
+        $this->assertStringContainsString('.schedule-time-group', $css);
+        $this->assertStringContainsString('.schedule-time::placeholder', $css);
+
+        // Verify admin_Classes.php styles and element structure
+        $classesHtml = file_get_contents(__DIR__ . '/../admin/admin_Classes.php');
+        $this->assertIsString($classesHtml);
+        $this->assertStringContainsString('app-section-pill', $classesHtml);
+        $this->assertStringContainsString('schedule-time-group', $classesHtml);
+        $this->assertStringContainsString('data-field="start_hour"', $classesHtml);
+        $this->assertStringContainsString('data-field="start_min"', $classesHtml);
+        $this->assertStringContainsString('data-field="start_ampm"', $classesHtml);
+        $this->assertStringContainsString('min-width: 76px;', $classesHtml);
+    }
 }
+
