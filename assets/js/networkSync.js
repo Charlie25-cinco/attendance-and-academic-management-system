@@ -1,12 +1,46 @@
 /**
  * BSHS AMS - Production Network Synchronization Engine
- * Listens for connectivity restoration and submits pending offline
- * attendance and activity records to MySQL with idempotency protection.
+ * Listens for connectivity restoration, verifies authenticated server session
+ * and CSRF token via pre-flight bootstrap probe, and synchronizes pending offline
+ * attendance and activity records to MySQL with strict gating and idempotency.
  */
 (function (global) {
     'use strict';
 
     var isProcessing = false;
+
+    async function verifyAndRestoreAuth() {
+        try {
+            var targetUrl = typeof withCsrfUrl === 'function'
+                ? withCsrfUrl('teacher_Action.php?action=offline_bootstrap')
+                : 'teacher_Action.php?action=offline_bootstrap';
+
+            var res = await fetch(targetUrl, {
+                headers: { 'Accept': 'application/json' },
+                credentials: 'same-origin',
+                cache: 'no-store'
+            });
+
+            if (res.status === 401 || res.status === 403 || !res.ok) {
+                return { authenticated: false };
+            }
+
+            var data = await res.json();
+            if (data && data.success && data.teacher) {
+                if (data.csrf_token) {
+                    global.APP_CSRF_TOKEN = data.csrf_token;
+                    if (typeof csrfToken !== 'undefined') {
+                        csrfToken = data.csrf_token;
+                    }
+                }
+                return { authenticated: true, csrfToken: data.csrf_token || '' };
+            }
+
+            return { authenticated: false };
+        } catch (e) {
+            return { authenticated: false, networkError: true };
+        }
+    }
 
     async function processQueue() {
         if (isProcessing) return;
@@ -17,6 +51,20 @@
 
         var queue = await storage.getSyncQueue();
         if (!queue || queue.length === 0) return;
+
+        // Pre-flight check: ensure valid server authentication & CSRF context
+        var authCheck = await verifyAndRestoreAuth();
+        if (!authCheck.authenticated) {
+            if (!authCheck.networkError) {
+                var authWarning = 'You have pending offline records, but your server session is not signed in. Please sign in to synchronize.';
+                if (typeof showNotification === 'function') {
+                    showNotification(authWarning, 'warning');
+                } else if (typeof showToast === 'function') {
+                    showToast(authWarning, 'warning');
+                }
+            }
+            return;
+        }
 
         isProcessing = true;
         var syncedAttendance = 0;
@@ -37,19 +85,22 @@
                     targetUrl = withCsrfUrl(targetUrl);
                 }
 
+                var currentToken = (typeof csrfToken !== 'undefined' && csrfToken)
+                    ? csrfToken
+                    : (global.APP_CSRF_TOKEN || document.querySelector('input[name="csrf_token"]')?.value || authCheck.csrfToken || '');
+
                 var headers = {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 };
-                if (item.csrfToken || item.action?.csrfToken) {
-                    headers['X-CSRF-Token'] = item.csrfToken || item.action?.csrfToken;
-                } else if (global.APP_CSRF_TOKEN) {
-                    headers['X-CSRF-Token'] = global.APP_CSRF_TOKEN;
+                if (currentToken) {
+                    headers['X-CSRF-Token'] = currentToken;
                 }
 
                 var response = await fetch(targetUrl, {
                     method: 'POST',
                     headers: headers,
+                    credentials: 'same-origin',
                     body: JSON.stringify(payload)
                 });
 
@@ -68,6 +119,13 @@
                         } else if (typeof storage.removeSyncItem === 'function') {
                             await storage.removeSyncItem(item.id);
                         }
+                    } else if (result && (result.message === 'Unauthorized access' || result.message === 'Invalid CSRF token')) {
+                        // Mid-queue auth failure: halt and preserve remaining queue items
+                        var sessionMsg = 'Authentication required to complete offline synchronization. Please refresh or sign in.';
+                        if (typeof showNotification === 'function') {
+                            showNotification(sessionMsg, 'danger');
+                        }
+                        break;
                     }
                 }
             } catch (err) {
@@ -91,7 +149,7 @@
                 showToast(msg, 'success');
             }
 
-            // Refresh fresh rosters from server
+            // Refresh fresh rosters and classes from server
             if (typeof storage.bootstrapOnline === 'function') {
                 storage.bootstrapOnline().catch(function () {});
             }
@@ -100,9 +158,9 @@
 
     function handleOnline() {
         if (typeof showNotification === 'function') {
-            showNotification('Internet connection restored. Synchronizing offline records...', 'info');
+            showNotification('Internet connection restored. Checking offline records...', 'info');
         } else if (typeof showToast === 'function') {
-            showToast('Internet connection restored. Synchronizing offline records...', 'info');
+            showToast('Internet connection restored. Checking offline records...', 'info');
         }
         setTimeout(processQueue, 500);
     }
@@ -117,7 +175,8 @@
     global.addEventListener('offline', handleOffline);
 
     global.BSHS_NetworkSync = {
-        processQueue: processQueue
+        processQueue: processQueue,
+        verifyAndRestoreAuth: verifyAndRestoreAuth
     };
 
     global.bshsOffline = {

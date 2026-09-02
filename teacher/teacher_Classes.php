@@ -668,6 +668,8 @@ function createGradeItem(){
     setBusy(createBtn,'Creating...','Create',true);
     fetch('teacher_Action.php?action=create_grade_item',{method:'POST',body:fd}).then(r=>r.json()).then(d=>{if(d.success){showNotification(d.message||'Grade activity created','success');if(createGradeItemModal)createGradeItemModal.hide();loadGradeItems();}else{showNotification(d.message||'Failed to create grade activity','danger');}}).catch(()=>showNotification('Error creating grade activity','danger')).finally(()=>setBusy(createBtn,'Creating...','Create',false));
 }
+let currentLoadedGradeItems = [];
+
 function loadGradeItems(){
     const classId=document.getElementById('gradeItemClassFilter')?.value||'';
     if(!navigator.onLine){
@@ -676,6 +678,8 @@ function loadGradeItems(){
                 const filtered = classId ? items.filter(i => String(i.class_id) === String(classId)) : items;
                 renderGradeItems(filtered.map(i => ({
                     id: i.local_id || i.id,
+                    local_id: i.local_id || null,
+                    class_id: i.class_id,
                     title: i.title,
                     class_name: 'Class ' + i.class_id,
                     grade_level: '',
@@ -690,12 +694,18 @@ function loadGradeItems(){
         return;
     }
     const url='teacher_Action.php?action=fetch_grade_items&status=active'+(classId?('&class_id='+encodeURIComponent(classId)):'');
-    fetch(url).then(r=>r.json()).then(d=>{if(!d.success){showNotification(d.message||'Failed to load grade activities','danger');return;}renderGradeItems(d.items||[]);}).catch(()=>{
+    fetch(url).then(r=>r.json()).then(d=>{
+        if(!d.success){showNotification(d.message||'Failed to load grade activities','danger');return;}
+        currentLoadedGradeItems = d.items || [];
+        renderGradeItems(currentLoadedGradeItems);
+    }).catch(()=>{
         if(window.bshsOfflineStorage){
             window.bshsOfflineStorage.getAllLocalActivities().then(items => {
                 const filtered = classId ? items.filter(i => String(i.class_id) === String(classId)) : items;
                 renderGradeItems(filtered.map(i => ({
                     id: i.local_id || i.id,
+                    local_id: i.local_id || null,
+                    class_id: i.class_id,
                     title: i.title,
                     class_name: 'Class ' + i.class_id,
                     grade_level: '',
@@ -715,25 +725,35 @@ function openRecordScores(id){
     if(!navigator.onLine || String(id).startsWith('act_')){
         if(window.bshsOfflineStorage){
             window.bshsOfflineStorage.getAllLocalActivities().then(items => {
-                const act = items.find(i => String(i.local_id || i.id) === String(id));
+                let act = items.find(i => String(i.local_id || i.id) === String(id));
+                if(!act && currentLoadedGradeItems){
+                    act = currentLoadedGradeItems.find(i => String(i.id) === String(id));
+                }
                 if(act){
                     document.getElementById('recordScoresItemId').value = act.local_id || act.id;
-                    const metaParts = [act.title, act.component, 'Total: ' + act.total_score, 'Date: ' + act.activity_date];
+                    const metaParts = [act.title, (act.component || 'ww').toUpperCase(), 'Total: ' + act.total_score, 'Date: ' + (act.activity_date || act.date || '')];
                     document.getElementById('recordScoresMeta').textContent = metaParts.join(' | ');
-                    window.bshsOfflineStorage.getClassRoster(act.class_id).then(students => {
+                    const classId = parseInt(act.class_id, 10);
+                    window.bshsOfflineStorage.getClassRoster(classId).then(students => {
                         const body = document.getElementById('recordScoresBody');
                         const total = parseFloat(act.total_score || 0);
                         const scoreMap = {};
                         (act.scores || []).forEach(s => { scoreMap[s.student_id] = s.score; });
-                        body.innerHTML = (students || []).map(s => `<tr data-student-id="${s.id}"><td><div class="fw-semibold">${escapeHtml(`${s.first_name} ${s.last_name}`)}</div><div class="small text-muted">${escapeHtml(s.reference_code||'')}</div></td><td><input type="number" class="form-control form-control-sm item-score" min="0" max="${total}" step="0.01" value="${scoreMap[s.id] ?? ''}" placeholder="0 - ${total}"></td></tr>`).join('');
+                        if (!students || students.length === 0) {
+                            body.innerHTML = '<tr><td colspan="2" class="text-center text-muted py-3">No offline student roster cached for this class. Connect online to populate.</td></tr>';
+                        } else {
+                            body.innerHTML = students.map(s => `<tr data-student-id="${s.id}"><td><div class="fw-semibold">${escapeHtml(`${s.first_name} ${s.last_name}`)}</div><div class="small text-muted">${escapeHtml(s.reference_code||'')}</div></td><td><input type="number" class="form-control form-control-sm item-score" min="0" max="${total}" step="0.01" value="${scoreMap[s.id] ?? ''}" placeholder="0 - ${total}"></td></tr>`).join('');
+                        }
                         if(recordScoresModal) recordScoresModal.show();
                     });
+                } else {
+                    showNotification('Activity not found in offline storage', 'warning');
                 }
             });
         }
         return;
     }
-    fetch('teacher_Action.php?action=fetch_grade_item_students&grade_item_id='+encodeURIComponent(id)).then(r=>r.json()).then(d=>{if(!d.success){showNotification(d.message||'Failed to load scores form','danger');return;}document.getElementById('recordScoresItemId').value=id;const subjectName=d.item.class_name?`${d.item.class_name}${(d.item.grade_level&&d.item.section)?` (G${d.item.grade_level} - ${d.item.section})`:''}`:'';const subjectEl=document.getElementById('recordScoresSubject');if(subjectEl){subjectEl.textContent=subjectName?`Subject: ${subjectName}`:'';}const metaParts=[];if(d.item.title)metaParts.push(d.item.title);if(d.item.component)metaParts.push(d.item.component);metaParts.push(`Total: ${d.item.total_score}`);metaParts.push(`Date: ${d.item.activity_date}`);document.getElementById('recordScoresMeta').textContent=metaParts.join(' | ');const body=document.getElementById('recordScoresBody');const total=parseFloat(d.item.total_score||0);body.innerHTML=(d.students||[]).map(s=>`<tr data-student-id="${s.id}"><td><div class="fw-semibold">${escapeHtml(`${s.first_name} ${s.last_name}`)}</div><div class="small text-muted">${escapeHtml(s.reference_code||'')}</div></td><td><input type="number" class="form-control form-control-sm item-score" min="0" max="${total}" step="0.01" value="${s.score??''}" placeholder="0 - ${total}"></td></tr>`).join('');if(recordScoresModal)recordScoresModal.show();}).catch(()=>showNotification('Error loading scores form','danger'));
+    fetch('teacher_Action.php?action=fetch_grade_item_students&grade_item_id='+encodeURIComponent(id)).then(r=>r.json()).then(d=>{if(!d.success){showNotification(d.message||'Failed to load scores form','danger');return;}document.getElementById('recordScoresItemId').value=id;const subjectName=d.item.class_name?`${d.item.class_name}${(d.item.grade_level&&d.item.section)?` (G${d.item.grade_level} - ${d.item.section})`:''}`:'';const subjectEl=document.getElementById('recordScoresSubject');if(subjectEl){subjectEl.textContent=subjectName?`Subject: ${subjectName}`:'';}const metaParts=[];if(d.item.title)metaParts.push(d.item.title);if(d.item.component)metaParts.push((d.item.component||'ww').toUpperCase());metaParts.push(`Total: ${d.item.total_score}`);metaParts.push(`Date: ${d.item.activity_date}`);document.getElementById('recordScoresMeta').textContent=metaParts.join(' | ');const body=document.getElementById('recordScoresBody');const total=parseFloat(d.item.total_score||0);body.innerHTML=(d.students||[]).map(s=>`<tr data-student-id="${s.id}"><td><div class="fw-semibold">${escapeHtml(`${s.first_name} ${s.last_name}`)}</div><div class="small text-muted">${escapeHtml(s.reference_code||'')}</div></td><td><input type="number" class="form-control form-control-sm item-score" min="0" max="${total}" step="0.01" value="${s.score??''}" placeholder="0 - ${total}"></td></tr>`).join('');if(recordScoresModal)recordScoresModal.show();}).catch(()=>showNotification('Error loading scores form','danger'));
 }
 function saveGradeItemScores(){
     const saveBtn=document.getElementById('saveScoresBtn');
@@ -746,7 +766,24 @@ function saveGradeItemScores(){
     if(!navigator.onLine || String(gradeItemId).startsWith('act_')){
         if(window.bshsOfflineStorage){
             window.bshsOfflineStorage.getAllLocalActivities().then(items => {
-                const act = items.find(i => String(i.local_id || i.id) === String(gradeItemId));
+                let act = items.find(i => String(i.local_id || i.id) === String(gradeItemId));
+                if(!act && currentLoadedGradeItems){
+                    const loaded = currentLoadedGradeItems.find(i => String(i.id) === String(gradeItemId));
+                    if(loaded){
+                        act = {
+                            local_id: 'act_' + loaded.class_id + '_' + Date.now(),
+                            server_id: loaded.id,
+                            class_id: parseInt(loaded.class_id, 10),
+                            title: loaded.title,
+                            component: loaded.component,
+                            total_score: loaded.total_score,
+                            activity_date: loaded.activity_date,
+                            scores: scores,
+                            saved_at: new Date().toISOString(),
+                            sync_status: 'pending'
+                        };
+                    }
+                }
                 if(act){
                     act.scores = scores;
                     act.saved_at = new Date().toISOString();

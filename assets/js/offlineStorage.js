@@ -367,27 +367,46 @@
     // 5. Local Offline Activity & Score Records
     // -------------------------------------------------------------
     async saveActivityLocally(
-      classId,
-      title,
-      component,
-      totalScore,
-      date,
-      scores,
+      classIdOrObj,
+      titleArg,
+      componentArg,
+      totalScoreArg,
+      dateArg,
+      scoresArg,
     ) {
-      const cId = parseInt(classId, 10);
-      const safeTitle = (title || "untitled")
-        .replace(/\s+/g, "_")
-        .toLowerCase();
-      const localId = "act_" + cId + "_" + safeTitle + "_" + date;
+      let cId, actTitle, comp, total, actDate, actScores, localId, serverId;
+
+      if (typeof classIdOrObj === "object" && classIdOrObj !== null) {
+        const obj = classIdOrObj;
+        cId = parseInt(obj.class_id, 10);
+        actTitle = obj.title || "untitled";
+        comp = (obj.component || "ww").toLowerCase();
+        total = parseFloat(obj.total_score || 0);
+        actDate = obj.activity_date || obj.date || new Date().toISOString().split("T")[0];
+        actScores = Array.isArray(obj.scores) ? obj.scores : [];
+        serverId = obj.grade_item_id || obj.server_id || (typeof obj.id === "number" ? obj.id : null);
+        localId = obj.local_id || ("act_" + cId + "_" + Date.now());
+      } else {
+        cId = parseInt(classIdOrObj, 10);
+        actTitle = titleArg || "untitled";
+        comp = (componentArg || "ww").toLowerCase();
+        total = parseFloat(totalScoreArg || 0);
+        actDate = dateArg || new Date().toISOString().split("T")[0];
+        actScores = Array.isArray(scoresArg) ? scoresArg : [];
+        const safeTitle = (actTitle || "untitled").replace(/\s+/g, "_").toLowerCase();
+        localId = "act_" + cId + "_" + safeTitle + "_" + actDate;
+        serverId = null;
+      }
 
       const activityItem = {
         local_id: localId,
+        server_id: serverId,
         class_id: cId,
-        title: title,
-        component: component,
-        total_score: parseFloat(totalScore),
-        activity_date: date,
-        scores: scores,
+        title: actTitle,
+        component: comp,
+        total_score: total,
+        activity_date: actDate,
+        scores: actScores,
         saved_at: new Date().toISOString(),
         sync_status: "pending",
       };
@@ -398,12 +417,14 @@
         operation: "activity.upsert",
         url: "teacher_Action.php?action=save_offline_activity",
         payload: {
+          grade_item_id: serverId,
+          server_id: serverId,
           class_id: cId,
-          title: title,
-          component: component,
-          total_score: parseFloat(totalScore),
-          activity_date: date,
-          scores: scores,
+          title: actTitle,
+          component: comp,
+          total_score: total,
+          activity_date: actDate,
+          scores: actScores,
         },
         added_at: new Date().toISOString(),
         attempts: 0,
@@ -425,7 +446,7 @@
       try {
         const queue =
           JSON.parse(localStorage.getItem("bshs_offline_queue")) || [];
-        const filtered = queue.filter((q) => q.id !== syncOperation.id);
+        const filtered = queue.filter((q) => q.id !== syncOperation.id && q.id !== localId);
         filtered.push({
           id: syncOperation.id,
           action: {
@@ -462,25 +483,43 @@
     // -------------------------------------------------------------
     async getSyncQueue() {
       const db = await openDatabase();
+      let idbQueue = [];
       if (db) {
         try {
-          const items = await new Promise((resolve) => {
+          idbQueue = await new Promise((resolve) => {
             const tx = db.transaction([STORES.SYNC_QUEUE], "readonly");
             const req = tx.objectStore(STORES.SYNC_QUEUE).getAll();
             req.onsuccess = () => resolve(req.result || []);
             req.onerror = () => resolve([]);
           });
-          if (items && items.length > 0) return items;
         } catch (e) {}
       }
+
+      let lsQueue = [];
       try {
-        return JSON.parse(localStorage.getItem("bshs_offline_queue")) || [];
-      } catch (e) {
-        return [];
-      }
+        lsQueue = JSON.parse(localStorage.getItem("bshs_offline_queue")) || [];
+      } catch (e) {}
+
+      // Merge queues by key to prevent duplicates while ensuring survival across restarts
+      const map = new Map();
+      idbQueue.forEach((item) => {
+        const key = item.id || ("op_" + (item.operation_id || item.local_id));
+        map.set(key, item);
+      });
+      lsQueue.forEach((item) => {
+        const key = item.id || ("op_" + (item.operation_id || item.local_id));
+        if (!map.has(key)) {
+          map.set(key, item);
+        }
+      });
+
+      return Array.from(map.values());
     },
 
     async markRecordSynced(operationId) {
+      const rawId = String(operationId || "").replace(/^op_/, "");
+      const opKey = "op_" + rawId;
+
       const db = await openDatabase();
       if (db) {
         try {
@@ -490,7 +529,7 @@
           );
           // Update attendance record if exists
           const attStore = tx.objectStore(STORES.ATTENDANCE);
-          const attReq = attStore.get(operationId);
+          const attReq = attStore.get(rawId);
           attReq.onsuccess = function () {
             if (attReq.result) {
               const rec = attReq.result;
@@ -502,7 +541,7 @@
 
           // Update activity record if exists
           const actStore = tx.objectStore(STORES.ACTIVITIES);
-          const actReq = actStore.get(operationId);
+          const actReq = actStore.get(rawId);
           actReq.onsuccess = function () {
             if (actReq.result) {
               const rec = actReq.result;
@@ -513,8 +552,8 @@
           };
 
           // Remove from sync queue
-          tx.objectStore(STORES.SYNC_QUEUE).delete("op_" + operationId);
-          tx.objectStore(STORES.SYNC_QUEUE).delete(operationId);
+          tx.objectStore(STORES.SYNC_QUEUE).delete(opKey);
+          tx.objectStore(STORES.SYNC_QUEUE).delete(rawId);
         } catch (e) {}
       }
 
@@ -522,7 +561,7 @@
         const queue =
           JSON.parse(localStorage.getItem("bshs_offline_queue")) || [];
         const filtered = queue.filter(
-          (q) => q.id !== operationId && q.id !== "op_" + operationId,
+          (q) => q.id !== rawId && q.id !== opKey && (q.operation_id !== rawId),
         );
         localStorage.setItem("bshs_offline_queue", JSON.stringify(filtered));
       } catch (e) {}

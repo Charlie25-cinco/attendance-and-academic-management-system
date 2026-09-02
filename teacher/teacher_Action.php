@@ -3146,6 +3146,7 @@ function teacherOfflineBootstrap($db, $teacherId) {
 
         echo json_encode([
             'success' => true,
+            'csrf_token' => (string)($_SESSION['csrf_token'] ?? ''),
             'teacher' => $teacher,
             'classes' => $classes,
             'rosters' => $rosters
@@ -3169,6 +3170,7 @@ function teacherSaveOfflineActivity($db, $teacherId) {
         $totalScore = (float)($payload['total_score'] ?? 0);
         $activityDate = trim((string)($payload['activity_date'] ?? date('Y-m-d')));
         $scores = $payload['scores'] ?? [];
+        $existingServerId = (int)($payload['grade_item_id'] ?? $payload['server_id'] ?? 0);
 
         if ($classId <= 0 || $title === '' || $totalScore <= 0) {
             echo json_encode(['success' => false, 'message' => 'Class, title, and total score are required']);
@@ -3191,10 +3193,29 @@ function teacherSaveOfflineActivity($db, $teacherId) {
 
         $db->beginTransaction();
 
-        $stmt = $db->prepare("INSERT INTO grade_items (class_id, teacher_id, title, component, total_score, activity_date, status, created_at)
-                              VALUES (?, ?, ?, ?, ?, ?, 'active', NOW())");
-        $stmt->execute([$classId, $teacherId, $title, $component, round($totalScore, 2), $activityDate]);
-        $gradeItemId = (int)$db->lastInsertId();
+        $gradeItemId = 0;
+        if ($existingServerId > 0) {
+            $check = $db->prepare("SELECT id FROM grade_items WHERE id = ? AND teacher_id = ? LIMIT 1");
+            $check->execute([$existingServerId, $teacherId]);
+            $gradeItemId = (int)$check->fetchColumn();
+        }
+
+        if ($gradeItemId <= 0) {
+            // Find existing matching activity to avoid duplicates during retried sync
+            $find = $db->prepare("SELECT id FROM grade_items WHERE class_id = ? AND teacher_id = ? AND title = ? AND activity_date = ? LIMIT 1");
+            $find->execute([$classId, $teacherId, $title, $activityDate]);
+            $gradeItemId = (int)$find->fetchColumn();
+        }
+
+        if ($gradeItemId <= 0) {
+            $stmt = $db->prepare("INSERT INTO grade_items (class_id, teacher_id, title, component, total_score, activity_date, status, created_at)
+                                  VALUES (?, ?, ?, ?, ?, ?, 'active', NOW())");
+            $stmt->execute([$classId, $teacherId, $title, $component, round($totalScore, 2), $activityDate]);
+            $gradeItemId = (int)$db->lastInsertId();
+        } else {
+            $upd = $db->prepare("UPDATE grade_items SET component = ?, total_score = ?, updated_at = NOW() WHERE id = ? AND teacher_id = ?");
+            $upd->execute([$component, round($totalScore, 2), $gradeItemId, $teacherId]);
+        }
 
         if ($gradeItemId > 0 && is_array($scores) && !empty($scores)) {
             $enrolled = array_fill_keys(getActiveEnrollmentStudentIds($db, $classId), true);

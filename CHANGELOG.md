@@ -2,6 +2,18 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.164 — 2026-09-03
+
+### Fixed
+
+- **Teacher PWA Offline Lifecycle & Synchronization Engine**:
+  - **Explicit Server Session Restoration & Gated Offline Sync**: Updated [`assets/js/networkSync.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/networkSync.js) to perform pre-flight authentication verification via `offline_bootstrap` before attempting protected write endpoints (`submit_attendance`, `save_offline_activity`). If the server session is unauthenticated, sync is halted, queued records are safely preserved in storage, and the user is alerted to sign in.
+  - **CSRF Token Injection in Offline Bootstrap**: Updated `teacherOfflineBootstrap()` in [`teacher/teacher_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Action.php) to return the active server `csrf_token`, ensuring the client sync engine acquires valid CSRF credentials upon session restoration.
+  - **Canonical `saveActivityLocally()` Contract & Queue Persistence**: Standardized `saveActivityLocally()` in [`assets/js/offlineStorage.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/offlineStorage.js) to accept a canonical activity object or normalized positional arguments, ensuring queue operations survive PWA close/restart across IndexedDB and `localStorage`.
+  - **Offline Student Roster Loading for Activity Scoring**: Enhanced `openRecordScores()` in [`teacher/teacher_Classes.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Classes.php) to retrieve student rosters from `getClassRoster()` when offline, supporting full offline score entry and queuing.
+  - **Idempotent Offline Activity Creation & Scoring**: Enhanced `teacherSaveOfflineActivity()` in [`teacher/teacher_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Action.php) with transaction safety, duplicate prevention, and score upserting on retried syncs.
+  - **Automated Regression Test Suite**: Added [`tests/TeacherPwaOfflineLifecycleTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/TeacherPwaOfflineLifecycleTest.php) covering session restoration on reopen, `offline_bootstrap` CSRF responses, server-side idempotency, Node.js queue simulation, and sync authentication gating.
+
 ## v0.3.163 — 2026-09-03
 
 ### Fixed
