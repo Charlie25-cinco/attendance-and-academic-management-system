@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.148 — 2026-09-03
+
+### Fixed
+
+- **Service Worker Registration Flow on Fresh Page Loads**:
+  - **Controller-Change Event Encapsulation**: Fixed the inline service worker startup script in [`config/constants.php`](file:///c:/laragon/www/attendance-and-academic-management-system/config/constants.php) by properly wrapping the `hadPreviousController` and `refreshingForUpdate` reload guard inside `navigator.serviceWorker.addEventListener('controllerchange', function () { ... })`.
+  - **Unblocked Registration on Initial Loads**: Resolved the premature return in the `.finally()` cleanup block that previously prevented `navigator.serviceWorker.register()` from running on initial/uncontrolled page visits.
+  - **PWA Installability & Event Handling**: Ensured that the browser can successfully register `sw.js` and fire `beforeinstallprompt` to populate `_pwaInstallPrompt` and reveal `#pwaInstallBtn`, `#settingsPwaInstallSection`, and `#headerPwaInstallDropdownItem`.
+  - **Automated Regression Testing**: Updated [`tests/PwaAssetFreshnessTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/PwaAssetFreshnessTest.php) and [`tests/PwaInstallUiTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/PwaInstallUiTest.php) specifically testing that service-worker registration is not bypassed on fresh visits without an existing controller.
+
 ## v0.3.147 — 2026-09-03
 
 ### Fixed

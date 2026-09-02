@@ -52,6 +52,25 @@ final class PwaInstallUiTest extends TestCase
         $this->assertStringContainsString("window._pwaInstallPrompt.prompt()", $constants);
     }
 
+    public function testServiceWorkerRegistrationIsNotPreemptedOnFreshLoadWithoutController(): void
+    {
+        $constants = file_get_contents(__DIR__ . '/../config/constants.php');
+        $this->assertIsString($constants);
+
+        // Ensure navigator.serviceWorker.register() is called and controllerchange listener is properly bound
+        $this->assertStringContainsString("navigator.serviceWorker.addEventListener('controllerchange', function () {", $constants);
+        $this->assertStringContainsString("navigator.serviceWorker.register(desiredScript, { scope: desiredScope, updateViaCache: 'none' })", $constants);
+
+        // Assert that register occurs in the same finally block without an unconditional/unwrapped return before it
+        $finallyPos = strpos($constants, '.finally(function () {');
+        $this->assertNotFalse($finallyPos);
+        $registerPos = strpos($constants, 'navigator.serviceWorker.register(', $finallyPos);
+        $this->assertNotFalse($registerPos);
+        $controllerListenerPos = strpos($constants, "navigator.serviceWorker.addEventListener('controllerchange'", $finallyPos);
+        $this->assertNotFalse($controllerListenerPos);
+        $this->assertLessThan($registerPos, $controllerListenerPos, 'controllerchange listener should be registered before or alongside register call');
+    }
+
     public function testMainJsRefreshesPwaInstallStateWhenSettingsModalOpens(): void
     {
         $js = file_get_contents(__DIR__ . '/../assets/js/main.js');

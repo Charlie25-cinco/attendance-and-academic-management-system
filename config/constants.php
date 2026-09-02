@@ -959,9 +959,11 @@ if ('serviceWorker' in navigator) {
             .finally(function () {
                 var hadPreviousController = Boolean(navigator.serviceWorker.controller);
                 var refreshingForUpdate = false;
+                navigator.serviceWorker.addEventListener('controllerchange', function () {
                     if (refreshingForUpdate || !hadPreviousController) { return; }
                     refreshingForUpdate = true;
                     window.location.reload();
+                });
 
                 var activateWaitingWorker = function (reg) {
                     if (reg && reg.waiting) {

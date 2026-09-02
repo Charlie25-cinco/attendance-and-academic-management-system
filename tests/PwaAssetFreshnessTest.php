@@ -93,7 +93,9 @@ final class PwaAssetFreshnessTest extends TestCase
         $constants = file_get_contents(__DIR__ . '/../config/constants.php');
         $this->assertIsString($constants);
         $this->assertStringContainsString('var hadPreviousController = Boolean(navigator.serviceWorker.controller);', $constants);
+        $this->assertStringContainsString("navigator.serviceWorker.addEventListener('controllerchange', function () {", $constants);
         $this->assertStringContainsString('if (refreshingForUpdate || !hadPreviousController) { return; }', $constants);
+        $this->assertStringContainsString('navigator.serviceWorker.register(desiredScript', $constants);
         $this->assertStringContainsString('window._CACHE_NAME = \'bshs-ams-v37\';', $constants);
     }
 
