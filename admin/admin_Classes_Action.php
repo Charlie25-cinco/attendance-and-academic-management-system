@@ -252,6 +252,30 @@ function syncClassEnrollmentsByGradeSection($db, $classId, $gradeLevel, $section
     $program = strengthenedShsProgram((int)$gradeLevel, $track, $academicYear);
     $semester = $curriculum === 'strengthened_shs' ? null : 1;
 
+    $sectionTrimmed = trim((string)$section);
+    if ($sectionTrimmed === '' || (int)$gradeLevel <= 0 || (int)$classId <= 0) {
+        return;
+    }
+
+    $driver = (string)$db->getAttribute(PDO::ATTR_DRIVER_NAME);
+    if ($driver === 'sqlite') {
+        $sectionSql = "(LOWER(TRIM(COALESCE(u.section, ''))) = LOWER(TRIM(COALESCE(?, ''))))";
+        $params = [
+            (int)$classId, $academicYear, $semester, $curriculum, $program, date('Y-m-d H:i:s'),
+            (int)$gradeLevel, $sectionTrimmed,
+            $track, $track, $track,
+            (int)$classId, $academicYear
+        ];
+    } else {
+        $sectionSql = sectionMatchSql('u.section');
+        $params = [
+            (int)$classId, $academicYear, $semester, $curriculum, $program, date('Y-m-d H:i:s'),
+            (int)$gradeLevel, $sectionTrimmed, $sectionTrimmed,
+            $track, $track, $track,
+            (int)$classId, $academicYear
+        ];
+    }
+
     // Enroll active/pending students whose profile matches class grade/section.
     $insert = $db->prepare("INSERT INTO enrollments (student_id, class_id, academic_year, semester, curriculum, program, status, enrolled_at)
                             SELECT u.id, ?, ?, ?, ?, ?, 'enrolled', ?
@@ -259,16 +283,17 @@ function syncClassEnrollmentsByGradeSection($db, $classId, $gradeLevel, $section
                             WHERE u.role = 'student'
                               AND u.status IN ('active', 'pending')
                               AND u.grade_level = ?
-                              AND u.section = ?
-                              AND (? IS NULL OR u.track = ?)
+                              AND {$sectionSql}
+                              AND (? IS NULL OR TRIM(?) = '' OR u.track IS NULL OR TRIM(u.track) = '' OR LOWER(TRIM(u.track)) = LOWER(TRIM(?)))
                               AND NOT EXISTS (
                                   SELECT 1
                                   FROM enrollments e
                                   WHERE e.student_id = u.id
                                     AND e.class_id = ?
+                                    AND e.academic_year = ?
                                     AND COALESCE(e.status, 'enrolled') = 'enrolled'
                               )");
-    $insert->execute([(int)$classId, $academicYear, $semester, $curriculum, $program, date('Y-m-d H:i:s'), (int)$gradeLevel, (string)$section, $track, $track, (int)$classId]);
+    $insert->execute($params);
 }
 
 function syncClassSchedules($db, $classId, $segments) {

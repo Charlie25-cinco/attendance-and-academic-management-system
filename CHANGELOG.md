@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.134 — 2026-09-02
+
+### Admin & Core
+
+- **Fixed Subject/Class Roster Recognition for SF1 Imported Students**:
+  - **Flexible Section & Track Resolution in `syncStudentEnrollments()`**: Enhanced `syncStudentEnrollments()` in [`functions/app-helpers.php`](file:///c:/laragon/www/attendance-and-academic-management-system/functions/app-helpers.php) to use `sectionMatchSql()` and flexible track matching `(track IS NULL OR TRIM(track) = '' OR LOWER(TRIM(track)) = LOWER(TRIM(?)))`, ensuring imported students are automatically and accurately enrolled into all active subject classes of their assigned section.
+  - **Non-Destructive & Idempotent Enrollment Persistence**: Eliminated destructive deletions in `syncStudentEnrollments()`, checking existing records by `(student_id, class_id, academic_year)` to preserve existing enrollment IDs, reactivate inactive records when appropriate, and ensure re-imports do not generate duplicate enrollment records.
+  - **Synchronized Class Offering Enrollment**: Updated `syncClassEnrollmentsByGradeSection()` in [`admin/admin_Classes_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Classes_Action.php) with normalized section and track matching so newly assigned subjects immediately enroll all active students of the matching grade and section.
+  - **Automated Regression Suite**: Created [`tests/Sf1SubjectRosterEnrollmentTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/Sf1SubjectRosterEnrollmentTest.php) verifying Grade 11 Humility SF1 import into Filipino class subject roster, multi-subject section enrollment, idempotent re-import without duplicates, and empty class section handling (5 tests, 19 assertions; all 186 tests passing in full suite).
+
 ## v0.3.133 — 2026-09-02
 
 ### Admin & Core

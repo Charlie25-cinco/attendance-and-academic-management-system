@@ -386,23 +386,59 @@ function syncStudentEnrollments(PDO $db, int $studentId, int $gradeLevel, string
     $academicYear = $academicYear ?: currentAcademicYear();
     $curriculum = strengthenedShsCurriculum($gradeLevel, $academicYear);
     $program = strengthenedShsProgram($gradeLevel, $track, $academicYear);
+    $semester = $curriculum === 'strengthened_shs' ? null : 1;
 
-    $sql = "SELECT id FROM classes WHERE grade_level = ? AND section = ? AND status = 'active'";
-    $params = [$gradeLevel, $section];
-    if ($track) { $sql .= " AND track = ?"; $params[] = $track; }
+    $sectionTrimmed = trim((string)$section);
+    if ($sectionTrimmed === '' || $gradeLevel <= 0 || $studentId <= 0) {
+        return;
+    }
+
+    $driver = (string)$db->getAttribute(PDO::ATTR_DRIVER_NAME);
+    if ($driver === 'sqlite') {
+        $sectionSql = "(LOWER(TRIM(COALESCE(section, ''))) = LOWER(TRIM(COALESCE(?, ''))))";
+        $params = [$gradeLevel, $sectionTrimmed];
+    } else {
+        $sectionSql = sectionMatchSql('section');
+        $params = [$gradeLevel, $sectionTrimmed, $sectionTrimmed];
+    }
+
+    $sql = "SELECT id, curriculum, program FROM classes
+            WHERE grade_level = ?
+              AND {$sectionSql}
+              AND status = 'active'";
+
+    if ($track !== null && trim($track) !== '') {
+        $sql .= " AND (track IS NULL OR TRIM(track) = '' OR LOWER(TRIM(track)) = LOWER(TRIM(?)))";
+        $params[] = trim($track);
+    }
+
     $classStmt = $db->prepare($sql);
     $classStmt->execute($params);
-    $classIds = array_map('intval', $classStmt->fetchAll(PDO::FETCH_COLUMN));
+    $classes = $classStmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $deleteStmt = $db->prepare("DELETE FROM enrollments WHERE student_id = ? AND academic_year = ?");
-    $deleteStmt->execute([$studentId, $academicYear]);
+    if (empty($classes)) {
+        return;
+    }
 
-    if (empty($classIds)) { return; }
+    $checkStmt = $db->prepare("SELECT id, status FROM enrollments WHERE student_id = ? AND class_id = ? AND academic_year = ? LIMIT 1");
+    $insertStmt = $db->prepare("INSERT INTO enrollments (student_id, class_id, academic_year, semester, curriculum, program, status, enrolled_at) VALUES (?, ?, ?, ?, ?, ?, 'enrolled', ?)");
+    $reactivateStmt = $db->prepare("UPDATE enrollments SET status = 'enrolled' WHERE id = ?");
+    $now = date('Y-m-d H:i:s');
 
-    $semester = $curriculum === 'strengthened_shs' ? null : 1;
-    $insertStmt = $db->prepare("INSERT INTO enrollments (student_id, class_id, academic_year, semester, curriculum, program, status, enrolled_at) VALUES (?, ?, ?, ?, ?, ?, 'enrolled', NOW())");
-    foreach ($classIds as $classId) {
-        $insertStmt->execute([$studentId, $classId, $academicYear, $semester, $curriculum, $program]);
+    foreach ($classes as $class) {
+        $classId = (int)$class['id'];
+        $classCurriculum = !empty($class['curriculum']) ? $class['curriculum'] : $curriculum;
+        $classProgram = !empty($class['program']) ? $class['program'] : $program;
+        $classSemester = $classCurriculum === 'strengthened_shs' ? null : $semester;
+
+        $checkStmt->execute([$studentId, $classId, $academicYear]);
+        $existing = $checkStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$existing) {
+            $insertStmt->execute([$studentId, $classId, $academicYear, $classSemester, $classCurriculum, $classProgram, $now]);
+        } elseif (($existing['status'] ?? '') !== 'enrolled') {
+            $reactivateStmt->execute([(int)$existing['id']]);
+        }
     }
 }
 
