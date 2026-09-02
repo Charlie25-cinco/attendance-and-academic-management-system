@@ -2,6 +2,17 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.144 — 2026-09-02
+
+### Fixed
+
+- **Multi-Parent/Guardian Support for SF1 Import**:
+  - **Multi-Parent Auto-Linking (`autoLinkSf1Parents`)**: Updated [`functions/app-helpers.php`](file:///c:/laragon/www/attendance-and-academic-management-system/functions/app-helpers.php) to evaluate all populated parent/guardian candidates (`father_name`, `mother_name`, `guardian_name`, `parent_name`) in an SF1 row rather than stopping at the first non-empty value.
+  - **Parent Deduplication & Relationship Integrity**: Handled in-row name deduplication, queried existing parent accounts by name to prevent cross-account overwriting when sharing home phone numbers, generated distinct parent accounts with appropriate gender/relationship metadata, and linked each parent to the student.
+  - **Schema Constraint Refinement**: Removed single-parent constraint `uq_student_single_parent (student_id)` from `parent_students` in [`database/schema.sql`](file:///c:/laragon/www/attendance-and-academic-management-system/database/schema.sql), keeping composite key `uq_parent_student (parent_id, student_id)` to allow multiple parents per student while preventing duplicate links.
+  - **Import Commit Tracking**: Updated `commitSf1Students()` in [`admin/admin_SF1_Import_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_SF1_Import_Action.php) to call `autoLinkSf1Parents()` and accurately tally `parents_created` and `parents_linked` across multi-parent rows.
+  - **Automated Regression Testing**: Created [`tests/Sf1MultiParentAutoCreationTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/Sf1MultiParentAutoCreationTest.php) and updated [`tests/Sf1ParentAutoCreationTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/Sf1ParentAutoCreationTest.php) covering father-only, mother-only, father+mother, father+mother+guardian, sibling reuse, and legacy helper compatibility.
+
 ## v0.3.143 — 2026-09-02
 
 ### Changed

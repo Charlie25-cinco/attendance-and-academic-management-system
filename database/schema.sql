@@ -335,7 +335,6 @@ CREATE TABLE IF NOT EXISTS parent_students (
     FOREIGN KEY (parent_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE KEY uq_parent_student (parent_id, student_id),
-    UNIQUE KEY uq_student_single_parent (student_id),
     KEY idx_parent_students_parent (parent_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

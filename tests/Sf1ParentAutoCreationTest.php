@@ -38,8 +38,7 @@ final class Sf1ParentAutoCreationTest extends TestCase
             parent_id INTEGER NOT NULL,
             student_id INTEGER NOT NULL,
             relationship TEXT NULL,
-            UNIQUE(parent_id, student_id),
-            UNIQUE(student_id)
+            UNIQUE(parent_id, student_id)
         )");
     }
 

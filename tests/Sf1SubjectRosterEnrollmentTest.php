@@ -139,8 +139,7 @@ final class Sf1SubjectRosterEnrollmentTest extends TestCase
             parent_id INTEGER NOT NULL,
             student_id INTEGER NOT NULL,
             relationship TEXT NULL,
-            UNIQUE(parent_id, student_id),
-            UNIQUE(student_id)
+            UNIQUE(parent_id, student_id)
         )");
     }
 
@@ -493,12 +492,12 @@ final class Sf1SubjectRosterEnrollmentTest extends TestCase
             $this->assertSame(0, $secondCommitResult['sections_created']);
             $this->assertSame(0, $secondCommitResult['errors']);
 
-            // Verify strictly idempotent: 1 section, 3 users (1 teacher, 1 student, 1 parent), 1 enrollment with identical ID and timestamp
+            // Verify strictly idempotent: 1 section, 4 users (1 teacher, 1 student, 2 parents), 1 enrollment with identical ID and timestamp
             $this->assertSame(1, (int)$this->db->query("SELECT COUNT(*) FROM sections")->fetchColumn());
-            $this->assertSame(3, (int)$this->db->query("SELECT COUNT(*) FROM users")->fetchColumn());
+            $this->assertSame(4, (int)$this->db->query("SELECT COUNT(*) FROM users")->fetchColumn());
             $this->assertSame(1, (int)$this->db->query("SELECT COUNT(*) FROM users WHERE role = 'student'")->fetchColumn());
             $this->assertSame(1, (int)$this->db->query("SELECT COUNT(*) FROM users WHERE role = 'teacher'")->fetchColumn());
-            $this->assertSame(1, (int)$this->db->query("SELECT COUNT(*) FROM users WHERE role = 'parent'")->fetchColumn());
+            $this->assertSame(2, (int)$this->db->query("SELECT COUNT(*) FROM users WHERE role = 'parent'")->fetchColumn());
             $this->assertSame(1, (int)$this->db->query("SELECT COUNT(*) FROM enrollments WHERE student_id = {$studentId} AND class_id = 15")->fetchColumn());
 
             $afterEnrollment = $this->db->query("SELECT id, enrolled_at FROM enrollments WHERE student_id = {$studentId} AND class_id = 15")->fetch(PDO::FETCH_ASSOC);

@@ -645,13 +645,17 @@ function commitSf1Students(PDO $db, array $students, string $academicYear = '202
             $parentInfoMsg = '';
             if ($newUserId > 0) {
                 syncStudentEnrollments($db, $newUserId, $gradeLevel, $canonicalSection, $track, $academicYear);
-                $parentLink = autoLinkSf1Parent($db, $newUserId, $row, $academicYear, $hashedPassword);
-                if ($parentLink !== null) {
-                    if ($parentLink['is_new']) {
-                        $results['parents_created']++;
+                $parentLinks = autoLinkSf1Parents($db, $newUserId, $row, $academicYear, $hashedPassword);
+                if (!empty($parentLinks)) {
+                    $parentRefCodes = [];
+                    foreach ($parentLinks as $pLink) {
+                        if (!empty($pLink['is_new'])) {
+                            $results['parents_created']++;
+                        }
+                        $results['parents_linked']++;
+                        $parentRefCodes[] = $pLink['parent_ref_code'];
                     }
-                    $results['parents_linked']++;
-                    $parentInfoMsg = ' | Parent account linked (' . $parentLink['parent_ref_code'] . ')';
+                    $parentInfoMsg = ' | Parent account(s) linked (' . implode(', ', $parentRefCodes) . ')';
                 }
             }
 

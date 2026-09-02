@@ -72,19 +72,18 @@ final class Sf1ImportPreviewTest extends TestCase
             parent_id INTEGER NOT NULL,
             student_id INTEGER NOT NULL,
             relationship TEXT NULL,
-            UNIQUE(parent_id, student_id),
-            UNIQUE(student_id)
+            UNIQUE(parent_id, student_id)
         )");
 
         $this->db->exec("CREATE TABLE admin_audit_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NULL,
-            action_name TEXT NOT NULL,
+            admin_id INTEGER,
+            action TEXT NOT NULL,
             target_type TEXT NOT NULL,
-            target_id INTEGER NULL,
-            details TEXT NULL,
-            ip_address TEXT NULL,
-            user_agent TEXT NULL,
+            target_id INTEGER,
+            details TEXT,
+            ip_address TEXT,
+            user_agent TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )");
     }
@@ -133,7 +132,7 @@ final class Sf1ImportPreviewTest extends TestCase
         $this->assertStringContainsString("\$action === 'commit'", $action);
         $this->assertStringContainsString('parseSf1UploadedFile(', $action);
         $this->assertStringContainsString('ensureSf1Section(', $action);
-        $this->assertStringContainsString('autoLinkSf1Parent(', $action);
+        $this->assertStringContainsString('autoLinkSf1Parents(', $action);
         $this->assertStringContainsString('recordAdminAuditLog(', $action);
     }
 
@@ -216,8 +215,8 @@ final class Sf1ImportPreviewTest extends TestCase
             $studentId = (int)$this->db->lastInsertId();
 
             // Link parent
-            $parentLink = autoLinkSf1Parent($this->db, $studentId, $s, $academicYear, $hashedPassword);
-            $this->assertNotNull($parentLink);
+            $parentLinks = autoLinkSf1Parents($this->db, $studentId, $s, $academicYear, $hashedPassword);
+            $this->assertNotEmpty($parentLinks);
             $createdCount++;
         }
 
@@ -228,10 +227,10 @@ final class Sf1ImportPreviewTest extends TestCase
         $this->assertSame(2, $studentCount);
 
         $parentCount = (int)$this->db->query("SELECT COUNT(*) FROM users WHERE role = 'parent'")->fetchColumn();
-        $this->assertSame(2, $parentCount);
+        $this->assertSame(4, $parentCount);
 
         $linkCount = (int)$this->db->query("SELECT COUNT(*) FROM parent_students")->fetchColumn();
-        $this->assertSame(2, $linkCount);
+        $this->assertSame(4, $linkCount);
 
         $sectionCount = (int)$this->db->query("SELECT COUNT(*) FROM sections WHERE name = 'STEM-A'")->fetchColumn();
         $this->assertSame(1, $sectionCount);
