@@ -71,7 +71,14 @@ class UserValidationHelper
             $grade = trim((string)($row['grade_level'] ?? ''));
             $section = trim((string)($row['section'] ?? ''));
             $teacherName = trim((string)($row['first_name'] ?? '') . ' ' . (string)($row['last_name'] ?? ''));
-            $suffix = ($grade !== '' && $section !== '') ? " (G{$grade} - {$section})" : '';
+            $details = [];
+            if ($grade !== '') {
+                $details[] = stripos($grade, 'Grade') === 0 ? $grade : "Grade {$grade}";
+            }
+            if ($section !== '') {
+                $details[] = stripos($section, 'Section') === 0 ? $section : "Section {$section}";
+            }
+            $suffix = !empty($details) ? ' (' . implode(' - ', $details) . ')' : '';
             $owner = $teacherName !== '' ? " - {$teacherName}" : '';
             $conflicts[$classId] = $subject . $suffix . $owner;
         }

@@ -690,19 +690,45 @@ function getStudentParentConflicts($db, $studentIds, $excludeParentId = 0) {
 }
 
 
+function formatClassScheduleLabel(array $classInfo, string $suffix = ''): string {
+    $name = trim((string)($classInfo['class_name'] ?? 'Class'));
+    $grade = trim((string)($classInfo['grade_level'] ?? ''));
+    $section = trim((string)($classInfo['section'] ?? ''));
+    $details = [];
+    if ($grade !== '') {
+        $details[] = stripos($grade, 'Grade') === 0 ? $grade : "Grade {$grade}";
+    }
+    if ($section !== '') {
+        $details[] = stripos($section, 'Section') === 0 ? $section : "Section {$section}";
+    }
+    $label = $name;
+    if (!empty($details)) {
+        $label .= ' (' . implode(' - ', $details) . ')';
+    }
+    if ($suffix !== '') {
+        $label .= " ({$suffix})";
+    }
+    return $label;
+}
+
 function checkScheduleConflicts($db, $teacherId, $newClassIds) {
     // Get schedules for new classes
     $placeholders = implode(',', array_fill(0, count($newClassIds), '?'));
-    $stmt = $db->prepare("SELECT id, class_name, schedule FROM classes WHERE id IN ($placeholders) AND status = 'active'");
+    $stmt = $db->prepare("SELECT id, class_name, grade_level, section, schedule FROM classes WHERE id IN ($placeholders) AND status = 'active'");
     $stmt->execute($newClassIds);
     $newClasses = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Parse new class schedules
     $newSchedules = [];
     foreach ($newClasses as $class) {
-        $segments = parseSchedule($class['schedule']);
+        $segments = parseSchedule($class['schedule'] ?? '');
         if (!empty($segments)) {
-            $newSchedules[$class['id']] = ['class_name' => $class['class_name'], 'segments' => $segments];
+            $newSchedules[$class['id']] = [
+                'class_name' => $class['class_name'] ?? '',
+                'grade_level' => $class['grade_level'] ?? '',
+                'section' => $class['section'] ?? '',
+                'segments' => $segments
+            ];
         }
     }
     
@@ -711,13 +737,15 @@ function checkScheduleConflicts($db, $teacherId, $newClassIds) {
         foreach ($newSchedules as $id2 => $sched2) {
             if ($id1 >= $id2) continue;
             if (hasTimeConflict($sched1, $sched2)) {
-                return "Schedule conflict: {$sched1['class_name']} overlaps with {$sched2['class_name']}";
+                $label1 = formatClassScheduleLabel($sched1);
+                $label2 = formatClassScheduleLabel($sched2);
+                return "Schedule conflict: {$label1} overlaps with {$label2}";
             }
         }
     }
     
     // Get teacher's existing classes (excluding the ones being updated)
-    $existingStmt = $db->prepare("SELECT c.id, c.class_name, c.schedule FROM class_subjects cs 
+    $existingStmt = $db->prepare("SELECT c.id, c.class_name, c.grade_level, c.section, c.schedule FROM class_subjects cs 
                                   JOIN classes c ON cs.class_id = c.id 
                                   WHERE cs.teacher_id = ? AND c.status = 'active'");
     $existingStmt->execute([$teacherId]);
@@ -728,12 +756,14 @@ function checkScheduleConflicts($db, $teacherId, $newClassIds) {
         // Skip if this class is being re-assigned (in the new list)
         if (in_array($existing['id'], $newClassIds)) continue;
         
-        $existingSchedule = parseSchedule($existing['schedule']);
+        $existingSchedule = parseSchedule($existing['schedule'] ?? '');
         if (empty($existingSchedule)) continue;
         
         foreach ($newSchedules as $newId => $newSchedule) {
             if (hasTimeConflict(['segments' => $existingSchedule], $newSchedule)) {
-                return "Schedule conflict: {$existing['class_name']} (existing) overlaps with {$newSchedule['class_name']} (new)";
+                $exLabel = formatClassScheduleLabel($existing, 'existing');
+                $newLabel = formatClassScheduleLabel($newSchedule, 'new');
+                return "Schedule conflict: {$exLabel} overlaps with {$newLabel}";
             }
         }
     }
@@ -744,16 +774,21 @@ function checkScheduleConflicts($db, $teacherId, $newClassIds) {
 function checkScheduleConflictsForNewTeacher($db, $teacherId, $newClassIds) {
     // For new teachers, just check conflicts among the new classes being assigned
     $placeholders = implode(',', array_fill(0, count($newClassIds), '?'));
-    $stmt = $db->prepare("SELECT id, class_name, schedule FROM classes WHERE id IN ($placeholders) AND status = 'active'");
+    $stmt = $db->prepare("SELECT id, class_name, grade_level, section, schedule FROM classes WHERE id IN ($placeholders) AND status = 'active'");
     $stmt->execute($newClassIds);
     $newClasses = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Parse new class schedules
     $newSchedules = [];
     foreach ($newClasses as $class) {
-        $segments = parseSchedule($class['schedule']);
+        $segments = parseSchedule($class['schedule'] ?? '');
         if (!empty($segments)) {
-            $newSchedules[$class['id']] = ['class_name' => $class['class_name'], 'segments' => $segments];
+            $newSchedules[$class['id']] = [
+                'class_name' => $class['class_name'] ?? '',
+                'grade_level' => $class['grade_level'] ?? '',
+                'section' => $class['section'] ?? '',
+                'segments' => $segments
+            ];
         }
     }
     
@@ -762,7 +797,9 @@ function checkScheduleConflictsForNewTeacher($db, $teacherId, $newClassIds) {
         foreach ($newSchedules as $id2 => $sched2) {
             if ($id1 >= $id2) continue;
             if (hasTimeConflict($sched1, $sched2)) {
-                return "Schedule conflict: {$sched1['class_name']} overlaps with {$sched2['class_name']}";
+                $label1 = formatClassScheduleLabel($sched1);
+                $label2 = formatClassScheduleLabel($sched2);
+                return "Schedule conflict: {$label1} overlaps with {$label2}";
             }
         }
     }

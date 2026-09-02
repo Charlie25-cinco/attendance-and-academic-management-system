@@ -2,6 +2,15 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.133 — 2026-09-02
+
+### Admin & Core
+
+- **Clarified Schedule Conflict Messages with Specific Grade and Section**:
+  - **Contextual Schedule Conflict Reporting**: Updated `checkScheduleConflicts()` and `checkScheduleConflictsForNewTeacher()` in [`admin/admin_Users_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Users_Action.php) via `formatClassScheduleLabel()` to include the exact `Grade <X>` and `Section <Y>` details for both conflicting classes (e.g., `Schedule conflict: Life And Career Skills (Grade 7 - Section A) overlaps with Life And Career Skills (Grade 7 - Section B)`).
+  - **Consistent Suffix Formatting in Subject Conflicts**: Updated `getTeacherSubjectConflicts()` in [`src/User/UserValidationHelper.php`](file:///c:/laragon/www/attendance-and-academic-management-system/src/User/UserValidationHelper.php) to consistently format grade and section labels with standard `(Grade <X> - Section <Y>)` notation.
+  - **Automated Regression Suite**: Created [`tests/TeacherScheduleConflictMessageTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/TeacherScheduleConflictMessageTest.php) verifying message format precision across new-teacher assignment, existing-teacher assignment, non-overlapping schedules, and subject conflicts (all 181 tests in full suite passing).
+
 ## v0.3.132 — 2026-09-02
 
 ### Admin & UI/UX
