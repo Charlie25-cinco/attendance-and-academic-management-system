@@ -41,4 +41,21 @@ final class PerformanceOptimizationTest extends TestCase
         $storageJs = file_get_contents(__DIR__ . '/../assets/js/offlineStorage.js');
         $this->assertStringContainsString('bshs-ams-v36', $storageJs);
     }
+
+    public function testMainCssHasZeroBlockingImports(): void
+    {
+        $mainCss = file_get_contents(__DIR__ . '/../assets/css/main.css');
+        $this->assertIsString($mainCss);
+        $this->assertStringNotContainsString('@import', $mainCss);
+        $this->assertStringContainsString('notification-toast', $mainCss);
+    }
+
+    public function testPwaHeadIncludesFontPreconnect(): void
+    {
+        $constants = file_get_contents(__DIR__ . '/../config/constants.php');
+        $this->assertIsString($constants);
+        $this->assertStringContainsString('preconnect', $constants);
+        $this->assertStringContainsString('fonts.googleapis.com', $constants);
+        $this->assertStringContainsString('fonts.gstatic.com', $constants);
+    }
 }

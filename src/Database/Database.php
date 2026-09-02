@@ -63,23 +63,13 @@ class Database
     public function getConnection()
     {
         if (self::$sharedConnection instanceof PDO) {
-            try {
-                self::$sharedConnection->query('SELECT 1');
-                $this->connection = self::$sharedConnection;
-                return $this->connection;
-            } catch (PDOException $e) {
-                self::$sharedConnection = null;
-            }
+            $this->connection = self::$sharedConnection;
+            return $this->connection;
         }
 
         if ($this->connection instanceof PDO) {
-            try {
-                $this->connection->query('SELECT 1');
-                self::$sharedConnection = $this->connection;
-                return $this->connection;
-            } catch (PDOException $e) {
-                $this->connection = null;
-            }
+            self::$sharedConnection = $this->connection;
+            return $this->connection;
         }
 
         try {

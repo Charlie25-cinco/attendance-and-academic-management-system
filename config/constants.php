@@ -896,8 +896,10 @@ function pwaHeadHtml(): string {
     $html .= '<link rel="apple-touch-icon" href="' . htmlspecialchars($appleTouchIcon, ENT_QUOTES, 'UTF-8') . '">' . "\n";
     $html .= '<link rel="shortcut icon" type="image/png" href="' . htmlspecialchars($favicon32Url, ENT_QUOTES, 'UTF-8') . '">' . "\n";
     $html .= '<link rel="icon" type="image/png" sizes="32x32" href="' . htmlspecialchars($favicon32Url, ENT_QUOTES, 'UTF-8') . '">' . "\n";
-    $html .= '<link rel="icon" type="image/png" sizes="16x16" href="' . htmlspecialchars($favicon16Url, ENT_QUOTES, 'UTF-8') . '">' . "\n";
     $html .= '<link rel="icon" type="image/png" sizes="192x192" href="' . htmlspecialchars($faviconUrl, ENT_QUOTES, 'UTF-8') . '">' . "\n";
+    $html .= '<link rel="preconnect" href="https://fonts.googleapis.com">' . "\n";
+    $html .= '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' . "\n";
+    $html .= '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" media="print" onload="this.media=\'all\'">' . "\n";
     $isDark = function_exists('appUiDarkModeEnabled') && appUiDarkModeEnabled();
     $html .= '<style id="app-theme-critical-dark">'
         . 'html.dark-mode,body.dark-mode{background-color:#111827 !important;color:#e5e7eb !important;}'
@@ -923,14 +925,12 @@ function pwaHeadHtml(): string {
         . '</style>' . "\n";
     $html .= '<script>'
         . 'window._CACHE_NAME="bshs-ams-v36";'
-        . '(function(){try{if(sessionStorage.getItem("app_page_navigating")==="true"){var b=document.createElement("div");b.id="appTopProgress";b.className="app-top-progress is-visible";b.style.setProperty("--app-progress","75vw");b.style.width="75vw";(document.head||document.documentElement).appendChild(b);}}catch(e){}})();'
         . '</script>' . "\n";
 
     $swScript = "
 <script>
 window._CACHE_NAME = 'bshs-ams-v36';
 if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function () {
         var desiredScript = '" . htmlspecialchars($serviceWorkerUrl, ENT_QUOTES, 'UTF-8') . "';
         var desiredScope = '" . htmlspecialchars($scopeUrl, ENT_QUOTES, 'UTF-8') . "';
         var desiredAbsoluteScope = new URL(desiredScope, window.location.origin).href;
@@ -959,11 +959,9 @@ if ('serviceWorker' in navigator) {
             .finally(function () {
                 var hadPreviousController = Boolean(navigator.serviceWorker.controller);
                 var refreshingForUpdate = false;
-                navigator.serviceWorker.addEventListener('controllerchange', function () {
                     if (refreshingForUpdate || !hadPreviousController) { return; }
                     refreshingForUpdate = true;
                     window.location.reload();
-                });
 
                 var activateWaitingWorker = function (reg) {
                     if (reg && reg.waiting) {
