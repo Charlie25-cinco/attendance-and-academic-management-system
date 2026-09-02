@@ -55,6 +55,16 @@ if ($db) {
         $availableTeachers = $teacherStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
+    $availableSubjects = [];
+    if (dbHasTable($db, 'subjects')) {
+        $subjectRows = $db->query("SELECT id, subject_name, subject_code, subject_category, track, grade_level
+                                   FROM subjects
+                                   ORDER BY subject_name ASC");
+        if ($subjectRows) {
+            $availableSubjects = $subjectRows->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        }
+    }
+
     $sectionRows = $db->query("SELECT DISTINCT grade_level, section
                                FROM classes
                                WHERE TRIM(COALESCE(section, '')) <> ''
@@ -342,7 +352,13 @@ $page_title = 'Manage Classes';
                                 <div class="row">
                                     <div class="col-lg-6 mb-3">
                                         <label class="form-label">Subject Name <span class="text-danger">*</span></label>
-                                        <input type="text" id="addSubjectNameInput" name="class_name" class="form-control" placeholder="Enter subject name" required>
+                                        <input type="text" id="addSubjectNameInput" name="class_name" class="form-control" placeholder="Enter or select subject name" list="registeredSubjectsList" required autocomplete="off">
+                                        <datalist id="registeredSubjectsList">
+                                            <?php foreach ($availableSubjects as $subj): ?>
+                                                <option value="<?php echo htmlspecialchars($subj['subject_name']); ?>" data-category="<?php echo htmlspecialchars($subj['subject_category'] ?? ''); ?>" data-track="<?php echo htmlspecialchars($subj['track'] ?? ''); ?>" data-grade="<?php echo htmlspecialchars((string)($subj['grade_level'] ?? '')); ?>"><?php echo htmlspecialchars($subj['subject_code'] . ' - ' . $subj['subject_name']); ?></option>
+                                            <?php endforeach; ?>
+                                        </datalist>
+                                        <small class="text-muted">Type custom name or choose from standard DepEd subjects to auto-fill category.</small>
                                     </div>
                                     <div class="col-lg-6 mb-3">
                                         <label class="form-label">Subject Category <span class="text-danger">*</span></label>
@@ -360,28 +376,36 @@ $page_title = 'Manage Classes';
                                     </div>
                                 </div>
                                 <div class="row">
-                                    <div class="col-md-4 mb-3">
-                                        <label class="form-label">Track</label>
-                                        <select name="track" id="classTrack" class="form-select" onchange="updateSections()">
-                                            <option value="">Select Track</option>
-                                            <option value="academic">Academic</option>
-                                            <option value="techpro">TechPro</option>
-                                        </select>
-                                        <small class="text-muted">Grade 11 Academic maps to Academic Track (Strengthened); TechPro maps to Technical Professional.</small>
-                                    </div>
-                                    <div class="col-md-4 mb-3">
+                                    <div class="col-md-6 mb-3">
                                         <label class="form-label">Grade Level <span class="text-danger">*</span></label>
                                         <select name="grade_level" id="gradeLevel" class="form-select" required onchange="updateSections()">
-                                            <option value="">Select</option>
+                                            <option value="">Select Grade Level</option>
                                             <option value="11">Grade 11</option>
                                             <option value="12">Grade 12</option>
                                         </select>
                                     </div>
-                                    <div class="col-md-4 mb-0">
-                                        <label class="form-label">Section <span class="text-danger">*</span></label>
-                                        <select name="section" id="sectionSelect" class="form-select" required disabled>
-                                            <option value="">Select Grade Level First</option>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Track</label>
+                                        <select name="track" id="classTrack" class="form-select" onchange="updateSections()">
+                                            <option value="">All / Select Track</option>
+                                            <option value="academic">Academic</option>
+                                            <option value="techpro">TechPro</option>
                                         </select>
+                                        <small class="text-muted">Grade 11 Academic maps to Academic Track; TechPro maps to Technical Professional.</small>
+                                    </div>
+                                </div>
+                                <div class="row mb-1">
+                                    <div class="col-12">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <label class="form-label mb-0 fw-semibold">Target Section(s) <span class="text-danger">*</span></label>
+                                            <div id="sectionSelectAllWrap" style="display: none;">
+                                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" id="selectAllSectionsBtn" style="font-size: 11px;" onclick="toggleAllSections()">Select All</button>
+                                            </div>
+                                        </div>
+                                        <div id="sectionCheckboxesContainer" class="p-3 border rounded bg-light d-flex flex-wrap gap-2 align-items-center" style="min-height: 50px;">
+                                            <span class="text-muted small"><i class="bi bi-info-circle me-1"></i>Please select Grade Level first to view sections.</span>
+                                        </div>
+                                        <small class="text-muted d-block mt-1">Check one or multiple sections to create this subject class for all of them at once.</small>
                                     </div>
                                 </div>
                                 <div class="row mt-3">
@@ -523,11 +547,12 @@ $page_title = 'Manage Classes';
             const form = document.getElementById('addClassForm');
             if (form) form.reset();
 
-            const sectionSelect = document.getElementById('sectionSelect');
-            if (sectionSelect) {
-                sectionSelect.disabled = true;
-                sectionSelect.innerHTML = '<option value="">Select Grade & Track First</option>';
+            const container = document.getElementById('sectionCheckboxesContainer');
+            if (container) {
+                container.innerHTML = '<span class="text-muted small"><i class="bi bi-info-circle me-1"></i>Please select Grade Level first to view sections.</span>';
             }
+            const toggleWrap = document.getElementById('sectionSelectAllWrap');
+            if (toggleWrap) toggleWrap.style.display = 'none';
 
             const scheduleRows = document.getElementById('scheduleRows');
             if (scheduleRows) {
@@ -546,30 +571,52 @@ $page_title = 'Manage Classes';
         }
         
         function updateSections() {
-            const gradeLevel = document.getElementById('gradeLevel').value;
-            const track = document.getElementById('classTrack').value;
-            const sectionSelect = document.getElementById('sectionSelect');
+            const gradeLevel = document.getElementById('gradeLevel')?.value;
+            const track = document.getElementById('classTrack')?.value;
+            const container = document.getElementById('sectionCheckboxesContainer');
+            const toggleWrap = document.getElementById('sectionSelectAllWrap');
+            if (!container) return;
 
-            sectionSelect.innerHTML = '';
+            container.innerHTML = '';
 
             if (gradeLevel) {
                 const list = getSectionsFor(gradeLevel, track);
-                sectionSelect.disabled = !list.length;
                 if (list.length) {
-                    sectionSelect.innerHTML = '<option value="">Select Section</option>';
-                    list.forEach(section => {
-                        const option = document.createElement('option');
-                        option.value = section.value;
-                        option.textContent = section.label;
-                        sectionSelect.appendChild(option);
+                    if (toggleWrap) toggleWrap.style.display = 'block';
+                    list.forEach((section, idx) => {
+                        const pill = document.createElement('div');
+                        pill.className = 'form-check form-check-inline m-0 border px-3 py-1 rounded bg-white shadow-sm';
+                        pill.innerHTML = `
+                            <input class="form-check-input section-checkbox" type="checkbox" name="sections[]" value="${section.value}" id="sec_cb_${idx}">
+                            <label class="form-check-label fw-medium ms-1" for="sec_cb_${idx}" style="cursor: pointer;">
+                                ${section.label}
+                            </label>
+                        `;
+                        container.appendChild(pill);
                     });
+                    if (list.length === 1) {
+                        const singleCb = container.querySelector('.section-checkbox');
+                        if (singleCb) singleCb.checked = true;
+                    }
+                    const btn = document.getElementById('selectAllSectionsBtn');
+                    if (btn) btn.textContent = 'Select All';
                 } else {
-                    sectionSelect.innerHTML = '<option value="">No sections available</option>';
+                    if (toggleWrap) toggleWrap.style.display = 'none';
+                    container.innerHTML = '<span class="text-muted small"><i class="bi bi-exclamation-circle me-1"></i>No sections found for this Grade & Track.</span>';
                 }
             } else {
-                sectionSelect.disabled = true;
-                sectionSelect.innerHTML = '<option value="">Select Grade & Track First</option>';
+                if (toggleWrap) toggleWrap.style.display = 'none';
+                container.innerHTML = '<span class="text-muted small"><i class="bi bi-info-circle me-1"></i>Please select Grade Level first to view sections.</span>';
             }
+        }
+
+        function toggleAllSections() {
+            const checkboxes = document.querySelectorAll('.section-checkbox');
+            if (!checkboxes.length) return;
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            checkboxes.forEach(cb => { cb.checked = !allChecked; });
+            const btn = document.getElementById('selectAllSectionsBtn');
+            if (btn) btn.textContent = allChecked ? 'Select All' : 'Deselect All';
         }
 
         document.addEventListener('DOMContentLoaded', function () {
@@ -627,6 +674,7 @@ $page_title = 'Manage Classes';
             return value.replace(/\b\w/g, ch => ch.toUpperCase());
         }
 
+        const registeredSubjects = <?php echo json_encode($availableSubjects ?? []); ?>;
         const addSubjectNameInput = document.getElementById('addSubjectNameInput');
         if (addSubjectNameInput) {
             addSubjectNameInput.addEventListener('input', function () {
@@ -634,6 +682,29 @@ $page_title = 'Manage Classes';
                 const end = this.selectionEnd;
                 this.value = toTitleCaseWords(this.value);
                 this.setSelectionRange(start, end);
+            });
+            addSubjectNameInput.addEventListener('change', function () {
+                const val = (this.value || '').trim().toLowerCase();
+                if (!val || !Array.isArray(registeredSubjects)) return;
+                const match = registeredSubjects.find(s => (s.subject_name || '').toLowerCase() === val || (s.subject_code || '').toLowerCase() === val);
+                if (match) {
+                    this.value = match.subject_name;
+                    const catSelect = document.getElementById('subjectCategorySelect');
+                    if (catSelect && match.subject_category) {
+                        catSelect.value = match.subject_category;
+                        onSubjectCategoryChange(catSelect);
+                    }
+                    const trackSelect = document.getElementById('classTrack');
+                    if (trackSelect && match.track) {
+                        trackSelect.value = match.track;
+                        updateSections();
+                    }
+                    const gradeSelect = document.getElementById('gradeLevel');
+                    if (gradeSelect && match.grade_level && !gradeSelect.value) {
+                        gradeSelect.value = String(match.grade_level);
+                        updateSections();
+                    }
+                }
             });
         }
 
@@ -804,15 +875,19 @@ $page_title = 'Manage Classes';
             const createClassBtn = document.getElementById('createClassBtn');
             const className = toTitleCaseWords((formData.get('class_name') || '').toString().trim());
             const gradeLevel = (formData.get('grade_level') || '').toString().trim();
-            const section = (formData.get('section') || '').toString().trim();
+            
+            const checkedSections = Array.from(document.querySelectorAll('.section-checkbox:checked')).map(cb => cb.value.trim()).filter(Boolean);
 
-            if (!className || !gradeLevel || !section) {
-                showNotification('Subject name, grade level, and section are required', 'warning');
+            if (!className || !gradeLevel || checkedSections.length === 0) {
+                showNotification('Subject name, grade level, and at least one target section are required', 'warning');
                 return;
             }
 
             formData.set('class_name', className);
-            formData.set('section', section);
+            formData.delete('sections[]');
+            checkedSections.forEach(sec => formData.append('sections[]', sec));
+            formData.set('section', checkedSections[0]);
+
             const ww = parseFloat(formData.get('ww_weight') || '0');
             const pt = parseFloat(formData.get('pt_weight') || '0');
             const qa = parseFloat(formData.get('assessment_weight') || '0');
@@ -830,7 +905,7 @@ $page_title = 'Manage Classes';
 
             if (createClassBtn) {
                 createClassBtn.disabled = true;
-                createClassBtn.textContent = 'Creating...';
+                createClassBtn.textContent = checkedSections.length > 1 ? `Creating (${checkedSections.length} Sections)...` : 'Creating Class...';
             }
             
             fetch('admin_Classes_Action.php?action=create', {

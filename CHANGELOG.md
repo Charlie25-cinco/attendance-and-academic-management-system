@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.118 — 2026-09-02
+
+### Admin & Feature
+
+- **Multi-Section Batch Class Creation & Subject Registry Autocomplete**:
+  - Implemented multi-section selection with an instant **"Select All"** toggle in the Admin "Add Class" modal ([`admin/admin_Classes.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Classes.php)), enabling administrators to create a subject offering for multiple sections simultaneously in one click.
+  - Connected Subject Name input to DepEd subject registry suggestions via `<datalist id="registeredSubjectsList">`, auto-populating subject category, track, and official grading weights.
+  - Enhanced `createClass` in [`admin/admin_Classes_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Classes_Action.php) to batch-insert classes, assign teachers, configure schedules, sync student enrollments, and report detailed created/skipped summaries.
+  - Added unit test suite in [`tests/AdminClassMultiSectionTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/AdminClassMultiSectionTest.php) (total test suite at 160 tests).
+
 ## v0.3.117 — 2026-09-02
 
 ### UI & Refinement

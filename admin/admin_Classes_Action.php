@@ -314,6 +314,14 @@ function createClass($db) {
             echo json_encode(['success' => false, 'message' => 'Please add at least one schedule row']);
             return;
         }
+        // Support both multi-section array and single section string
+        $sections = [];
+        if (isset($_POST['sections']) && is_array($_POST['sections'])) {
+            $sections = array_values(array_unique(array_filter(array_map('trim', $_POST['sections']))));
+        } elseif (isset($_POST['section']) && trim((string)$_POST['section']) !== '') {
+            $sections = [trim((string)$_POST['section'])];
+        }
+
         $schedule = scheduleSummaryFromSegments($segments);
         $room = normalizeRoomValue($_POST['room'] ?? '');
         $track = trim((string)($_POST['track'] ?? ''));
@@ -323,8 +331,8 @@ function createClass($db) {
         $assessmentWeight = isset($_POST['assessment_weight']) ? (float)$_POST['assessment_weight'] : 25.00;
         
         // Validation
-        if (empty($className) || empty($gradeLevel) || empty($section)) {
-            echo json_encode(['success' => false, 'message' => 'Class name, grade level, and section are required']);
+        if (empty($className) || empty($gradeLevel) || empty($sections)) {
+            echo json_encode(['success' => false, 'message' => 'Class name, grade level, and at least one target section are required']);
             return;
         }
 
@@ -337,27 +345,6 @@ function createClass($db) {
             return;
         }
 
-        $scheduleConflict = validateScheduleConflict($db, $segments, $gradeLevel, $section, null);
-        if ($scheduleConflict !== null) {
-            echo json_encode(['success' => false, 'message' => $scheduleConflict]);
-            return;
-        }
-        
-        // Allow multiple subjects per section; only block exact duplicate subject+section.
-        $checkStmt = $db->prepare("SELECT id
-                                   FROM classes
-                                   WHERE status = 'active'
-                                   AND grade_level = ?
-                                   AND LOWER(TRIM(COALESCE(section, ''))) = LOWER(TRIM(COALESCE(?, '')))
-                                   AND LOWER(TRIM(COALESCE(class_name, ''))) = LOWER(TRIM(COALESCE(?, '')))
-                                   LIMIT 1");
-        $checkStmt->execute([$gradeLevel, $section, $className]);
-        if ($checkStmt->fetch()) {
-            echo json_encode(['success' => false, 'message' => 'This subject class already exists for Grade ' . $gradeLevel . ' - ' . $section]);
-            return;
-        }
-        
-        // Insert class
         ensureClassTrackColumn($db);
         $teacherId = isset($_POST['teacher_id']) && (int)$_POST['teacher_id'] > 0 ? (int)$_POST['teacher_id'] : null;
         if ($teacherId !== null) {
@@ -368,56 +355,114 @@ function createClass($db) {
             }
         }
 
-        $columns = ['class_name', 'grade_level', 'section', 'teacher_id', 'schedule', 'room', 'ww_weight', 'pt_weight', 'assessment_weight', 'status', 'created_at'];
-        $values = [$className, $gradeLevel, $section, $teacherId, $schedule, $room, $wwWeight, $ptWeight, $assessmentWeight, 'active', date('Y-m-d H:i:s')];
-        $placeholders = array_fill(0, count($values), '?');
+        $createdSections = [];
+        $skippedSections = [];
+        $firstClassId = null;
 
-        $hasSubjectCategory = dbHasColumn($db, 'classes', 'subject_category');
-        if ($hasSubjectCategory) {
-            $columns[] = 'subject_category';
-            $values[] = $subjectCategory ?: 'core';
+        foreach ($sections as $section) {
+            $scheduleConflict = validateScheduleConflict($db, $segments, $gradeLevel, $section, null);
+            if ($scheduleConflict !== null) {
+                if (count($sections) === 1) {
+                    echo json_encode(['success' => false, 'message' => $scheduleConflict]);
+                    return;
+                }
+                $skippedSections[] = "{$section} (schedule conflict)";
+                continue;
+            }
+
+            // Allow multiple subjects per section; only block exact duplicate subject+section.
+            $checkStmt = $db->prepare("SELECT id
+                                       FROM classes
+                                       WHERE status = 'active'
+                                       AND grade_level = ?
+                                       AND LOWER(TRIM(COALESCE(section, ''))) = LOWER(TRIM(COALESCE(?, '')))
+                                       AND LOWER(TRIM(COALESCE(class_name, ''))) = LOWER(TRIM(COALESCE(?, '')))
+                                       LIMIT 1");
+            $checkStmt->execute([$gradeLevel, $section, $className]);
+            if ($checkStmt->fetch()) {
+                if (count($sections) === 1) {
+                    echo json_encode(['success' => false, 'message' => 'This subject class already exists for Grade ' . $gradeLevel . ' - ' . $section]);
+                    return;
+                }
+                $skippedSections[] = "{$section} (already exists)";
+                continue;
+            }
+
+            $columns = ['class_name', 'grade_level', 'section', 'teacher_id', 'schedule', 'room', 'ww_weight', 'pt_weight', 'assessment_weight', 'status', 'created_at'];
+            $values = [$className, $gradeLevel, $section, $teacherId, $schedule, $room, $wwWeight, $ptWeight, $assessmentWeight, 'active', date('Y-m-d H:i:s')];
+
+            $hasSubjectCategory = dbHasColumn($db, 'classes', 'subject_category');
+            if ($hasSubjectCategory) {
+                $columns[] = 'subject_category';
+                $values[] = $subjectCategory ?: 'core';
+            }
+
+            $hasTrack = dbHasColumn($db, 'classes', 'track');
+            $normalizedTrack = $track ?: ($subjectCategory === 'techpro_elective' ? 'techpro' : 'academic');
+            if ($hasTrack) {
+                $columns[] = 'track';
+                $values[] = $normalizedTrack;
+            }
+
+            $curriculum = strengthenedShsCurriculum((int)$gradeLevel);
+            $program = strengthenedShsProgram((int)$gradeLevel, $normalizedTrack);
+            $hasCurriculum = dbHasColumn($db, 'classes', 'curriculum');
+            if ($hasCurriculum) {
+                $columns[] = 'curriculum';
+                $values[] = $curriculum;
+            }
+            $hasProgram = dbHasColumn($db, 'classes', 'program');
+            if ($hasProgram) {
+                $columns[] = 'program';
+                $values[] = $program;
+            }
+
+            $columnList = implode(', ', $columns);
+            $placeholderList = implode(', ', array_fill(0, count($values), '?'));
+            $stmt = $db->prepare("INSERT INTO classes ($columnList) VALUES ($placeholderList)");
+            $stmt->execute($values);
+            
+            $classId = (int)$db->lastInsertId();
+            if ($firstClassId === null) {
+                $firstClassId = $classId;
+            }
+
+            if ($teacherId !== null) {
+                $csStmt = $db->prepare("INSERT INTO class_subjects (class_id, teacher_id, created_at) VALUES (?, ?, NOW())");
+                $csStmt->execute([$classId, $teacherId]);
+            }
+            syncClassSchedules($db, $classId, $segments);
+            syncClassEnrollmentsByGradeSection($db, $classId, $gradeLevel, $section, $normalizedTrack);
+            adminClassAuditLog($db, 'create_class', $classId, [
+                'class_name' => $className,
+                'grade_level' => $gradeLevel,
+                'section' => $section,
+                'teacher_id' => $teacherId,
+            ]);
+
+            $createdSections[] = $section;
         }
 
-        $hasTrack = dbHasColumn($db, 'classes', 'track');
-        $normalizedTrack = $track ?: ($subjectCategory === 'techpro_elective' ? 'techpro' : 'academic');
-        if ($hasTrack) {
-            $columns[] = 'track';
-            $values[] = $normalizedTrack;
+        if (empty($createdSections)) {
+            echo json_encode(['success' => false, 'message' => 'No classes created. Skipped: ' . implode(', ', $skippedSections)]);
+            return;
         }
 
-        $curriculum = strengthenedShsCurriculum((int)$gradeLevel);
-        $program = strengthenedShsProgram((int)$gradeLevel, $normalizedTrack);
-        $hasCurriculum = dbHasColumn($db, 'classes', 'curriculum');
-        if ($hasCurriculum) {
-            $columns[] = 'curriculum';
-            $values[] = $curriculum;
-        }
-        $hasProgram = dbHasColumn($db, 'classes', 'program');
-        if ($hasProgram) {
-            $columns[] = 'program';
-            $values[] = $program;
+        $msg = count($createdSections) === 1
+            ? 'Class created successfully for section ' . $createdSections[0]
+            : 'Successfully created ' . count($createdSections) . ' classes for sections: ' . implode(', ', $createdSections);
+            
+        if (!empty($skippedSections)) {
+            $msg .= '. Skipped: ' . implode(', ', $skippedSections);
         }
 
-        $columnList = implode(', ', $columns);
-        $placeholderList = implode(', ', array_fill(0, count($values), '?'));
-        $stmt = $db->prepare("INSERT INTO classes ($columnList) VALUES ($placeholderList)");
-        $stmt->execute($values);
-        
-        $classId = (int)$db->lastInsertId();
-        if ($teacherId !== null) {
-            $csStmt = $db->prepare("INSERT INTO class_subjects (class_id, teacher_id, created_at) VALUES (?, ?, NOW())");
-            $csStmt->execute([$classId, $teacherId]);
-        }
-        syncClassSchedules($db, $classId, $segments);
-        syncClassEnrollmentsByGradeSection($db, $classId, $gradeLevel, $section, $normalizedTrack);
-        adminClassAuditLog($db, 'create_class', $classId, [
-            'class_name' => $className,
-            'grade_level' => $gradeLevel,
-            'section' => $section,
-            'teacher_id' => $teacherId,
+        echo json_encode([
+            'success' => true,
+            'message' => $msg,
+            'class_id' => $firstClassId,
+            'created_count' => count($createdSections),
+            'created_sections' => $createdSections
         ]);
-        
-        echo json_encode(['success' => true, 'message' => 'Class created successfully', 'class_id' => $classId]);
         
     } catch (PDOException $e) {
         error_log("Admin_Classes_Action create error: " . $e->getMessage());
