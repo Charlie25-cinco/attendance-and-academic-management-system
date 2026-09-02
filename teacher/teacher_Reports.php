@@ -315,7 +315,7 @@ if ($db) {
                     <h5 class="report-title">Top Attendance</h5>
                     <p class="report-desc">Best attendance ranking for awards</p>
                     <div class="d-flex gap-2">
-                        <a class="btn btn-sm btn-primary-custom w-100" href="<?php echo teacherExportUrl('top_attendance', $selectedMode, $selectedAcademicYear, $scope, $selectedSemester, $selectedClassId, $topN, $selectedSex); ?>"><i class="bi bi-download me-1"></i>CSV</a>
+                        <a class="btn btn-sm btn-primary-custom w-100" href="<?php echo teacherExportUrl('top_attendance', $selectedMode, $selectedAcademicYear, $scope, $selectedSemester, $selectedClassId, $topN, $selectedSex); ?>" download data-skip-loader="true"><i class="bi bi-download me-1"></i>CSV</a>
                     </div>
                 </div>
             </div>
@@ -325,7 +325,7 @@ if ($db) {
                     <h5 class="report-title">Class Summary</h5>
                     <p class="report-desc">Attendance summary per class</p>
                     <div class="d-flex gap-2">
-                        <a class="btn btn-sm btn-primary-custom w-100" href="<?php echo teacherExportUrl('class_summary', $selectedMode, $selectedAcademicYear, $scope, $selectedSemester, $selectedClassId, $topN, $selectedSex); ?>"><i class="bi bi-download me-1"></i>CSV</a>
+                        <a class="btn btn-sm btn-primary-custom w-100" href="<?php echo teacherExportUrl('class_summary', $selectedMode, $selectedAcademicYear, $scope, $selectedSemester, $selectedClassId, $topN, $selectedSex); ?>" download data-skip-loader="true"><i class="bi bi-download me-1"></i>CSV</a>
                     </div>
                 </div>
             </div>
@@ -335,7 +335,7 @@ if ($db) {
                     <h5 class="report-title">At-Risk Attendance</h5>
                     <p class="report-desc">Students with highest absences</p>
                     <div class="d-flex gap-2">
-                        <a class="btn btn-sm btn-primary-custom w-100" href="<?php echo teacherExportUrl('at_risk', $selectedMode, $selectedAcademicYear, $scope, $selectedSemester, $selectedClassId, $topN, $selectedSex); ?>"><i class="bi bi-download me-1"></i>CSV</a>
+                        <a class="btn btn-sm btn-primary-custom w-100" href="<?php echo teacherExportUrl('at_risk', $selectedMode, $selectedAcademicYear, $scope, $selectedSemester, $selectedClassId, $topN, $selectedSex); ?>" download data-skip-loader="true"><i class="bi bi-download me-1"></i>CSV</a>
                     </div>
                 </div>
             </div>
@@ -348,7 +348,7 @@ if ($db) {
                     <h5 class="content-card-title mb-1">Preview: <?php echo ucwords(str_replace('_', ' ', $selectedType)); ?></h5>
                     <div class="teacher-section-note">Validate the current preview before downloading the export file.</div>
                 </div>
-                <a class="btn btn-sm btn-primary-custom" href="<?php echo teacherExportUrl($selectedType, $selectedMode, $selectedAcademicYear, $scope, $selectedSemester, $selectedClassId, $topN, $selectedSex); ?>">
+                <a class="btn btn-sm btn-primary-custom" href="<?php echo teacherExportUrl($selectedType, $selectedMode, $selectedAcademicYear, $scope, $selectedSemester, $selectedClassId, $topN, $selectedSex); ?>" download data-skip-loader="true">
                     <i class="bi bi-download me-1"></i>Download CSV
                 </a>
             </div>
@@ -474,7 +474,12 @@ function exportTeacherReportSf2(format) {
         year: year,
         export: format
     });
-    window.location.href = 'teacher_SF2_Export.php?' + params.toString();
+    if (typeof appTriggerExport === 'function') {
+        appTriggerExport('teacher_SF2_Export.php?' + params.toString());
+    } else {
+        window.APP_SUPPRESS_NEXT_UNLOAD_PROGRESS = true;
+        window.location.href = 'teacher_SF2_Export.php?' + params.toString();
+    }
 }
 
 (function initTeacherReportNotes() {

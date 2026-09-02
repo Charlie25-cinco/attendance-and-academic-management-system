@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.141 — 2026-09-02
+
+### Fixed
+
+- **Export Loading-Indicator Lifecycle & Navigation Loader Bypass**:
+  - **Shared Programmatic Export Trigger (`window.appTriggerExport`)**: Introduced `window.appTriggerExport()` / `window.appDownloadUrl` in [`assets/js/main.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/main.js) to trigger programmatic file downloads through a transient `<a download data-skip-loader="true">` element without causing `beforeunload` page unload events, and cleanly completing any already-active progress bar (`finishTopProgress()`).
+  - **Explicit Export Control Markers**: Marked all direct CSV export links and template download links with `download` and `data-skip-loader="true"` in [`admin/admin_Reports.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Reports.php), [`teacher/teacher_Reports.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Reports.php), and [`includes/modals/enrollment_modals.php`](file:///c:/laragon/www/attendance-and-academic-management-system/includes/modals/enrollment_modals.php), ensuring `shouldShowNavigationProgress()` bypasses the navigation loader on file downloads.
+  - **Programmatic Export Function Modernization**: Updated `exportReportSf1` and `exportReportSf2` in [`admin/admin_Reports.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Reports.php), `exportTeacherReportSf2` in [`teacher/teacher_Reports.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Reports.php), and `exportAttendanceSf2` in [`teacher/teacher_Attendance.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Attendance.php) to use `appTriggerExport()`.
+  - **Automated Regression Testing**: Created [`tests/ExportProgressIndicatorTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/ExportProgressIndicatorTest.php) validating export markers, programmatic trigger presence, download bypass decisions, and preservation of normal portal page navigation progress.
+
 ## v0.3.140 — 2026-09-02
 
 ### Added

@@ -171,6 +171,32 @@ function shouldShowNavigationProgress(link) {
   return true;
 }
 
+function appTriggerExport(url, filename) {
+  if (!url) return;
+  window.APP_SUPPRESS_NEXT_UNLOAD_PROGRESS = true;
+  clearNavigationState();
+  if (appTopProgressValue > 0) {
+    finishTopProgress();
+  }
+  const a = document.createElement("a");
+  a.href = url;
+  if (filename) {
+    a.setAttribute("download", filename);
+  } else {
+    a.setAttribute("download", "");
+  }
+  a.setAttribute("data-skip-loader", "true");
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  window.setTimeout(() => {
+    if (a.parentNode) a.parentNode.removeChild(a);
+    window.APP_SUPPRESS_NEXT_UNLOAD_PROGRESS = false;
+  }, 300);
+}
+window.appTriggerExport = appTriggerExport;
+window.appDownloadUrl = appTriggerExport;
+
 function initNavigationProgress() {
   const completeHandler = function () {
     finishTopProgress();
@@ -197,6 +223,16 @@ function initNavigationProgress() {
 
   document.addEventListener("click", function (event) {
     const link = event.target.closest("a[href]");
+    if (!link) return;
+    if (
+      link.hasAttribute("download") ||
+      link.getAttribute("data-skip-loader") === "true"
+    ) {
+      if (isNavigationInProgress() || appTopProgressValue > 0) {
+        finishTopProgress();
+      }
+      return;
+    }
     if (!shouldShowNavigationProgress(link)) return;
     if (
       event.button !== 0 ||

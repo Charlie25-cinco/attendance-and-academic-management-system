@@ -160,8 +160,8 @@ $page_title = 'Attendance';
                         <button class="btn btn-outline-secondary" type="button" id="clearAttendanceSearchBtn" title="Clear" style="display: none;"><i class="bi bi-x-lg"></i></button>
                     </div>
                     <button class="btn btn-secondary-custom" onclick="loadAttendanceData()"><i class="bi bi-arrow-clockwise me-1"></i>Load</button>
-                    <button class="btn btn-outline-success" type="button" onclick="exportAttendanceSf2('xlsx')" <?php echo empty($classes) ? 'disabled' : ''; ?>><i class="bi bi-filetype-xlsx me-1"></i>SF2 XLSX</button>
-                    <button class="btn btn-outline-success" type="button" onclick="exportAttendanceSf2('csv')" <?php echo empty($classes) ? 'disabled' : ''; ?>><i class="bi bi-filetype-csv me-1"></i>SF2 CSV</button>
+                    <button class="btn btn-outline-success" type="button" data-skip-loader="true" onclick="exportAttendanceSf2('xlsx')" <?php echo empty($classes) ? 'disabled' : ''; ?>><i class="bi bi-filetype-xlsx me-1"></i>SF2 XLSX</button>
+                    <button class="btn btn-outline-success" type="button" data-skip-loader="true" onclick="exportAttendanceSf2('csv')" <?php echo empty($classes) ? 'disabled' : ''; ?>><i class="bi bi-filetype-csv me-1"></i>SF2 CSV</button>
                 </div>
             </div>
             <div class="p-3 border-top border-bottom">
@@ -423,7 +423,7 @@ function loadAttendanceData(){
         showNotification('Error loading attendance data','danger');
     });
 }
-function exportAttendanceSf2(format){const classId=(document.getElementById('classSelect')?.value||'').trim();const dateValue=(document.getElementById('attendanceDate')?.value||'').trim();if(!classId){showNotification('Select a class for SF2 export','warning');return;}if(!dateValue||!/^\d{4}-\d{2}-\d{2}$/.test(dateValue)){showNotification('Select a valid attendance date for SF2 export','warning');return;}const parts=dateValue.split('-');const params=new URLSearchParams({class_id:classId,month:String(Number(parts[1])),year:parts[0],export:format==='csv'?'csv':'xlsx'});window.location.href='teacher_SF2_Export.php?'+params.toString();}
+function exportAttendanceSf2(format){const classId=(document.getElementById('classSelect')?.value||'').trim();const dateValue=(document.getElementById('attendanceDate')?.value||'').trim();if(!classId){showNotification('Select a class for SF2 export','warning');return;}if(!dateValue||!/^\d{4}-\d{2}-\d{2}$/.test(dateValue)){showNotification('Select a valid attendance date for SF2 export','warning');return;}const parts=dateValue.split('-');const params=new URLSearchParams({class_id:classId,month:String(Number(parts[1])),year:parts[0],export:format==='csv'?'csv':'xlsx'});if(typeof appTriggerExport==='function'){appTriggerExport('teacher_SF2_Export.php?'+params.toString());}else{window.APP_SUPPRESS_NEXT_UNLOAD_PROGRESS=true;window.location.href='teacher_SF2_Export.php?'+params.toString();}}
 function submitAttendance(){
     if(!canEditAttendance){showNotification(editBlockedReason||'Attendance is unavailable for this class on the selected date','info');return;}
     const classId=document.getElementById('classSelect')?.value||'';

@@ -298,7 +298,7 @@
                                         <input type="text" name="academic_year" id="importAcademicYear" class="form-control" value="<?php echo date('Y') . '-' . (date('Y') + 1); ?>" placeholder="e.g. 2025-2026">
                                     </div>
                                     <div class="col-md-3">
-                                        <a href="?download_template=1" class="btn btn-outline-primary btn-sm w-100 mb-2">
+                                        <a href="?download_template=1" class="btn btn-outline-primary btn-sm w-100 mb-2" download data-skip-loader="true">
                                             <i class="bi bi-download me-1"></i>Download CSV Template
                                         </a>
                                     </div>

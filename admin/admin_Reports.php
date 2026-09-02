@@ -477,7 +477,7 @@ $previewCount = count($previewRows);
                         <p class="report-desc">Daily attendance records by class and student</p>
                         <div class="d-flex gap-2">
                             <a class="btn btn-sm btn-outline-primary flex-fill" href="admin_Reports.php?<?php echo http_build_query(array_merge(['type' => 'attendance'], buildFilterParams($dateFrom, $dateTo, $classId, $gradeLevel, $section, $status, $topN))); ?>">Preview</a>
-                            <a class="btn btn-sm btn-primary-custom flex-fill" href="<?php echo exportUrl('attendance', $dateFrom, $dateTo, $classId, $gradeLevel, $section, $status); ?>"><i class="bi bi-download me-1"></i>CSV</a>
+                            <a class="btn btn-sm btn-primary-custom flex-fill" href="<?php echo exportUrl('attendance', $dateFrom, $dateTo, $classId, $gradeLevel, $section, $status); ?>" download data-skip-loader="true"><i class="bi bi-download me-1"></i>CSV</a>
                         </div>
                     </div>
                 </div>
@@ -488,7 +488,7 @@ $previewCount = count($previewRows);
                         <p class="report-desc">Rank students by effective attendance rate.</p>
                         <div class="d-flex gap-2">
                             <a class="btn btn-sm btn-outline-primary flex-fill" href="admin_Reports.php?<?php echo http_build_query(array_merge(['type' => 'top_attendance'], buildFilterParams($dateFrom, $dateTo, $classId, $gradeLevel, $section, $status, $topN))); ?>">Preview</a>
-                            <a class="btn btn-sm btn-primary-custom flex-fill" href="<?php echo exportUrl('top_attendance', $dateFrom, $dateTo, $classId, $gradeLevel, $section, $status, $topN); ?>"><i class="bi bi-download me-1"></i>CSV</a>
+                            <a class="btn btn-sm btn-primary-custom flex-fill" href="<?php echo exportUrl('top_attendance', $dateFrom, $dateTo, $classId, $gradeLevel, $section, $status, $topN); ?>" download data-skip-loader="true"><i class="bi bi-download me-1"></i>CSV</a>
                         </div>
                     </div>
                 </div>
@@ -499,7 +499,7 @@ $previewCount = count($previewRows);
                         <p class="report-desc">Summarize attendance by class.</p>
                         <div class="d-flex gap-2">
                             <a class="btn btn-sm btn-outline-primary flex-fill" href="admin_Reports.php?<?php echo http_build_query(array_merge(['type' => 'class_summary'], buildFilterParams($dateFrom, $dateTo, $classId, $gradeLevel, $section, $status, $topN))); ?>">Preview</a>
-                            <a class="btn btn-sm btn-primary-custom flex-fill" href="<?php echo exportUrl('class_summary', $dateFrom, $dateTo, $classId, $gradeLevel, $section, $status, $topN); ?>"><i class="bi bi-download me-1"></i>CSV</a>
+                            <a class="btn btn-sm btn-primary-custom flex-fill" href="<?php echo exportUrl('class_summary', $dateFrom, $dateTo, $classId, $gradeLevel, $section, $status, $topN); ?>" download data-skip-loader="true"><i class="bi bi-download me-1"></i>CSV</a>
                         </div>
                     </div>
                 </div>
@@ -510,7 +510,7 @@ $previewCount = count($previewRows);
                         <p class="report-desc">Show students with the highest effective absences.</p>
                         <div class="d-flex gap-2">
                             <a class="btn btn-sm btn-outline-primary flex-fill" href="admin_Reports.php?<?php echo http_build_query(array_merge(['type' => 'at_risk'], buildFilterParams($dateFrom, $dateTo, $classId, $gradeLevel, $section, $status, $topN))); ?>">Preview</a>
-                            <a class="btn btn-sm btn-primary-custom flex-fill" href="<?php echo exportUrl('at_risk', $dateFrom, $dateTo, $classId, $gradeLevel, $section, $status, $topN); ?>"><i class="bi bi-download me-1"></i>CSV</a>
+                            <a class="btn btn-sm btn-primary-custom flex-fill" href="<?php echo exportUrl('at_risk', $dateFrom, $dateTo, $classId, $gradeLevel, $section, $status, $topN); ?>" download data-skip-loader="true"><i class="bi bi-download me-1"></i>CSV</a>
                         </div>
                     </div>
                 </div>
@@ -521,7 +521,7 @@ $previewCount = count($previewRows);
                         <p class="report-desc">Quiz, exam, activity, and final grade records</p>
                         <div class="d-flex gap-2">
                             <a class="btn btn-sm btn-outline-primary flex-fill" href="admin_Reports.php?<?php echo http_build_query(array_merge(['type' => 'grades'], buildFilterParams($dateFrom, $dateTo, $classId, $gradeLevel, $section, $status, $topN))); ?>">Preview</a>
-                            <a class="btn btn-sm btn-primary-custom flex-fill" href="<?php echo exportUrl('grades', $dateFrom, $dateTo, $classId, $gradeLevel, $section, $status); ?>"><i class="bi bi-download me-1"></i>CSV</a>
+                            <a class="btn btn-sm btn-primary-custom flex-fill" href="<?php echo exportUrl('grades', $dateFrom, $dateTo, $classId, $gradeLevel, $section, $status); ?>" download data-skip-loader="true"><i class="bi bi-download me-1"></i>CSV</a>
                         </div>
                     </div>
                 </div>
@@ -532,7 +532,7 @@ $previewCount = count($previewRows);
                         <p class="report-desc">Enrollment status and class assignment list</p>
                         <div class="d-flex gap-2">
                             <a class="btn btn-sm btn-outline-primary flex-fill" href="admin_Reports.php?<?php echo http_build_query(array_merge(['type' => 'enrollment'], buildFilterParams($dateFrom, $dateTo, $classId, $gradeLevel, $section, $status, $topN))); ?>">Preview</a>
-                            <a class="btn btn-sm btn-primary-custom flex-fill" href="<?php echo exportUrl('enrollment', $dateFrom, $dateTo, $classId, $gradeLevel, $section, $status); ?>"><i class="bi bi-download me-1"></i>CSV</a>
+                            <a class="btn btn-sm btn-primary-custom flex-fill" href="<?php echo exportUrl('enrollment', $dateFrom, $dateTo, $classId, $gradeLevel, $section, $status); ?>" download data-skip-loader="true"><i class="bi bi-download me-1"></i>CSV</a>
                         </div>
                     </div>
                 </div>
@@ -543,7 +543,7 @@ $previewCount = count($previewRows);
                         <p class="report-desc">Teacher directory and current workload summary</p>
                         <div class="d-flex gap-2">
                             <a class="btn btn-sm btn-outline-primary flex-fill" href="admin_Reports.php?<?php echo http_build_query(array_merge(['type' => 'teachers'], buildFilterParams($dateFrom, $dateTo, $classId, $gradeLevel, $section, $status, $topN))); ?>">Preview</a>
-                            <a class="btn btn-sm btn-primary-custom flex-fill" href="<?php echo exportUrl('teachers', $dateFrom, $dateTo, $classId, $gradeLevel, $section, $status); ?>"><i class="bi bi-download me-1"></i>CSV</a>
+                            <a class="btn btn-sm btn-primary-custom flex-fill" href="<?php echo exportUrl('teachers', $dateFrom, $dateTo, $classId, $gradeLevel, $section, $status); ?>" download data-skip-loader="true"><i class="bi bi-download me-1"></i>CSV</a>
                         </div>
                     </div>
                 </div>
@@ -554,7 +554,7 @@ $previewCount = count($previewRows);
                         <p class="report-desc">Class list with section and enrollment counts</p>
                         <div class="d-flex gap-2">
                             <a class="btn btn-sm btn-outline-primary flex-fill" href="admin_Reports.php?<?php echo http_build_query(array_merge(['type' => 'classes'], buildFilterParams($dateFrom, $dateTo, $classId, $gradeLevel, $section, $status, $topN))); ?>">Preview</a>
-                            <a class="btn btn-sm btn-primary-custom flex-fill" href="<?php echo exportUrl('classes', $dateFrom, $dateTo, $classId, $gradeLevel, $section, $status); ?>"><i class="bi bi-download me-1"></i>CSV</a>
+                            <a class="btn btn-sm btn-primary-custom flex-fill" href="<?php echo exportUrl('classes', $dateFrom, $dateTo, $classId, $gradeLevel, $section, $status); ?>" download data-skip-loader="true"><i class="bi bi-download me-1"></i>CSV</a>
                         </div>
                     </div>
                 </div>
@@ -566,7 +566,7 @@ $previewCount = count($previewRows);
                         <h5 class="content-card-title mb-1">Preview: <?php echo ucfirst($selectedType); ?> Report</h5>
                         <small class="text-muted"><?php echo number_format($previewCount); ?> row<?php echo $previewCount === 1 ? '' : 's'; ?> loaded for the current filter set.</small>
                     </div>
-                    <a class="btn btn-sm btn-primary-custom" href="<?php echo exportUrl($selectedType, $dateFrom, $dateTo, $classId, $gradeLevel, $section, $status); ?>">
+                    <a class="btn btn-sm btn-primary-custom" href="<?php echo exportUrl($selectedType, $dateFrom, $dateTo, $classId, $gradeLevel, $section, $status); ?>" download data-skip-loader="true">
                         <i class="bi bi-download me-1"></i>Download CSV
                     </a>
                 </div>
@@ -604,53 +604,48 @@ $previewCount = count($previewRows);
 
             <div class="content-card mt-4">
                 <div class="content-card-header d-flex justify-content-between align-items-center">
-                    <h5 class="content-card-title mb-0">Write Report Note</h5>
-                    <small class="text-muted">Admin-only journal for generated reports</small>
+                    <div>
+                        <h5 class="content-card-title mb-1">Save Report Note</h5>
+                        <div class="teacher-section-note">Add notes and observations directly attached to your reporting workflow.</div>
+                    </div>
+                    <small class="text-muted">Admin-managed report notes</small>
                 </div>
                 <div class="content-card-body">
-                    <form id="adminReportNoteForm" class="row g-3 admin-report-note-form">
+                    <form id="adminReportNoteForm" class="row g-3">
                         <input type="hidden" name="note_id" value="">
-                        <div class="col-md-3">
-                            <label class="form-label">Type</label>
-                            <select class="form-select" name="report_type" id="adminReportNoteType">
+                        <div class="col-md-4">
+                            <label class="form-label">Report Type Context</label>
+                            <select name="report_type" class="form-select form-select-sm">
                                 <option value="general">General</option>
                                 <option value="attendance">Attendance</option>
-                                <option value="top_attendance">Top Attendance</option>
-                                <option value="class_summary">Class Summary</option>
-                                <option value="at_risk">At-risk Attendance</option>
                                 <option value="grades">Grades</option>
                                 <option value="enrollment">Enrollment</option>
                                 <option value="teachers">Teachers</option>
                                 <option value="classes">Classes</option>
                             </select>
                         </div>
-                        <div class="col-md-9">
-                            <label class="form-label">Title</label>
-                            <input type="text" class="form-control" name="title" maxlength="200" placeholder="Ex. Monthly attendance observation">
+                        <div class="col-md-8">
+                            <label class="form-label">Note Title</label>
+                            <input type="text" name="title" class="form-control form-control-sm" placeholder="e.g. End of term observations" maxlength="160" required>
                         </div>
                         <div class="col-12">
                             <label class="form-label">Content</label>
-                            <textarea class="form-control" name="content" rows="4" maxlength="5000" placeholder="Write your report note here..."></textarea>
+                            <textarea name="content" class="form-control form-control-sm" rows="3" placeholder="Write any findings, follow-up items, or context for this reporting period..." required></textarea>
                         </div>
                         <div class="col-12 d-flex justify-content-end gap-2">
-                            <button type="button" class="btn btn-secondary-custom d-none" id="adminReportNoteCancelBtn">Cancel Edit</button>
-                            <button type="submit" class="btn btn-primary-custom" id="adminReportNoteSaveBtn">
-                                <i class="bi bi-save me-1"></i>Save Report Note
-                            </button>
+                            <button type="button" id="adminReportNoteCancelBtn" class="btn btn-sm btn-outline-secondary d-none">Cancel</button>
+                            <button type="submit" id="adminReportNoteSaveBtn" class="btn btn-sm btn-primary-custom"><i class="bi bi-save me-1"></i>Save Report Note</button>
                         </div>
                     </form>
 
-                    <hr>
+                    <hr class="my-4">
 
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="mb-0">Saved Report Notes</h6>
-                        <select class="form-select form-select-sm" id="adminReportNoteFilter" style="max-width: 220px;">
-                            <option value="">All Types</option>
+                        <h6 class="fw-bold mb-0">Saved Report Notes</h6>
+                        <select id="adminReportNoteFilter" class="form-select form-select-sm" style="max-width: 200px;">
+                            <option value="">All Contexts</option>
                             <option value="general">General</option>
                             <option value="attendance">Attendance</option>
-                            <option value="top_attendance">Top Attendance</option>
-                            <option value="class_summary">Class Summary</option>
-                            <option value="at_risk">At-risk Attendance</option>
                             <option value="grades">Grades</option>
                             <option value="enrollment">Enrollment</option>
                             <option value="teachers">Teachers</option>
@@ -687,8 +682,12 @@ $previewCount = count($previewRows);
                 academic_year: academicYear,
                 format: format
             });
-            window.APP_SUPPRESS_NEXT_UNLOAD_PROGRESS = true;
-            window.location.href = 'admin_Enrollments_Action.php?' + params.toString();
+            if (typeof appTriggerExport === 'function') {
+                appTriggerExport('admin_Enrollments_Action.php?' + params.toString());
+            } else {
+                window.APP_SUPPRESS_NEXT_UNLOAD_PROGRESS = true;
+                window.location.href = 'admin_Enrollments_Action.php?' + params.toString();
+            }
         }
 
         function exportReportSf2(format) {
@@ -703,8 +702,12 @@ $previewCount = count($previewRows);
                 year: year,
                 format: format
             });
-            window.APP_SUPPRESS_NEXT_UNLOAD_PROGRESS = true;
-            window.location.href = 'admin_Classes_Action.php?' + params.toString();
+            if (typeof appTriggerExport === 'function') {
+                appTriggerExport('admin_Classes_Action.php?' + params.toString());
+            } else {
+                window.APP_SUPPRESS_NEXT_UNLOAD_PROGRESS = true;
+                window.location.href = 'admin_Classes_Action.php?' + params.toString();
+            }
         }
 
         (async function initSectionFilter() {
