@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.137 — 2026-09-02
+
+### Fixed
+
+- **SF1 Section Resolution & Idempotent Roster Synchronization**:
+  - **Context-Strict Section Resolution in `ensureSf1Section()`**: Enhanced `ensureSf1Section()` in [`admin/admin_SF1_Import_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_SF1_Import_Action.php) to resolve existing sections by normalized section name (`sectionMatchSql('name')` and whitespace/case normalization) strictly bound to the student's `grade_level` and `track`, avoiding duplicate section insertions and preventing cross-grade/cross-track false positives.
+  - **Explicit Resolution Result**: Updated `ensureSf1Section()` to return a structured resolution result (`['id' => $secId, 'name' => $canonicalName, 'created' => $wasCreated]`) so the commit flow deterministically uses the canonical section name for student profile assignment and class enrollment synchronization.
+  - **Idempotent Re-Import Synchronization**: In the SF1 commit loop, existing registered students (skipped by LRN) now run `syncStudentEnrollments()` against the resolved section, ensuring newly added or existing section classes are linked without creating duplicate student rows or duplicate enrollments.
+  - **Regression Testing**: Added `testSf1CommitResolvesExistingSectionWithoutDuplicationAndEnrollsStudentsInClassRoster` in [`tests/Sf1SubjectRosterEnrollmentTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/Sf1SubjectRosterEnrollmentTest.php) verifying that an existing section is resolved without duplication, the student is enrolled in the matching class and returned by the roster query, and re-importing the same SF1 data remains strictly idempotent.
+
 ## v0.3.136 — 2026-09-02
 
 ### Fixed

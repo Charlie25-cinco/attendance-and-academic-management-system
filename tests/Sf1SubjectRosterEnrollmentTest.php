@@ -21,11 +21,15 @@ final class Sf1SubjectRosterEnrollmentTest extends TestCase
         $_SESSION['logged_in'] = true;
         $_SESSION['role'] = 'admin';
         $_SESSION['user_id'] = 1;
+        $_SESSION['csrf_token'] = 'test-token';
+        $_POST['csrf_token'] = 'test-token';
+        $_POST['action'] = 'noop';
 
         ob_start();
         require_once __DIR__ . '/../functions/bootstrap.php';
         require_once __DIR__ . '/../admin/admin_Classes_Action.php';
         require_once __DIR__ . '/../teacher/teacher_Enrollment_Helper.php';
+        require_once __DIR__ . '/../admin/admin_SF1_Import_Action.php';
         ob_end_clean();
 
         restore_error_handler();
@@ -407,6 +411,76 @@ final class Sf1SubjectRosterEnrollmentTest extends TestCase
 
         $enrolledCount = (int)$this->db->query("SELECT COUNT(*) FROM enrollments WHERE student_id = 301 AND class_id = 999 AND status = 'enrolled'")->fetchColumn();
         $this->assertSame(1, $enrolledCount, 'Student must be enrolled after class is created and synchronized');
+    }
+
+    public function testSf1CommitResolvesExistingSectionWithoutDuplicationAndEnrollsStudentsInClassRoster(): void
+    {
+        // 1. Seed teacher Maria Santos (ID 10)
+        $this->db->exec("INSERT INTO users (id, reference_code, email, first_name, last_name, role, status)
+            VALUES (10, 'TCH-2026-0010', 'maria.santos@balingasag.edu.ph', 'Maria', 'Santos', 'teacher', 'active')");
+
+        // 2. Seed existing Section Humility for Grade 11 Academic
+        $this->db->exec("INSERT INTO sections (id, name, grade_level, track, curriculum, program)
+            VALUES (1, 'Humility', 11, 'academic', 'strengthened_shs', 'academic_strengthened')");
+
+        // 3. Seed active Filipino class (ID 15) for Grade 11 Humility
+        $this->db->exec("INSERT INTO classes (id, class_name, grade_level, section, track, teacher_id, status)
+            VALUES (15, 'Filipino', 11, 'Humility', 'academic', 10, 'active')");
+        $this->db->exec("INSERT INTO class_subjects (class_id, teacher_id) VALUES (15, 10)");
+
+        // 4. Resolve section with SF1 data where section name is 'HUMILITY' (all caps)
+        $resolved = ensureSf1Section($this->db, 'HUMILITY', 11, 'academic', '2026-2027');
+        $this->assertSame(1, (int)$resolved['id']);
+        $this->assertSame('Humility', $resolved['name']);
+        $this->assertFalse($resolved['created'], 'Must resolve existing section without creating a new one');
+
+        $sectionCount = (int)$this->db->query("SELECT COUNT(*) FROM sections")->fetchColumn();
+        $this->assertSame(1, $sectionCount, 'Sections table must have exactly 1 record');
+
+        // 5. Seed Jose Rizal using resolved canonical section name
+        $canonicalSection = $resolved['name'];
+        $this->db->exec("INSERT INTO users (id, reference_code, email, lrn, first_name, last_name, grade_level, section, track, role, status)
+            VALUES (201, 'STU-2026-0201', 'jose.rizal@students.balingasag.edu.ph', '123456789012', 'Jose', 'Rizal', 11, '{$canonicalSection}', 'academic', 'student', 'active')");
+
+        syncStudentEnrollments($this->db, 201, 11, $canonicalSection, 'academic', '2026-2027');
+
+        // 6. Verify enrollment in Filipino Class 15
+        $enrollment = $this->db->query("SELECT id, student_id, class_id, status FROM enrollments WHERE student_id = 201 AND class_id = 15")->fetch(PDO::FETCH_ASSOC);
+        $this->assertNotEmpty($enrollment);
+        $this->assertSame('enrolled', $enrollment['status']);
+        $enrollmentId = (int)$enrollment['id'];
+
+        // 7. Verify roster query returns Jose Rizal
+        $rosterQuery = "SELECT u.id, u.reference_code, u.first_name, u.last_name
+                        FROM enrollments e
+                        JOIN users u ON u.id = e.student_id
+                        WHERE e.class_id = ? AND e.status = 'enrolled'
+                        ORDER BY u.last_name, u.first_name";
+        $stmt = $this->db->prepare($rosterQuery);
+        $stmt->execute([15]);
+        $roster = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $this->assertCount(1, $roster);
+        $this->assertSame(201, (int)$roster[0]['id']);
+
+        // 8. Re-import identical SF1 student (simulating re-import)
+        $secondResolved = ensureSf1Section($this->db, 'Humility', 11, 'academic', '2026-2027');
+        $this->assertSame(1, (int)$secondResolved['id']);
+        $this->assertFalse($secondResolved['created']);
+
+        // Re-sync existing student
+        syncStudentEnrollments($this->db, 201, 11, $secondResolved['name'], 'academic', '2026-2027');
+
+        // 9. Verify strictly idempotent: 1 section, 1 student (+ 1 teacher), 1 enrollment record (same ID)
+        $this->assertSame(1, (int)$this->db->query("SELECT COUNT(*) FROM sections")->fetchColumn());
+        $this->assertSame(2, (int)$this->db->query("SELECT COUNT(*) FROM users")->fetchColumn());
+        $this->assertSame(1, (int)$this->db->query("SELECT COUNT(*) FROM enrollments WHERE student_id = 201 AND class_id = 15")->fetchColumn());
+        $afterEnrollmentId = (int)$this->db->query("SELECT id FROM enrollments WHERE student_id = 201 AND class_id = 15")->fetchColumn();
+        $this->assertSame($enrollmentId, $afterEnrollmentId);
+
+        $stmt->execute([15]);
+        $rosterAfter = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $this->assertCount(1, $rosterAfter);
+        $this->assertSame(201, (int)$rosterAfter[0]['id']);
     }
 }
 

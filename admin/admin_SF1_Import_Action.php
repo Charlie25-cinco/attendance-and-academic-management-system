@@ -73,44 +73,100 @@ function sf1GradeFromHeader(array $header): int {
     return 0;
 }
 
-function ensureSf1Section(PDO $db, string $section, int $gradeLevel, string $track, string $academicYear): bool {
-    static $createdOrFound = [];
+function ensureSf1Section(PDO $db, string $section, int $gradeLevel, string $track, string $academicYear): array {
+    static $resolvedCache = [];
 
-    $section = trim($section);
-    if ($section === '') {
-        return false;
+    $sectionTrimmed = trim($section);
+    if ($sectionTrimmed === '' || $gradeLevel <= 0) {
+        return ['id' => 0, 'name' => $sectionTrimmed, 'created' => false];
     }
 
-    $cacheKey = strtolower($gradeLevel . '|' . $track . '|' . $section);
-    if (isset($createdOrFound[$cacheKey])) {
-        return false;
-    }
-
-    $check = $db->prepare("SELECT id FROM sections WHERE name = ? LIMIT 1");
-    $check->execute([$section]);
-    $existingId = $check->fetchColumn();
-    if ($existingId) {
-        $createdOrFound[$cacheKey] = true;
-        return false;
+    $trackNorm = in_array(strtolower(trim($track)), ['academic', 'techpro'], true) ? strtolower(trim($track)) : 'academic';
+    $cacheKey = strtolower($gradeLevel . '|' . $trackNorm . '|' . $sectionTrimmed);
+    if (isset($resolvedCache[$cacheKey])) {
+        return $resolvedCache[$cacheKey];
     }
 
     $curriculum = strengthenedShsCurriculum($gradeLevel, $academicYear);
-    $program = strengthenedShsProgram($gradeLevel, $track, $academicYear);
-    $insert = $db->prepare("INSERT INTO sections (name, grade_level, track, curriculum, program) VALUES (?, ?, ?, ?, ?)");
-    $insert->execute([$section, $gradeLevel, $track, $curriculum, $program]);
-    $newId = (int)$db->lastInsertId();
-    $createdOrFound[$cacheKey] = true;
+    $program = strengthenedShsProgram($gradeLevel, $trackNorm, $academicYear);
 
-    recordAdminAuditLog($db, 'section.auto_create_from_sf1', 'section', $newId, [
-        'name' => $section,
-        'grade_level' => $gradeLevel,
-        'track' => $track,
-        'curriculum' => $curriculum,
-        'program' => $program,
-        'academic_year' => $academicYear,
-    ]);
+    $driver = (string)$db->getAttribute(PDO::ATTR_DRIVER_NAME);
+    if ($driver === 'sqlite') {
+        $sectionSql = "(LOWER(TRIM(COALESCE(name, ''))) = LOWER(TRIM(COALESCE(?, ''))))";
+        $params = [$gradeLevel, $trackNorm, $sectionTrimmed];
+    } else {
+        $sectionSql = sectionMatchSql('name');
+        $params = [$gradeLevel, $trackNorm, $sectionTrimmed, $sectionTrimmed];
+    }
 
-    return true;
+    // 1. Resolve existing section strictly using grade level, track, and normalized section name
+    $stmt = $db->prepare("SELECT id, name, grade_level, track, curriculum, program
+                          FROM sections
+                          WHERE grade_level = ?
+                            AND track = ?
+                            AND ({$sectionSql})
+                          LIMIT 1");
+    $stmt->execute($params);
+    $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($existing) {
+        $secId = (int)$existing['id'];
+        $secName = (string)$existing['name'];
+
+        // Backfill missing curriculum/program on existing section if needed
+        $updates = [];
+        $updateParams = [];
+        if (empty($existing['curriculum']) && !empty($curriculum)) {
+            $updates[] = "curriculum = ?";
+            $updateParams[] = $curriculum;
+        }
+        if (empty($existing['program']) && !empty($program)) {
+            $updates[] = "program = ?";
+            $updateParams[] = $program;
+        }
+        if (!empty($updates)) {
+            $updateParams[] = $secId;
+            $db->prepare("UPDATE sections SET " . implode(', ', $updates) . " WHERE id = ?")->execute($updateParams);
+        }
+
+        $result = ['id' => $secId, 'name' => $secName, 'created' => false];
+        $resolvedCache[$cacheKey] = $result;
+        return $result;
+    }
+
+    // 2. Not found: insert new section for this grade and track context
+    try {
+        $insert = $db->prepare("INSERT INTO sections (name, grade_level, track, curriculum, program) VALUES (?, ?, ?, ?, ?)");
+        $insert->execute([$sectionTrimmed, $gradeLevel, $trackNorm, $curriculum, $program]);
+        $newId = (int)$db->lastInsertId();
+
+        recordAdminAuditLog($db, 'section.auto_create_from_sf1', 'section', $newId, [
+            'name' => $sectionTrimmed,
+            'grade_level' => $gradeLevel,
+            'track' => $trackNorm,
+            'curriculum' => $curriculum,
+            'program' => $program,
+            'academic_year' => $academicYear,
+        ]);
+
+        $result = ['id' => $newId, 'name' => $sectionTrimmed, 'created' => true];
+        $resolvedCache[$cacheKey] = $result;
+        return $result;
+    } catch (Throwable $e) {
+        // In case of a race condition or unique constraint, resolve the existing record for this grade & track
+        $fallback = $db->prepare("SELECT id, name FROM sections WHERE grade_level = ? AND track = ? AND LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 1");
+        $fallback->execute([$gradeLevel, $trackNorm, $sectionTrimmed]);
+        $row = $fallback->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            $result = ['id' => (int)$row['id'], 'name' => (string)$row['name'], 'created' => false];
+            $resolvedCache[$cacheKey] = $result;
+            return $result;
+        }
+
+        $result = ['id' => 0, 'name' => $sectionTrimmed, 'created' => false];
+        $resolvedCache[$cacheKey] = $result;
+        return $result;
+    }
 }
 
 function parseSf1UploadedFile(array $file): array {
@@ -508,11 +564,22 @@ if ($action === 'commit') {
             $track = 'academic';
         }
 
+        // Resolve section
+        $sectionResult = ensureSf1Section($db, $section, $gradeLevel, $track, $academicYear);
+        if (!empty($sectionResult['created'])) {
+            $results['sections_created']++;
+        }
+        $canonicalSection = !empty($sectionResult['name']) ? (string)$sectionResult['name'] : $section;
+
         // Check if LRN already exists
         try {
             $lrnCheck = $db->prepare("SELECT id, first_name, last_name FROM users WHERE lrn = ? LIMIT 1");
             $lrnCheck->execute([$lrn]);
             if ($existingUser = $lrnCheck->fetch(PDO::FETCH_ASSOC)) {
+                $existingUserId = (int)$existingUser['id'];
+                if ($existingUserId > 0) {
+                    syncStudentEnrollments($db, $existingUserId, $gradeLevel, $canonicalSection, $track, $academicYear);
+                }
                 $results['rows'][] = [
                     'row'     => $rowNum,
                     'lrn'     => $lrn,
@@ -532,10 +599,6 @@ if ($action === 'commit') {
         $program = strengthenedShsProgram($gradeLevel, $track, $academicYear);
 
         try {
-            if (ensureSf1Section($db, $section, $gradeLevel, $track, $academicYear)) {
-                $results['sections_created']++;
-            }
-
             $insertStmt = $db->prepare("INSERT INTO users
                 (reference_code, email, lrn, password, first_name, middle_name, last_name, name_extension, sex, date_of_birth, religion, contact_number, address, house_street, barangay, municipality, province, father_name, mother_name, guardian_name, guardian_relationship, grade_level, section, track, curriculum, program, role, status, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'student', 'active', NOW(), NOW())");
@@ -548,13 +611,13 @@ if ($action === 'commit') {
                 $houseStreet ?: null, $barangay ?: null, $municipality ?: null, $province ?: null,
                 $fatherName ?: null, $motherName ?: null,
                 $guardianName ?: null, $guardianRelationship ?: null,
-                $gradeLevel, $section, $track, $curriculum, $program
+                $gradeLevel, $canonicalSection, $track, $curriculum, $program
             ]);
 
             $newUserId = (int)$db->lastInsertId();
             $parentInfoMsg = '';
             if ($newUserId > 0) {
-                syncStudentEnrollments($db, $newUserId, $gradeLevel, $section, $track, $academicYear);
+                syncStudentEnrollments($db, $newUserId, $gradeLevel, $canonicalSection, $track, $academicYear);
                 $parentLink = autoLinkSf1Parent($db, $newUserId, $row, $academicYear, $hashedPassword);
                 if ($parentLink !== null) {
                     if ($parentLink['is_new']) {
@@ -611,7 +674,9 @@ if ($action === 'commit') {
     exit();
 }
 
-echo json_encode(['success' => false, 'message' => 'Invalid action requested.']);
-exit();
+if ($action !== '' && $action !== 'noop') {
+    echo json_encode(['success' => false, 'message' => 'Invalid action requested.']);
+    exit();
+}
 
 
