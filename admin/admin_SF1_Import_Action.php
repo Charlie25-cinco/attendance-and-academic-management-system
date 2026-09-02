@@ -82,7 +82,7 @@ function ensureSf1Section(PDO $db, string $section, int $gradeLevel, string $tra
     }
 
     $trackNorm = in_array(strtolower(trim($track)), ['academic', 'techpro'], true) ? strtolower(trim($track)) : 'academic';
-    $cacheKey = strtolower($gradeLevel . '|' . $trackNorm . '|' . $sectionTrimmed);
+    $cacheKey = spl_object_id($db) . '|' . strtolower($gradeLevel . '|' . $trackNorm . '|' . $sectionTrimmed);
     if (isset($resolvedCache[$cacheKey])) {
         return $resolvedCache[$cacheKey];
     }
@@ -103,7 +103,7 @@ function ensureSf1Section(PDO $db, string $section, int $gradeLevel, string $tra
     $stmt = $db->prepare("SELECT id, name, grade_level, track, curriculum, program
                           FROM sections
                           WHERE grade_level = ?
-                            AND track = ?
+                            AND LOWER(TRIM(track)) = LOWER(TRIM(?))
                             AND ({$sectionSql})
                           LIMIT 1");
     $stmt->execute($params);
@@ -161,7 +161,7 @@ function ensureSf1Section(PDO $db, string $section, int $gradeLevel, string $tra
         }
 
         // In case of a race condition or unique constraint, resolve the existing record for this grade & track
-        $fallback = $db->prepare("SELECT id, name FROM sections WHERE grade_level = ? AND track = ? AND LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 1");
+        $fallback = $db->prepare("SELECT id, name FROM sections WHERE grade_level = ? AND LOWER(TRIM(track)) = LOWER(TRIM(?)) AND LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 1");
         $fallback->execute([$gradeLevel, $trackNorm, $sectionTrimmed]);
         $row = $fallback->fetch(PDO::FETCH_ASSOC);
         if ($row) {
@@ -562,11 +562,26 @@ function commitSf1Students(PDO $db, array $students, string $academicYear = '202
         $canonicalSection = !empty($sectionResult['name']) ? (string)$sectionResult['name'] : $section;
 
         // Check if LRN already exists
+        $existingUser = null;
         try {
             $lrnCheck = $db->prepare("SELECT id, first_name, last_name FROM users WHERE lrn = ? LIMIT 1");
             $lrnCheck->execute([$lrn]);
-            if ($existingUser = $lrnCheck->fetch(PDO::FETCH_ASSOC)) {
-                $existingUserId = (int)$existingUser['id'];
+            $existingUser = $lrnCheck->fetch(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) {
+            $results['rows'][] = [
+                'row'     => $rowNum,
+                'lrn'     => $lrn,
+                'name'    => "$firstName $lastName",
+                'status'  => 'error',
+                'message' => 'Database error checking LRN: ' . $e->getMessage()
+            ];
+            $results['errors']++;
+            continue;
+        }
+
+        if ($existingUser) {
+            $existingUserId = (int)$existingUser['id'];
+            try {
                 if ($existingUserId > 0) {
                     syncStudentEnrollments($db, $existingUserId, $gradeLevel, $canonicalSection, $track, $academicYear);
                 }
@@ -578,9 +593,18 @@ function commitSf1Students(PDO $db, array $students, string $academicYear = '202
                     'message' => 'LRN already registered in system (' . $existingUser['first_name'] . ' ' . $existingUser['last_name'] . ').'
                 ];
                 $results['skipped']++;
-                continue;
+            } catch (Throwable $e) {
+                $results['rows'][] = [
+                    'row'     => $rowNum,
+                    'lrn'     => $lrn,
+                    'name'    => "$firstName $lastName",
+                    'status'  => 'error',
+                    'message' => 'Enrollment sync failed: ' . $e->getMessage()
+                ];
+                $results['errors']++;
             }
-        } catch (Throwable $e) {}
+            continue;
+        }
 
         $refCode = generateReferenceCode('student', $db, $academicYear);
         $emailBase = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $firstName . '.' . $lastName));

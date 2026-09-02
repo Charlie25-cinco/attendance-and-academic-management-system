@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.138 — 2026-09-02
+
+### Fixed
+
+- **SF1 Re-Import Section Resolution & Explicit Enrollment Error Tracking**:
+  - **Strict Case-Insensitive Track Matching in `ensureSf1Section()`**: Updated `ensureSf1Section()` in [`admin/admin_SF1_Import_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_SF1_Import_Action.php) to match track strictly using normalized `LOWER(TRIM(track)) = LOWER(TRIM(?))` without blank/NULL fallback, ensuring `Grade 11 + Academic + Humility` resolves deterministically to the existing section regardless of track casing while rejecting mismatched tracks.
+  - **Connection-Scoped Section Cache**: Scoped `$resolvedCache` by PDO connection object ID (`spl_object_id($db)`) in `ensureSf1Section()` to prevent cross-connection cache pollution in multi-step workflows and automated testing.
+  - **Deterministic Existing LRN Flow & Explicit Error Tracking**: Refined existing student handling in `commitSf1Students()` so an existing LRN is guaranteed never to fall through into `INSERT INTO users`. If `syncStudentEnrollments()` succeeds, the row is marked `skipped` and `skipped++` is incremented; if enrollment synchronization fails, the actual error message is recorded in `results['rows']`, `errors++` is incremented, and the batch is marked failed instead of claiming success.
+  - **Regression Testing**: Added tests in [`tests/Sf1SubjectRosterEnrollmentTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/Sf1SubjectRosterEnrollmentTest.php) validating that different or blank tracks do not resolve as `academic`, and that enrollment sync failures for existing LRNs are recorded as explicit errors.
+
 ## v0.3.137 — 2026-09-02
 
 ### Fixed

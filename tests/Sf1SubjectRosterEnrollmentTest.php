@@ -424,7 +424,7 @@ final class Sf1SubjectRosterEnrollmentTest extends TestCase
 
         // 2. Seed existing Section Humility for Grade 11 Academic
         $this->db->exec("INSERT INTO sections (id, name, grade_level, track, curriculum, program)
-            VALUES (1, 'Humility', 11, 'academic', 'strengthened_shs', 'academic_strengthened')");
+            VALUES (1, 'Humility', 11, 'Academic', 'strengthened_shs', 'academic_strengthened')");
 
         // 3. Seed active Filipino class (ID 15) for Grade 11 Humility
         $this->db->exec("INSERT INTO classes (id, class_name, grade_level, section, track, teacher_id, status)
@@ -514,6 +514,65 @@ final class Sf1SubjectRosterEnrollmentTest extends TestCase
                 @unlink($csvPath);
             }
         }
+    }
+
+    public function testEnsureSf1SectionDoesNotResolveDifferentOrBlankTrackAsAcademic(): void
+    {
+        // 1. Seed Section Integrity for Grade 11 TechPro and Section Courage with blank track
+        $this->db->exec("INSERT INTO sections (id, name, grade_level, track, curriculum, program) VALUES
+            (10, 'Integrity', 11, 'techpro', 'strengthened_shs', 'technical_professional'),
+            (20, 'Courage', 11, '', 'strengthened_shs', 'academic_strengthened')");
+
+        // 2. Querying Integrity for TechPro resolves to TechPro section 10
+        $techproIntegrity = ensureSf1Section($this->db, 'Integrity', 11, 'techpro', '2026-2027');
+        $this->assertSame(10, (int)$techproIntegrity['id']);
+        $this->assertFalse($techproIntegrity['created']);
+
+        // 3. Querying Integrity for Academic must not resolve to TechPro section 10 (fails to resolve existing record)
+        try {
+            ensureSf1Section($this->db, 'Integrity', 11, 'academic', '2026-2027');
+            $this->fail('Academic import must not resolve to TechPro section 10');
+        } catch (\PDOException $e) {
+            $this->assertStringContainsString('UNIQUE constraint failed', $e->getMessage());
+        }
+
+        // 4. Querying Courage for Academic must not resolve to blank-track section 20
+        try {
+            ensureSf1Section($this->db, 'Courage', 11, 'academic', '2026-2027');
+            $this->fail('Academic import must not resolve to blank track section 20');
+        } catch (\PDOException $e) {
+            $this->assertStringContainsString('UNIQUE constraint failed', $e->getMessage());
+        }
+    }
+
+    public function testSf1CommitRecordsErrorWhenEnrollmentSyncFailsForExistingLrn(): void
+    {
+        // Seed existing student
+        $this->db->exec("INSERT INTO users (id, reference_code, email, lrn, first_name, last_name, grade_level, section, track, role, status)
+            VALUES (501, 'STU-2026-0501', 'andres.bonifacio@students.balingasag.edu.ph', '999988887777', 'Andres', 'Bonifacio', 11, 'Humility', 'academic', 'student', 'active')");
+
+        // Seed section Humility and active Filipino class
+        $this->db->exec("INSERT INTO sections (id, name, grade_level, track) VALUES (50, 'Humility', 11, 'academic')");
+        $this->db->exec("INSERT INTO classes (id, class_name, grade_level, section, track, status) VALUES (55, 'Filipino', 11, 'Humility', 'academic', 'active')");
+
+        // Drop enrollments table to force syncStudentEnrollments to throw a database exception
+        $this->db->exec("DROP TABLE enrollments");
+
+        $studentData = [[
+            'lrn' => '999988887777',
+            'last_name' => 'Bonifacio',
+            'first_name' => 'Andres',
+            'grade_level' => 11,
+            'section' => 'Humility',
+            'track' => 'academic',
+        ]];
+
+        $result = commitSf1Students($this->db, $studentData, '2026-2027');
+        $this->assertFalse($result['success']);
+        $this->assertSame(0, $result['created']);
+        $this->assertSame(0, $result['skipped']);
+        $this->assertSame(1, $result['errors']);
+        $this->assertStringContainsString('Enrollment sync failed', $result['rows'][0]['message']);
     }
 }
 
