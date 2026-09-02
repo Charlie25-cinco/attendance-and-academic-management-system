@@ -49,7 +49,9 @@ final class PwaInstallUiTest extends TestCase
         $this->assertIsString($constants);
 
         $this->assertStringContainsString('window._pwaInstallPrompt = null;', $constants);
+        $this->assertStringContainsString('window._pwaInstalled = false;', $constants);
         $this->assertStringContainsString('window.isPwaStandalone = function ()', $constants);
+        $this->assertStringContainsString('window.isPwaInstalled = function ()', $constants);
         $this->assertStringContainsString('window.showPwaInstallModal = function ()', $constants);
         $this->assertStringContainsString('window.bindPwaInstallButton = function ()', $constants);
         $this->assertStringContainsString("document.getElementById('settingsPwaInstallSection')", $constants);
@@ -153,7 +155,7 @@ final class PwaInstallUiTest extends TestCase
         $pwaScript = substr($html, $startIndex, $endIndex - $startIndex);
         $this->assertNotEmpty($pwaScript);
 
-        // Run node runtime evaluation to ensure zero syntax errors and verify actual DOM click execution
+        // Run node runtime evaluation to test full PWA installation lifecycle, storage persistence, and standalone mode
         $nodeScript = "
         const pwaScript = " . json_encode($pwaScript) . ";
         class MockElement {
@@ -211,7 +213,28 @@ final class PwaInstallUiTest extends TestCase
             }
         }
 
+        class MockLocalStorage {
+            constructor() {
+                this.store = {};
+            }
+            getItem(key) {
+                return this.store[key] || null;
+            }
+            setItem(key, value) {
+                this.store[key] = String(value);
+            }
+            removeItem(key) {
+                delete this.store[key];
+            }
+            clear() {
+                this.store = {};
+            }
+        }
+
         async function run() {
+            const storage = new MockLocalStorage();
+
+            // Scenario 1: Initial load in standard browser mode
             const doc = new MockDocument();
             doc.elements['settingsPwaInstallSection'] = new MockElement('settingsPwaInstallSection');
             doc.elements['settingsPwaInstallBtn'] = new MockElement('settingsPwaInstallBtn', 'button');
@@ -226,9 +249,13 @@ final class PwaInstallUiTest extends TestCase
                 }
             };
 
+            let standaloneMode = false;
             const mockWindow = {
-                matchMedia: () => ({ matches: false }),
+                matchMedia: (query) => ({
+                    matches: query.includes('standalone') ? standaloneMode : false
+                }),
                 navigator: { standalone: false, userAgent: 'Chrome/Desktop' },
+                localStorage: storage,
                 addEventListener: (event, fn) => doc.addEventListener(event, fn),
                 document: doc,
                 bootstrap: mockBootstrap
@@ -237,20 +264,21 @@ final class PwaInstallUiTest extends TestCase
             const fn = new Function('window', 'document', 'navigator', 'bootstrap', pwaScript);
             fn(mockWindow, doc, mockWindow.navigator, mockBootstrap);
 
-            // Trigger DOMContentLoaded
+            // Phase 1: DOMContentLoaded in browser mode -> button is 'Install'
             await doc.dispatchEvent('DOMContentLoaded');
-            if (doc.elements['settingsPwaInstallBtn'].dataset.bound !== '1') {
+            const btn = doc.elements['settingsPwaInstallBtn'];
+            if (btn.dataset.bound !== '1' || !btn.innerHTML.includes('Install') || btn.innerHTML.includes('Installed')) {
                 process.exit(10);
             }
 
-            // Click without prompt -> modal shown
+            // Phase 2: Click without prompt -> modal shown with install instructions
             modalShown = false;
-            await doc.elements['settingsPwaInstallBtn'].dispatchEvent('click');
-            if (!modalShown) {
+            await btn.dispatchEvent('click');
+            if (!modalShown || doc.elements['pwaInstallModalTitle'].textContent !== 'Install BSHS AMS') {
                 process.exit(11);
             }
 
-            // Click with prompt -> prompt called
+            // Phase 3: Receive beforeinstallprompt and user accepts -> button becomes 'Installed' and persisted in localStorage
             let promptCalled = false;
             await doc.dispatchEvent('beforeinstallprompt', {
                 preventDefault: () => {},
@@ -259,12 +287,94 @@ final class PwaInstallUiTest extends TestCase
             });
 
             modalShown = false;
-            await doc.elements['settingsPwaInstallBtn'].dispatchEvent('click');
+            await btn.dispatchEvent('click');
             if (!promptCalled) {
                 process.exit(12);
             }
             if (mockWindow._pwaInstallPrompt !== null) {
                 process.exit(13);
+            }
+            if (!btn.innerHTML.includes('Installed') || storage.getItem('bshs_pwa_installed') !== '1') {
+                process.exit(14);
+            }
+
+            // Phase 4: Settings modal reopen -> bindPwaInstallButton() preserves 'Installed' state
+            mockWindow.bindPwaInstallButton();
+            if (!btn.innerHTML.includes('Installed')) {
+                process.exit(15);
+            }
+
+            // Phase 5: Click when installed -> does NOT call prompt, opens 'Application Already Installed' guidance
+            promptCalled = false;
+            modalShown = false;
+            await btn.dispatchEvent('click');
+            if (promptCalled || !modalShown || doc.elements['pwaInstallModalTitle'].textContent !== 'Application Already Installed') {
+                process.exit(16);
+            }
+
+            // Scenario 2: appinstalled event test
+            storage.clear();
+            const doc2 = new MockDocument();
+            doc2.elements['settingsPwaInstallSection'] = new MockElement('settingsPwaInstallSection');
+            doc2.elements['settingsPwaInstallBtn'] = new MockElement('settingsPwaInstallBtn', 'button');
+            doc2.elements['pwaInstallModal'] = new MockElement('pwaInstallModal');
+            doc2.elements['pwaInstallModalTitle'] = new MockElement('pwaInstallModalTitle');
+            doc2.elements['pwaInstallModalSubtitle'] = new MockElement('pwaInstallModalSubtitle');
+
+            const mockWindow2 = {
+                matchMedia: (query) => ({ matches: false }),
+                navigator: { standalone: false, userAgent: 'Chrome/Desktop' },
+                localStorage: storage,
+                addEventListener: (event, fn) => doc2.addEventListener(event, fn),
+                document: doc2,
+                bootstrap: mockBootstrap
+            };
+
+            const fn2 = new Function('window', 'document', 'navigator', 'bootstrap', pwaScript);
+            fn2(mockWindow2, doc2, mockWindow2.navigator, mockBootstrap);
+            await doc2.dispatchEvent('DOMContentLoaded');
+
+            const btn2 = doc2.elements['settingsPwaInstallBtn'];
+            if (!btn2.innerHTML.includes('Install') || btn2.innerHTML.includes('Installed')) {
+                process.exit(20);
+            }
+
+            // Dispatch appinstalled event
+            await doc2.dispatchEvent('appinstalled');
+            if (!btn2.innerHTML.includes('Installed') || storage.getItem('bshs_pwa_installed') !== '1' || !mockWindow2.isPwaInstalled()) {
+                process.exit(21);
+            }
+
+            // Reopen Settings modal -> still Installed
+            mockWindow2.bindPwaInstallButton();
+            if (!btn2.innerHTML.includes('Installed')) {
+                process.exit(22);
+            }
+
+            // Scenario 3: Fresh standalone page load
+            const doc3 = new MockDocument();
+            doc3.elements['settingsPwaInstallSection'] = new MockElement('settingsPwaInstallSection');
+            doc3.elements['settingsPwaInstallBtn'] = new MockElement('settingsPwaInstallBtn', 'button');
+            doc3.elements['pwaInstallModal'] = new MockElement('pwaInstallModal');
+            doc3.elements['pwaInstallModalTitle'] = new MockElement('pwaInstallModalTitle');
+            doc3.elements['pwaInstallModalSubtitle'] = new MockElement('pwaInstallModalSubtitle');
+
+            const mockWindow3 = {
+                matchMedia: (query) => ({ matches: query.includes('standalone') }),
+                navigator: { standalone: false, userAgent: 'Chrome/Desktop' },
+                localStorage: new MockLocalStorage(),
+                addEventListener: (event, fn) => doc3.addEventListener(event, fn),
+                document: doc3,
+                bootstrap: mockBootstrap
+            };
+
+            const fn3 = new Function('window', 'document', 'navigator', 'bootstrap', pwaScript);
+            fn3(mockWindow3, doc3, mockWindow3.navigator, mockBootstrap);
+            await doc3.dispatchEvent('DOMContentLoaded');
+
+            const btn3 = doc3.elements['settingsPwaInstallBtn'];
+            if (!btn3.innerHTML.includes('Installed') || !mockWindow3.isPwaInstalled()) {
+                process.exit(30);
             }
 
             process.exit(0);

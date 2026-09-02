@@ -992,13 +992,19 @@ if ('serviceWorker' in navigator) {
             });
     }
     window._pwaInstallPrompt = null;
+    window._pwaInstalled = false;
     window.isPwaStandalone = function () {
         return Boolean((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true);
+    };
+    window.isPwaInstalled = function () {
+        var isStandalone = window.isPwaStandalone();
+        var isFlagged = Boolean(window._pwaInstalled === true || (window.localStorage && window.localStorage.getItem('bshs_pwa_installed') === '1'));
+        return isStandalone || isFlagged;
     };
 
     window.showPwaInstallModal = function () {
         var modalEl = document.getElementById('pwaInstallModal');
-        var isStandalone = window.isPwaStandalone();
+        var isInstalled = window.isPwaInstalled();
         var isIos = /iphone|ipad|ipod/i.test(navigator.userAgent || '') && !window.MSStream;
 
         var titleEl = document.getElementById('pwaInstallModalTitle');
@@ -1010,7 +1016,7 @@ if ('serviceWorker' in navigator) {
         var step3Title = document.getElementById('pwaGuideStep3Title');
         var step3Desc = document.getElementById('pwaGuideStep3Desc');
 
-        if (isStandalone) {
+        if (isInstalled) {
             if (titleEl) titleEl.textContent = 'Application Already Installed';
             if (subtitleEl) subtitleEl.textContent = 'BSHS AMS is currently running as an installed application on this device.';
             if (step1Title) step1Title.textContent = 'Installed & Active';
@@ -1049,7 +1055,7 @@ if ('serviceWorker' in navigator) {
     };
 
     window.bindPwaInstallButton = function () {
-        var isStandalone = window.isPwaStandalone();
+        var isInstalled = window.isPwaInstalled();
         var settingsSection = document.getElementById('settingsPwaInstallSection');
         var settingsBtn = document.getElementById('settingsPwaInstallBtn');
 
@@ -1057,7 +1063,7 @@ if ('serviceWorker' in navigator) {
             settingsSection.style.display = 'block';
         }
         if (settingsBtn) {
-            if (isStandalone) {
+            if (isInstalled) {
                 settingsBtn.innerHTML = '<i class=\"bi bi-check2-circle me-1\"></i>Installed';
                 settingsBtn.classList.remove('btn-primary-custom');
                 settingsBtn.classList.add('btn-outline-secondary');
@@ -1071,11 +1077,21 @@ if ('serviceWorker' in navigator) {
                 settingsBtn.dataset.bound = '1';
                 settingsBtn.addEventListener('click', async function (e) {
                     if (e) e.preventDefault();
+                    if (window.isPwaInstalled()) {
+                        window.showPwaInstallModal();
+                        return;
+                    }
                     if (window._pwaInstallPrompt) {
                         try {
                             await window._pwaInstallPrompt.prompt();
                             var choice = await window._pwaInstallPrompt.userChoice;
                             if (choice && choice.outcome === 'accepted') {
+                                window._pwaInstalled = true;
+                                try {
+                                    if (window.localStorage) {
+                                        window.localStorage.setItem('bshs_pwa_installed', '1');
+                                    }
+                                } catch (err) {}
                                 window._pwaInstallPrompt = null;
                             }
                         } catch (err) {
@@ -1100,6 +1116,12 @@ if ('serviceWorker' in navigator) {
         window.bindPwaInstallButton();
     });
     window.addEventListener('appinstalled', function () {
+        window._pwaInstalled = true;
+        try {
+            if (window.localStorage) {
+                window.localStorage.setItem('bshs_pwa_installed', '1');
+            }
+        } catch (err) {}
         window._pwaInstallPrompt = null;
         window.bindPwaInstallButton();
     });

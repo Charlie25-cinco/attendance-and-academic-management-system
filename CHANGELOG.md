@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.156 — 2026-09-03
+
+### Fixed
+
+- **PWA Installed-State UI Synchronization & Unified Installation Detection**:
+  - **Unified Installation Semantics**: Introduced `window.isPwaInstalled()` in [`config/constants.php`](file:///c:/laragon/www/attendance-and-academic-management-system/config/constants.php) combining standalone display mode detection (`(display-mode: standalone)` / `navigator.standalone === true`) with explicit recorded installation (`window._pwaInstalled` in-memory flag and `localStorage.getItem('bshs_pwa_installed') === '1'`).
+  - **Lifecycle Synchronization**: Ensured `appinstalled` events and accepted native prompt choices immediately set the installation flags, persist to `localStorage`, and update `#settingsPwaInstallBtn` to `<i class="bi bi-check2-circle me-1"></i>Installed` with `.btn-outline-secondary`.
+  - **Reopen & Installed Click Stability**: Reopening `#settingsModal` (`shown.bs.modal`) retains the `Installed` state without reverting to `Install`. Clicks on an already installed button route safely to `showPwaInstallModal()` with existing "Application Already Installed" guidance rather than invoking `prompt()`.
+  - **Multi-Phase DOM Lifecycle Tests**: Extended `testPwaHeadScriptExecutesWithoutSyntaxErrorsAndHandlesInstallClick` in [`tests/PwaInstallUiTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/PwaInstallUiTest.php) to simulate `localStorage`, `matchMedia`, `appinstalled`, modal reopenings, and standalone initialization across 3 end-to-end scenarios.
+
 ## v0.3.155 — 2026-09-03
 
 ### Fixed
