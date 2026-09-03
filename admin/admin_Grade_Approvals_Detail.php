@@ -607,6 +607,20 @@ async function reviewBatch(gradeLevel, section, academicYear, semester, status, 
         .catch(() => showNotification('Error updating batch', 'danger'));
 }
 </script>
+<script>
+window.addEventListener('ams:notificationReceived', () => {
+    const currentUrl = window.location.href;
+    fetch(currentUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(r => r.text())
+        .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const newContent = doc.querySelector('.page-content');
+            const currentContent = document.querySelector('.page-content');
+            if (newContent && currentContent) currentContent.innerHTML = newContent.innerHTML;
+        }).catch(() => {});
+});
+</script>
 <?php include '../includes/footer.php'; ?>
 
 

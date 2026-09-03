@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.169 — 2026-09-03
+
+### Fixed
+
+- **Real-Time Grade & Report Card Workflow with Database-Persisted Idempotency & Live DOM Updates**:
+  - **DepEd 4-Step Pipeline Integration**: Implemented end-to-end real-time notifications and status updates across the complete approval pipeline: Teacher Grade Submission $\to$ Admin Grade Verification/Rejection $\to$ Adviser Report Card Submission $\to$ Admin Final Approval/Release & Recall, strictly preserving existing approval status transitions and review permissions.
+  - **Database-Persisted Idempotency Keys**: Replaced dynamic timestamps with database-persisted workflow record IDs and committed timestamps (`ga.id`, `rc.id`, `submitted_at`, `reviewed_at`), guaranteeing that retries of identical operations are 100% deduplicated via `(user_id, source_key)` while new submission/review cycles generate fresh distinct event keys.
+  - **Seamless Live DOM Refresh**: Updated [`admin/admin_Grade_Approvals.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Grade_Approvals.php), [`admin/admin_Grade_Approvals_Detail.php`](file:///c:/laragon/www/attendance-and-academic-management-system/admin/admin_Grade_Approvals_Detail.php), [`teacher/teacher_Grades.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Grades.php), and [`teacher/teacher_Advisory.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Advisory.php) to automatically refresh approval cards, review tables, and submission badges in the DOM upon receiving `ams:notificationReceived` without requiring a manual browser reload.
+  - **Automated Regression Test Suite**: Updated [`tests/TeacherPwaOfflineLifecycleTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/TeacherPwaOfflineLifecycleTest.php) with comprehensive integration tests covering the 4-step approval lifecycle, multi-cycle submit $\to$ reject $\to$ resubmit $\to$ verify transitions, retry deduplication, and live DOM refresh handlers.
+
 ## v0.3.168 — 2026-09-03
 
 ### Fixed

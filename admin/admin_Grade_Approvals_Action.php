@@ -15,7 +15,19 @@ if (!$db) {
 
 
 
-function notifySectionAdviserAndTeachers(PDO $db, int $gradeLevel, string $section, string $academicYear, string $title, string $subtitle, string $icon, string $color, string $teacherTarget = 'teacher_Advisory.php', ?int $onlyTeacherId = null): void {
+function notifySectionAdviserAndTeachers(
+    PDO $db,
+    int $gradeLevel,
+    string $section,
+    string $academicYear,
+    string $title,
+    string $subtitle,
+    string $icon,
+    string $color,
+    string $teacherTarget = 'teacher_Advisory.php',
+    ?int $onlyTeacherId = null,
+    ?string $customSourceKey = null
+): void {
     try {
         $teacherIds = [];
         if ($onlyTeacherId !== null && $onlyTeacherId > 0) {
@@ -41,10 +53,16 @@ function notifySectionAdviserAndTeachers(PDO $db, int $gradeLevel, string $secti
         }
         $teacherIds = array_values(array_unique(array_filter($teacherIds)));
         if (!empty($teacherIds) && function_exists('appDispatchNotification')) {
+            $cleanSec = preg_replace('/[^a-zA-Z0-9]/', '', $section);
+            $cleanYear = preg_replace('/[^a-zA-Z0-9]/', '', $academicYear);
+            $sourceKey = ($customSourceKey !== null && $customSourceKey !== '')
+                ? $customSourceKey
+                : ('grade_workflow_' . $gradeLevel . '_' . $cleanSec . '_' . $cleanYear);
+
             appDispatchNotification(
                 $db,
                 $teacherIds,
-                'grade_workflow_' . $gradeLevel . '_' . preg_replace('/[^a-zA-Z0-9]/', '', $section) . '_' . time(),
+                $sourceKey,
                 $title,
                 $subtitle,
                 $icon,
@@ -84,6 +102,53 @@ if ($action === 'review') {
         exit();
     }
 
+    $infoStmt = $db->prepare("SELECT ga.submitted_by, ga.reviewed_at, g.academic_year, c.grade_level, c.section, c.class_name, cs.teacher_id
+                              FROM grade_approvals ga
+                              JOIN grades g ON g.id = ga.grade_id
+                              JOIN class_subjects cs ON cs.id = g.class_subject_id
+                              JOIN classes c ON c.id = cs.class_id
+                              WHERE ga.id = ? LIMIT 1");
+    $infoStmt->execute([$approvalId]);
+    $gInfo = $infoStmt->fetch(PDO::FETCH_ASSOC);
+    if ($gInfo) {
+        $targetTeacherId = (int)($gInfo['submitted_by'] ?: $gInfo['teacher_id']);
+        $gLevel = (int)$gInfo['grade_level'];
+        $sec = (string)$gInfo['section'];
+        $ay = (string)$gInfo['academic_year'];
+        $cName = (string)$gInfo['class_name'];
+        $reviewedAtTs = strtotime((string)($gInfo['reviewed_at'] ?? 'now')) ?: time();
+        if ($status === 'admin_verified') {
+            notifySectionAdviserAndTeachers(
+                $db,
+                $gLevel,
+                $sec,
+                $ay,
+                'Subject Grades Verified',
+                "Admin verified grades for {$cName} (Grade {$gLevel} - {$sec}).",
+                'bi-check2-circle',
+                'info',
+                'teacher_Advisory.php',
+                $targetTeacherId,
+                'grade_verify_single_' . $approvalId . '_status_admin_verified_' . $reviewedAtTs
+            );
+        } else {
+            $reasonText = $remarks !== '' ? ": {$remarks}" : '.';
+            notifySectionAdviserAndTeachers(
+                $db,
+                $gLevel,
+                $sec,
+                $ay,
+                'Subject Grades Returned for Correction',
+                "Admin returned grades for {$cName} (Grade {$gLevel} - {$sec}) for correction{$reasonText}",
+                'bi-exclamation-triangle',
+                'warning',
+                'teacher_Grades.php',
+                $targetTeacherId,
+                'grade_reject_single_' . $approvalId . '_status_rejected_' . $reviewedAtTs
+            );
+        }
+    }
+
     echo json_encode(['success' => true, 'message' => 'Grade status updated to ' . ucfirst($status)]);
     exit();
 }
@@ -106,6 +171,37 @@ if ($action === 'return_grade') {
     if ($stmt->rowCount() <= 0) {
         echo json_encode(['success' => false, 'message' => 'Verified approval record not found or already returned']);
         exit();
+    }
+
+    $infoStmt = $db->prepare("SELECT ga.submitted_by, ga.reviewed_at, g.academic_year, c.grade_level, c.section, c.class_name, cs.teacher_id
+                              FROM grade_approvals ga
+                              JOIN grades g ON g.id = ga.grade_id
+                              JOIN class_subjects cs ON cs.id = g.class_subject_id
+                              JOIN classes c ON c.id = cs.class_id
+                              WHERE ga.id = ? LIMIT 1");
+    $infoStmt->execute([$approvalId]);
+    $gInfo = $infoStmt->fetch(PDO::FETCH_ASSOC);
+    if ($gInfo) {
+        $targetTeacherId = (int)($gInfo['submitted_by'] ?: $gInfo['teacher_id']);
+        $gLevel = (int)$gInfo['grade_level'];
+        $sec = (string)$gInfo['section'];
+        $ay = (string)$gInfo['academic_year'];
+        $cName = (string)$gInfo['class_name'];
+        $reviewedAtTs = strtotime((string)($gInfo['reviewed_at'] ?? 'now')) ?: time();
+        $reasonText = $remarks !== '' ? ": {$remarks}" : '.';
+        notifySectionAdviserAndTeachers(
+            $db,
+            $gLevel,
+            $sec,
+            $ay,
+            'Verified Grades Returned for Teacher Edit',
+            "Admin returned verified grades for {$cName} (Grade {$gLevel} - {$sec}) as editable{$reasonText}",
+            'bi-exclamation-triangle',
+            'warning',
+            'teacher_Grades.php',
+            $targetTeacherId,
+            'grade_return_single_' . $approvalId . '_status_rejected_' . $reviewedAtTs
+        );
     }
 
     echo json_encode(['success' => true, 'message' => 'Grade returned to teacher as rejected for correction']);

@@ -1982,10 +1982,17 @@ function submitGrades($db, $teacherId) {
 
             if (!empty($adminIds) && function_exists('appDispatchNotification')) {
                 $targetLink = 'admin_Grade_Approvals_Detail.php?tab=grades&grade_level=' . $gLevel . '&section=' . urlencode($secName) . '&academic_year=' . urlencode($academicYear) . '&semester=' . urlencode((string)($semester ?? ''));
+                $minApprStmt = $db->prepare("SELECT MIN(ga.id) AS min_id, MAX(ga.submitted_at) AS sub_at FROM grade_approvals ga JOIN grades g ON g.id = ga.grade_id WHERE g.class_subject_id = ? AND g.academic_year = ?");
+                $minApprStmt->execute([$classSubjectId, $academicYear]);
+                $apprMeta = $minApprStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+                $minApprId = (int)($apprMeta['min_id'] ?? 0);
+                $subAtTs = strtotime((string)($apprMeta['sub_at'] ?? 'now')) ?: time();
+                $subKey = 'grade_sub_admin_' . $classSubjectId . '_' . $term . '_' . preg_replace('/[^a-zA-Z0-9]/', '', $academicYear) . '_appr_' . $minApprId . '_' . $subAtTs;
+
                 appDispatchNotification(
                     $db,
                     $adminIds,
-                    'grade_submission_admin_' . $classSubjectId . '_' . $term . '_' . $academicYear,
+                    $subKey,
                     'Subject Grades Submitted',
                     "Teacher {$tName} submitted {$cName} (Grade {$gLevel} - {$secName}, {$term}) for admin verification.",
                     'bi-journal-check',
@@ -2942,10 +2949,17 @@ function submitReportCard($db, $teacherId) {
 
             if (!empty($adminIds) && function_exists('appDispatchNotification')) {
                 $targetLink = 'admin_Grade_Approvals_Detail.php?tab=report_cards&grade_level=' . $advGLevel . '&section=' . urlencode($advSecName) . '&academic_year=' . urlencode($academicYear) . '&semester=' . urlencode((string)($semester ?? ''));
+                $minRcStmt = $db->prepare("SELECT MIN(rc.id) AS min_id, MAX(rc.submitted_at) AS sub_at FROM report_card_approvals rc WHERE rc.advisory_teacher_id = ? AND rc.academic_year = ?");
+                $minRcStmt->execute([$teacherId, $academicYear]);
+                $rcMeta = $minRcStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+                $minRcId = (int)($rcMeta['min_id'] ?? 0);
+                $rcSubAtTs = strtotime((string)($rcMeta['sub_at'] ?? 'now')) ?: time();
+                $rcSubKey = 'report_card_sub_admin_' . $teacherId . '_' . preg_replace('/[^a-zA-Z0-9]/', '', $academicYear) . '_' . ($semester ?? '3term') . '_appr_' . $minRcId . '_' . $rcSubAtTs;
+
                 appDispatchNotification(
                     $db,
                     $adminIds,
-                    'report_card_submission_' . $teacherId . '_' . $academicYear . '_' . ($semester ?? '3term') . '_' . time(),
+                    $rcSubKey,
                     'Report Cards Submitted for Approval',
                     "Adviser {$advName} submitted report cards for Grade {$advGLevel} - {$advSecName} ({$submittedCount} students) for final admin approval.",
                     'bi-folder-check',

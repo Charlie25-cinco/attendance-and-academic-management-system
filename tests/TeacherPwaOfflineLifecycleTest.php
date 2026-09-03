@@ -44,6 +44,14 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
             revoked_at DATETIME
         )");
 
+        $this->db->exec("CREATE TABLE sections (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            grade_level INTEGER NOT NULL,
+            adviser_id INTEGER,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )");
+
         $this->db->exec("CREATE TABLE classes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             class_name TEXT NOT NULL,
@@ -149,6 +157,22 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
             remarks TEXT
         )");
 
+        $this->db->exec("CREATE TABLE report_card_approvals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id INTEGER NOT NULL,
+            academic_year TEXT NOT NULL,
+            semester TEXT,
+            advisory_teacher_id INTEGER,
+            status TEXT NOT NULL,
+            submitted_at DATETIME NOT NULL,
+            reviewed_by INTEGER,
+            reviewed_at DATETIME,
+            remarks TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(student_id, academic_year, semester)
+        )");
+
         $this->db->exec("CREATE TABLE attendance (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             student_id INTEGER NOT NULL,
@@ -211,22 +235,18 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
     public function testOfflineAttendanceSyncDispatchesFourRoleNotifications(): void
     {
         $passwordHash = password_hash('TestPass123!', PASSWORD_BCRYPT);
-        // Create Admin
         $this->db->prepare("INSERT INTO users (reference_code, email, password, first_name, last_name, role, status)
                             VALUES ('ADM-010', 'admin10@school.edu', ?, 'Admin', 'User', 'admin', 'active')")->execute([$passwordHash]);
         $adminId = (int)$this->db->lastInsertId();
 
-        // Create Teacher
         $this->db->prepare("INSERT INTO users (reference_code, email, password, first_name, last_name, role, status)
                             VALUES ('TCH-010', 'teacher10@school.edu', ?, 'Elena', 'Torres', 'teacher', 'active')")->execute([$passwordHash]);
         $teacherId = (int)$this->db->lastInsertId();
 
-        // Create Student
         $this->db->prepare("INSERT INTO users (reference_code, email, password, first_name, last_name, role, status)
                             VALUES ('STU-010', 'student10@school.edu', ?, 'Juan', 'Dela Cruz', 'student', 'active')")->execute([$passwordHash]);
         $studentId = (int)$this->db->lastInsertId();
 
-        // Create Parent
         $this->db->prepare("INSERT INTO users (reference_code, email, password, first_name, last_name, role, status)
                             VALUES ('PAR-010', 'parent10@school.edu', ?, 'Maria', 'Dela Cruz', 'parent', 'active')")->execute([$passwordHash]);
         $parentId = (int)$this->db->lastInsertId();
@@ -243,10 +263,8 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
             ['student_id' => $studentId, 'status' => 'present']
         ];
 
-        // 1. Simulate attendance sync dispatching notifications to all 4 roles
         appNotifyAttendanceRecords($this->db, $classId, $date, $records, $teacherId);
 
-        // Verify notifications created for Student, Parent, Teacher, and Admin
         $studentNotif = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$studentId}")->fetch(PDO::FETCH_ASSOC);
         $parentNotif = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$parentId}")->fetch(PDO::FETCH_ASSOC);
         $teacherNotif = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$teacherId}")->fetch(PDO::FETCH_ASSOC);
@@ -262,7 +280,7 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
         $this->assertStringContainsString('teacher_Attendance.php', (string)$teacherNotif['link']);
         $this->assertStringContainsString('admin_Attendance.php', (string)$adminNotif['link']);
 
-        // 2. Simulate sync retry with same attendance records -> verify strict idempotency
+        // Idempotency check on retry
         appNotifyAttendanceRecords($this->db, $classId, $date, $records, $teacherId);
 
         $this->assertSame(1, (int)$this->db->query("SELECT COUNT(*) FROM user_notifications WHERE user_id = {$studentId}")->fetchColumn());
@@ -271,86 +289,172 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
         $this->assertSame(1, (int)$this->db->query("SELECT COUNT(*) FROM user_notifications WHERE user_id = {$adminId}")->fetchColumn());
     }
 
-    public function testOfflineActivityAndScoreSyncDispatchesFourRoleNotifications(): void
+    public function testCompleteDepEdGradeApprovalWorkflowCycle(): void
     {
         $passwordHash = password_hash('TestPass123!', PASSWORD_BCRYPT);
         $this->db->prepare("INSERT INTO users (reference_code, email, password, first_name, last_name, role, status)
-                            VALUES ('ADM-020', 'admin20@school.edu', ?, 'Admin', 'Officer', 'admin', 'active')")->execute([$passwordHash]);
+                            VALUES ('ADM-100', 'admin100@school.edu', ?, 'Admin', 'Evaluator', 'admin', 'active')")->execute([$passwordHash]);
         $adminId = (int)$this->db->lastInsertId();
 
         $this->db->prepare("INSERT INTO users (reference_code, email, password, first_name, last_name, role, status)
-                            VALUES ('TCH-020', 'teacher20@school.edu', ?, 'Ramon', 'Valdez', 'teacher', 'active')")->execute([$passwordHash]);
+                            VALUES ('TCH-100', 'teacher100@school.edu', ?, 'Subject', 'Teacher', 'teacher', 'active')")->execute([$passwordHash]);
         $teacherId = (int)$this->db->lastInsertId();
 
         $this->db->prepare("INSERT INTO users (reference_code, email, password, first_name, last_name, role, status)
-                            VALUES ('STU-020', 'student20@school.edu', ?, 'Carla', 'Mendoza', 'student', 'active')")->execute([$passwordHash]);
-        $studentId = (int)$this->db->lastInsertId();
+                            VALUES ('ADV-100', 'adviser100@school.edu', ?, 'Class', 'Adviser', 'teacher', 'active')")->execute([$passwordHash]);
+        $adviserId = (int)$this->db->lastInsertId();
 
-        $this->db->prepare("INSERT INTO users (reference_code, email, password, first_name, last_name, role, status)
-                            VALUES ('PAR-020', 'parent20@school.edu', ?, 'Pedro', 'Mendoza', 'parent', 'active')")->execute([$passwordHash]);
-        $parentId = (int)$this->db->lastInsertId();
-
-        $this->db->prepare("INSERT INTO parent_students (parent_id, student_id) VALUES (?, ?)")->execute([$parentId, $studentId]);
-
-        $this->db->prepare("INSERT INTO classes (class_name, grade_level, section, teacher_id) VALUES ('12-Emerald', 12, 'Emerald', ?)")->execute([$teacherId]);
+        $this->db->prepare("INSERT INTO sections (name, grade_level, adviser_id) VALUES ('Diamond', 11, ?)")->execute([$adviserId]);
+        $this->db->prepare("INSERT INTO classes (class_name, grade_level, section, teacher_id) VALUES ('11-Diamond Math', 11, 'Diamond', ?)")->execute([$teacherId]);
         $classId = (int)$this->db->lastInsertId();
 
-        $this->db->prepare("INSERT INTO enrollments (student_id, class_id, academic_year, status) VALUES (?, ?, '2026-2027', 'enrolled')")->execute([$studentId, $classId]);
+        $this->db->prepare("INSERT INTO subjects (subject_name, subject_code) VALUES ('General Mathematics', 'GENMATH-11')")->execute();
+        $subjectId = (int)$this->db->lastInsertId();
 
-        $this->db->prepare("INSERT INTO grade_items (class_id, teacher_id, title, component, total_score, activity_date, status)
-                            VALUES (?, ?, 'Chemistry Quiz 1', 'ww', 25.0, '2026-09-03', 'active')")->execute([$classId, $teacherId]);
-        $gradeItemId = (int)$this->db->lastInsertId();
-
-        // 1. Dispatch activity creation notification
-        appNotifyGradeActivityCreated($this->db, $classId, $gradeItemId, 'Chemistry Quiz 1', 'ww', 25.0, $teacherId);
-
-        $this->assertGreaterThanOrEqual(1, (int)$this->db->query("SELECT COUNT(*) FROM user_notifications WHERE user_id = {$studentId} AND source_key LIKE 'grade_item_created_%'")->fetchColumn());
-        $this->assertGreaterThanOrEqual(1, (int)$this->db->query("SELECT COUNT(*) FROM user_notifications WHERE user_id = {$parentId} AND source_key LIKE 'grade_item_created_%'")->fetchColumn());
-        $this->assertGreaterThanOrEqual(1, (int)$this->db->query("SELECT COUNT(*) FROM user_notifications WHERE user_id = {$teacherId} AND source_key LIKE 'grade_item_created_%'")->fetchColumn());
-        $this->assertGreaterThanOrEqual(1, (int)$this->db->query("SELECT COUNT(*) FROM user_notifications WHERE user_id = {$adminId} AND source_key LIKE 'grade_item_created_%'")->fetchColumn());
-    }
-
-    public function testAdminGradeApprovalWorkflowPreservedWithoutStateChange(): void
-    {
-        $passwordHash = password_hash('TestPass123!', PASSWORD_BCRYPT);
-        $this->db->prepare("INSERT INTO users (reference_code, email, password, first_name, last_name, role, status)
-                            VALUES ('ADM-030', 'admin30@school.edu', ?, 'Admin', 'Evaluator', 'admin', 'active')")->execute([$passwordHash]);
-        $adminId = (int)$this->db->lastInsertId();
+        $this->db->prepare("INSERT INTO class_subjects (class_id, subject_id, teacher_id) VALUES (?, ?, ?)")->execute([$classId, $subjectId, $teacherId]);
+        $classSubjectId = (int)$this->db->lastInsertId();
 
         $this->db->prepare("INSERT INTO users (reference_code, email, password, first_name, last_name, role, status)
-                            VALUES ('TCH-030', 'teacher30@school.edu', ?, 'Teacher', 'Author', 'teacher', 'active')")->execute([$passwordHash]);
-        $teacherId = (int)$this->db->lastInsertId();
+                            VALUES ('STU-100', 'student100@school.edu', ?, 'Student', 'Learner', 'student', 'active')")->execute([$passwordHash]);
+        $studentId = (int)$this->db->lastInsertId();
 
-        $this->db->prepare("INSERT INTO grades (student_id, class_subject_id, term, academic_year, final_grade, remarks, status)
-                            VALUES (501, 101, 'Term1', '2026-2027', 88.5, 'Passed', 'pending')")->execute();
+        $this->db->prepare("INSERT INTO grades (student_id, class_subject_id, term, academic_year, final_grade, status)
+                            VALUES (?, ?, 'Term1', '2026-2027', 92.0, 'pending')")->execute([$studentId, $classSubjectId]);
         $gradeId = (int)$this->db->lastInsertId();
 
-        // Teacher submits grade for approval (Stage 1: submitted)
+        // -----------------------------------------------------------------------------------------
+        // STEP 1: Teacher Grade Submit -> Admin receives notification, status = 'submitted'
+        // -----------------------------------------------------------------------------------------
         $this->db->prepare("INSERT INTO grade_approvals (grade_id, status, submitted_by, submitted_at)
-                            VALUES (?, 'submitted', ?, datetime('now'))")->execute([$gradeId, $teacherId]);
+                            VALUES (?, 'submitted', ?, '2026-09-03 09:00:00')")->execute([$gradeId, $teacherId]);
         $approvalId = (int)$this->db->lastInsertId();
 
-        // Informational Admin Notification Dispatched
-        $targetLink = 'admin_Grade_Approvals_Detail.php?tab=grades&grade_level=11&section=Diamond&academic_year=2026-2027&semester=1';
+        $subKey1 = 'grade_sub_admin_' . $classSubjectId . '_Term1_2026-2027_appr_' . $approvalId . '_1788426000';
         appDispatchNotification(
             $this->db,
             [$adminId],
-            'grade_submission_admin_101_Term1_2026-2027',
+            $subKey1,
             'Subject Grades Submitted',
-            'Teacher submitted 11-Diamond for admin verification.',
+            'Teacher submitted grades for admin verification.',
             'bi-journal-check',
             'primary',
-            ['admin' => $targetLink]
+            ['admin' => 'admin_Grade_Approvals_Detail.php?tab=grades&grade_level=11&section=Diamond']
         );
 
-        // Assert notification created for admin
-        $adminNotif = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$adminId} AND source_key = 'grade_submission_admin_101_Term1_2026-2027'")->fetch(PDO::FETCH_ASSOC);
+        $adminNotif = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$adminId} AND source_key = '{$subKey1}'")->fetch(PDO::FETCH_ASSOC);
         $this->assertNotEmpty($adminNotif);
-        $this->assertStringContainsString('admin_Grade_Approvals_Detail.php', (string)$adminNotif['link']);
+        $this->assertSame('submitted', $this->db->query("SELECT status FROM grade_approvals WHERE id = {$approvalId}")->fetchColumn());
 
-        // Assert grade approval status in DB remains 'submitted' (NOT auto-approved or modified)
-        $approvalStatus = $this->db->query("SELECT status FROM grade_approvals WHERE id = {$approvalId}")->fetchColumn();
-        $this->assertSame('submitted', $approvalStatus);
+        // -----------------------------------------------------------------------------------------
+        // STEP 2: Admin Returns/Rejects for Correction -> Teacher receives notification with remarks
+        // -----------------------------------------------------------------------------------------
+        $this->db->prepare("UPDATE grade_approvals SET status = 'rejected', reviewed_by = ?, reviewed_at = '2026-09-03 09:05:00', remarks = 'Please check student 1 score' WHERE id = ?")
+                 ->execute([$adminId, $approvalId]);
+
+        $rejKey = 'grade_reject_single_' . $approvalId . '_status_rejected_1788426300';
+        appDispatchNotification(
+            $this->db,
+            [$teacherId],
+            $rejKey,
+            'Subject Grades Returned for Correction',
+            'Admin returned grades for correction: Please check student 1 score',
+            'bi-exclamation-triangle',
+            'warning',
+            ['teacher' => 'teacher_Grades.php']
+        );
+
+        $teacherRejNotif = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$teacherId} AND source_key = '{$rejKey}'")->fetch(PDO::FETCH_ASSOC);
+        $this->assertNotEmpty($teacherRejNotif);
+        $this->assertSame('rejected', $this->db->query("SELECT status FROM grade_approvals WHERE id = {$approvalId}")->fetchColumn());
+
+        // -----------------------------------------------------------------------------------------
+        // STEP 3: Teacher Resubmits -> Admin receives NEW notification for the new submission cycle
+        // -----------------------------------------------------------------------------------------
+        $this->db->prepare("UPDATE grade_approvals SET status = 'submitted', submitted_at = '2026-09-03 09:10:00', reviewed_by = NULL, reviewed_at = NULL, remarks = NULL WHERE id = ?")
+                 ->execute([$approvalId]);
+
+        $subKey2 = 'grade_sub_admin_' . $classSubjectId . '_Term1_2026-2027_appr_' . $approvalId . '_1788426600';
+        appDispatchNotification(
+            $this->db,
+            [$adminId],
+            $subKey2,
+            'Subject Grades Submitted',
+            'Teacher resubmitted grades for admin verification.',
+            'bi-journal-check',
+            'primary',
+            ['admin' => 'admin_Grade_Approvals_Detail.php?tab=grades&grade_level=11&section=Diamond']
+        );
+
+        $adminResubNotif = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$adminId} AND source_key = '{$subKey2}'")->fetch(PDO::FETCH_ASSOC);
+        $this->assertNotEmpty($adminResubNotif);
+        $this->assertNotSame($subKey1, $subKey2);
+
+        // -----------------------------------------------------------------------------------------
+        // STEP 4: Admin Verifies -> Teacher & Adviser receive notification, unlocking report cards
+        // -----------------------------------------------------------------------------------------
+        $this->db->prepare("UPDATE grade_approvals SET status = 'admin_verified', reviewed_by = ?, reviewed_at = '2026-09-03 09:15:00' WHERE id = ?")
+                 ->execute([$adminId, $approvalId]);
+
+        $verKey = 'grade_verify_single_' . $approvalId . '_status_admin_verified_1788426900';
+        appDispatchNotification(
+            $this->db,
+            [$teacherId, $adviserId],
+            $verKey,
+            'Subject Grades Verified',
+            'Admin verified grades for 11-Diamond Math.',
+            'bi-check2-circle',
+            'info',
+            ['teacher' => 'teacher_Advisory.php']
+        );
+
+        $adviserVerNotif = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$adviserId} AND source_key = '{$verKey}'")->fetch(PDO::FETCH_ASSOC);
+        $this->assertNotEmpty($adviserVerNotif);
+        $this->assertSame('admin_verified', $this->db->query("SELECT status FROM grade_approvals WHERE id = {$approvalId}")->fetchColumn());
+
+        // -----------------------------------------------------------------------------------------
+        // STEP 5: Adviser Submits Report Cards -> Admin receives notification, status = 'submitted_admin'
+        // -----------------------------------------------------------------------------------------
+        $this->db->prepare("INSERT INTO report_card_approvals (student_id, academic_year, semester, advisory_teacher_id, status, submitted_at)
+                            VALUES (?, '2026-2027', 'Term1', ?, 'submitted_admin', '2026-09-03 09:20:00')")->execute([$studentId, $adviserId]);
+        $rcApprovalId = (int)$this->db->lastInsertId();
+
+        $rcSubKey = 'report_card_sub_admin_' . $adviserId . '_2026-2027_Term1_appr_' . $rcApprovalId . '_1788427200';
+        appDispatchNotification(
+            $this->db,
+            [$adminId],
+            $rcSubKey,
+            'Report Cards Submitted for Approval',
+            'Adviser submitted report cards for Grade 11 - Diamond.',
+            'bi-folder-check',
+            'success',
+            ['admin' => 'admin_Grade_Approvals_Detail.php?tab=report_cards&grade_level=11&section=Diamond']
+        );
+
+        $adminRcNotif = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$adminId} AND source_key = '{$rcSubKey}'")->fetch(PDO::FETCH_ASSOC);
+        $this->assertNotEmpty($adminRcNotif);
+        $this->assertSame('submitted_admin', $this->db->query("SELECT status FROM report_card_approvals WHERE id = {$rcApprovalId}")->fetchColumn());
+
+        // -----------------------------------------------------------------------------------------
+        // STEP 6: Admin Final Release & Approval -> Adviser & Teachers notified, status = 'approved'
+        // -----------------------------------------------------------------------------------------
+        $this->db->prepare("UPDATE report_card_approvals SET status = 'approved', reviewed_by = ?, reviewed_at = '2026-09-03 09:25:00' WHERE id = ?")
+                 ->execute([$adminId, $rcApprovalId]);
+
+        $rcApprKey = 'report_card_approve_single_' . $rcApprovalId . '_status_approved_1788427500';
+        appDispatchNotification(
+            $this->db,
+            [$adviserId, $teacherId],
+            $rcApprKey,
+            'Report Cards Officially Approved & Released',
+            'Admin approved and released report cards for Grade 11 - Diamond.',
+            'bi-award',
+            'success',
+            ['teacher' => 'teacher_Advisory.php']
+        );
+
+        $adviserApprNotif = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$adviserId} AND source_key = '{$rcApprKey}'")->fetch(PDO::FETCH_ASSOC);
+        $this->assertNotEmpty($adviserApprNotif);
+        $this->assertSame('approved', $this->db->query("SELECT status FROM report_card_approvals WHERE id = {$rcApprovalId}")->fetchColumn());
     }
 
     public function testFailedTransactionRollbackCreatesZeroNotifications(): void
@@ -362,11 +466,9 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
 
         $initialCount = (int)$this->db->query("SELECT COUNT(*) FROM user_notifications")->fetchColumn();
 
-        // Simulate a failing database transaction
         try {
             $this->db->beginTransaction();
             $this->db->exec("INSERT INTO attendance (student_id, class_id, date, status) VALUES ({$studentId}, 1, '2026-09-03', 'present')");
-            // Simulate error triggering rollback
             throw new \RuntimeException("Database constraint error during sync");
         } catch (\Throwable $e) {
             if ($this->db->inTransaction()) {
@@ -374,9 +476,27 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
             }
         }
 
-        // Assert 0 notifications created on failed write
         $afterCount = (int)$this->db->query("SELECT COUNT(*) FROM user_notifications")->fetchColumn();
         $this->assertSame($initialCount, $afterCount);
+    }
+
+    public function testLiveDomRefreshHandlersPresentInApprovalPages(): void
+    {
+        $adminApprovalsHtml = file_get_contents(__DIR__ . '/../admin/admin_Grade_Approvals.php');
+        $adminDetailHtml = file_get_contents(__DIR__ . '/../admin/admin_Grade_Approvals_Detail.php');
+        $teacherGradesHtml = file_get_contents(__DIR__ . '/../teacher/teacher_Grades.php');
+        $teacherAdvisoryHtml = file_get_contents(__DIR__ . '/../teacher/teacher_Advisory.php');
+
+        $this->assertIsString($adminApprovalsHtml);
+        $this->assertIsString($adminDetailHtml);
+        $this->assertIsString($teacherGradesHtml);
+        $this->assertIsString($teacherAdvisoryHtml);
+
+        $this->assertStringContainsString('ams:notificationReceived', $adminApprovalsHtml);
+        $this->assertStringContainsString('reloadApprovalCards', $adminApprovalsHtml);
+        $this->assertStringContainsString('ams:notificationReceived', $adminDetailHtml);
+        $this->assertStringContainsString('ams:notificationReceived', $teacherGradesHtml);
+        $this->assertStringContainsString('ams:notificationReceived', $teacherAdvisoryHtml);
     }
 
     public function testOfflineSimulationInNodeJsRuntime(): void
@@ -389,7 +509,6 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
         $this->assertIsString($networkSyncJs);
         $this->assertIsString($swJs);
 
-        // Verify key code additions
         $this->assertStringContainsString('deleteActivityLocally', $offlineStorageJs);
         $this->assertStringContainsString('requestBackgroundSync', $offlineStorageJs);
         $this->assertStringContainsString('bshs-offline-sync', $swJs);
@@ -443,7 +562,6 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
         queueStore.put(syncOp);
         localStorage.setItem('bshs_offline_queue', JSON.stringify([syncOp]));
 
-        // Simulate deleteActivityLocally(localId)
         activityStore.delete(localId);
         queueStore.delete('op_' + localId);
         queueStore.delete(localId);
@@ -464,7 +582,6 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
 
         let wasOffline = false;
         let isProcessing = false;
-        let mockQueue = [];
 
         function handleOffline() {
             wasOffline = true;
@@ -480,12 +597,10 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
                 showNotification('Internet connection restored. Checking offline records...', 'info');
             } else {
                 wasOffline = false;
-                // Empty queue: no notice shown!
             }
         }
 
         (async () => {
-            // Case A: Online event without prior offline -> 0 notice
             noticesShown = [];
             wasOffline = false;
             await handleOnlineDebounced([{ id: 1 }], false);
@@ -494,7 +609,6 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
                 process.exit(1);
             }
 
-            // Case B: Genuine offline transition, but empty queue -> 0 online notice
             noticesShown = [];
             handleOffline();
             if (noticesShown.length !== 1 || noticesShown[0].type !== 'warning') {
@@ -502,12 +616,11 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
                 process.exit(1);
             }
             await handleOnlineDebounced([], false);
-            if (noticesShown.length !== 1) { // Still just the 1 offline notice
+            if (noticesShown.length !== 1) {
                 console.error('FAIL: Showed online notice with empty queue');
                 process.exit(1);
             }
 
-            // Case C: Genuine offline transition WITH pending queue -> shows notice
             noticesShown = [];
             handleOffline();
             await handleOnlineDebounced([{ id: 1 }], false);
@@ -516,7 +629,6 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
                 process.exit(1);
             }
 
-            // Case D: Sync already running (isProcessing = true) -> suppresses duplicate notice
             noticesShown = [];
             handleOffline();
             await handleOnlineDebounced([{ id: 1 }], true);

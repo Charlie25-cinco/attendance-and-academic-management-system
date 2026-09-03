@@ -836,6 +836,12 @@ async function importEcrFile() {
         }
     }
 }
+
+window.addEventListener('ams:notificationReceived', () => {
+    if (typeof loadGradesData === 'function') {
+        loadGradesData();
+    }
+});
 </script>
 </body>
 </html>

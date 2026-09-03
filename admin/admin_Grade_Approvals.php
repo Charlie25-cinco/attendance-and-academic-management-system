@@ -469,9 +469,24 @@ function returnReleasedReportCards(gradeLevel, section, academicYear, semester) 
         .catch(() => showNotification('Error returning released grades', 'danger'));
 }
 
+function reloadApprovalCards() {
+    const currentUrl = window.location.href;
+    fetch(currentUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(r => r.text())
+        .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const newContent = doc.querySelector('.page-content');
+            const currentContent = document.querySelector('.page-content');
+            if (newContent && currentContent) {
+                currentContent.innerHTML = newContent.innerHTML;
+            }
+        })
+        .catch(() => {});
+}
+
 window.addEventListener('ams:notificationReceived', () => {
-    // Live update approval cards when new submissions or reviews arrive
-    setTimeout(() => window.location.reload(), 1200);
+    reloadApprovalCards();
 });
 </script>
 <?php include '../includes/footer.php'; ?>
