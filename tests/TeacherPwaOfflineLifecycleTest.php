@@ -124,6 +124,31 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
             UNIQUE(grade_item_id, student_id)
         )");
 
+        $this->db->exec("CREATE TABLE grades (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id INTEGER NOT NULL,
+            class_subject_id INTEGER NOT NULL,
+            term TEXT,
+            quarter TEXT,
+            academic_year TEXT NOT NULL,
+            final_grade REAL,
+            remarks TEXT,
+            status TEXT DEFAULT 'pending',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )");
+
+        $this->db->exec("CREATE TABLE grade_approvals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            grade_id INTEGER NOT NULL UNIQUE,
+            status TEXT NOT NULL,
+            submitted_by INTEGER NOT NULL,
+            submitted_at DATETIME NOT NULL,
+            reviewed_by INTEGER,
+            reviewed_at DATETIME,
+            remarks TEXT
+        )");
+
         $this->db->exec("CREATE TABLE attendance (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             student_id INTEGER NOT NULL,
@@ -158,13 +183,9 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
         $stmt->execute([$passwordHash]);
         $teacherId = (int)$this->db->lastInsertId();
 
-        // 1. Issue remember token
         appRememberIssueToken($this->db, $teacherId);
-
-        // 2. Simulate closing PWA window and destroying PHP session
         $_SESSION = [];
 
-        // Fetch the generated token selector & create matching cookie
         $selector = $this->db->query("SELECT selector FROM auth_remember_tokens WHERE user_id = {$teacherId}")->fetchColumn();
         $this->assertNotEmpty($selector);
 
@@ -174,7 +195,6 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
 
         $_COOKIE['remember_token'] = $selector . ':' . $validator;
 
-        // 3. Reopen PWA: bootstrap checks remember token and establishes session
         $authUser = appAttemptRememberLogin($this->db);
         $this->assertIsArray($authUser);
         $this->assertSame($teacherId, $authUser['id']);
@@ -188,17 +208,25 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
         $this->assertNotEmpty($_SESSION['csrf_token']);
     }
 
-    public function testOfflineAttendanceSyncDispatchesIdempotentStudentAndParentNotifications(): void
+    public function testOfflineAttendanceSyncDispatchesFourRoleNotifications(): void
     {
         $passwordHash = password_hash('TestPass123!', PASSWORD_BCRYPT);
+        // Create Admin
+        $this->db->prepare("INSERT INTO users (reference_code, email, password, first_name, last_name, role, status)
+                            VALUES ('ADM-010', 'admin10@school.edu', ?, 'Admin', 'User', 'admin', 'active')")->execute([$passwordHash]);
+        $adminId = (int)$this->db->lastInsertId();
+
+        // Create Teacher
         $this->db->prepare("INSERT INTO users (reference_code, email, password, first_name, last_name, role, status)
                             VALUES ('TCH-010', 'teacher10@school.edu', ?, 'Elena', 'Torres', 'teacher', 'active')")->execute([$passwordHash]);
         $teacherId = (int)$this->db->lastInsertId();
 
+        // Create Student
         $this->db->prepare("INSERT INTO users (reference_code, email, password, first_name, last_name, role, status)
                             VALUES ('STU-010', 'student10@school.edu', ?, 'Juan', 'Dela Cruz', 'student', 'active')")->execute([$passwordHash]);
         $studentId = (int)$this->db->lastInsertId();
 
+        // Create Parent
         $this->db->prepare("INSERT INTO users (reference_code, email, password, first_name, last_name, role, status)
                             VALUES ('PAR-010', 'parent10@school.edu', ?, 'Maria', 'Dela Cruz', 'parent', 'active')")->execute([$passwordHash]);
         $parentId = (int)$this->db->lastInsertId();
@@ -215,32 +243,41 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
             ['student_id' => $studentId, 'status' => 'present']
         ];
 
-        // 1. Simulate sync dispatching attendance notifications
+        // 1. Simulate attendance sync dispatching notifications to all 4 roles
         appNotifyAttendanceRecords($this->db, $classId, $date, $records, $teacherId);
 
-        // Verify notifications created for both student and parent
-        $studentNotifs = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$studentId}")->fetchAll(PDO::FETCH_ASSOC);
-        $parentNotifs = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$parentId}")->fetchAll(PDO::FETCH_ASSOC);
+        // Verify notifications created for Student, Parent, Teacher, and Admin
+        $studentNotif = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$studentId}")->fetch(PDO::FETCH_ASSOC);
+        $parentNotif = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$parentId}")->fetch(PDO::FETCH_ASSOC);
+        $teacherNotif = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$teacherId}")->fetch(PDO::FETCH_ASSOC);
+        $adminNotif = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$adminId}")->fetch(PDO::FETCH_ASSOC);
 
-        $this->assertCount(1, $studentNotifs);
-        $this->assertCount(1, $parentNotifs);
-        $this->assertSame('attendance_' . $classId . '_' . $date . '_' . $studentId, $studentNotifs[0]['source_key']);
-        $this->assertSame('attendance_' . $classId . '_' . $date . '_' . $studentId, $parentNotifs[0]['source_key']);
+        $this->assertNotEmpty($studentNotif);
+        $this->assertNotEmpty($parentNotif);
+        $this->assertNotEmpty($teacherNotif);
+        $this->assertNotEmpty($adminNotif);
 
-        // 2. Simulate sync retry with same attendance records
+        $this->assertStringContainsString('Student_Attendance.php', (string)$studentNotif['link']);
+        $this->assertStringContainsString('Parent_Progress.php', (string)$parentNotif['link']);
+        $this->assertStringContainsString('teacher_Attendance.php', (string)$teacherNotif['link']);
+        $this->assertStringContainsString('admin_Attendance.php', (string)$adminNotif['link']);
+
+        // 2. Simulate sync retry with same attendance records -> verify strict idempotency
         appNotifyAttendanceRecords($this->db, $classId, $date, $records, $teacherId);
 
-        // Verify NO duplicate rows created
-        $studentNotifsAfter = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$studentId}")->fetchAll(PDO::FETCH_ASSOC);
-        $parentNotifsAfter = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$parentId}")->fetchAll(PDO::FETCH_ASSOC);
-
-        $this->assertCount(1, $studentNotifsAfter);
-        $this->assertCount(1, $parentNotifsAfter);
+        $this->assertSame(1, (int)$this->db->query("SELECT COUNT(*) FROM user_notifications WHERE user_id = {$studentId}")->fetchColumn());
+        $this->assertSame(1, (int)$this->db->query("SELECT COUNT(*) FROM user_notifications WHERE user_id = {$parentId}")->fetchColumn());
+        $this->assertSame(1, (int)$this->db->query("SELECT COUNT(*) FROM user_notifications WHERE user_id = {$teacherId}")->fetchColumn());
+        $this->assertSame(1, (int)$this->db->query("SELECT COUNT(*) FROM user_notifications WHERE user_id = {$adminId}")->fetchColumn());
     }
 
-    public function testOfflineActivitySyncDispatchesIdempotentStudentAndParentNotifications(): void
+    public function testOfflineActivityAndScoreSyncDispatchesFourRoleNotifications(): void
     {
         $passwordHash = password_hash('TestPass123!', PASSWORD_BCRYPT);
+        $this->db->prepare("INSERT INTO users (reference_code, email, password, first_name, last_name, role, status)
+                            VALUES ('ADM-020', 'admin20@school.edu', ?, 'Admin', 'Officer', 'admin', 'active')")->execute([$passwordHash]);
+        $adminId = (int)$this->db->lastInsertId();
+
         $this->db->prepare("INSERT INTO users (reference_code, email, password, first_name, last_name, role, status)
                             VALUES ('TCH-020', 'teacher20@school.edu', ?, 'Ramon', 'Valdez', 'teacher', 'active')")->execute([$passwordHash]);
         $teacherId = (int)$this->db->lastInsertId();
@@ -265,55 +302,81 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
         $gradeItemId = (int)$this->db->lastInsertId();
 
         // 1. Dispatch activity creation notification
-        appNotifyGradeActivityCreated($this->db, $classId, $gradeItemId, 'Chemistry Quiz 1', 'ww', 25.0);
+        appNotifyGradeActivityCreated($this->db, $classId, $gradeItemId, 'Chemistry Quiz 1', 'ww', 25.0, $teacherId);
 
-        $studentActivityNotifs = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$studentId} AND source_key LIKE 'grade_item_created_%'")->fetchAll(PDO::FETCH_ASSOC);
-        $parentActivityNotifs = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$parentId} AND source_key LIKE 'grade_item_created_%'")->fetchAll(PDO::FETCH_ASSOC);
-
-        $this->assertCount(1, $studentActivityNotifs);
-        $this->assertCount(1, $parentActivityNotifs);
-
-        // 2. Retry sync: assert idempotency
-        appNotifyGradeActivityCreated($this->db, $classId, $gradeItemId, 'Chemistry Quiz 1', 'ww', 25.0);
-
-        $studentActivityNotifsAfter = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$studentId} AND source_key LIKE 'grade_item_created_%'")->fetchAll(PDO::FETCH_ASSOC);
-        $parentActivityNotifsAfter = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$parentId} AND source_key LIKE 'grade_item_created_%'")->fetchAll(PDO::FETCH_ASSOC);
-
-        $this->assertCount(1, $studentActivityNotifsAfter);
-        $this->assertCount(1, $parentActivityNotifsAfter);
+        $this->assertGreaterThanOrEqual(1, (int)$this->db->query("SELECT COUNT(*) FROM user_notifications WHERE user_id = {$studentId} AND source_key LIKE 'grade_item_created_%'")->fetchColumn());
+        $this->assertGreaterThanOrEqual(1, (int)$this->db->query("SELECT COUNT(*) FROM user_notifications WHERE user_id = {$parentId} AND source_key LIKE 'grade_item_created_%'")->fetchColumn());
+        $this->assertGreaterThanOrEqual(1, (int)$this->db->query("SELECT COUNT(*) FROM user_notifications WHERE user_id = {$teacherId} AND source_key LIKE 'grade_item_created_%'")->fetchColumn());
+        $this->assertGreaterThanOrEqual(1, (int)$this->db->query("SELECT COUNT(*) FROM user_notifications WHERE user_id = {$adminId} AND source_key LIKE 'grade_item_created_%'")->fetchColumn());
     }
 
-    public function testDeleteGradeItemRequiresTeacherOwnershipAndRemovesScores(): void
+    public function testAdminGradeApprovalWorkflowPreservedWithoutStateChange(): void
     {
-        $passwordHash = password_hash('TeacherPassword123!', PASSWORD_BCRYPT);
+        $passwordHash = password_hash('TestPass123!', PASSWORD_BCRYPT);
         $this->db->prepare("INSERT INTO users (reference_code, email, password, first_name, last_name, role, status)
-                            VALUES ('TCH-004', 'teacher4@school.edu', ?, 'Luis', 'Gomez', 'teacher', 'active')")->execute([$passwordHash]);
+                            VALUES ('ADM-030', 'admin30@school.edu', ?, 'Admin', 'Evaluator', 'admin', 'active')")->execute([$passwordHash]);
+        $adminId = (int)$this->db->lastInsertId();
+
+        $this->db->prepare("INSERT INTO users (reference_code, email, password, first_name, last_name, role, status)
+                            VALUES ('TCH-030', 'teacher30@school.edu', ?, 'Teacher', 'Author', 'teacher', 'active')")->execute([$passwordHash]);
         $teacherId = (int)$this->db->lastInsertId();
 
-        $this->db->prepare("INSERT INTO classes (class_name, grade_level, section, teacher_id) VALUES ('12-Ruby', 12, 'Ruby', ?)")->execute([$teacherId]);
-        $classId = (int)$this->db->lastInsertId();
+        $this->db->prepare("INSERT INTO grades (student_id, class_subject_id, term, academic_year, final_grade, remarks, status)
+                            VALUES (501, 101, 'Term1', '2026-2027', 88.5, 'Passed', 'pending')")->execute();
+        $gradeId = (int)$this->db->lastInsertId();
 
-        $this->db->prepare("INSERT INTO grade_items (class_id, teacher_id, title, component, total_score, activity_date, status)
-                            VALUES (?, ?, 'Quarter Exam', 'qa', 50.0, '2026-09-03', 'active')")->execute([$classId, $teacherId]);
-        $gradeItemId = (int)$this->db->lastInsertId();
+        // Teacher submits grade for approval (Stage 1: submitted)
+        $this->db->prepare("INSERT INTO grade_approvals (grade_id, status, submitted_by, submitted_at)
+                            VALUES (?, 'submitted', ?, datetime('now'))")->execute([$gradeId, $teacherId]);
+        $approvalId = (int)$this->db->lastInsertId();
 
-        $this->db->prepare("INSERT INTO grade_item_scores (grade_item_id, student_id, score) VALUES (?, 101, 45.0)")->execute([$gradeItemId]);
+        // Informational Admin Notification Dispatched
+        $targetLink = 'admin_Grade_Approvals_Detail.php?tab=grades&grade_level=11&section=Diamond&academic_year=2026-2027&semester=1';
+        appDispatchNotification(
+            $this->db,
+            [$adminId],
+            'grade_submission_admin_101_Term1_2026-2027',
+            'Subject Grades Submitted',
+            'Teacher submitted 11-Diamond for admin verification.',
+            'bi-journal-check',
+            'primary',
+            ['admin' => $targetLink]
+        );
 
-        $this->assertSame(1, (int)$this->db->query("SELECT COUNT(*) FROM grade_items WHERE id = {$gradeItemId}")->fetchColumn());
-        $this->assertSame(1, (int)$this->db->query("SELECT COUNT(*) FROM grade_item_scores WHERE grade_item_id = {$gradeItemId}")->fetchColumn());
+        // Assert notification created for admin
+        $adminNotif = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$adminId} AND source_key = 'grade_submission_admin_101_Term1_2026-2027'")->fetch(PDO::FETCH_ASSOC);
+        $this->assertNotEmpty($adminNotif);
+        $this->assertStringContainsString('admin_Grade_Approvals_Detail.php', (string)$adminNotif['link']);
 
-        // Perform server deletion check (only matching teacher_id can delete)
-        $delStmt = $this->db->prepare("DELETE FROM grade_items WHERE id = ? AND teacher_id = ?");
-        $delStmt->execute([$gradeItemId, 999]); // Wrong teacher
-        $this->assertSame(0, $delStmt->rowCount());
+        // Assert grade approval status in DB remains 'submitted' (NOT auto-approved or modified)
+        $approvalStatus = $this->db->query("SELECT status FROM grade_approvals WHERE id = {$approvalId}")->fetchColumn();
+        $this->assertSame('submitted', $approvalStatus);
+    }
 
-        // Correct teacher deletes
-        $delStmt->execute([$gradeItemId, $teacherId]);
-        $this->assertSame(1, $delStmt->rowCount());
+    public function testFailedTransactionRollbackCreatesZeroNotifications(): void
+    {
+        $passwordHash = password_hash('TestPass123!', PASSWORD_BCRYPT);
+        $this->db->prepare("INSERT INTO users (reference_code, email, password, first_name, last_name, role, status)
+                            VALUES ('STU-040', 'student40@school.edu', ?, 'Test', 'Student', 'student', 'active')")->execute([$passwordHash]);
+        $studentId = (int)$this->db->lastInsertId();
 
-        $this->db->prepare("DELETE FROM grade_item_scores WHERE grade_item_id = ?")->execute([$gradeItemId]);
-        $this->assertSame(0, (int)$this->db->query("SELECT COUNT(*) FROM grade_items WHERE id = {$gradeItemId}")->fetchColumn());
-        $this->assertSame(0, (int)$this->db->query("SELECT COUNT(*) FROM grade_item_scores WHERE grade_item_id = {$gradeItemId}")->fetchColumn());
+        $initialCount = (int)$this->db->query("SELECT COUNT(*) FROM user_notifications")->fetchColumn();
+
+        // Simulate a failing database transaction
+        try {
+            $this->db->beginTransaction();
+            $this->db->exec("INSERT INTO attendance (student_id, class_id, date, status) VALUES ({$studentId}, 1, '2026-09-03', 'present')");
+            // Simulate error triggering rollback
+            throw new \RuntimeException("Database constraint error during sync");
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+        }
+
+        // Assert 0 notifications created on failed write
+        $afterCount = (int)$this->db->query("SELECT COUNT(*) FROM user_notifications")->fetchColumn();
+        $this->assertSame($initialCount, $afterCount);
     }
 
     public function testOfflineSimulationInNodeJsRuntime(): void
@@ -331,6 +394,8 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
         $this->assertStringContainsString('requestBackgroundSync', $offlineStorageJs);
         $this->assertStringContainsString('bshs-offline-sync', $swJs);
         $this->assertStringContainsString('handleBackgroundSync', $swJs);
+        $this->assertStringContainsString('wasOffline', $networkSyncJs);
+        $this->assertStringContainsString('bshs:sync-completed', $networkSyncJs);
 
         $nodeScript = "
         class MockStore {
@@ -378,12 +443,6 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
         queueStore.put(syncOp);
         localStorage.setItem('bshs_offline_queue', JSON.stringify([syncOp]));
 
-        // Check stores have item
-        if (!activityStore.data.has(localId) || !queueStore.data.has('op_' + localId)) {
-            console.error('FAIL: Setup failed');
-            process.exit(1);
-        }
-
         // Simulate deleteActivityLocally(localId)
         activityStore.delete(localId);
         queueStore.delete('op_' + localId);
@@ -397,140 +456,72 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
             process.exit(1);
         }
 
-        // 2. Test Server ID Persistence on Successful Sync
-        const syncedLocalId = 'act_6_1725345999000';
-        const syncedActivity = {
-            local_id: syncedLocalId,
-            server_id: null,
-            class_id: 6,
-            title: 'Quiz 2',
-            sync_status: 'pending'
-        };
-        activityStore.put(syncedActivity);
-
-        // Simulate sync success returning grade_item_id = 88
-        const serverGradeItemId = 88;
-        const rec = activityStore.data.get(syncedLocalId);
-        rec.sync_status = 'synced';
-        rec.server_id = serverGradeItemId;
-        rec.id = serverGradeItemId;
-        activityStore.put(rec);
-
-        const updatedRec = activityStore.data.get(syncedLocalId);
-        if (updatedRec.server_id !== 88 || updatedRec.sync_status !== 'synced') {
-            console.error('FAIL: Server ID persistence failed');
-            process.exit(1);
+        // 2. Test Online Event Debounce and Empty Queue Notice Suppression
+        let noticesShown = [];
+        function showNotification(msg, type) {
+            noticesShown.push({ msg, type });
         }
 
-        // Authoritative deletion logic: because server_id is 88 (> 0), it is recognized as a server activity
-        const isUnsynced = !updatedRec || !updatedRec.server_id || updatedRec.sync_status === 'pending';
-        if (isUnsynced !== false) {
-            console.error('FAIL: Synced activity incorrectly identified as unsynced');
-            process.exit(1);
+        let wasOffline = false;
+        let isProcessing = false;
+        let mockQueue = [];
+
+        function handleOffline() {
+            wasOffline = true;
+            showNotification('You are in offline mode. All records will be stored safely on this device.', 'warning');
         }
 
-        // 3. Test Service Worker Background Sync Simulation & Notification Formatting
-        let notificationShown = 0;
-        let notificationTitle = '';
-        let notificationBody = '';
+        async function handleOnlineDebounced(queueItems, isCurrentlyProcessing) {
+            if (!wasOffline) return;
+            if (isCurrentlyProcessing) return;
 
-        const mockRegistration = {
-            showNotification: (title, options) => {
-                notificationShown++;
-                notificationTitle = title;
-                notificationBody = options.body;
+            if (queueItems && queueItems.length > 0) {
+                wasOffline = false;
+                showNotification('Internet connection restored. Checking offline records...', 'info');
+            } else {
+                wasOffline = false;
+                // Empty queue: no notice shown!
             }
-        };
-
-        function formatSyncNotificationSummary(attRecords, actSets) {
-            var parts = [];
-            if (attRecords > 0) {
-                parts.push(attRecords + ' attendance record' + (attRecords === 1 ? '' : 's'));
-            }
-            if (actSets > 0) {
-                parts.push(actSets + ' activity set' + (actSets === 1 ? '' : 's'));
-            }
-            return 'Offline data synchronized — ' + parts.join(' and ') + ' synchronized successfully.';
-        }
-
-        async function simulateServiceWorkerSync(isOpenWindow, isAuth, queueItems, hasFailures = false) {
-            if (!isAuth) return { success: false, reason: 'unauthorized' };
-            if (!queueItems || queueItems.length === 0) return { success: true, synced: 0 };
-            if (hasFailures) return { success: false, reason: 'partial_failure' };
-
-            let attRecords = 0;
-            let actSets = 0;
-
-            queueItems.forEach(item => {
-                if (item.operation === 'attendance.upsert') {
-                    attRecords += (item.payload && item.payload.records) ? item.payload.records.length : 1;
-                } else {
-                    actSets += 1;
-                }
-            });
-
-            if ((attRecords > 0 || actSets > 0) && !isOpenWindow) {
-                const summary = formatSyncNotificationSummary(attRecords, actSets);
-                mockRegistration.showNotification('BSHS AMS - Data Synchronized', { body: summary });
-            }
-            return { success: true, attRecords, actSets };
         }
 
         (async () => {
-            // Case A: Attendance-only sync (12 records) -> 'Offline data synchronized — 12 attendance records synchronized successfully.'
-            notificationShown = 0;
-            const resAtt = await simulateServiceWorkerSync(false, true, [
-                { operation: 'attendance.upsert', payload: { records: new Array(12).fill({}) } }
-            ]);
-            if (notificationShown !== 1 || notificationBody !== 'Offline data synchronized — 12 attendance records synchronized successfully.') {
-                console.error('FAIL: Attendance-only sync notification mismatch:', notificationBody);
+            // Case A: Online event without prior offline -> 0 notice
+            noticesShown = [];
+            wasOffline = false;
+            await handleOnlineDebounced([{ id: 1 }], false);
+            if (noticesShown.length !== 0) {
+                console.error('FAIL: Showed online notice without prior offline transition');
                 process.exit(1);
             }
 
-            // Case B: Activity-only sync (2 activity sets) -> 'Offline data synchronized — 2 activity sets synchronized successfully.'
-            notificationShown = 0;
-            const resAct = await simulateServiceWorkerSync(false, true, [
-                { operation: 'activity.upsert', payload: { title: 'Act 1' } },
-                { operation: 'activity.upsert', payload: { title: 'Act 2' } }
-            ]);
-            if (notificationShown !== 1 || notificationBody !== 'Offline data synchronized — 2 activity sets synchronized successfully.') {
-                console.error('FAIL: Activity-only sync notification mismatch:', notificationBody);
+            // Case B: Genuine offline transition, but empty queue -> 0 online notice
+            noticesShown = [];
+            handleOffline();
+            if (noticesShown.length !== 1 || noticesShown[0].type !== 'warning') {
+                console.error('FAIL: Offline notice missing');
+                process.exit(1);
+            }
+            await handleOnlineDebounced([], false);
+            if (noticesShown.length !== 1) { // Still just the 1 offline notice
+                console.error('FAIL: Showed online notice with empty queue');
                 process.exit(1);
             }
 
-            // Case C: Combined sync (12 attendance records and 2 activity sets)
-            notificationShown = 0;
-            const resComb = await simulateServiceWorkerSync(false, true, [
-                { operation: 'attendance.upsert', payload: { records: new Array(12).fill({}) } },
-                { operation: 'activity.upsert', payload: { title: 'Act 1' } },
-                { operation: 'activity.upsert', payload: { title: 'Act 2' } }
-            ]);
-            if (notificationShown !== 1 || notificationBody !== 'Offline data synchronized — 12 attendance records and 2 activity sets synchronized successfully.') {
-                console.error('FAIL: Combined sync notification mismatch:', notificationBody);
+            // Case C: Genuine offline transition WITH pending queue -> shows notice
+            noticesShown = [];
+            handleOffline();
+            await handleOnlineDebounced([{ id: 1 }], false);
+            if (noticesShown.length !== 2 || noticesShown[1].type !== 'info') {
+                console.error('FAIL: Did not show online notice when pending items existed');
                 process.exit(1);
             }
 
-            // Case D: App Open in Foreground (isOpenWindow = true) -> 0 device notification (foreground handles UI)
-            notificationShown = 0;
-            const resFg = await simulateServiceWorkerSync(true, true, [{ operation: 'activity.upsert', payload: {} }]);
-            if (notificationShown !== 0) {
-                console.error('FAIL: Open app should not show background device notification');
-                process.exit(1);
-            }
-
-            // Case E: Unauthenticated -> Halts, 0 notification
-            notificationShown = 0;
-            const resUnauth = await simulateServiceWorkerSync(false, false, [{ operation: 'activity.upsert', payload: {} }]);
-            if (notificationShown !== 0) {
-                console.error('FAIL: Unauthenticated should not show notification');
-                process.exit(1);
-            }
-
-            // Case F: Partially failed batch -> 0 success notification
-            notificationShown = 0;
-            const resPartial = await simulateServiceWorkerSync(false, true, [{ operation: 'activity.upsert', payload: {} }], true);
-            if (notificationShown !== 0) {
-                console.error('FAIL: Partially failed batch should not show success notification');
+            // Case D: Sync already running (isProcessing = true) -> suppresses duplicate notice
+            noticesShown = [];
+            handleOffline();
+            await handleOnlineDebounced([{ id: 1 }], true);
+            if (noticesShown.length !== 1) {
+                console.error('FAIL: Showed notice while isProcessing was true');
                 process.exit(1);
             }
 

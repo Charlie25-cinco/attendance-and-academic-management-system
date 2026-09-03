@@ -978,33 +978,57 @@ function appClassSubtitle(PDO $db, int $classId): string {
     }
 }
 
-function appNotifyGradeActivityCreated(PDO $db, int $classId, int $gradeItemId, string $title, string $component, $totalScore): void {
+function appNotifyGradeActivityCreated(PDO $db, int $classId, int $gradeItemId, string $title, string $component, $totalScore, int $teacherId = 0): void {
     $recipients = appClassStudentParentRecipients($db, $classId);
     $studentIds = $recipients['students'];
-    if (empty($studentIds)) { return; }
     $classLabel = appClassSubtitle($db, $classId);
     $subtitle = $classLabel . ' | ' . strtoupper($component) . ' | Total: ' . (string)$totalScore;
+
+    $adminStmt = $db->query("SELECT id FROM users WHERE role = 'admin' AND COALESCE(status, 'active') = 'active'");
+    $adminIds = $adminStmt ? array_map('intval', $adminStmt->fetchAll(PDO::FETCH_COLUMN)) : [];
+
+    if ($teacherId <= 0) {
+        try {
+            $tchStmt = $db->prepare("SELECT teacher_id FROM classes WHERE id = ? LIMIT 1");
+            $tchStmt->execute([$classId]);
+            $teacherId = (int)$tchStmt->fetchColumn();
+        } catch (Throwable $e) {}
+    }
+
+    $linksByRole = [
+        'student' => 'Student_Classes.php',
+        'parent' => 'Parent_Progress.php',
+        'teacher' => 'teacher_Classes.php',
+        'admin' => 'admin_Classes.php',
+    ];
+
     foreach ($studentIds as $studentId) {
+        $sourceKey = 'grade_item_created_' . $gradeItemId . '_' . (int)$studentId;
+        $studentAndParents = array_merge([(int)$studentId], $recipients['parents_by_student'][(int)$studentId] ?? []);
         appDispatchNotification(
             $db,
-            [(int)$studentId],
-            'grade_item_created_' . $gradeItemId . '_' . (int)$studentId,
+            $studentAndParents,
+            $sourceKey,
             'New grade activity: ' . $title,
             $subtitle,
             'bi-clipboard-check',
             'primary',
-            ['student' => 'Student_Classes.php'],
+            $linksByRole,
             ['type' => 'grade_activity', 'class_id' => $classId, 'grade_item_id' => $gradeItemId]
         );
+    }
+
+    $staffIds = array_values(array_unique(array_filter(array_merge($adminIds, $teacherId > 0 ? [$teacherId] : []), function ($id) { return $id > 0; })));
+    if (!empty($staffIds)) {
         appDispatchNotification(
             $db,
-            $recipients['parents_by_student'][(int)$studentId] ?? [],
-            'grade_item_created_' . $gradeItemId . '_' . (int)$studentId,
+            $staffIds,
+            'grade_item_created_' . $gradeItemId . '_staff',
             'New grade activity: ' . $title,
             $subtitle,
             'bi-clipboard-check',
             'primary',
-            ['parent' => 'Parent_Progress.php'],
+            $linksByRole,
             ['type' => 'grade_activity', 'class_id' => $classId, 'grade_item_id' => $gradeItemId]
         );
     }
@@ -1019,6 +1043,17 @@ function appNotifyAttendanceRecords(PDO $db, int $classId, string $date, array $
     }, $records))));
     if (empty($studentIds)) { return; }
 
+    $adminStmt = $db->query("SELECT id FROM users WHERE role = 'admin' AND COALESCE(status, 'active') = 'active'");
+    $adminIds = $adminStmt ? array_map('intval', $adminStmt->fetchAll(PDO::FETCH_COLUMN)) : [];
+
+    if ($recordedBy <= 0) {
+        try {
+            $tchStmt = $db->prepare("SELECT teacher_id FROM classes WHERE id = ? LIMIT 1");
+            $tchStmt->execute([$classId]);
+            $recordedBy = (int)$tchStmt->fetchColumn();
+        } catch (Throwable $e) {}
+    }
+
     $names = [];
     try {
         $placeholders = implode(',', array_fill(0, count($studentIds), '?'));
@@ -1029,32 +1064,38 @@ function appNotifyAttendanceRecords(PDO $db, int $classId, string $date, array $
         }
     } catch (Throwable $e) {}
 
+    $linksByRole = [
+        'student' => 'Student_Attendance.php',
+        'parent' => 'Parent_Progress.php',
+        'teacher' => 'teacher_Attendance.php',
+        'admin' => 'admin_Attendance.php',
+    ];
+
     foreach ($records as $record) {
         $studentId = (int)($record['student_id'] ?? 0);
         $status = strtolower(trim((string)($record['status'] ?? '')));
         if ($studentId <= 0 || !in_array($status, ['present', 'late', 'absent'], true)) { continue; }
         $studentName = $names[$studentId] ?? 'Student';
         $subtitle = $studentName . ' marked ' . ucfirst($status) . ' on ' . $date . ' in ' . $classLabel;
-        appDispatchNotification(
-            $db,
+        $sourceKey = 'attendance_' . $classId . '_' . $date . '_' . $studentId;
+
+        $targetUserIds = array_merge(
             [$studentId],
-            'attendance_' . $classId . '_' . $date . '_' . $studentId,
-            'Attendance recorded',
-            $subtitle,
-            'bi-calendar-check',
-            'info',
-            ['student' => 'Student_Attendance.php'],
-            ['type' => 'attendance', 'class_id' => $classId, 'student_id' => $studentId, 'date' => $date, 'status' => $status]
+            $recipients['parents_by_student'][$studentId] ?? [],
+            $recordedBy > 0 ? [$recordedBy] : [],
+            $adminIds
         );
+        $uniqueTargets = array_values(array_unique(array_filter(array_map('intval', $targetUserIds), function ($id) { return $id > 0; })));
+
         appDispatchNotification(
             $db,
-            $recipients['parents_by_student'][$studentId] ?? [],
-            'attendance_' . $classId . '_' . $date . '_' . $studentId,
+            $uniqueTargets,
+            $sourceKey,
             'Attendance recorded',
             $subtitle,
             'bi-calendar-check',
             'info',
-            ['parent' => 'Parent_Progress.php'],
+            $linksByRole,
             ['type' => 'attendance', 'class_id' => $classId, 'student_id' => $studentId, 'date' => $date, 'status' => $status]
         );
     }

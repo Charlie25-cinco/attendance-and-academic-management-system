@@ -616,14 +616,20 @@ function notifyAttendanceParents($db, $teacherId, $classId, $date, array $record
         }
         $parentLookup[$sid][] = $pid;
     }
-    $studentRecipientLookup = [];
-    foreach ($studentIds as $sid) {
-        $studentRecipientLookup[(int)$sid] = [(int)$sid];
-    }
+
+    $adminStmt = $db->query("SELECT id FROM users WHERE role = 'admin' AND COALESCE(status, 'active') = 'active'");
+    $adminIds = $adminStmt ? array_map('intval', $adminStmt->fetchAll(PDO::FETCH_COLUMN)) : [];
 
     $teacherName = teacherGetDisplayName($db, $teacherId);
     $classSubtitle = teacherGetClassSubtitle($db, $classId);
     $eventAt = date('Y-m-d H:i:s');
+
+    $linksByRole = [
+        'student' => 'Student_Attendance.php',
+        'parent' => 'Parent_Progress.php',
+        'teacher' => 'teacher_Attendance.php',
+        'admin' => 'admin_Attendance.php',
+    ];
 
     $cleanupStmt = $db->prepare("DELETE FROM user_notifications
                                  WHERE user_id = ?
@@ -645,26 +651,30 @@ function notifyAttendanceParents($db, $teacherId, $classId, $date, array $record
         $sourceKey = 'attendance_' . (int)$classId . '_' . $date . '_' . $studentId;
         $cleanupPattern = $studentName . ' marked % on ' . $date . ' %';
 
-        $recipients = array_merge($parentLookup[$studentId] ?? [], $studentRecipientLookup[$studentId] ?? []);
-        foreach (array_unique($recipients) as $recipientId) {
-            if ($recipientId <= 0 || $recipientId === (int)$teacherId) {
-                continue;
-            }
-            $cleanupStmt->execute([$recipientId, $cleanupPattern]);
-            appDispatchNotification(
-                $db,
-                [$recipientId],
-                $sourceKey,
-                $title,
-                $subtitle,
-                'bi-calendar-check',
-                'info',
-                ['student' => 'Student_Attendance.php', 'parent' => 'Parent_Progress.php'],
-                ['type' => 'attendance', 'class_id' => (int)$classId, 'student_id' => $studentId, 'date' => $date, 'status' => $status],
-                $eventAt
-            );
+        $recipients = array_merge(
+            $parentLookup[$studentId] ?? [],
+            [$studentId],
+            $teacherId > 0 ? [$teacherId] : [],
+            $adminIds
+        );
+        $uniqueRecipients = array_values(array_unique(array_filter(array_map('intval', $recipients), function ($id) { return $id > 0; })));
 
+        foreach ($uniqueRecipients as $recipientId) {
+            $cleanupStmt->execute([$recipientId, $cleanupPattern]);
         }
+
+        appDispatchNotification(
+            $db,
+            $uniqueRecipients,
+            $sourceKey,
+            $title,
+            $subtitle,
+            'bi-calendar-check',
+            'info',
+            $linksByRole,
+            ['type' => 'attendance', 'class_id' => (int)$classId, 'student_id' => $studentId, 'date' => $date, 'status' => $status],
+            $eventAt
+        );
     }
 }
 
@@ -725,24 +735,25 @@ function notifyGradeSubmissionParents($db, $teacherId, $classId, $classSubjectId
         $subtitle = $studentName . ' grades submitted for ' . $classSubtitle . ' (' . $periodLabel . ' ' . $academicYear . ') by ' . $teacherName;
         $sourceKey = 'grade_submit_' . (int)$classSubjectId . '_' . $term . '_' . $academicYear . '_' . $studentId;
 
-        $recipients = array_merge($parentLookup[$studentId] ?? [], $studentRecipientLookup[$studentId] ?? []);
-        foreach (array_unique($recipients) as $recipientId) {
-            if ($recipientId <= 0 || $recipientId === (int)$teacherId) {
-                continue;
-            }
-            appDispatchNotification(
-                $db,
-                [$recipientId],
-                $sourceKey,
-                $title,
-                $subtitle,
-                'bi-clipboard-data',
-                'info',
-                ['student' => 'Student_Report_Card.php', 'parent' => 'Parent_Progress.php'],
-                ['type' => 'grade_submission', 'class_id' => (int)$classId, 'student_id' => $studentId],
-                $eventAt
-            );
-        }
+        $recipients = array_merge(
+            $parentLookup[$studentId] ?? [],
+            $studentRecipientLookup[$studentId] ?? [],
+            $teacherId > 0 ? [$teacherId] : []
+        );
+        $uniqueRecipients = array_values(array_unique(array_filter(array_map('intval', $recipients), function ($id) { return $id > 0; })));
+
+        appDispatchNotification(
+            $db,
+            $uniqueRecipients,
+            $sourceKey,
+            $title,
+            $subtitle,
+            'bi-clipboard-data',
+            'info',
+            ['student' => 'Student_Report_Card.php', 'parent' => 'Parent_Progress.php', 'teacher' => 'teacher_Grades.php'],
+            ['type' => 'grade_submission', 'class_id' => (int)$classId, 'student_id' => $studentId],
+            $eventAt
+        );
     }
 }
 
@@ -783,10 +794,9 @@ function notifyGradeItemScoreParents($db, $teacherId, array $item, array $scoreR
         }
         $parentLookup[$sid][] = $pid;
     }
-    $studentRecipientLookup = [];
-    foreach ($studentIds as $sid) {
-        $studentRecipientLookup[(int)$sid] = [(int)$sid];
-    }
+
+    $adminStmt = $db->query("SELECT id FROM users WHERE role = 'admin' AND COALESCE(status, 'active') = 'active'");
+    $adminIds = $adminStmt ? array_map('intval', $adminStmt->fetchAll(PDO::FETCH_COLUMN)) : [];
 
     $teacherName = teacherGetDisplayName($db, $teacherId);
     $classSubtitle = trim((string)($item['class_name'] ?? 'Class'));
@@ -796,6 +806,13 @@ function notifyGradeItemScoreParents($db, $teacherId, array $item, array $scoreR
     $eventAt = date('Y-m-d H:i:s');
     $title = 'Score recorded: ' . trim((string)($item['title'] ?? 'Activity'));
     $totalScore = (string)($item['total_score'] ?? '');
+
+    $linksByRole = [
+        'student' => 'Student_Report_Card.php',
+        'parent' => 'Parent_Progress.php',
+        'teacher' => 'teacher_Classes.php',
+        'admin' => 'admin_Classes.php',
+    ];
 
     foreach ($scoreRows as $row) {
         $studentId = (int)($row['student_id'] ?? 0);
@@ -807,24 +824,26 @@ function notifyGradeItemScoreParents($db, $teacherId, array $item, array $scoreR
         $subtitle = $studentName . ' scored ' . $score . ($totalScore !== '' ? ('/' . $totalScore) : '') . ' in ' . $classSubtitle . ' by ' . $teacherName;
         $sourceKey = 'grade_item_score_' . (int)($item['id'] ?? 0) . '_' . $studentId;
 
-        $recipients = array_merge($parentLookup[$studentId] ?? [], $studentRecipientLookup[$studentId] ?? []);
-        foreach (array_unique($recipients) as $recipientId) {
-            if ($recipientId <= 0 || $recipientId === (int)$teacherId) {
-                continue;
-            }
-            appDispatchNotification(
-                $db,
-                [$recipientId],
-                $sourceKey,
-                $title,
-                $subtitle,
-                'bi-clipboard-check',
-                'info',
-                ['student' => 'Student_Report_Card.php', 'parent' => 'Parent_Progress.php'],
-                ['type' => 'grade_score', 'grade_item_id' => (int)($item['id'] ?? 0), 'student_id' => $studentId],
-                $eventAt
-            );
-        }
+        $recipients = array_merge(
+            $parentLookup[$studentId] ?? [],
+            [$studentId],
+            $teacherId > 0 ? [$teacherId] : [],
+            $adminIds
+        );
+        $uniqueRecipients = array_values(array_unique(array_filter(array_map('intval', $recipients), function ($id) { return $id > 0; })));
+
+        appDispatchNotification(
+            $db,
+            $uniqueRecipients,
+            $sourceKey,
+            $title,
+            $subtitle,
+            'bi-clipboard-check',
+            'info',
+            $linksByRole,
+            ['type' => 'grade_score', 'grade_item_id' => (int)($item['id'] ?? 0), 'student_id' => $studentId],
+            $eventAt
+        );
     }
 }
 
@@ -1966,7 +1985,7 @@ function submitGrades($db, $teacherId) {
                 appDispatchNotification(
                     $db,
                     $adminIds,
-                    'grade_submission_' . $classSubjectId . '_' . $term . '_' . $academicYear . '_' . time(),
+                    'grade_submission_admin_' . $classSubjectId . '_' . $term . '_' . $academicYear,
                     'Subject Grades Submitted',
                     "Teacher {$tName} submitted {$cName} (Grade {$gLevel} - {$secName}, {$term}) for admin verification.",
                     'bi-journal-check',

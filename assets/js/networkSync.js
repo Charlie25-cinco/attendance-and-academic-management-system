@@ -157,19 +157,62 @@
             if (typeof storage.bootstrapOnline === 'function') {
                 storage.bootstrapOnline().catch(function () {});
             }
+
+            // Emit sync completed event so active UI pages can refresh immediately
+            if (typeof global.dispatchEvent === 'function') {
+                try {
+                    global.dispatchEvent(new CustomEvent('bshs:sync-completed', {
+                        detail: {
+                            syncedAttendance: syncedAttendance,
+                            syncedActivities: syncedActivities,
+                            totalSynced: totalSynced
+                        }
+                    }));
+                } catch (e) {}
+            }
         }
     }
 
+    var wasOffline = (typeof navigator !== 'undefined' && !navigator.onLine);
+    var onlineDebounceTimer = null;
+
     function handleOnline() {
-        if (typeof showNotification === 'function') {
-            showNotification('Internet connection restored. Checking offline records...', 'info');
-        } else if (typeof showToast === 'function') {
-            showToast('Internet connection restored. Checking offline records...', 'info');
+        if (onlineDebounceTimer) {
+            clearTimeout(onlineDebounceTimer);
         }
-        setTimeout(processQueue, 500);
+
+        onlineDebounceTimer = setTimeout(async function () {
+            if (!wasOffline) {
+                return;
+            }
+            if (isProcessing) {
+                return;
+            }
+
+            try {
+                var queue = (storage && typeof storage.getSyncQueue === 'function')
+                    ? await storage.getSyncQueue()
+                    : [];
+
+                if (queue && queue.length > 0) {
+                    wasOffline = false;
+                    if (typeof showNotification === 'function') {
+                        showNotification('Internet connection restored. Checking offline records...', 'info');
+                    } else if (typeof showToast === 'function') {
+                        showToast('Internet connection restored. Checking offline records...', 'info');
+                    }
+                    processQueue();
+                } else {
+                    wasOffline = false;
+                }
+            } catch (err) {
+                wasOffline = false;
+            }
+        }, 300);
     }
 
     function handleOffline() {
+        wasOffline = true;
         if (typeof showNotification === 'function') {
             showNotification('You are in offline mode. All records will be stored safely on this device.', 'warning');
         }

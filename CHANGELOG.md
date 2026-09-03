@@ -2,6 +2,17 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.168 — 2026-09-03
+
+### Fixed
+
+- **Online Sync Notice Loop Fix, 4-Role Notification Recipient Coverage & Grade UI Refresh**:
+  - **Online Event Debounce & Notice Suppression**: Added `wasOffline` transition tracking and a 300ms debounce timer in [`assets/js/networkSync.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/networkSync.js), eliminating looping connection notices and suppressing notices when the sync queue is empty or a sync operation is already running.
+  - **Comprehensive 4-Role Portal Notifications**: Updated [`teacher/teacher_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Action.php) and [`functions/app-helpers.php`](file:///c:/laragon/www/attendance-and-academic-management-system/functions/app-helpers.php) to dispatch in-app portal notifications to affected Students, linked Parents, responsible Teachers, and active Admins upon database transaction commit, maintaining strict idempotency across sync retries.
+  - **Admin Grade Approval Workflow Preservation**: Maintained informational-only admin grade submission notifications linking directly to `admin_Grade_Approvals_Detail.php` without modifying approval status transitions (`submitted` $\to$ `admin_verified` $\to$ `submitted_admin` $\to$ `approved`) or review permissions.
+  - **Instant Grade UI Refresh**: Added `'bshs:sync-completed'` event dispatching and listeners across [`assets/js/networkSync.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/networkSync.js) and [`teacher/teacher_Classes.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Classes.php), automatically refreshing score badges, activity lists, and metadata without requiring a page reload.
+  - **Automated Regression Test Suite**: Updated [`tests/TeacherPwaOfflineLifecycleTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/TeacherPwaOfflineLifecycleTest.php) with tests covering 4-role notification delivery, duplicate sync idempotency, Admin Approval preservation, failed-transaction safety, and Node.js online debounce simulations.
+
 ## v0.3.167 — 2026-09-03
 
 ### Fixed
