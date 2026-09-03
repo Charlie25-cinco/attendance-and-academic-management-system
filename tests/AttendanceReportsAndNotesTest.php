@@ -75,4 +75,21 @@ final class AttendanceReportsAndNotesTest extends TestCase
         $this->assertStringNotContainsString('function normalizeText', $teacherAction);
         $this->assertStringContainsString('student_name ASC', aggregateAttendanceReportDefinition('top_attendance')['order']);
     }
+
+    public function testBootstrapAndTeacherReportHelperLoadReportAggregates(): void
+    {
+        $bootstrapPhp = file_get_contents(__DIR__ . '/../functions/bootstrap.php');
+        $this->assertIsString($bootstrapPhp);
+        $this->assertStringContainsString('functions/report-aggregates.php', $bootstrapPhp);
+
+        $teacherHelperPhp = file_get_contents(__DIR__ . '/../teacher/teacher_Reports_Helper.php');
+        $this->assertIsString($teacherHelperPhp);
+        $this->assertStringContainsString('functions/report-aggregates.php', $teacherHelperPhp);
+
+        $this->assertTrue(function_exists('aggregateAttendanceReportRows'));
+        $this->assertTrue(function_exists('aggregateAttendanceReportTable'));
+        $this->assertTrue(function_exists('aggregateAttendanceReportTypes'));
+        $this->assertTrue(function_exists('aggregateAttendanceReportDefinition'));
+    }
 }
+

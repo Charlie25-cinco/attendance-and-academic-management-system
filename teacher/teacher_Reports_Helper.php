@@ -1,5 +1,7 @@
 <?php
 
+require_once dirname(__DIR__) . '/functions/report-aggregates.php';
+
 if (!function_exists('trhPeriodBounds')) {
     function trhPeriodBounds($academicYear, $scope, $semester = null) {
         preg_match('/^(\d{4})-(\d{4})$/', (string)$academicYear, $m);

@@ -2,6 +2,14 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.166 — 2026-09-03
+
+### Fixed
+
+- **Teacher & Portal Reports Aggregate Helper Loading**:
+  - **Runtime Bootstrap Loading**: Added `functions/report-aggregates.php` inclusion into [`functions/bootstrap.php`](file:///c:/laragon/www/attendance-and-academic-management-system/functions/bootstrap.php) and [`teacher/teacher_Reports_Helper.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Reports_Helper.php), eliminating the HTTP 500 fatal error when calling `aggregateAttendanceReportRows()` and `aggregateAttendanceReportTable()` on `teacher/teacher_Reports.php` and `teacher/teacher_Reports_Action.php`.
+  - **Automated Regression Test Suite**: Updated [`tests/AttendanceReportsAndNotesTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/AttendanceReportsAndNotesTest.php) with assertions verifying that bootstrapping loads `report-aggregates.php` and establishes the aggregate report function contracts.
+
 ## v0.3.165 — 2026-09-03
 
 ### Fixed
