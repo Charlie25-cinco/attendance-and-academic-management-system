@@ -312,3 +312,166 @@ self.addEventListener("notificationclick", function (event) {
       }),
   );
 });
+
+// -------------------------------------------------------------
+// Background Sync API Handler (Best-Effort when app is closed)
+// -------------------------------------------------------------
+self.addEventListener("sync", function (event) {
+  if (event.tag === "bshs-offline-sync") {
+    event.waitUntil(handleBackgroundSync());
+  }
+});
+
+async function openOfflineDb() {
+  if (!("indexedDB" in self)) return null;
+  return new Promise(function (resolve) {
+    var req = indexedDB.open("bshs_ams_offline_db", 2);
+    req.onsuccess = function (e) { resolve(e.target.result); };
+    req.onerror = function () { resolve(null); };
+  });
+}
+
+async function handleBackgroundSync() {
+  var db = await openOfflineDb();
+  if (!db) return;
+
+  var queue = await new Promise(function (resolve) {
+    try {
+      if (!db.objectStoreNames.contains("sync_queue")) { resolve([]); return; }
+      var tx = db.transaction(["sync_queue"], "readonly");
+      var req = tx.objectStore("sync_queue").getAll();
+      req.onsuccess = function () { resolve(req.result || []); };
+      req.onerror = function () { resolve([]); };
+    } catch (e) { resolve([]); }
+  });
+
+  if (!queue || queue.length === 0) return;
+
+  // Check if any window client is currently open
+  var windowClients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+  var isAppClosed = windowClients.length === 0;
+
+  // Probe server authentication with credentials
+  var authCheck = await (async function () {
+    try {
+      var targetUrl = resolvePath("/teacher/teacher_Action.php?action=offline_bootstrap");
+      var res = await fetch(targetUrl, {
+        headers: { Accept: "application/json" },
+        credentials: "same-origin",
+        cache: "no-store"
+      });
+      if (!res.ok) return { authenticated: false };
+      var data = await res.json();
+      if (data && data.success && data.teacher) {
+        return { authenticated: true, csrfToken: data.csrf_token || "" };
+      }
+      return { authenticated: false };
+    } catch (e) {
+      return { authenticated: false, networkError: true };
+    }
+  })();
+
+  if (!authCheck.authenticated) {
+    // Unauthenticated or network error: halt, preserve queue, do not notify
+    return;
+  }
+
+  var syncedAttendance = 0;
+  var syncedActivities = 0;
+
+  for (var i = 0; i < queue.length; i++) {
+    var item = queue[i];
+    var payload = item.payload;
+    var url = item.url;
+    var opType = item.operation;
+    var opId = item.operation_id || item.id;
+    if (!url || !payload) continue;
+
+    try {
+      var targetUrl = resolvePath("/teacher/" + url.replace(/^\/?teacher\//, ""));
+      var headers = {
+        "Content-Type": "application/json",
+        Accept: "application/json"
+      };
+      if (authCheck.csrfToken) {
+        headers["X-CSRF-Token"] = authCheck.csrfToken;
+      }
+
+      var response = await fetch(targetUrl, {
+        method: "POST",
+        headers: headers,
+        credentials: "same-origin",
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        var result = await response.json();
+        if (result && result.success) {
+          if (opType === "attendance.upsert" || opType === "submit_attendance") {
+            syncedAttendance++;
+          } else {
+            syncedActivities++;
+          }
+
+          // Delete from sync_queue and update local record in IndexedDB
+          try {
+            var rawId = String(opId || "").replace(/^op_/, "");
+            var wtx = db.transaction(["sync_queue", "activity_records", "attendance_records"], "readwrite");
+            wtx.objectStore("sync_queue").delete(item.id);
+            wtx.objectStore("sync_queue").delete("op_" + rawId);
+            wtx.objectStore("sync_queue").delete(rawId);
+
+            if (opType === "attendance.upsert" || opType === "submit_attendance") {
+              var attStore = wtx.objectStore("attendance_records");
+              var attReq = attStore.get(rawId);
+              attReq.onsuccess = function () {
+                if (attReq.result) {
+                  var rec = attReq.result;
+                  rec.sync_status = "synced";
+                  rec.synced_at = new Date().toISOString();
+                  attStore.put(rec);
+                }
+              };
+            } else {
+              var actStore = wtx.objectStore("activity_records");
+              var actReq = actStore.get(rawId);
+              actReq.onsuccess = function () {
+                if (actReq.result) {
+                  var rec = actReq.result;
+                  rec.sync_status = "synced";
+                  rec.synced_at = new Date().toISOString();
+                  if (result.grade_item_id && parseInt(result.grade_item_id, 10) > 0) {
+                    rec.server_id = parseInt(result.grade_item_id, 10);
+                    rec.id = parseInt(result.grade_item_id, 10);
+                  }
+                  actStore.put(rec);
+                }
+              };
+            }
+          } catch (e) {}
+        } else if (result && (result.message === "Unauthorized access" || result.message === "Invalid CSRF token")) {
+          // Mid-queue auth failure: halt and preserve remaining
+          break;
+        }
+      }
+    } catch (err) {
+      console.warn("[SW Background Sync] Item sync error:", item.id, err);
+    }
+  }
+
+  var totalSynced = syncedAttendance + syncedActivities;
+  if (totalSynced > 0 && isAppClosed) {
+    var parts = [];
+    if (syncedAttendance > 0) parts.push(syncedAttendance + " attendance sheet(s)");
+    if (syncedActivities > 0) parts.push(syncedActivities + " activity score set(s)");
+    var summaryText = "Offline data (" + parts.join(", ") + ") synchronized successfully to the school server.";
+
+    self.registration.showNotification("BSHS AMS - Data Synchronized", {
+      body: summaryText,
+      icon: resolvePath("/assets/images/icon-192.png"),
+      badge: resolvePath("/assets/images/icon-192.png"),
+      tag: "bshs-sync-completed",
+      data: { url: resolvePath("/teacher/teacher.php") }
+    });
+  }
+}

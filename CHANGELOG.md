@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.165 — 2026-09-03
+
+### Fixed
+
+- **Teacher PWA Authoritative Offline Activity Deletion & Background Sync Notification**:
+  - **Authoritative Offline Activity Deletion**: Enhanced [`teacher/teacher_Classes.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Classes.php) and [`assets/js/offlineStorage.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/offlineStorage.js) with `deleteActivityLocally()`. For unsynced local activities, deleting immediately purges the record from IndexedDB (`STORES.ACTIVITIES`) and cancels its corresponding `activity.upsert` operation from IndexedDB `STORES.SYNC_QUEUE` and `localStorage`, preventing server recreation upon network restoration.
+  - **Server ID Persistence on Sync**: Updated [`assets/js/networkSync.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/networkSync.js) and `markRecordSynced()` to persist returned server `grade_item_id`s into local IndexedDB activity records, allowing synchronized activities to use standard server-side deletion.
+  - **Closed-PWA Best-Effort Background Sync & Notification**: Added `'sync'` event handling for tag `'bshs-offline-sync'` in [`sw.js`](file:///c:/laragon/www/attendance-and-academic-management-system/sw.js), leveraging authoritative IndexedDB queues. When the browser wakes the service worker without open window clients (`clients.length === 0`), it authenticates via `offline_bootstrap`, processes queued writes, and dispatches a device notification (`"Offline data synced successfully"`) upon successful batch completion.
+  - **Automated Regression Test Suite**: Updated [`tests/TeacherPwaOfflineLifecycleTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/TeacherPwaOfflineLifecycleTest.php) with tests for server-side grade item deletion with ownership validation, authoritative unsynced activity deletion with queue cancellation, server ID persistence on sync, and closed-PWA background sync notification simulation.
+
 ## v0.3.164 — 2026-09-03
 
 ### Fixed

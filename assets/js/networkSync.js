@@ -115,7 +115,7 @@
 
                         // Mark record synced in IndexedDB & remove from queue
                         if (typeof storage.markRecordSynced === 'function') {
-                            await storage.markRecordSynced(opId);
+                            await storage.markRecordSynced(opId, { grade_item_id: result.grade_item_id });
                         } else if (typeof storage.removeSyncItem === 'function') {
                             await storage.removeSyncItem(item.id);
                         }

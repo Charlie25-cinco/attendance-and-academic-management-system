@@ -460,7 +460,7 @@
         localStorage.setItem("bshs_offline_queue", JSON.stringify(filtered));
       } catch (e) {}
 
-      return activityItem;
+      if (typeof bshsOfflineStorage !== "undefined" && typeof bshsOfflineStorage.requestBackgroundSync === "function") { bshsOfflineStorage.requestBackgroundSync(); } return activityItem;
     },
 
     async getAllLocalActivities() {
@@ -516,9 +516,97 @@
       return Array.from(map.values());
     },
 
-    async markRecordSynced(operationId) {
+    async deleteActivityLocally(identifier) {
+      const rawId = String(identifier || "").replace(/^op_/, "");
+      const opKey = "op_" + rawId;
+
+      const db = await openDatabase();
+      if (db) {
+        try {
+          const tx = db.transaction(
+            [STORES.ACTIVITIES, STORES.SYNC_QUEUE],
+            "readwrite",
+          );
+          const actStore = tx.objectStore(STORES.ACTIVITIES);
+          const queueStore = tx.objectStore(STORES.SYNC_QUEUE);
+
+          // Direct delete by key
+          actStore.delete(rawId);
+          queueStore.delete(opKey);
+          queueStore.delete(rawId);
+
+          // Scan all activities to match by local_id, id, or server_id
+          const actReq = actStore.getAll();
+          actReq.onsuccess = function () {
+            const items = actReq.result || [];
+            items.forEach(function (item) {
+              if (
+                String(item.local_id) === rawId ||
+                String(item.id) === rawId ||
+                (item.server_id && String(item.server_id) === rawId)
+              ) {
+                actStore.delete(item.local_id);
+                queueStore.delete("op_" + item.local_id);
+                queueStore.delete(item.local_id);
+              }
+            });
+          };
+
+          // Also scan queue to match by payload grade_item_id or local_id
+          const qReq = queueStore.getAll();
+          qReq.onsuccess = function () {
+            const qItems = qReq.result || [];
+            qItems.forEach(function (qItem) {
+              const p = qItem.payload || {};
+              if (
+                String(qItem.id) === opKey ||
+                String(qItem.id) === rawId ||
+                String(qItem.operation_id) === rawId ||
+                String(p.grade_item_id) === rawId ||
+                String(p.server_id) === rawId
+              ) {
+                queueStore.delete(qItem.id);
+              }
+            });
+          };
+        } catch (e) {}
+      }
+
+      try {
+        const queue =
+          JSON.parse(localStorage.getItem("bshs_offline_queue")) || [];
+        const filtered = queue.filter(function (q) {
+          const p = q.payload || q.action?.payload || {};
+          return (
+            q.id !== rawId &&
+            q.id !== opKey &&
+            q.operation_id !== rawId &&
+            String(p.grade_item_id) !== rawId &&
+            String(p.server_id) !== rawId
+          );
+        });
+        localStorage.setItem("bshs_offline_queue", JSON.stringify(filtered));
+      } catch (e) {}
+    },
+
+    requestBackgroundSync() {
+      if (typeof navigator !== "undefined" && "serviceWorker" in navigator && "SyncManager" in global) {
+        navigator.serviceWorker.ready
+          .then(function (reg) {
+            if (reg && reg.sync && typeof reg.sync.register === "function") {
+              return reg.sync.register("bshs-offline-sync");
+            }
+          })
+          .catch(function () {});
+      }
+    },
+
+    async markRecordSynced(operationId, extraData) {
       const rawId = String(operationId || "").replace(/^op_/, "");
       const opKey = "op_" + rawId;
+      const serverGradeItemId = extraData && (extraData.grade_item_id || extraData.server_id)
+        ? parseInt(extraData.grade_item_id || extraData.server_id, 10)
+        : null;
 
       const db = await openDatabase();
       if (db) {
@@ -539,7 +627,7 @@
             }
           };
 
-          // Update activity record if exists
+          // Update activity record if exists and persist server_id
           const actStore = tx.objectStore(STORES.ACTIVITIES);
           const actReq = actStore.get(rawId);
           actReq.onsuccess = function () {
@@ -547,6 +635,10 @@
               const rec = actReq.result;
               rec.sync_status = "synced";
               rec.synced_at = new Date().toISOString();
+              if (serverGradeItemId && serverGradeItemId > 0) {
+                rec.server_id = serverGradeItemId;
+                rec.id = serverGradeItemId;
+              }
               actStore.put(rec);
             }
           };

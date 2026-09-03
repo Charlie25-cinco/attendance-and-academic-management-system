@@ -805,7 +805,7 @@ function saveGradeItemScores(){
 function finishGradeItem(id,title){pendingFinishGradeItemId=parseInt(id,10)||0;const nameEl=document.getElementById('finishGradeItemName');if(nameEl)nameEl.textContent=title?`Activity: ${title}`:'Activity: Grade Activity';if(!pendingFinishGradeItemId){showNotification('Invalid grade activity','warning');return;}if(finishGradeItemModal)finishGradeItemModal.show();}
 function confirmFinishGradeItem(){if(!pendingFinishGradeItemId){showNotification('Invalid grade activity','warning');return;}const btn=document.getElementById('confirmFinishGradeItemBtn');setBusy(btn,'Finishing...','Finish Activity',true);const fd=new FormData();fd.append('grade_item_id',pendingFinishGradeItemId);appendCsrfToFormData(fd);fetch('teacher_Action.php?action=finish_grade_item',{method:'POST',body:fd}).then(r=>r.json()).then(d=>{if(d.success){showNotification(d.message||'Grade activity finished and moved to archive','success');if(finishGradeItemModal)finishGradeItemModal.hide();loadGradeItems();}else{showNotification(d.message||'Failed to finish grade activity','danger');}}).catch(()=>showNotification('Error finishing grade activity','danger')).finally(()=>setBusy(btn,'Finishing...','Finish Activity',false));}
 function deleteGradeItem(id,title){pendingDeleteAction='grade_activity';showDeleteModal(id,title,'grade activity');}
-function handleDelete(id){
+async function handleDelete(id){
     if(pendingDeleteAction==='material'){
         fetch(withCsrfUrl('teacher_Action.php?action=delete_material&id='+encodeURIComponent(id))).then(r=>r.json()).then(d=>{if(d.success){showNotification(d.message||'Material deleted successfully','success');setTimeout(()=>location.reload(),700);}else{showNotification(d.message||'Failed to delete material','danger');}}).catch(()=>showNotification('Error deleting material','danger'));
         return;
@@ -815,10 +815,51 @@ function handleDelete(id){
         return;
     }
     if(pendingDeleteAction==='grade_activity'){
-        const fd=new FormData();
-        fd.append('grade_item_id',id);
+        // Authoritatively resolve local activity record from IndexedDB or current loaded memory
+        let resolvedAct = null;
+        if (window.bshsOfflineStorage && typeof window.bshsOfflineStorage.getAllLocalActivities === 'function') {
+            try {
+                const items = await window.bshsOfflineStorage.getAllLocalActivities();
+                resolvedAct = items.find(i => String(i.local_id || i.id) === String(id) || (i.server_id && String(i.server_id) === String(id)));
+            } catch (e) {}
+        }
+        if (!resolvedAct && currentLoadedGradeItems) {
+            resolvedAct = currentLoadedGradeItems.find(i => String(i.id) === String(id) || String(i.local_id) === String(id));
+        }
+
+        const isUnsynced = !resolvedAct || !resolvedAct.server_id || resolvedAct.sync_status === 'pending' || String(id).startsWith('act_');
+
+        if (isUnsynced) {
+            // Unsynced offline activity: purge from IndexedDB and cancel queue item
+            if (window.bshsOfflineStorage && typeof window.bshsOfflineStorage.deleteActivityLocally === 'function') {
+                await window.bshsOfflineStorage.deleteActivityLocally(id);
+            }
+            showNotification('Grade activity deleted locally (Offline)', 'success');
+            loadGradeItems();
+            return;
+        }
+
+        // Synchronized server activity: requires authenticated server deletion
+        const serverId = parseInt(resolvedAct.server_id || id, 10);
+        if (!navigator.onLine) {
+            showNotification('Cannot delete synchronized server activities while offline. Connect to internet to delete.', 'warning');
+            return;
+        }
+
+        const fd = new FormData();
+        fd.append('grade_item_id', serverId);
         appendCsrfToFormData(fd);
-        fetch('teacher_Action.php?action=delete_grade_item',{method:'POST',body:fd}).then(r=>r.json()).then(d=>{if(d.success){showNotification(d.message||'Activity deleted','success');loadGradeItems();}else{showNotification(d.message||'Failed to delete activity','danger');}}).catch(()=>showNotification('Error deleting activity','danger'));
+        fetch('teacher_Action.php?action=delete_grade_item', { method: 'POST', body: fd }).then(r => r.json()).then(async d => {
+            if (d.success) {
+                if (window.bshsOfflineStorage && typeof window.bshsOfflineStorage.deleteActivityLocally === 'function') {
+                    await window.bshsOfflineStorage.deleteActivityLocally(serverId);
+                }
+                showNotification(d.message || 'Activity deleted', 'success');
+                loadGradeItems();
+            } else {
+                showNotification(d.message || 'Failed to delete activity', 'danger');
+            }
+        }).catch(() => showNotification('Error deleting activity', 'danger'));
         return;
     }
 }

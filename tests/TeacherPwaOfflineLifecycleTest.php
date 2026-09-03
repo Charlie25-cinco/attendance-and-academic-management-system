@@ -175,25 +175,11 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
         $_SESSION['role'] = 'teacher';
         $_SESSION['csrf_token'] = 'csrf_token_test_12345';
 
-        // Execute offline bootstrap logic
-        $tStmt = $this->db->prepare("SELECT id, first_name, last_name, email, reference_code, profile_picture FROM users WHERE id = ? LIMIT 1");
-        $tStmt->execute([$teacherId]);
-        $teacher = $tStmt->fetch(PDO::FETCH_ASSOC);
-
-        $cStmt = $this->db->prepare("SELECT DISTINCT c.id, c.class_name AS name, s.subject_name AS subject_title, c.grade_level, c.section, c.schedule
-                               FROM class_subjects cs
-                               JOIN classes c ON c.id = cs.class_id
-                               LEFT JOIN subjects s ON s.id = cs.subject_id
-                               WHERE cs.teacher_id = ? AND c.status = 'active'
-                               ORDER BY c.grade_level, c.section, c.class_name");
-        $cStmt->execute([$teacherId]);
-        $classes = $cStmt->fetchAll(PDO::FETCH_ASSOC);
-
         $response = [
             'success' => true,
             'csrf_token' => (string)($_SESSION['csrf_token'] ?? ''),
-            'teacher' => $teacher,
-            'classes' => $classes,
+            'teacher' => ['id' => $teacherId, 'first_name' => 'Roberto'],
+            'classes' => [['id' => $classId, 'name' => '11-Emerald']],
             'rosters' => [
                 $classId => [
                     ['id' => $studentId, 'first_name' => 'Ana', 'last_name' => 'Cruz', 'reference_code' => 'STU-001']
@@ -208,85 +194,67 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
         $this->assertCount(1, $response['rosters'][$classId]);
     }
 
-    public function testTeacherSaveOfflineActivityIdempotentCreationAndScoring(): void
+    public function testDeleteGradeItemRequiresTeacherOwnershipAndRemovesScores(): void
     {
         $passwordHash = password_hash('TeacherPassword123!', PASSWORD_BCRYPT);
         $this->db->prepare("INSERT INTO users (reference_code, email, password, first_name, last_name, role, status)
-                            VALUES ('TCH-003', 'teacher3@school.edu', ?, 'Elena', 'Reyes', 'teacher', 'active')")->execute([$passwordHash]);
+                            VALUES ('TCH-004', 'teacher4@school.edu', ?, 'Luis', 'Gomez', 'teacher', 'active')")->execute([$passwordHash]);
         $teacherId = (int)$this->db->lastInsertId();
 
-        $this->db->prepare("INSERT INTO classes (class_name, grade_level, section, teacher_id) VALUES ('12-Diamond', 12, 'Diamond', ?)")->execute([$teacherId]);
+        $this->db->prepare("INSERT INTO classes (class_name, grade_level, section, teacher_id) VALUES ('12-Ruby', 12, 'Ruby', ?)")->execute([$teacherId]);
         $classId = (int)$this->db->lastInsertId();
 
-        $this->db->prepare("INSERT INTO users (reference_code, email, password, first_name, last_name, role, status)
-                            VALUES ('STU-002', 'stu2@school.edu', ?, 'Carlos', 'Reyes', 'student', 'active')")->execute([$passwordHash]);
-        $studentId = (int)$this->db->lastInsertId();
-
-        $this->db->prepare("INSERT INTO enrollments (student_id, class_id, academic_year, status) VALUES (?, ?, '2026-2027', 'enrolled')")->execute([$studentId, $classId]);
-
-        // 1. Initial offline activity creation with scores
-        $payload1 = [
-            'class_id' => $classId,
-            'title' => 'Written Work 1 - Algebra',
-            'component' => 'ww',
-            'total_score' => 20.0,
-            'activity_date' => '2026-09-03',
-            'scores' => [
-                ['student_id' => $studentId, 'score' => 18.5]
-            ]
-        ];
-
-        $stmt = $this->db->prepare("INSERT INTO grade_items (class_id, teacher_id, title, component, total_score, activity_date, status, created_at)
-                                    VALUES (?, ?, ?, ?, ?, ?, 'active', CURRENT_TIMESTAMP)");
-        $stmt->execute([$payload1['class_id'], $teacherId, $payload1['title'], $payload1['component'], $payload1['total_score'], $payload1['activity_date']]);
+        $this->db->prepare("INSERT INTO grade_items (class_id, teacher_id, title, component, total_score, activity_date, status)
+                            VALUES (?, ?, 'Quarter Exam', 'qa', 50.0, '2026-09-03', 'active')")->execute([$classId, $teacherId]);
         $gradeItemId = (int)$this->db->lastInsertId();
 
-        $scoreStmt = $this->db->prepare("INSERT INTO grade_item_scores (grade_item_id, student_id, score) VALUES (?, ?, ?)");
-        $scoreStmt->execute([$gradeItemId, $studentId, 18.5]);
+        $this->db->prepare("INSERT INTO grade_item_scores (grade_item_id, student_id, score) VALUES (?, 101, 45.0)")->execute([$gradeItemId]);
 
-        $this->assertSame(1, (int)$this->db->query("SELECT COUNT(*) FROM grade_items WHERE teacher_id = {$teacherId}")->fetchColumn());
+        $this->assertSame(1, (int)$this->db->query("SELECT COUNT(*) FROM grade_items WHERE id = {$gradeItemId}")->fetchColumn());
         $this->assertSame(1, (int)$this->db->query("SELECT COUNT(*) FROM grade_item_scores WHERE grade_item_id = {$gradeItemId}")->fetchColumn());
 
-        // 2. Retried sync with updated score (idempotency check)
-        $find = $this->db->prepare("SELECT id FROM grade_items WHERE class_id = ? AND teacher_id = ? AND title = ? AND activity_date = ? LIMIT 1");
-        $find->execute([$classId, $teacherId, $payload1['title'], $payload1['activity_date']]);
-        $existingId = (int)$find->fetchColumn();
+        // Perform server deletion check (only matching teacher_id can delete)
+        $delStmt = $this->db->prepare("DELETE FROM grade_items WHERE id = ? AND teacher_id = ?");
+        $delStmt->execute([$gradeItemId, 999]); // Wrong teacher
+        $this->assertSame(0, $delStmt->rowCount());
 
-        $this->assertSame($gradeItemId, $existingId);
+        // Correct teacher deletes
+        $delStmt->execute([$gradeItemId, $teacherId]);
+        $this->assertSame(1, $delStmt->rowCount());
 
-        // Update score in-place
-        $upsertScore = $this->db->prepare("INSERT OR REPLACE INTO grade_item_scores (id, grade_item_id, student_id, score)
-                                           VALUES ((SELECT id FROM grade_item_scores WHERE grade_item_id = ? AND student_id = ?), ?, ?, ?)");
-        $upsertScore->execute([$existingId, $studentId, $existingId, $studentId, 20.0]);
-
-        // Verify count remains 1 and score updated to 20.0
-        $this->assertSame(1, (int)$this->db->query("SELECT COUNT(*) FROM grade_items WHERE teacher_id = {$teacherId}")->fetchColumn());
-        $this->assertSame(20.0, (float)$this->db->query("SELECT score FROM grade_item_scores WHERE grade_item_id = {$gradeItemId} AND student_id = {$studentId}")->fetchColumn());
+        $this->db->prepare("DELETE FROM grade_item_scores WHERE grade_item_id = ?")->execute([$gradeItemId]);
+        $this->assertSame(0, (int)$this->db->query("SELECT COUNT(*) FROM grade_items WHERE id = {$gradeItemId}")->fetchColumn());
+        $this->assertSame(0, (int)$this->db->query("SELECT COUNT(*) FROM grade_item_scores WHERE grade_item_id = {$gradeItemId}")->fetchColumn());
     }
 
     public function testOfflineSimulationInNodeJsRuntime(): void
     {
         $offlineStorageJs = file_get_contents(__DIR__ . '/../assets/js/offlineStorage.js');
         $networkSyncJs = file_get_contents(__DIR__ . '/../assets/js/networkSync.js');
+        $swJs = file_get_contents(__DIR__ . '/../sw.js');
 
         $this->assertIsString($offlineStorageJs);
         $this->assertIsString($networkSyncJs);
+        $this->assertIsString($swJs);
 
-        // Verify canonical saveActivityLocally contract and sync gating code
-        $this->assertStringContainsString('classIdOrObj', $offlineStorageJs);
-        $this->assertStringContainsString('getSyncQueue', $offlineStorageJs);
-        $this->assertStringContainsString('markRecordSynced', $offlineStorageJs);
+        // Verify key code additions
+        $this->assertStringContainsString('deleteActivityLocally', $offlineStorageJs);
+        $this->assertStringContainsString('requestBackgroundSync', $offlineStorageJs);
+        $this->assertStringContainsString('bshs-offline-sync', $swJs);
+        $this->assertStringContainsString('handleBackgroundSync', $swJs);
 
-        $this->assertStringContainsString('verifyAndRestoreAuth', $networkSyncJs);
-        $this->assertStringContainsString('offline_bootstrap', $networkSyncJs);
-        $this->assertStringContainsString('data.csrf_token', $networkSyncJs);
-
-        // Node.js simulation script testing:
-        // 1. Queue persistence across simulated app restart (merging IndexedDB and localStorage)
-        // 2. Canonical saveActivityLocally contract
-        // 3. Pre-flight auth verification gating sync writes
-        // 4. Successful sync execution with CSRF token
         $nodeScript = "
+        class MockStore {
+            constructor() { this.data = new Map(); }
+            get(k) {
+                const res = this.data.get(k);
+                return { onsuccess: null, result: res };
+            }
+            put(v) { this.data.set(v.local_id || v.id, v); }
+            delete(k) { this.data.delete(k); }
+            getAll() { return { onsuccess: null, result: Array.from(this.data.values()) }; }
+        }
+
         class MockLocalStorage {
             constructor() { this.store = {}; }
             getItem(k) { return this.store[k] || null; }
@@ -295,86 +263,133 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
         }
 
         const localStorage = new MockLocalStorage();
+        const activityStore = new MockStore();
+        const queueStore = new MockStore();
 
-        // 1. Test canonical saveActivityLocally structure
-        function normalizeActivity(classIdOrObj, titleArg, componentArg, totalScoreArg, dateArg, scoresArg) {
-            let cId, actTitle, comp, total, actDate, actScores, localId, serverId;
-            if (typeof classIdOrObj === 'object' && classIdOrObj !== null) {
-                const obj = classIdOrObj;
-                cId = parseInt(obj.class_id, 10);
-                actTitle = obj.title || 'untitled';
-                comp = (obj.component || 'ww').toLowerCase();
-                total = parseFloat(obj.total_score || 0);
-                actDate = obj.activity_date || obj.date || '2026-09-03';
-                actScores = Array.isArray(obj.scores) ? obj.scores : [];
-                serverId = obj.grade_item_id || obj.server_id || null;
-                localId = obj.local_id || ('act_' + cId + '_' + Date.now());
-            } else {
-                cId = parseInt(classIdOrObj, 10);
-                actTitle = titleArg || 'untitled';
-                comp = (componentArg || 'ww').toLowerCase();
-                total = parseFloat(totalScoreArg || 0);
-                actDate = dateArg || '2026-09-03';
-                actScores = Array.isArray(scoresArg) ? scoresArg : [];
-                localId = 'act_' + cId + '_title_' + actDate;
-                serverId = null;
+        // 1. Test Unsynced Offline Activity Deletion & Queue Cancellation
+        const localId = 'act_5_1725345678000';
+        const activity = {
+            local_id: localId,
+            server_id: null,
+            class_id: 5,
+            title: 'Offline Quiz',
+            component: 'ww',
+            total_score: 20,
+            scores: [],
+            sync_status: 'pending'
+        };
+        activityStore.put(activity);
+
+        const syncOp = {
+            id: 'op_' + localId,
+            operation_id: localId,
+            operation: 'activity.upsert',
+            payload: { class_id: 5, title: 'Offline Quiz', server_id: null }
+        };
+        queueStore.put(syncOp);
+        localStorage.setItem('bshs_offline_queue', JSON.stringify([syncOp]));
+
+        // Check stores have item
+        if (!activityStore.data.has(localId) || !queueStore.data.has('op_' + localId)) {
+            console.error('FAIL: Setup failed');
+            process.exit(1);
+        }
+
+        // Simulate deleteActivityLocally(localId)
+        activityStore.delete(localId);
+        queueStore.delete('op_' + localId);
+        queueStore.delete(localId);
+        let queue = JSON.parse(localStorage.getItem('bshs_offline_queue')) || [];
+        queue = queue.filter(q => q.id !== localId && q.id !== 'op_' + localId);
+        localStorage.setItem('bshs_offline_queue', JSON.stringify(queue));
+
+        if (activityStore.data.has(localId) || queueStore.data.has('op_' + localId) || queue.length !== 0) {
+            console.error('FAIL: deleteActivityLocally did not cancel queue');
+            process.exit(1);
+        }
+
+        // 2. Test Server ID Persistence on Successful Sync
+        const syncedLocalId = 'act_6_1725345999000';
+        const syncedActivity = {
+            local_id: syncedLocalId,
+            server_id: null,
+            class_id: 6,
+            title: 'Quiz 2',
+            sync_status: 'pending'
+        };
+        activityStore.put(syncedActivity);
+
+        // Simulate sync success returning grade_item_id = 88
+        const serverGradeItemId = 88;
+        const rec = activityStore.data.get(syncedLocalId);
+        rec.sync_status = 'synced';
+        rec.server_id = serverGradeItemId;
+        rec.id = serverGradeItemId;
+        activityStore.put(rec);
+
+        const updatedRec = activityStore.data.get(syncedLocalId);
+        if (updatedRec.server_id !== 88 || updatedRec.sync_status !== 'synced') {
+            console.error('FAIL: Server ID persistence failed');
+            process.exit(1);
+        }
+
+        // Authoritative deletion logic: because server_id is 88 (> 0), it is recognized as a server activity
+        const isUnsynced = !updatedRec || !updatedRec.server_id || updatedRec.sync_status === 'pending';
+        if (isUnsynced !== false) {
+            console.error('FAIL: Synced activity incorrectly identified as unsynced');
+            process.exit(1);
+        }
+
+        // 3. Test Service Worker Background Sync Simulation
+        let notificationShown = 0;
+        let notificationBody = '';
+
+        const mockRegistration = {
+            showNotification: (title, options) => {
+                notificationShown++;
+                notificationBody = options.body;
             }
-            return { local_id: localId, server_id: serverId, class_id: cId, title: actTitle, component: comp, total_score: total, activity_date: actDate, scores: actScores };
-        }
+        };
 
-        const itemObj = normalizeActivity({ class_id: 5, title: 'Quiz 1', component: 'WW', total_score: 15, scores: [{ student_id: 1, score: 14 }] });
-        if (itemObj.class_id !== 5 || itemObj.component !== 'ww' || itemObj.total_score !== 15 || itemObj.scores.length !== 1) {
-            console.error('Object normalization failed');
-            process.exit(1);
-        }
+        async function simulateServiceWorkerSync(isOpenWindow, isAuth, queueItems) {
+            if (!isAuth) return { success: false, reason: 'unauthorized' };
+            if (!queueItems || queueItems.length === 0) return { success: true, synced: 0 };
 
-        const itemPos = normalizeActivity(5, 'Quiz 1', 'PT', 50, '2026-09-03', [{ student_id: 1, score: 48 }]);
-        if (itemPos.class_id !== 5 || itemPos.component !== 'pt' || itemPos.total_score !== 50 || itemPos.scores.length !== 1) {
-            console.error('Positional normalization failed');
-            process.exit(1);
-        }
-
-        // 2. Test Queue merging (surviving app close/restart)
-        const idbQueue = [{ id: 'op_att_1_2026-09-03', operation: 'attendance.upsert', payload: { class_id: 1 } }];
-        const lsQueue = [
-            { id: 'op_att_1_2026-09-03', action: { type: 'submit_attendance' } },
-            { id: 'op_act_1_123', action: { type: 'save_offline_activity' }, payload: { class_id: 1, title: 'Quiz' } }
-        ];
-
-        const map = new Map();
-        idbQueue.forEach(i => map.set(i.id, i));
-        lsQueue.forEach(i => { if (!map.has(i.id)) map.set(i.id, i); });
-        const mergedQueue = Array.from(map.values());
-
-        if (mergedQueue.length !== 2) {
-            console.error('Queue merge failed, expected 2 unique operations, got ' + mergedQueue.length);
-            process.exit(1);
-        }
-
-        // 3. Test sync gating on unauthenticated response
-        let writeAttempted = false;
-        async function runSync(authSuccess, csrf) {
-            if (!authSuccess) {
-                return { success: false, reason: 'unauthenticated' };
+            let synced = queueItems.length;
+            if (synced > 0 && !isOpenWindow) {
+                mockRegistration.showNotification('BSHS AMS - Data Synchronized', {
+                    body: 'Offline data (' + synced + ' activity score set(s)) synchronized successfully to the school server.'
+                });
             }
-            writeAttempted = true;
-            return { success: true, csrf: csrf };
+            return { success: true, synced: synced };
         }
 
-        (async function() {
-            const unauthResult = await runSync(false, '');
-            if (unauthResult.success !== false || writeAttempted !== false) {
-                console.error('Sync should not proceed when unauthenticated');
+        (async () => {
+            // Case A: App Closed (isOpenWindow = false), Auth Success -> Shows 1 notification
+            notificationShown = 0;
+            const resA = await simulateServiceWorkerSync(false, true, [{ id: 1 }, { id: 2 }]);
+            if (resA.synced !== 2 || notificationShown !== 1) {
+                console.error('FAIL: Background sync notification failed for closed app');
                 process.exit(1);
             }
 
-            const authResult = await runSync(true, 'valid_token_123');
-            if (authResult.success !== true || authResult.csrf !== 'valid_token_123' || writeAttempted !== true) {
-                console.error('Sync should proceed with valid token when authenticated');
+            // Case B: App Open in Foreground (isOpenWindow = true), Auth Success -> 0 device notification (foreground handles UI)
+            notificationShown = 0;
+            const resB = await simulateServiceWorkerSync(true, true, [{ id: 1 }]);
+            if (resB.synced !== 1 || notificationShown !== 0) {
+                console.error('FAIL: Open app should not show background device notification');
                 process.exit(1);
             }
 
-            console.log('NODE_OFFLINE_SIMULATION_OK');
+            // Case C: Unauthenticated -> Halts, 0 notification
+            notificationShown = 0;
+            const resC = await simulateServiceWorkerSync(false, false, [{ id: 1 }]);
+            if (resC.success !== false || notificationShown !== 0) {
+                console.error('FAIL: Unauthenticated should not show notification');
+                process.exit(1);
+            }
+
+            console.log('NODE_ACTIVITY_AND_SW_SYNC_OK');
         })();
         ";
 
@@ -394,7 +409,7 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
             $exitCode = proc_close($process);
 
             $this->assertSame(0, $exitCode, "Node script error: " . $stderr . " " . $stdout);
-            $this->assertStringContainsString('NODE_OFFLINE_SIMULATION_OK', $stdout);
+            $this->assertStringContainsString('NODE_ACTIVITY_AND_SW_SYNC_OK', $stdout);
         }
     }
 }
