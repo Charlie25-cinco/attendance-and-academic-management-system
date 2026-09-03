@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.170 — 2026-09-03
+
+### Fixed
+
+- **Notification Polling Session Deduplication & NetworkSync Scope Resolution**:
+  - **Single Live-Arrival Toast Per Session**: Enhanced `LiveNotificationPoller` in [`assets/js/main.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/main.js) with `sessionStorage`-backed key persistence (`ams_seen_notification_keys`) and composite key generation (`id_{id}`, `src_{source_key}`, `hash_{title}_{subtitle}_{event_at}`). Persisted notifications now produce at most one live-arrival toast per browser session across page navigations and polling cycles, while background unread badge and dropdown list polling continue uninterrupted.
+  - **Genuinely New Notification Arrival Detection**: New unread notifications arriving during an active session pass the seen filter, display a single toast, dispatch `ams:notificationReceived`, and are recorded in session storage to prevent subsequent repeat toasts.
+  - **NetworkSync Scope Bug Fix**: Declared `var storage = global.bshsOfflineStorage;` within `handleOnline()` in [`assets/js/networkSync.js`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/js/networkSync.js), eliminating strict-mode `ReferenceError` during connectivity restoration.
+  - **Automated Regression Test Suite**: Updated [`tests/RealtimeNotificationPollingTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/RealtimeNotificationPollingTest.php) with Node.js runtime simulations verifying single-toast delivery per session, multi-poll deduplication, new notification arrival toast triggering, and session persistence across poller re-initialization.
+
 ## v0.3.169 — 2026-09-03
 
 ### Fixed

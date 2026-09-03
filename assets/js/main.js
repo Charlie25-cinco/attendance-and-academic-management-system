@@ -991,6 +991,50 @@ function renderLiveNotifications(items, unreadCount, shouldPulse = false) {
   initHeaderNotificationActions();
 }
 
+function getSessionSeenNotificationKeys() {
+  try {
+    if (typeof sessionStorage === "undefined") return new Set();
+    const raw = sessionStorage.getItem("ams_seen_notification_keys");
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    return new Set(Array.isArray(parsed) ? parsed : []);
+  } catch (e) {
+    return new Set();
+  }
+}
+
+function saveSessionSeenNotificationKeys(keys) {
+  try {
+    if (!keys || typeof sessionStorage === "undefined") return;
+    const existing = getSessionSeenNotificationKeys();
+    keys.forEach((k) => {
+      if (k !== undefined && k !== null && k !== "") {
+        existing.add(String(k));
+      }
+    });
+    const arr = Array.from(existing).slice(-200);
+    sessionStorage.setItem("ams_seen_notification_keys", JSON.stringify(arr));
+  } catch (e) {}
+}
+
+function getNotificationItemKey(item) {
+  if (!item) return "";
+  const idNum = Number(item.id);
+  if (!Number.isNaN(idNum) && idNum > 0) {
+    return "id_" + idNum;
+  }
+  if (item.source_key) {
+    return "src_" + String(item.source_key);
+  }
+  const title = String(item.title || "").trim();
+  const sub = String(item.subtitle || "").trim();
+  const time = String(item.event_at || item.time || "").trim();
+  if (title || sub) {
+    return "hash_" + title + "_" + sub + "_" + time;
+  }
+  return "";
+}
+
 const LiveNotificationPoller = {
   intervalMs: 20000,
   minIntervalMs: 15000,
@@ -1008,11 +1052,17 @@ const LiveNotificationPoller = {
     const bell = document.querySelector('[aria-label="View notifications"]');
     if (!bell) return;
 
-    this.seenNotificationIds = new Set();
+    const sessionKeys = getSessionSeenNotificationKeys();
+    this.seenNotificationIds = new Set(sessionKeys);
     document.querySelectorAll("[data-notification-row]").forEach((row) => {
       const id = Number(row.getAttribute("data-notification-row") || "0");
-      if (id > 0) this.seenNotificationIds.add(id);
+      if (id > 0) {
+        this.seenNotificationIds.add(id);
+        this.seenNotificationIds.add("id_" + id);
+        sessionKeys.add("id_" + id);
+      }
     });
+    saveSessionSeenNotificationKeys(sessionKeys);
 
     this.bindEvents();
     this.start();
@@ -1121,34 +1171,68 @@ const LiveNotificationPoller = {
         const unreadCount = Number(data.unread_count || 0);
         let hasNewUnread = false;
 
-        if (this.seenNotificationIds !== null) {
-          const newUnread = items.filter(
-            (it) =>
-              !this.seenNotificationIds.has(Number(it.id)) &&
-              Number(it.is_read || 0) === 0,
-          );
+        const sessionSeen = getSessionSeenNotificationKeys();
+        const newUnread = [];
+        const keysToPersist = [];
 
-          if (newUnread.length > 0) {
-            hasNewUnread = true;
-            const newest = newUnread[0];
-            showNotification(`${newest.title}: ${newest.subtitle}`, "info");
+        if (this.seenNotificationIds === null) {
+          this.seenNotificationIds = new Set(sessionSeen);
+        }
 
-            window.dispatchEvent(
-              new CustomEvent("ams:notificationReceived", {
-                detail: {
-                  items: items,
-                  newItems: newUnread,
-                  newCount: newUnread.length,
-                  unreadCount: unreadCount,
-                },
-              }),
-            );
+        for (let i = 0; i < items.length; i++) {
+          const it = items[i];
+          if (!it) continue;
+          const key = getNotificationItemKey(it);
+          const numId = Number(it.id);
+          const isUnread = Number(it.is_read || 0) === 0;
+
+          const isAlreadySeen =
+            (key &&
+              (this.seenNotificationIds.has(key) || sessionSeen.has(key))) ||
+            (!Number.isNaN(numId) &&
+              numId > 0 &&
+              (this.seenNotificationIds.has(numId) ||
+                sessionSeen.has("id_" + numId)));
+
+          if (key) {
+            keysToPersist.push(key);
+            this.seenNotificationIds.add(key);
+          }
+          if (!Number.isNaN(numId) && numId > 0) {
+            this.seenNotificationIds.add(numId);
+            keysToPersist.push("id_" + numId);
+          }
+
+          if (!isAlreadySeen && isUnread) {
+            newUnread.push(it);
           }
         }
 
-        items.forEach((it) => {
-          if (it && it.id) this.seenNotificationIds.add(Number(it.id));
-        });
+        saveSessionSeenNotificationKeys(keysToPersist);
+
+        if (newUnread.length > 0) {
+          hasNewUnread = true;
+          const newest = newUnread[0];
+          if (
+            typeof window !== "undefined" &&
+            typeof window.showNotification === "function"
+          ) {
+            window.showNotification(`${newest.title}: ${newest.subtitle}`, "info");
+          } else if (typeof showNotification === "function") {
+            showNotification(`${newest.title}: ${newest.subtitle}`, "info");
+          }
+
+          window.dispatchEvent(
+            new CustomEvent("ams:notificationReceived", {
+              detail: {
+                items: items,
+                newItems: newUnread,
+                newCount: newUnread.length,
+                unreadCount: unreadCount,
+              },
+            }),
+          );
+        }
 
         renderLiveNotifications(items, unreadCount, hasNewUnread);
       })

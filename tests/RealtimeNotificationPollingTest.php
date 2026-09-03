@@ -321,13 +321,27 @@ final class RealtimeNotificationPollingTest extends TestCase
             set(k, v) { this.map.set(k.toLowerCase(), v); }
         }
 
+        class MockSessionStorage {
+            constructor() { this.data = new Map(); }
+            getItem(k) { return this.data.has(k) ? this.data.get(k) : null; }
+            setItem(k, v) { this.data.set(k, String(v)); }
+            removeItem(k) { this.data.delete(k); }
+            clear() { this.data.clear(); }
+        }
+        const sessionStorage = new MockSessionStorage();
+
+        let toastCalls = [];
+
         const window = global;
         window.Headers = MockHeaders;
         window.document = document;
         window.navigator = { onLine: true };
         window.location = { pathname: '/', href: '/', origin: 'https://example.com' };
         window.fetch = mockFetch;
-        window.showNotification = () => {};
+        window.sessionStorage = sessionStorage;
+        window.showNotification = (msg, type) => {
+            toastCalls.push({ msg, type });
+        };
         window.CustomEvent = class CustomEvent { constructor(t, d) { this.type = t; this.detail = d; } };
         window.dispatchEvent = () => {};
         window.setTimeout = (fn) => { return 1; };
@@ -342,7 +356,8 @@ final class RealtimeNotificationPollingTest extends TestCase
         global.document = document;
         global.window = window;
         global.fetch = mockFetch;
-        global.showNotification = () => {};
+        global.sessionStorage = sessionStorage;
+        global.showNotification = window.showNotification;
         global.CustomEvent = window.CustomEvent;
         global.dispatchEvent = () => {};
         global.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} };
@@ -351,6 +366,11 @@ final class RealtimeNotificationPollingTest extends TestCase
 
         const mainJsCode = fs.readFileSync(process.argv[2], 'utf8');
         eval(mainJsCode + '; global.LiveNotificationPoller = LiveNotificationPoller;');
+
+        window.showNotification = (msg, type) => {
+            toastCalls.push({ msg, type });
+        };
+        global.showNotification = window.showNotification;
 
         // 1. Initial poller setup
         LiveNotificationPoller.init();
@@ -383,24 +403,61 @@ final class RealtimeNotificationPollingTest extends TestCase
                 console.error('FAIL: Notification scroll body did not render new item');
                 process.exit(1);
             }
+            if (toastCalls.length !== 1) {
+                console.error('FAIL: Toast was not triggered on first arrival of notification 101, count=' + toastCalls.length);
+                process.exit(1);
+            }
 
-            // 3. Test listener deduplication on multiple poll cycles
+            // 3. Test deduplication: second poll with same notification must NOT trigger toast again
             LiveNotificationPoller.poll().then(() => {
-                const readAll = elements['markAllNotificationsRead'];
-                if (!readAll.listeners['click'] || readAll.listeners['click'].length !== 1) {
-                    console.error('FAIL: readAll has duplicate click listeners: ' + (readAll.listeners['click'] ? readAll.listeners['click'].length : 0));
+                if (toastCalls.length !== 1) {
+                    console.error('FAIL: Duplicate toast triggered on second poll of same notification, count=' + toastCalls.length);
                     process.exit(1);
                 }
 
-                // 4. Test 401 error stops polling
-                poller401Received = true;
+                // 4. Test arrival of genuinely new notification: must trigger toast
+                apiItems.unshift({
+                    id: 102,
+                    title: 'Quarterly Grade Verified',
+                    subtitle: 'Term 1 Math grade verified',
+                    icon: 'bi-check2-circle',
+                    color: 'primary',
+                    link: '/grades.php',
+                    event_at: '2026-09-03 10:05:00',
+                    time: 'Just now',
+                    is_read: 0
+                });
+                apiUnreadCount = 2;
+
                 LiveNotificationPoller.poll().then(() => {
-                    if (LiveNotificationPoller.timerId !== null) {
-                        console.error('FAIL: 401 error did not stop polling timer');
+                    if (toastCalls.length !== 2) {
+                        console.error('FAIL: New notification 102 did not trigger second toast, count=' + toastCalls.length);
                         process.exit(1);
                     }
-                    console.log('SUCCESS: All in-place notification poller tests passed');
-                    process.exit(0);
+                    if (!toastCalls[1].msg.includes('Quarterly Grade Verified')) {
+                        console.error('FAIL: Second toast did not contain title of notification 102');
+                        process.exit(1);
+                    }
+
+                    // 5. Test sessionStorage persistence across re-init (simulating page navigation in same session)
+                    LiveNotificationPoller.init();
+                    LiveNotificationPoller.poll().then(() => {
+                        if (toastCalls.length !== 2) {
+                            console.error('FAIL: Re-initializing in same session caused re-toasting of seen items, count=' + toastCalls.length);
+                            process.exit(1);
+                        }
+
+                        // 6. Test 401 error stops polling
+                        poller401Received = true;
+                        LiveNotificationPoller.poll().then(() => {
+                            if (LiveNotificationPoller.timerId !== null) {
+                                console.error('FAIL: 401 error did not stop polling timer');
+                                process.exit(1);
+                            }
+                            console.log('SUCCESS: All in-place notification poller tests passed');
+                            process.exit(0);
+                        });
+                    });
                 });
             });
         }).catch(err => {
