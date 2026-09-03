@@ -139,9 +139,13 @@
         var totalSynced = syncedAttendance + syncedActivities;
         if (totalSynced > 0) {
             var parts = [];
-            if (syncedAttendance > 0) parts.push(syncedAttendance + ' attendance sheet(s)');
-            if (syncedActivities > 0) parts.push(syncedActivities + ' activity score set(s)');
-            var msg = 'Offline data (' + parts.join(', ') + ') synchronized to school database!';
+            if (syncedAttendance > 0) {
+                parts.push(syncedAttendance + ' attendance record' + (syncedAttendance === 1 ? '' : 's'));
+            }
+            if (syncedActivities > 0) {
+                parts.push(syncedActivities + ' activity set' + (syncedActivities === 1 ? '' : 's'));
+            }
+            var msg = 'Offline data synchronized — ' + parts.join(' and ') + ' synchronized successfully.';
 
             if (typeof showNotification === 'function') {
                 showNotification(msg, 'success');

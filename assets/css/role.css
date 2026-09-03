@@ -3494,20 +3494,34 @@ body.dark-mode .admin-focus-card {
 
 /* Teacher Activity Card Actions */
 .activity-actions {
-  display: flex;
+  display: inline-flex;
   gap: 0.5rem;
   align-items: center;
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .activity-actions .btn {
   white-space: nowrap;
   font-size: 0.82rem;
+  font-weight: 600;
   padding: 0.35rem 0.65rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-height: 36px;
+  flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+  .activity-actions {
+    width: auto;
+    margin-left: auto;
+    justify-content: flex-end;
+  }
+  .activity-actions .btn {
+    flex: 0 0 auto;
+  }
 }
 
 @media (max-width: 767.98px) {
@@ -3520,6 +3534,7 @@ body.dark-mode .admin-focus-card {
   }
   .activity-actions .btn {
     flex: 1 1 auto;
+    min-width: 80px;
   }
 }
 

@@ -117,6 +117,8 @@ final class TeacherChatAndActivityUiTest extends TestCase
         $css = file_get_contents(__DIR__ . '/../assets/css/role.css');
         $this->assertIsString($css);
         $this->assertStringContainsString('.activity-actions', $css);
+        $this->assertStringContainsString('@media (min-width: 768px)', $css);
+        $this->assertStringContainsString('@media (max-width: 767.98px)', $css);
         $this->assertStringContainsString('.teacher-chat-search-wrap', $css);
         $this->assertStringContainsString('.teacher-chat-back-btn', $css);
     }

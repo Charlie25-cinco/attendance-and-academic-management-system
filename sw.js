@@ -376,8 +376,11 @@ async function handleBackgroundSync() {
     return;
   }
 
-  var syncedAttendance = 0;
-  var syncedActivities = 0;
+  var syncedAttendanceRecords = 0;
+  var syncedAttendanceSheets = 0;
+  var syncedActivitySets = 0;
+  var syncedActivityScores = 0;
+  var failedCount = 0;
 
   for (var i = 0; i < queue.length; i++) {
     var item = queue[i];
@@ -408,9 +411,21 @@ async function handleBackgroundSync() {
         var result = await response.json();
         if (result && result.success) {
           if (opType === "attendance.upsert" || opType === "submit_attendance") {
-            syncedAttendance++;
+            syncedAttendanceSheets++;
+            var recCount = 1;
+            if (payload.records) {
+              if (Array.isArray(payload.records)) recCount = payload.records.length;
+              else if (typeof payload.records === "object") recCount = Object.keys(payload.records).length;
+            }
+            syncedAttendanceRecords += recCount;
           } else {
-            syncedActivities++;
+            syncedActivitySets++;
+            var scoreCount = 1;
+            if (payload.scores) {
+              if (Array.isArray(payload.scores)) scoreCount = payload.scores.length;
+              else if (typeof payload.scores === "object") scoreCount = Object.keys(payload.scores).length;
+            }
+            syncedActivityScores += scoreCount;
           }
 
           // Delete from sync_queue and update local record in IndexedDB
@@ -449,22 +464,32 @@ async function handleBackgroundSync() {
               };
             }
           } catch (e) {}
-        } else if (result && (result.message === "Unauthorized access" || result.message === "Invalid CSRF token")) {
-          // Mid-queue auth failure: halt and preserve remaining
-          break;
+        } else {
+          failedCount++;
+          if (result && (result.message === "Unauthorized access" || result.message === "Invalid CSRF token")) {
+            // Mid-queue auth failure: halt and preserve remaining
+            break;
+          }
         }
+      } else {
+        failedCount++;
       }
     } catch (err) {
+      failedCount++;
       console.warn("[SW Background Sync] Item sync error:", item.id, err);
     }
   }
 
-  var totalSynced = syncedAttendance + syncedActivities;
-  if (totalSynced > 0 && isAppClosed) {
+  var totalSynced = syncedAttendanceRecords + syncedActivitySets;
+  if (totalSynced > 0 && failedCount === 0 && isAppClosed) {
     var parts = [];
-    if (syncedAttendance > 0) parts.push(syncedAttendance + " attendance sheet(s)");
-    if (syncedActivities > 0) parts.push(syncedActivities + " activity score set(s)");
-    var summaryText = "Offline data (" + parts.join(", ") + ") synchronized successfully to the school server.";
+    if (syncedAttendanceRecords > 0) {
+      parts.push(syncedAttendanceRecords + " attendance record" + (syncedAttendanceRecords === 1 ? "" : "s"));
+    }
+    if (syncedActivitySets > 0) {
+      parts.push(syncedActivitySets + " activity set" + (syncedActivitySets === 1 ? "" : "s"));
+    }
+    var summaryText = "Offline data synchronized — " + parts.join(" and ") + " synchronized successfully.";
 
     self.registration.showNotification("BSHS AMS - Data Synchronized", {
       body: summaryText,

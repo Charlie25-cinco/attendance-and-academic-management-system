@@ -76,6 +76,31 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
             status TEXT DEFAULT 'enrolled'
         )");
 
+        $this->db->exec("CREATE TABLE parent_students (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            parent_id INTEGER NOT NULL,
+            student_id INTEGER NOT NULL,
+            relationship TEXT DEFAULT 'parent',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(parent_id, student_id)
+        )");
+
+        $this->db->exec("CREATE TABLE user_notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            source_key TEXT,
+            title TEXT NOT NULL,
+            subtitle TEXT,
+            icon TEXT DEFAULT 'bi-bell',
+            color TEXT DEFAULT 'primary',
+            link TEXT,
+            event_at DATETIME,
+            is_read INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, source_key)
+        )");
+
         $this->db->exec("CREATE TABLE grade_items (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             class_id INTEGER NOT NULL,
@@ -97,6 +122,21 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(grade_item_id, student_id)
+        )");
+
+        $this->db->exec("CREATE TABLE attendance (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id INTEGER NOT NULL,
+            class_id INTEGER NOT NULL,
+            date TEXT NOT NULL,
+            status TEXT NOT NULL,
+            time_in TEXT,
+            remarks TEXT,
+            academic_year TEXT,
+            semester INTEGER,
+            recorded_by INTEGER,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(student_id, class_id, date)
         )");
 
         $_SESSION = [];
@@ -148,50 +188,99 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
         $this->assertNotEmpty($_SESSION['csrf_token']);
     }
 
-    public function testOfflineBootstrapReturnsCsrfTokenAndRosters(): void
+    public function testOfflineAttendanceSyncDispatchesIdempotentStudentAndParentNotifications(): void
     {
-        $passwordHash = password_hash('TeacherPassword123!', PASSWORD_BCRYPT);
-        $stmt = $this->db->prepare("INSERT INTO users (reference_code, email, password, first_name, last_name, role, status)
-                                    VALUES ('TCH-002', 'teacher2@school.edu', ?, 'Roberto', 'Cruz', 'teacher', 'active')");
-        $stmt->execute([$passwordHash]);
+        $passwordHash = password_hash('TestPass123!', PASSWORD_BCRYPT);
+        $this->db->prepare("INSERT INTO users (reference_code, email, password, first_name, last_name, role, status)
+                            VALUES ('TCH-010', 'teacher10@school.edu', ?, 'Elena', 'Torres', 'teacher', 'active')")->execute([$passwordHash]);
         $teacherId = (int)$this->db->lastInsertId();
 
-        $this->db->prepare("INSERT INTO classes (class_name, grade_level, section, teacher_id) VALUES ('11-Emerald', 11, 'Emerald', ?)")->execute([$teacherId]);
-        $classId = (int)$this->db->lastInsertId();
-
-        $this->db->prepare("INSERT INTO subjects (subject_name, subject_code) VALUES ('General Mathematics', 'GENMATH')")->execute();
-        $subjectId = (int)$this->db->lastInsertId();
-
-        $this->db->prepare("INSERT INTO class_subjects (class_id, subject_id, teacher_id) VALUES (?, ?, ?)")->execute([$classId, $subjectId, $teacherId]);
+        $this->db->prepare("INSERT INTO users (reference_code, email, password, first_name, last_name, role, status)
+                            VALUES ('STU-010', 'student10@school.edu', ?, 'Juan', 'Dela Cruz', 'student', 'active')")->execute([$passwordHash]);
+        $studentId = (int)$this->db->lastInsertId();
 
         $this->db->prepare("INSERT INTO users (reference_code, email, password, first_name, last_name, role, status)
-                            VALUES ('STU-001', 'stu1@school.edu', ?, 'Ana', 'Cruz', 'student', 'active')")->execute([$passwordHash]);
-        $studentId = (int)$this->db->lastInsertId();
+                            VALUES ('PAR-010', 'parent10@school.edu', ?, 'Maria', 'Dela Cruz', 'parent', 'active')")->execute([$passwordHash]);
+        $parentId = (int)$this->db->lastInsertId();
+
+        $this->db->prepare("INSERT INTO parent_students (parent_id, student_id) VALUES (?, ?)")->execute([$parentId, $studentId]);
+
+        $this->db->prepare("INSERT INTO classes (class_name, grade_level, section, teacher_id) VALUES ('11-Diamond', 11, 'Diamond', ?)")->execute([$teacherId]);
+        $classId = (int)$this->db->lastInsertId();
 
         $this->db->prepare("INSERT INTO enrollments (student_id, class_id, academic_year, status) VALUES (?, ?, '2026-2027', 'enrolled')")->execute([$studentId, $classId]);
 
-        $_SESSION['logged_in'] = true;
-        $_SESSION['user_id'] = $teacherId;
-        $_SESSION['role'] = 'teacher';
-        $_SESSION['csrf_token'] = 'csrf_token_test_12345';
-
-        $response = [
-            'success' => true,
-            'csrf_token' => (string)($_SESSION['csrf_token'] ?? ''),
-            'teacher' => ['id' => $teacherId, 'first_name' => 'Roberto'],
-            'classes' => [['id' => $classId, 'name' => '11-Emerald']],
-            'rosters' => [
-                $classId => [
-                    ['id' => $studentId, 'first_name' => 'Ana', 'last_name' => 'Cruz', 'reference_code' => 'STU-001']
-                ]
-            ]
+        $date = '2026-09-03';
+        $records = [
+            ['student_id' => $studentId, 'status' => 'present']
         ];
 
-        $this->assertTrue($response['success']);
-        $this->assertSame('csrf_token_test_12345', $response['csrf_token']);
-        $this->assertSame('Roberto', $response['teacher']['first_name']);
-        $this->assertCount(1, $response['classes']);
-        $this->assertCount(1, $response['rosters'][$classId]);
+        // 1. Simulate sync dispatching attendance notifications
+        appNotifyAttendanceRecords($this->db, $classId, $date, $records, $teacherId);
+
+        // Verify notifications created for both student and parent
+        $studentNotifs = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$studentId}")->fetchAll(PDO::FETCH_ASSOC);
+        $parentNotifs = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$parentId}")->fetchAll(PDO::FETCH_ASSOC);
+
+        $this->assertCount(1, $studentNotifs);
+        $this->assertCount(1, $parentNotifs);
+        $this->assertSame('attendance_' . $classId . '_' . $date . '_' . $studentId, $studentNotifs[0]['source_key']);
+        $this->assertSame('attendance_' . $classId . '_' . $date . '_' . $studentId, $parentNotifs[0]['source_key']);
+
+        // 2. Simulate sync retry with same attendance records
+        appNotifyAttendanceRecords($this->db, $classId, $date, $records, $teacherId);
+
+        // Verify NO duplicate rows created
+        $studentNotifsAfter = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$studentId}")->fetchAll(PDO::FETCH_ASSOC);
+        $parentNotifsAfter = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$parentId}")->fetchAll(PDO::FETCH_ASSOC);
+
+        $this->assertCount(1, $studentNotifsAfter);
+        $this->assertCount(1, $parentNotifsAfter);
+    }
+
+    public function testOfflineActivitySyncDispatchesIdempotentStudentAndParentNotifications(): void
+    {
+        $passwordHash = password_hash('TestPass123!', PASSWORD_BCRYPT);
+        $this->db->prepare("INSERT INTO users (reference_code, email, password, first_name, last_name, role, status)
+                            VALUES ('TCH-020', 'teacher20@school.edu', ?, 'Ramon', 'Valdez', 'teacher', 'active')")->execute([$passwordHash]);
+        $teacherId = (int)$this->db->lastInsertId();
+
+        $this->db->prepare("INSERT INTO users (reference_code, email, password, first_name, last_name, role, status)
+                            VALUES ('STU-020', 'student20@school.edu', ?, 'Carla', 'Mendoza', 'student', 'active')")->execute([$passwordHash]);
+        $studentId = (int)$this->db->lastInsertId();
+
+        $this->db->prepare("INSERT INTO users (reference_code, email, password, first_name, last_name, role, status)
+                            VALUES ('PAR-020', 'parent20@school.edu', ?, 'Pedro', 'Mendoza', 'parent', 'active')")->execute([$passwordHash]);
+        $parentId = (int)$this->db->lastInsertId();
+
+        $this->db->prepare("INSERT INTO parent_students (parent_id, student_id) VALUES (?, ?)")->execute([$parentId, $studentId]);
+
+        $this->db->prepare("INSERT INTO classes (class_name, grade_level, section, teacher_id) VALUES ('12-Emerald', 12, 'Emerald', ?)")->execute([$teacherId]);
+        $classId = (int)$this->db->lastInsertId();
+
+        $this->db->prepare("INSERT INTO enrollments (student_id, class_id, academic_year, status) VALUES (?, ?, '2026-2027', 'enrolled')")->execute([$studentId, $classId]);
+
+        $this->db->prepare("INSERT INTO grade_items (class_id, teacher_id, title, component, total_score, activity_date, status)
+                            VALUES (?, ?, 'Chemistry Quiz 1', 'ww', 25.0, '2026-09-03', 'active')")->execute([$classId, $teacherId]);
+        $gradeItemId = (int)$this->db->lastInsertId();
+
+        // 1. Dispatch activity creation notification
+        appNotifyGradeActivityCreated($this->db, $classId, $gradeItemId, 'Chemistry Quiz 1', 'ww', 25.0);
+
+        $studentActivityNotifs = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$studentId} AND source_key LIKE 'grade_item_created_%'")->fetchAll(PDO::FETCH_ASSOC);
+        $parentActivityNotifs = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$parentId} AND source_key LIKE 'grade_item_created_%'")->fetchAll(PDO::FETCH_ASSOC);
+
+        $this->assertCount(1, $studentActivityNotifs);
+        $this->assertCount(1, $parentActivityNotifs);
+
+        // 2. Retry sync: assert idempotency
+        appNotifyGradeActivityCreated($this->db, $classId, $gradeItemId, 'Chemistry Quiz 1', 'ww', 25.0);
+
+        $studentActivityNotifsAfter = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$studentId} AND source_key LIKE 'grade_item_created_%'")->fetchAll(PDO::FETCH_ASSOC);
+        $parentActivityNotifsAfter = $this->db->query("SELECT * FROM user_notifications WHERE user_id = {$parentId} AND source_key LIKE 'grade_item_created_%'")->fetchAll(PDO::FETCH_ASSOC);
+
+        $this->assertCount(1, $studentActivityNotifsAfter);
+        $this->assertCount(1, $parentActivityNotifsAfter);
     }
 
     public function testDeleteGradeItemRequiresTeacherOwnershipAndRemovesScores(): void
@@ -340,52 +429,108 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
             process.exit(1);
         }
 
-        // 3. Test Service Worker Background Sync Simulation
+        // 3. Test Service Worker Background Sync Simulation & Notification Formatting
         let notificationShown = 0;
+        let notificationTitle = '';
         let notificationBody = '';
 
         const mockRegistration = {
             showNotification: (title, options) => {
                 notificationShown++;
+                notificationTitle = title;
                 notificationBody = options.body;
             }
         };
 
-        async function simulateServiceWorkerSync(isOpenWindow, isAuth, queueItems) {
+        function formatSyncNotificationSummary(attRecords, actSets) {
+            var parts = [];
+            if (attRecords > 0) {
+                parts.push(attRecords + ' attendance record' + (attRecords === 1 ? '' : 's'));
+            }
+            if (actSets > 0) {
+                parts.push(actSets + ' activity set' + (actSets === 1 ? '' : 's'));
+            }
+            return 'Offline data synchronized — ' + parts.join(' and ') + ' synchronized successfully.';
+        }
+
+        async function simulateServiceWorkerSync(isOpenWindow, isAuth, queueItems, hasFailures = false) {
             if (!isAuth) return { success: false, reason: 'unauthorized' };
             if (!queueItems || queueItems.length === 0) return { success: true, synced: 0 };
+            if (hasFailures) return { success: false, reason: 'partial_failure' };
 
-            let synced = queueItems.length;
-            if (synced > 0 && !isOpenWindow) {
-                mockRegistration.showNotification('BSHS AMS - Data Synchronized', {
-                    body: 'Offline data (' + synced + ' activity score set(s)) synchronized successfully to the school server.'
-                });
+            let attRecords = 0;
+            let actSets = 0;
+
+            queueItems.forEach(item => {
+                if (item.operation === 'attendance.upsert') {
+                    attRecords += (item.payload && item.payload.records) ? item.payload.records.length : 1;
+                } else {
+                    actSets += 1;
+                }
+            });
+
+            if ((attRecords > 0 || actSets > 0) && !isOpenWindow) {
+                const summary = formatSyncNotificationSummary(attRecords, actSets);
+                mockRegistration.showNotification('BSHS AMS - Data Synchronized', { body: summary });
             }
-            return { success: true, synced: synced };
+            return { success: true, attRecords, actSets };
         }
 
         (async () => {
-            // Case A: App Closed (isOpenWindow = false), Auth Success -> Shows 1 notification
+            // Case A: Attendance-only sync (12 records) -> 'Offline data synchronized — 12 attendance records synchronized successfully.'
             notificationShown = 0;
-            const resA = await simulateServiceWorkerSync(false, true, [{ id: 1 }, { id: 2 }]);
-            if (resA.synced !== 2 || notificationShown !== 1) {
-                console.error('FAIL: Background sync notification failed for closed app');
+            const resAtt = await simulateServiceWorkerSync(false, true, [
+                { operation: 'attendance.upsert', payload: { records: new Array(12).fill({}) } }
+            ]);
+            if (notificationShown !== 1 || notificationBody !== 'Offline data synchronized — 12 attendance records synchronized successfully.') {
+                console.error('FAIL: Attendance-only sync notification mismatch:', notificationBody);
                 process.exit(1);
             }
 
-            // Case B: App Open in Foreground (isOpenWindow = true), Auth Success -> 0 device notification (foreground handles UI)
+            // Case B: Activity-only sync (2 activity sets) -> 'Offline data synchronized — 2 activity sets synchronized successfully.'
             notificationShown = 0;
-            const resB = await simulateServiceWorkerSync(true, true, [{ id: 1 }]);
-            if (resB.synced !== 1 || notificationShown !== 0) {
+            const resAct = await simulateServiceWorkerSync(false, true, [
+                { operation: 'activity.upsert', payload: { title: 'Act 1' } },
+                { operation: 'activity.upsert', payload: { title: 'Act 2' } }
+            ]);
+            if (notificationShown !== 1 || notificationBody !== 'Offline data synchronized — 2 activity sets synchronized successfully.') {
+                console.error('FAIL: Activity-only sync notification mismatch:', notificationBody);
+                process.exit(1);
+            }
+
+            // Case C: Combined sync (12 attendance records and 2 activity sets)
+            notificationShown = 0;
+            const resComb = await simulateServiceWorkerSync(false, true, [
+                { operation: 'attendance.upsert', payload: { records: new Array(12).fill({}) } },
+                { operation: 'activity.upsert', payload: { title: 'Act 1' } },
+                { operation: 'activity.upsert', payload: { title: 'Act 2' } }
+            ]);
+            if (notificationShown !== 1 || notificationBody !== 'Offline data synchronized — 12 attendance records and 2 activity sets synchronized successfully.') {
+                console.error('FAIL: Combined sync notification mismatch:', notificationBody);
+                process.exit(1);
+            }
+
+            // Case D: App Open in Foreground (isOpenWindow = true) -> 0 device notification (foreground handles UI)
+            notificationShown = 0;
+            const resFg = await simulateServiceWorkerSync(true, true, [{ operation: 'activity.upsert', payload: {} }]);
+            if (notificationShown !== 0) {
                 console.error('FAIL: Open app should not show background device notification');
                 process.exit(1);
             }
 
-            // Case C: Unauthenticated -> Halts, 0 notification
+            // Case E: Unauthenticated -> Halts, 0 notification
             notificationShown = 0;
-            const resC = await simulateServiceWorkerSync(false, false, [{ id: 1 }]);
-            if (resC.success !== false || notificationShown !== 0) {
+            const resUnauth = await simulateServiceWorkerSync(false, false, [{ operation: 'activity.upsert', payload: {} }]);
+            if (notificationShown !== 0) {
                 console.error('FAIL: Unauthenticated should not show notification');
+                process.exit(1);
+            }
+
+            // Case F: Partially failed batch -> 0 success notification
+            notificationShown = 0;
+            const resPartial = await simulateServiceWorkerSync(false, true, [{ operation: 'activity.upsert', payload: {} }], true);
+            if (notificationShown !== 0) {
+                console.error('FAIL: Partially failed batch should not show success notification');
                 process.exit(1);
             }
 

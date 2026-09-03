@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v0.3.167 — 2026-09-03
+
+### Fixed
+
+- **Offline Sync Student & Parent Portal Notifications, Teacher Push & Activity Button Layout**:
+  - **Server-Side Student & Parent Notifications on Sync**: Updated `submitAttendance()` and `teacherSaveOfflineActivity()` in [`teacher/teacher_Action.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Action.php) to dispatch in-app portal notifications to affected students and linked parents (`parent_students`) upon successful database commit, with idempotency backed by unique `source_key` constraints.
+  - **Concise Background Sync Push Notifications**: Updated `handleBackgroundSync()` in [`sw.js`](file:///c:/laragon/www/attendance-and-academic-management-system/sw.js) to accurately track attendance records and activity sets, formatting a unified notification (`"Offline data synchronized — X attendance record(s) and Y activity set(s) synchronized successfully."`) sent via device push when the app is closed (`clients.length === 0`).
+  - **Teacher Portal Activity Action Buttons Desktop Fix**: Removed invalid `w-100 w-md-auto` classes in [`teacher/teacher_Classes.php`](file:///c:/laragon/www/attendance-and-academic-management-system/teacher/teacher_Classes.php) and refined `.activity-actions` in [`assets/css/role.css`](file:///c:/laragon/www/attendance-and-academic-management-system/assets/css/role.css) so `Record`, `Finish`, and `Delete` buttons maintain clean spacing and zero overlap on desktop viewports while preserving mobile stacking.
+  - **Automated Regression Test Suite**: Updated [`tests/TeacherPwaOfflineLifecycleTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/TeacherPwaOfflineLifecycleTest.php) and [`tests/TeacherChatAndActivityUiTest.php`](file:///c:/laragon/www/attendance-and-academic-management-system/tests/TeacherChatAndActivityUiTest.php) with tests covering attendance notifications, activity notifications, retry/idempotency, push summary formatting, and UI layout rules.
+
 ## v0.3.166 — 2026-09-03
 
 ### Fixed

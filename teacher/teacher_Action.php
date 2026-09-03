@@ -1406,8 +1406,13 @@ function submitAttendance($db, $teacherId) {
 
         $db->commit();
 
-        if (!empty($changedRecords)) {
-            notifyAttendanceParents($db, $teacherId, $classId, $date, $changedRecords);
+        try {
+            $notifRecords = !empty($changedRecords) ? $changedRecords : $records;
+            if (!empty($notifRecords)) {
+                notifyAttendanceParents($db, $teacherId, $classId, $date, $notifRecords);
+            }
+        } catch (Throwable $notifError) {
+            error_log('submitAttendance notification error: ' . $notifError->getMessage());
         }
 
         [, $summary] = buildStudentAttendancePayload($db, $classId, $date);
@@ -3207,7 +3212,9 @@ function teacherSaveOfflineActivity($db, $teacherId) {
             $gradeItemId = (int)$find->fetchColumn();
         }
 
+        $isNewItem = false;
         if ($gradeItemId <= 0) {
+            $isNewItem = true;
             $stmt = $db->prepare("INSERT INTO grade_items (class_id, teacher_id, title, component, total_score, activity_date, status, created_at)
                                   VALUES (?, ?, ?, ?, ?, ?, 'active', NOW())");
             $stmt->execute([$classId, $teacherId, $title, $component, round($totalScore, 2), $activityDate]);
@@ -3234,6 +3241,23 @@ function teacherSaveOfflineActivity($db, $teacherId) {
         }
 
         $db->commit();
+
+        try {
+            $itemStmt = $db->prepare("SELECT gi.*, c.class_name, c.grade_level, c.section FROM grade_items gi JOIN classes c ON c.id = gi.class_id WHERE gi.id = ? LIMIT 1");
+            $itemStmt->execute([$gradeItemId]);
+            $itemDetails = $itemStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+            if (!empty($itemDetails)) {
+                if ($isNewItem && function_exists('appNotifyGradeActivityCreated')) {
+                    appNotifyGradeActivityCreated($db, $classId, $gradeItemId, $title, $component, $totalScore);
+                }
+                if (is_array($scores) && !empty($scores) && function_exists('notifyGradeItemScoreParents')) {
+                    notifyGradeItemScoreParents($db, $teacherId, $itemDetails, $scores);
+                }
+            }
+        } catch (Throwable $notificationError) {
+            error_log('Offline activity sync notification error: ' . $notificationError->getMessage());
+        }
+
         echo json_encode(['success' => true, 'message' => 'Offline activity and scores saved successfully', 'grade_item_id' => $gradeItemId]);
     } catch (PDOException $e) {
         if ($db->inTransaction()) $db->rollBack();
