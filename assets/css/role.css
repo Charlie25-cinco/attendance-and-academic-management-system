@@ -3577,3 +3577,51 @@ body.dark-mode .teacher-chat-search-wrap .btn {
 body.dark-mode .chat-empty-search-title {
   color: #e5e7eb !important;
 }
+.principal-workflow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .65rem;
+    flex-wrap: wrap;
+    color: var(--bs-secondary-color);
+}
+
+.principal-stat-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 5.5rem;
+    padding: 1.1rem 1.25rem;
+    color: inherit;
+    text-decoration: none;
+}
+
+.principal-stat-card strong {
+    font-size: 1.8rem;
+    color: var(--bs-primary);
+}
+
+.principal-action-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .75rem 1rem;
+    border: 1px solid rgba(31, 79, 130, .2);
+    border-radius: .75rem;
+    background: rgba(31, 79, 130, .06);
+}
+
+body.dark-mode .principal-stat-card,
+body.dark-mode .principal-action-bar {
+    border-color: rgba(148, 163, 184, .22);
+    background: rgba(30, 41, 59, .75);
+}
+
+body.dark-mode .principal-stat-card strong {
+    color: #93c5fd;
+}
+
+@media (max-width: 575.98px) {
+    .principal-action-bar { align-items: flex-start; flex-direction: column; }
+}

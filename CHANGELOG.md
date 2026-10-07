@@ -2,6 +2,39 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v1.0.0 — 2026-10-07
+
+### Added
+
+- Added a dedicated Principal portal for final report-card release, return-for-correction, and release withdrawal, protected by the `report_cards.review` permission.
+- Added privacy-sanitized, role-aware `activity_logs` for critical Principal, Admin, and Teacher transactions, with legacy Admin history retained in the Audit Logs interface.
+
+### Changed
+
+- Changed the official grading workflow to Subject Teacher → Admin verification → Adviser submission → Principal final decision.
+- Report-card release now saves in-app notifications for students and linked parents before optional Web Push delivery is attempted.
+- Existing installations must run `database/upgrade_principal_portal.sql` once; fresh installations use `database/schema.sql`.
+- Updated the PWA cache generation so installed clients receive the new role and notification behavior.
+
+### Removed
+
+- Removed the SMS gateway, SMS configuration, runtime dispatch, delivery-log schema creation, and SMS-specific tests. Existing deployed `sms_logs` tables are not dropped by the upgrade.
+
+### Fixed
+
+- Fixed action-handler test isolation so the full PHPUnit suite cannot terminate successfully after only the first test.
+- Fixed unsafe PHP-to-JavaScript class metadata interpolation and expanded runtime-DDL/security-boundary regression coverage.
+
+## v0.3.171 — 2026-10-03
+
+### Fixed
+
+- Restricted router/Apache access to public paths and moved development API secrets into protected storage with legacy migration.
+- Enforced authenticated API route/method permissions, session CSRF validation, and JSON content types.
+- Isolated teacher offline data by account, locked pending work and purged private HTML on logout, and checked ownership again during synchronization.
+- Replaced globally cached authenticated pages with designated teacher workspaces, and made asset delivery network-first with a new cache version.
+- Removed stale lint and RBAC references to the absent principal portal; added security-boundary and browser-behavior regression checks.
+
 ## v0.3.170 — 2026-09-03
 
 ### Fixed

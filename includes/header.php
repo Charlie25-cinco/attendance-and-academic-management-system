@@ -55,6 +55,7 @@ if ($displayInitials === '') {
 }
 
 $rolePages = [
+    'principal' => ['dashboard' => 'principal.php', 'attendance' => 'principal.php', 'announcements' => 'principal.php'],
     'admin' => ['dashboard' => 'admin.php', 'attendance' => 'admin_Attendance.php', 'announcements' => 'admin_Announcements.php'],
     'teacher' => ['dashboard' => 'teacher.php', 'attendance' => 'teacher_Attendance.php', 'announcements' => 'teacher_Announcements.php', 'classes' => 'teacher_Classes.php'],
     'student' => ['dashboard' => 'Student.php', 'attendance' => 'Student_Attendance.php', 'announcements' => 'Student_Announcements.php', 'classes' => 'Student_Classes.php'],

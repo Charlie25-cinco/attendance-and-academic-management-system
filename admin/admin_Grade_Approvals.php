@@ -165,7 +165,7 @@ $page_title = 'Grade Approvals';
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
                 <h4 class="mb-1">Grade Approvals</h4>
-                <p class="text-muted mb-0">Review, verify, and officially release submitted grades and advisory report cards.</p>
+                <p class="text-muted mb-0">Verify subject grades and monitor report-card decisions by the Principal.</p>
             </div>
         </div>
 
@@ -192,14 +192,14 @@ $page_title = 'Grade Approvals';
                         <div class="p-2 rounded bg-white border shadow-sm h-100">
                             <span class="badge bg-warning text-dark mb-1">Step 3</span>
                             <div class="fw-semibold">Class Advisers</div>
-                            <div class="text-muted" style="font-size: 11px;">Review compiled section report cards & submit to Admin</div>
+                            <div class="text-muted" style="font-size: 11px;">Review compiled section report cards & submit to Principal</div>
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="p-2 rounded bg-white border border-success shadow-sm h-100">
                             <span class="badge bg-success mb-1">Step 4: Final Release</span>
-                            <div class="fw-semibold">Admin Approval & SMS</div>
-                            <div class="text-muted" style="font-size: 11px;">Final release unlocks student/parent viewing & triggers SMS</div>
+                            <div class="fw-semibold">Principal Approval & Release</div>
+                            <div class="text-muted" style="font-size: 11px;">Final release unlocks student/parent viewing and sends in-app/Web Push notifications</div>
                         </div>
                     </div>
                 </div>
@@ -294,7 +294,7 @@ $page_title = 'Grade Approvals';
         <div class="content-card mt-4">
             <div class="content-card-header">
                 <h5 class="content-card-title mb-0">Report Card Submissions</h5>
-                <small class="text-muted">Adviser submissions waiting for final admin approval.</small>
+                <small class="text-muted">Adviser submissions waiting for final principal approval.</small>
             </div>
             <div class="content-card-body">
                 <div class="d-flex flex-wrap gap-2 mb-3">
@@ -349,12 +349,7 @@ $page_title = 'Grade Approvals';
                                                 href="admin_Grade_Approvals_Detail.php?grade_level=<?php echo (int)$row['grade_level']; ?>&section=<?php echo urlencode((string)$row['section']); ?>&academic_year=<?php echo urlencode((string)$row['academic_year']); ?>&semester=<?php echo urlencode((string)$row['semester'] ?? ''); ?>&status=<?php echo urlencode($selectedStatus); ?>">
                                             View
                                         </a>
-                                        <?php if ($status === 'pending'): ?>
-                                            <button class="btn btn-sm btn-success" type="button" onclick="reviewReportCardApprovalBatch(<?php echo (int)$row['grade_level']; ?>, '<?php echo htmlspecialchars((string)$row['section'], ENT_QUOTES, 'UTF-8'); ?>', '<?php echo htmlspecialchars((string)$row['academic_year'], ENT_QUOTES, 'UTF-8'); ?>', '<?php echo htmlspecialchars((string)($row['semester'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>', 'approved')">Final Approve</button>
-                                            <button class="btn btn-sm btn-danger" type="button" onclick="reviewReportCardApprovalBatch(<?php echo (int)$row['grade_level']; ?>, '<?php echo htmlspecialchars((string)$row['section'], ENT_QUOTES, 'UTF-8'); ?>', '<?php echo htmlspecialchars((string)$row['academic_year'], ENT_QUOTES, 'UTF-8'); ?>', '<?php echo htmlspecialchars((string)($row['semester'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>', 'rejected')">Reject</button>
-                                        <?php elseif ($status === 'approved'): ?>
-                                            <button class="btn btn-sm btn-outline-danger" type="button" onclick="returnReleasedReportCards(<?php echo (int)$row['grade_level']; ?>, '<?php echo htmlspecialchars((string)$row['section'], ENT_QUOTES, 'UTF-8'); ?>', '<?php echo htmlspecialchars((string)$row['academic_year'], ENT_QUOTES, 'UTF-8'); ?>', '<?php echo htmlspecialchars((string)($row['semester'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>')">Return Released Grades</button>
-                                        <?php endif; ?>
+                                        <span class="text-muted small">Final decisions: Principal portal</span>
                                         </div>
                                     </div>
                                 </div>
@@ -427,48 +422,6 @@ function reviewApproval(approvalId, status) {
         })
         .catch(() => showNotification('Error updating approval', 'danger'));
 }
-function reviewReportCardApprovalBatch(gradeLevel, section, academicYear, semester, status) {
-    const formData = new FormData();
-    formData.append('grade_level', String(gradeLevel));
-    formData.append('section', section);
-    formData.append('academic_year', academicYear);
-    formData.append('semester', semester);
-    formData.append('status', status);
-    if (window.APP_CSRF_TOKEN) formData.append('csrf_token', window.APP_CSRF_TOKEN);
-    fetch('admin_Grade_Approvals_Action.php?action=review_report_card_batch', { method: 'POST', body: formData })
-        .then(r => r.json())
-        .then(d => {
-            if (!d.success) {
-                showNotification(d.message || 'Failed to update report card approval', 'danger');
-                return;
-            }
-            showNotification(d.message || 'Report card approval updated', 'success');
-            setTimeout(() => window.location.reload(), 700);
-        })
-        .catch(() => showNotification('Error updating report card approval', 'danger'));
-}
-
-function returnReleasedReportCards(gradeLevel, section, academicYear, semester) {
-    const formData = new FormData();
-    formData.append('grade_level', String(gradeLevel));
-    formData.append('section', section);
-    formData.append('academic_year', academicYear);
-    formData.append('semester', semester || '');
-    formData.append('remarks', 'Returned after final release for correction.');
-    if (window.APP_CSRF_TOKEN) formData.append('csrf_token', window.APP_CSRF_TOKEN);
-    fetch('admin_Grade_Approvals_Action.php?action=return_released_report_card_batch', { method: 'POST', body: formData })
-        .then(r => r.json())
-        .then(d => {
-            if (!d.success) {
-                showNotification(d.message || 'Failed to return released grades', 'danger');
-                return;
-            }
-            showNotification(d.message || 'Released grades returned for correction', 'success');
-            setTimeout(() => window.location.reload(), 700);
-        })
-        .catch(() => showNotification('Error returning released grades', 'danger'));
-}
-
 function reloadApprovalCards() {
     const currentUrl = window.location.href;
     fetch(currentUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })

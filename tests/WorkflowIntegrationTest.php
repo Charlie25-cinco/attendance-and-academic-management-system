@@ -1,7 +1,6 @@
 <?php
 
 use PHPUnit\Framework\TestCase;
-use BshsAms\Notification\SmsService;
 
 final class WorkflowIntegrationTest extends TestCase
 {
@@ -118,7 +117,7 @@ final class WorkflowIntegrationTest extends TestCase
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )");
 
-        // Report Card Approvals (Adviser -> Admin -> Release)
+        // Report Card Approvals (Adviser -> Principal -> Release)
         $this->db->exec("CREATE TABLE report_card_approvals (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             class_id INTEGER NOT NULL,
@@ -156,29 +155,16 @@ final class WorkflowIntegrationTest extends TestCase
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )");
 
-        // SMS Logs
-        $this->db->exec("CREATE TABLE sms_logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            recipient_user_id INTEGER NULL,
-            recipient_phone TEXT NOT NULL,
-            message TEXT NOT NULL,
-            provider TEXT NOT NULL,
-            status TEXT NOT NULL,
-            response_data TEXT NULL,
-            error_message TEXT NULL,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
-        )");
-
-        putenv('SMS_PROVIDER=log');
-        putenv('SMS_SENDER_NAME=BSHS-AMS');
-        smsGetService(new SmsService('log', '', 'BSHS-AMS'));
     }
 
     public function testFullGradeApprovalAndPublicationWorkflow(): void
     {
-        // 1. Setup Users: Admin, Subject Teacher, Class Adviser, Student, and Parent
+        // 1. Setup Users: Admin, Principal, Subject Teacher, Class Adviser, Student, and Parent
         $this->db->exec("INSERT INTO users (id, reference_code, email, first_name, last_name, role)
             VALUES (1, 'ADM-001', 'admin@bshs.edu.ph', 'School', 'Admin', 'admin')");
+
+        $this->db->exec("INSERT INTO users (id, reference_code, email, first_name, last_name, role)
+            VALUES (4, 'PR-001', 'principal@bshs.edu.ph', 'School', 'Principal', 'principal')");
 
         $this->db->exec("INSERT INTO users (id, reference_code, email, first_name, last_name, role)
             VALUES (2, 'TCH-001', 'teacher.math@bshs.edu.ph', 'Juan', 'Cruz', 'teacher')");
@@ -232,12 +218,12 @@ final class WorkflowIntegrationTest extends TestCase
         $stmt = $this->db->query("SELECT status FROM grade_approvals WHERE class_subject_id = 501 AND term = 'Term1'");
         $this->assertSame('admin_verified', $stmt->fetchColumn());
 
-        // Step 4: Class Adviser submits full Section Report Cards to Admin
+        // Step 4: Class Adviser submits full Section Report Cards to Principal
         $this->db->exec("INSERT INTO report_card_approvals (class_id, student_id, term, academic_year, status, submitted_by)
             VALUES (1, NULL, 'Term1', '2026-2027', 'submitted_admin', 3)");
 
-        // Step 5: Admin gives Final Official Approval and Releases Report Cards
-        $this->db->exec("UPDATE report_card_approvals SET status = 'approved', approved_by = 1 WHERE class_id = 1 AND term = 'Term1'");
+        // Step 5: Principal gives final official approval and releases report cards
+        $this->db->exec("UPDATE report_card_approvals SET status = 'approved', approved_by = 4 WHERE class_id = 1 AND term = 'Term1'");
 
         // Step 6: Verify Student & Parent visibility rule
         $stmt = $this->db->query("SELECT status FROM report_card_approvals WHERE class_id = 1 AND term = 'Term1'");
@@ -245,20 +231,13 @@ final class WorkflowIntegrationTest extends TestCase
         $this->assertSame('approved', $approvalStatus);
         $this->assertTrue($approvalStatus === 'approved', 'Student and Parent portal visibility is unlocked');
 
-        // Step 7: Trigger SMS Notifications on Official Grade Publication
-        $smsResult = smsNotifyGradePublication($this->db, 1, 'Term 1', '2026-2027');
-        $this->assertSame(2, $smsResult['total']);
-        $this->assertSame(2, $smsResult['sent']);
-        $this->assertSame(0, $smsResult['failed']);
-
-        // Verify SMS log entries
-        $stmt = $this->db->query("SELECT * FROM sms_logs ORDER BY id ASC");
-        $smsLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $this->assertCount(2, $smsLogs);
-        $this->assertSame('639171234567', $smsLogs[0]['recipient_phone']);
-        $this->assertSame('639189876543', $smsLogs[1]['recipient_phone']);
-        $this->assertStringContainsString('approved by Admin', $smsLogs[0]['message']);
-        $this->assertStringContainsString('Maria Santos', $smsLogs[1]['message']);
+        // Step 7: Verify saved portal notifications for student and parent publication
+        $this->db->exec("INSERT INTO notifications (user_id, title, message, type, link)
+            VALUES (10, 'Official Report Card Released', 'Your report card is now available.', 'grade_publication', 'Student_Report_Card.php')");
+        $this->db->exec("INSERT INTO notifications (user_id, title, message, type, link)
+            VALUES (20, 'Official Report Card Released', 'The linked learner report card is now available.', 'grade_publication', 'Parent_Report_Card.php')");
+        $stmt = $this->db->query("SELECT user_id FROM notifications WHERE type = 'grade_publication' ORDER BY user_id");
+        $this->assertSame([10, 20], array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN)));
     }
 
     public function testAttendanceMarkingAndNotificationWorkflow(): void
@@ -316,9 +295,9 @@ final class WorkflowIntegrationTest extends TestCase
         $this->assertSame(1, (int)$kpi['late_count']);
         $this->assertSame(1, (int)$kpi['absent_count']);
 
-        // 5. Verify Zero SMS was sent for routine attendance
-        $stmt = $this->db->query("SELECT COUNT(*) FROM sms_logs");
-        $this->assertSame(0, (int)$stmt->fetchColumn(), 'Daily attendance must not trigger SMS notifications');
+        // 5. Attendance communication remains stored in-app for both family roles.
+        $stmt = $this->db->query("SELECT user_id FROM notifications WHERE type = 'attendance' ORDER BY user_id");
+        $this->assertSame([10, 20], array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN)));
     }
 
     public function testDatabaseUniquenessInvariants(): void

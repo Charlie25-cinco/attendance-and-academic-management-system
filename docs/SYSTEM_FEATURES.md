@@ -13,7 +13,7 @@
 
 The **Balingasag Senior High School Attendance and Academic Management System (BSHS AMS)** is an integrated, full-stack web and Progressive Web Application (PWA) tailored specifically to the administrative, grading, attendance, and communication workflows mandated by the **Department of Education (DepEd) Senior High School (SHS)** curriculum in the Philippines.
 
-The platform provides a centralized, role-based ecosystem connecting **School Administrators**, **Subject Teachers & Section Advisers**, **Students**, and **Parents/Guardians**. It automates compliance with DepEd standard school forms (SF1, SF2, SF5, SF9, and ECR), supports server-authoritative QR attendance tracking with offline capabilities, enforces a multi-tier grade governance workflow, and ensures real-time stakeholder communication through Web Push notifications, PhilSMS alerts, and private adviser-parent messaging.
+The platform provides a centralized, role-based ecosystem connecting the **Principal**, **School Administrators**, **Subject Teachers & Section Advisers**, **Students**, and **Parents/Guardians**. It automates compliance with DepEd standard school forms (SF1, SF2, SF5, SF9, and ECR), supports server-authoritative QR attendance tracking with offline capabilities, enforces a multi-tier grade governance workflow, and supports stakeholder communication through saved in-app/Web Push notifications and private adviser-parent messaging.
 
 ---
 
@@ -34,8 +34,8 @@ The platform provides a centralized, role-based ecosystem connecting **School Ad
 - **4-Stage Grade Approval & Governance State Machine:**
   1. **Subject Teacher Submission (`submitted`):** Teachers submit grades per subject/section; input fields lock to prevent tampering during review. Teachers retain the option to recall pending submissions before admin action.
   2. **Admin Subject Verification (`admin_verified`):** Administrators review and verify subject grades. Admin can reject with feedback, unlocking the grade sheet for teacher correction.
-  3. **Adviser Report Card Consolidation (`submitted_admin`):** Section advisers consolidate all verified subject grades into final report cards (SF9) and submit the section batch to the School Head/Admin.
-  4. **Admin Final Approval & Publication (`approved`):** Final administrative approval officially releases grades to Student and Parent portals.
+  3. **Adviser Report Card Consolidation (`submitted_admin`):** Section advisers consolidate all verified subject grades into final report cards (SF9) and submit them to the Principal. The legacy status name is retained for database compatibility.
+  4. **Principal Final Approval & Publication (`approved`):** The Principal releases verified report cards to Student and Parent portals or returns/withdraws them for correction.
 - **Grade Recall & Stale Data Invalidation:** If an approved subject grade requires post-release correction, re-submission automatically reverts affected report cards to `rejected` status, immediately masking stale final grades from student/parent portals until re-approved.
 - **Learner Progress Report Card (DepEd SF9) Generation:** Printable, formatted PDF/HTML report cards showing quarterly grades, general averages, attendance summaries, and core values observation ratings.
 
@@ -83,7 +83,7 @@ The platform provides a centralized, role-based ecosystem connecting **School Ad
   - New grade activity announcements and recorded scores.
   - Official grade publication and report card releases.
   - Administrative grade recalls or schedule announcements.
-- **PhilSMS Gateway Integration:** Automated SMS text message broadcast (`smsNotifyGradePublication`) directly to parent and student mobile numbers upon official admin release of quarterly report cards.
+- **Saved and Device Notifications:** Report-card release is saved in-app for students and linked parents before optional Web Push delivery is attempted.
 - **Targeted School & Class Announcements:** School-wide and section-level announcement boards with rich-text formatting, priority pinning, and role-based audience filters.
 
 ---
@@ -91,7 +91,7 @@ The platform provides a centralized, role-based ecosystem connecting **School Ad
 ## 3. Secondary & Supporting System Features
 
 ### 3.1 Security & Access Control (RBAC)
-- **Centralized Role-Based Access Control (RBAC):** Strict per-route permission enforcement mapped across 4 roles: `admin`, `teacher`, `student`, and `parent`.
+- **Centralized Role-Based Access Control (RBAC):** Strict per-route permission enforcement mapped across 5 roles: `principal`, `admin`, `teacher`, `student`, and `parent`.
 - **Triple-Layer CSRF Protection:** Protects all state-modifying requests via token validation across POST bodies, URL query parameters, and `X-CSRF-Token` headers.
 - **Stateless Database Session Driver:** Stores active user sessions in SQL (`php_sessions`) to support seamless container deployment (e.g., Wasmer Edge, Docker) without losing login state across server restarts.
 - **Immediate Token Version Revocation:** API bearer tokens enforce an `api_token_version` check against the database; changing or resetting a password immediately revokes all existing active tokens.
@@ -108,7 +108,7 @@ The platform provides a centralized, role-based ecosystem connecting **School Ad
 ---
 
 ### 3.3 Governance, Auditing & Administrative Tools
-- **Immutable Admin Audit Trail (`admin_audit_logs`):** Logs all administrative actions with actor ID, target entity, detailed action payload, IP address, and timestamp.
+- **Role-Aware Activity Trail (`activity_logs`):** Logs critical Principal, Admin, and Teacher mutations with actor role, target, sanitized metadata, IP address, and timestamp. Legacy `admin_audit_logs` remains visible as historical data.
 - **Authentication Login Logs (`auth_login_logs`):** Tracks successful and failed login attempts across the platform for forensic auditing.
 - **Soft-Delete & Archive Restoration:** Safely archives deleted users, enrollments, classes, and sections into an archive repository, allowing one-click administrative restoration.
 - **Universal Live Search & Filter:** Debounced, client-side and server-side search bars with quick-clear (`x`) buttons across all tables, modal lists, and enrollment registers.
@@ -123,26 +123,26 @@ The platform provides a centralized, role-based ecosystem connecting **School Ad
 
 ## 4. Feature Matrix by User Role
 
-| Feature / Capability | Admin | Teacher / Adviser | Student | Parent / Guardian |
-| :--- | :---: | :---: | :---: | :---: |
-| **Manage Users & Role Assignments** | ✅ | ❌ | ❌ | ❌ |
-| **Curriculum & Section Configuration** | ✅ | ❌ | ❌ | ❌ |
-| **SF1 Register Import / Export** | ✅ | ✅ (Adviser) | ❌ | ❌ |
-| **Daily Attendance Marking** | ✅ | ✅ | ❌ | ❌ |
-| **QR Code Scanner for Attendance** | ❌ | ✅ | ❌ | ❌ |
-| **Digital Student QR ID Badge** | ❌ | ❌ | ✅ | ❌ |
-| **Offline Attendance Sync** | ❌ | ✅ | ❌ | ❌ |
-| **SF2 Attendance Form Export** | ✅ | ✅ (Adviser) | ❌ | ❌ |
-| **Record Activity Scores (WW/PT/QA)** | ❌ | ✅ | ❌ | ❌ |
-| **DepEd ECR Excel Import / Export** | ❌ | ✅ | ❌ | ❌ |
-| **4-Tier Grade Approval Governance** | ✅ (Verify/Approve) | ✅ (Submit/Adviser) | ❌ | ❌ |
-| **View Published Report Cards (SF9)** | ✅ | ✅ | ✅ | ✅ |
-| **Adviser-Parent Direct Messaging** | ❌ | ✅ (Adviser) | ❌ | ✅ |
-| **Upload Learning Materials** | ❌ | ✅ | ❌ | ❌ |
-| **Download Enrolled Subject Materials** | ❌ | ✅ (Own) | ✅ | ❌ |
-| **Web Push Notifications** | ✅ | ✅ | ✅ | ✅ |
-| **PhilSMS Grade Publication SMS** | ✅ (Trigger) | ❌ | ✅ (Receive) | ✅ (Receive) |
-| **System Audit Logs & Archive Recovery** | ✅ | ❌ | ❌ | ❌ |
+| Feature / Capability | Principal | Admin | Teacher / Adviser | Student | Parent / Guardian |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Manage Users & Role Assignments** | No | Yes | No | No | No |
+| **Curriculum & Section Configuration** | No | Yes | No | No | No |
+| **SF1 Register Import / Export** | No | Yes | Yes (Adviser) | No | No |
+| **Daily Attendance Marking** | No | View | Yes | View own | View linked |
+| **QR Code Scanner for Attendance** | No | No | Yes | No | No |
+| **Digital Student QR ID Badge** | No | No | No | Yes | No |
+| **Offline Attendance Sync** | No | No | Yes | No | No |
+| **SF2 Attendance Form Export** | No | Yes | Yes (Adviser) | No | No |
+| **Record Activity Scores (WW/PT/QA)** | No | No | Yes | No | No |
+| **DepEd ECR Excel Import / Export** | No | No | Yes | No | No |
+| **4-Tier Grade Approval Governance** | Final review | Verify | Submit/compile | No | No |
+| **Final Report Card Review & Release** | Yes | No | No | No | No |
+| **View Published Report Cards (SF9)** | Yes | Yes | Yes | Yes | Yes |
+| **Adviser-Parent Direct Messaging** | No | No | Yes (Adviser) | No | Yes |
+| **Upload Learning Materials** | No | No | Yes | No | No |
+| **Download Enrolled Subject Materials** | No | No | Own uploads | Yes | No |
+| **Web Push Notifications** | Yes | Yes | Yes | Yes | Yes |
+| **System Activity Logs & Archive Recovery** | No | Yes | No | No | No |
 
 ---
 
@@ -154,6 +154,5 @@ The platform provides a centralized, role-based ecosystem connecting **School Ad
 - **Progressive Web App:** W3C Manifest specification (`assets/manifest.json`), Root Service Worker (`sw.js`), Push API, Web Push with VAPID (`minishlink/web-push`).
 - **Spreadsheet Processing:** Native OpenXML (`.xlsx`) parsing and templating engine for high-fidelity DepEd form generation.
 - **Third-Party Integrations:**
-  - *PhilSMS API* (SMS broadcast)
   - *Resend API / SMTP* (Email OTP authentication)
   - *Wasmer Edge Platform* (Containerized serverless hosting)

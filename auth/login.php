@@ -120,6 +120,7 @@ function establishLoginSession($db, $user) {
 
 function redirectByRole($role) {
     switch ($role) {
+        case 'principal': header("Location: ../principal/principal.php"); break;
         case 'admin': header("Location: ../admin/admin.php"); break;
         case 'teacher': header("Location: ../teacher/teacher.php"); break;
         case 'student': header("Location: ../student/Student.php"); break;
@@ -223,23 +224,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Balingasag Senior High School</title>
-    <script>
-    (function() {
-        try {
-            var hasCachedTeacher = localStorage.getItem('bshs_cached_teacher') === '1' || localStorage.getItem('bshs_teacher_session');
-            if (!navigator.onLine && hasCachedTeacher) {
-                document.documentElement.classList.add('offline-launching');
-                window.location.replace('../teacher/teacher_Attendance.php');
-            }
-        } catch (e) {}
-    })();
-    </script>
-    <style>
-    html.offline-launching body {
-        visibility: hidden !important;
-        background-color: #f8fafc !important;
-    }
-    </style>
     <link href="<?php echo appAssetPath('vendor/bootstrap/bootstrap.min.css'); ?>" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo appAssetPath('vendor/bootstrap-icons/bootstrap-icons.css'); ?>">
     <link rel="stylesheet" href="<?php echo appAssetPath('css/main.css'); ?>">

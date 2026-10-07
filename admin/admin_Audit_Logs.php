@@ -93,10 +93,16 @@ if ($db) {
             $dateTo = '';
         }
 
-        $actionOptions = $db->query("SELECT DISTINCT action_name FROM admin_audit_logs ORDER BY action_name")
+        $actionOptions = $db->query("SELECT action_name FROM (SELECT action_name FROM activity_logs UNION SELECT action_name FROM admin_audit_logs) actions ORDER BY action_name")
             ->fetchAll(PDO::FETCH_COLUMN);
-        $targetOptions = $db->query("SELECT DISTINCT target_type FROM admin_audit_logs ORDER BY target_type")
+        $targetOptions = $db->query("SELECT target_type FROM (SELECT target_type FROM activity_logs UNION SELECT target_type FROM admin_audit_logs) targets ORDER BY target_type")
             ->fetchAll(PDO::FETCH_COLUMN);
+
+        $activitySourceSql = "(SELECT id, actor_user_id, actor_role, action_name, target_type, target_id, details_json, created_at, 'current' AS source
+                                FROM activity_logs
+                               UNION ALL
+                               SELECT id, admin_user_id AS actor_user_id, 'admin' AS actor_role, action_name, target_type, target_id, details_json, created_at, 'legacy' AS source
+                                FROM admin_audit_logs)";
 
         $where = [];
         $params = [];
@@ -128,8 +134,8 @@ if ($db) {
 
         $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
         $countStmt = $db->prepare("SELECT COUNT(*)
-                                   FROM admin_audit_logs aal
-                                   LEFT JOIN users u ON u.id = aal.admin_user_id
+                                   FROM $activitySourceSql aal
+                                   LEFT JOIN users u ON u.id = aal.actor_user_id
                                    $whereSql");
         foreach ($params as $key => $value) {
             $countStmt->bindValue($key, $value);
@@ -140,11 +146,11 @@ if ($db) {
         $page = min($page, $auditTotalPages);
         $offset = ($page - 1) * $perPage;
 
-        $auditStmt = $db->prepare("SELECT aal.id, aal.admin_user_id, aal.action_name, aal.target_type,
-                                          aal.target_id, aal.details_json, aal.created_at,
-                                          u.reference_code, u.first_name, u.last_name, u.role
-                                   FROM admin_audit_logs aal
-                                   LEFT JOIN users u ON u.id = aal.admin_user_id
+        $auditStmt = $db->prepare("SELECT aal.id, aal.actor_user_id, aal.actor_role, aal.action_name, aal.target_type,
+                                          aal.target_id, aal.details_json, aal.created_at, aal.source,
+                                          u.reference_code, u.first_name, u.last_name, COALESCE(u.role, aal.actor_role) role
+                                   FROM $activitySourceSql aal
+                                   LEFT JOIN users u ON u.id = aal.actor_user_id
                                    $whereSql
                                    ORDER BY aal.created_at DESC, aal.id DESC
                                    LIMIT :limit OFFSET :offset");
@@ -206,7 +212,7 @@ if ($db) {
                         <p class="text-muted mb-3">Review admin changes and recent sign-in attempts for accountability and troubleshooting.</p>
                         <div class="admin-hero-metrics">
                             <div class="admin-hero-metric">
-                                <span>Admin actions</span>
+                                <span>Activity records</span>
                                 <strong><?php echo number_format($auditTotal); ?></strong>
                             </div>
                             <div class="admin-hero-metric">
@@ -240,7 +246,7 @@ if ($db) {
 
             <div class="content-card mb-4">
                 <div class="content-card-header">
-                    <h5 class="content-card-title">Admin Action Logs</h5>
+                    <h5 class="content-card-title">System Activity Logs</h5>
                 </div>
                 <div class="content-card-body">
                     <form method="GET" class="row g-3 align-items-end mb-4 app-responsive-filter-form">
@@ -248,7 +254,7 @@ if ($db) {
                             <label class="form-label">Search</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                                <input type="text" class="form-control" name="search" placeholder="Admin, action, target, details..." value="<?php echo htmlspecialchars($search); ?>">
+                                <input type="text" class="form-control" name="search" placeholder="Actor, action, target, details..." value="<?php echo htmlspecialchars($search); ?>">
                                 <?php if ($search !== ''): ?>
                                     <a href="admin_Audit_Logs.php<?php echo ($actionFilter || $dateFrom || $dateTo) ? '?' . http_build_query(array_filter(['action_name' => $actionFilter, 'date_from' => $dateFrom, 'date_to' => $dateTo])) : ''; ?>" class="btn btn-outline-secondary" title="Clear Search"><i class="bi bi-x-lg"></i></a>
                                 <?php endif; ?>
@@ -297,7 +303,7 @@ if ($db) {
                             <thead>
                                 <tr>
                                     <th>When</th>
-                                    <th>Admin</th>
+                                    <th>Actor</th>
                                     <th>Action</th>
                                     <th>Target</th>
                                     <th>Details</th>
@@ -305,13 +311,13 @@ if ($db) {
                             </thead>
                             <tbody>
                                 <?php if (empty($auditRows)) : ?>
-                                    <tr><td colspan="5" class="text-center text-muted py-4">No admin action logs found.</td></tr>
+                                    <tr><td colspan="5" class="text-center text-muted py-4">No activity logs found.</td></tr>
                                 <?php else : ?>
                                     <?php foreach ($auditRows as $row) : ?>
                                         <?php
                                             $adminName = trim((string)($row['first_name'] ?? '') . ' ' . (string)($row['last_name'] ?? ''));
                                         if ($adminName === '') {
-                                            $adminName = 'Unknown admin';
+                                            $adminName = 'Unknown actor';
                                         }
                                             $targetLabel = ucfirst((string)$row['target_type']);
                                         if (!empty($row['target_id'])) {
@@ -322,7 +328,7 @@ if ($db) {
                                             <td><?php echo htmlspecialchars(date('M d, Y h:i A', strtotime((string)$row['created_at']))); ?></td>
                                             <td>
                                                 <div class="fw-semibold"><?php echo htmlspecialchars($adminName); ?></div>
-                                                <small class="text-muted"><?php echo htmlspecialchars((string)($row['reference_code'] ?? 'No reference')); ?></small>
+                                                <small class="text-muted"><?php echo htmlspecialchars(ucfirst((string)($row['role'] ?? 'unknown'))); ?> · <?php echo htmlspecialchars((string)($row['reference_code'] ?? 'No reference')); ?></small>
                                             </td>
                                             <td><span class="status-badge status-active"><?php echo htmlspecialchars(auditLogFormatAction((string)$row['action_name'])); ?></span></td>
                                             <td><?php echo htmlspecialchars($targetLabel); ?></td>
@@ -437,5 +443,3 @@ if ($db) {
     </div>
 
     <?php include '../includes/footer.php'; ?>
-</body>
-</html>

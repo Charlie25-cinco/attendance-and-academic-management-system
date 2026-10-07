@@ -13,14 +13,6 @@ if ($route === 'notification-action' && $method === 'POST') {
         apiJson(['ok' => false, 'message' => 'Database connection failed'], 500);
     }
 
-    $sessionCsrf = (string)($_SESSION['csrf_token'] ?? '');
-    if ($sessionCsrf !== '') {
-        $requestCsrf = trim((string)($_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_GET['csrf_token'] ?? ''));
-        if ($requestCsrf === '' || !hash_equals($sessionCsrf, $requestCsrf)) {
-            apiJson(['ok' => false, 'message' => 'Invalid CSRF token'], 403);
-        }
-    }
-
     appEnsureUserNotificationsTable($db);
     $body = apiRequestBody();
     $action = strtolower(trim((string)($body['action'] ?? '')));

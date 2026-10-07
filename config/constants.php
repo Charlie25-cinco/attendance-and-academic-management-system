@@ -51,7 +51,7 @@ function appPublicWebBaseUrl(): string {
     }
 
     $script = str_replace('\\', '/', (string)($_SERVER['SCRIPT_NAME'] ?? ''));
-    if (preg_match('#^(.*)/(admin|teacher|student|parent|api|auth|component|config|database|includes|assets|src|uploads|site)(?:/|$)#', $script, $m)) {
+    if (preg_match('#^(.*)/(principal|admin|teacher|student|parent|api|auth|component|config|database|includes|assets|src|uploads|site)(?:/|$)#', $script, $m)) {
         return $scheme . '://' . $host . rtrim($m[1], '/');
     }
 
@@ -287,21 +287,7 @@ function pushEnsureSubscriptionsTable($db) {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )");
-        return;
     }
-    $db->exec("CREATE TABLE IF NOT EXISTS push_subscriptions (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,
-        endpoint VARCHAR(512) NOT NULL,
-        p256dh VARCHAR(255) NOT NULL,
-        auth VARCHAR(255) NOT NULL,
-        user_agent VARCHAR(255) NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        UNIQUE KEY uq_push_endpoint (endpoint),
-        KEY idx_push_user (user_id),
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    )");
 }
 
 function pushBase64UrlEncode($data) {
@@ -660,14 +646,6 @@ function pushNotifyGradePublication($db, int $classId, string $term = 'Final', s
         ['type' => 'grade_publication', 'class_id' => $classId, 'term' => $term, 'academic_year' => $academicYear]
     );
 
-    if (function_exists('smsNotifyGradePublication')) {
-        try {
-            smsNotifyGradePublication($db, $classId, $term, $academicYear);
-        } catch (Throwable $e) {
-            error_log('[SMS] Grade publication notification error: ' . $e->getMessage());
-        }
-    }
-
     return true;
 }
 
@@ -721,182 +699,6 @@ function pushNotifyGradeRecall($db, int $classId, string $term = 'Final', string
     return true;
 }
 
-function smsGetService(?\BshsAms\Notification\SmsService $override = null): \BshsAms\Notification\SmsService {
-    static $service = null;
-    if ($override !== null) {
-        $service = $override;
-        return $service;
-    }
-    if ($service === null) {
-        $service = new \BshsAms\Notification\SmsService();
-    }
-    return $service;
-}
-
-function smsInitConfig(): void {
-    global $smsConfig;
-    if ($smsConfig !== null) return;
-    $service = smsGetService();
-    $smsConfig = [
-        'provider' => $service->getProvider(),
-        'api_key' => trim((string)getenv('SMS_API_KEY') ?: ''),
-        'sender_name' => $service->getSenderName(),
-    ];
-}
-
-function smsConfigured(): bool {
-    return smsGetService()->isConfigured();
-}
-
-function smsSend(string $to, string $message, ?int $recipientUserId = null, ?PDO $db = null): array {
-    return smsGetService()->send($to, $message, $recipientUserId, $db);
-}
-
-function smsNotifyGradePublication(
-    PDO $db,
-    int $classId,
-    string $term = 'Final',
-    string $academicYear = '',
-    ?int $singleStudentId = null
-): array {
-    $service = smsGetService();
-
-    $classStmt = $db->prepare("SELECT class_name, grade_level, section FROM classes WHERE id = ?");
-    $classStmt->execute([$classId]);
-    $classRow = $classStmt->fetch(PDO::FETCH_ASSOC);
-    $className = $classRow ? trim(($classRow['class_name'] ?? '') . ' (' . ($classRow['grade_level'] ?? '') . '-' . ($classRow['section'] ?? '') . ')') : 'Class #' . $classId;
-
-    $results = ['total' => 0, 'sent' => 0, 'failed' => 0];
-
-    if ($singleStudentId !== null && $singleStudentId > 0) {
-        $studentStmt = $db->prepare("SELECT id, first_name, last_name, contact_number FROM users WHERE id = ? AND role = 'student'");
-        $studentStmt->execute([$singleStudentId]);
-        $student = $studentStmt->fetch(PDO::FETCH_ASSOC);
-        if (!$student) {
-            return $results;
-        }
-        $studentName = trim(($student['first_name'] ?? '') . ' ' . ($student['last_name'] ?? ''));
-
-        $parentStmt = $db->prepare("SELECT u.id, u.first_name, u.last_name, u.contact_number
-                                   FROM users u
-                                   JOIN parent_students ps ON ps.parent_id = u.id
-                                   WHERE ps.student_id = ? AND u.role = 'parent' AND u.contact_number IS NOT NULL AND u.contact_number != ''");
-        $parentStmt->execute([$singleStudentId]);
-        $parents = $parentStmt->fetchAll(PDO::FETCH_ASSOC);
-
-        $recipientsToSend = [];
-        if (!empty($student['contact_number'])) {
-            $recipientsToSend[] = [
-                'user_id' => (int)$student['id'],
-                'phone' => (string)$student['contact_number'],
-                'name' => $studentName,
-                'role' => 'student',
-            ];
-        }
-        foreach ($parents as $parent) {
-            $recipientsToSend[] = [
-                'user_id' => (int)$parent['id'],
-                'phone' => (string)$parent['contact_number'],
-                'name' => $studentName,
-                'role' => 'parent',
-            ];
-        }
-
-        $termLabel = $term !== '' ? $term : 'Final';
-        $ayLabel = $academicYear !== '' ? " S.Y. {$academicYear}" : '';
-        $message = "BSHS AMS: Official grades and report card for {$studentName} ({$className}{$ayLabel} - {$termLabel}) have been approved by Admin and are now available on the portal.";
-
-        $sentPhoneKeys = [];
-        foreach ($recipientsToSend as $recip) {
-            $rawPhone = trim((string)($recip['phone'] ?? ''));
-            if ($rawPhone === '') {
-                continue;
-            }
-            $normPhoneKey = \BshsAms\Notification\SmsService::normalizePhilippineNumber($rawPhone) ?? $rawPhone;
-            if (isset($sentPhoneKeys[$normPhoneKey])) {
-                continue;
-            }
-            $sentPhoneKeys[$normPhoneKey] = true;
-
-            $results['total']++;
-            $res = $service->send($recip['phone'], $message, $recip['user_id'], $db);
-            if (!empty($res['success'])) {
-                $results['sent']++;
-            } else {
-                $results['failed']++;
-            }
-        }
-
-        return $results;
-    }
-
-    // Section/Class-wide grade publication
-    $enrollStmt = $db->prepare("SELECT s.id, s.first_name, s.last_name, s.contact_number
-                                FROM enrollments e
-                                JOIN users s ON s.id = e.student_id
-                                WHERE e.class_id = ? AND COALESCE(e.status, 'enrolled') = 'enrolled' AND s.role = 'student'");
-    $enrollStmt->execute([$classId]);
-    $students = $enrollStmt->fetchAll(PDO::FETCH_ASSOC);
-
-    if (empty($students)) {
-        return $results;
-    }
-
-    $studentIds = array_column($students, 'id');
-    $inClause = implode(',', array_fill(0, count($studentIds), '?'));
-    $parentStmt = $db->prepare("SELECT ps.student_id, u.id as parent_id, u.first_name, u.last_name, u.contact_number
-                               FROM users u
-                               JOIN parent_students ps ON ps.parent_id = u.id
-                               WHERE ps.student_id IN ($inClause) AND u.role = 'parent' AND u.contact_number IS NOT NULL AND u.contact_number != ''");
-    $parentStmt->execute($studentIds);
-    $parentsByStudent = [];
-    foreach ($parentStmt->fetchAll(PDO::FETCH_ASSOC) as $pRow) {
-        $parentsByStudent[(int)$pRow['student_id']][] = $pRow;
-    }
-
-    $termLabel = $term !== '' ? $term : 'Final';
-    $ayLabel = $academicYear !== '' ? " S.Y. {$academicYear}" : '';
-
-    $sentPhoneKeys = [];
-    foreach ($students as $student) {
-        $studentId = (int)$student['id'];
-        $studentName = trim(($student['first_name'] ?? '') . ' ' . ($student['last_name'] ?? ''));
-        $message = "BSHS AMS: Official grades and report card for {$studentName} ({$className}{$ayLabel} - {$termLabel}) have been approved by Admin and are now available on the portal.";
-
-        $recipients = [];
-        if (!empty($student['contact_number'])) {
-            $recipients[] = ['user_id' => $studentId, 'phone' => (string)$student['contact_number']];
-        }
-        if (isset($parentsByStudent[$studentId])) {
-            foreach ($parentsByStudent[$studentId] as $p) {
-                $recipients[] = ['user_id' => (int)$p['parent_id'], 'phone' => (string)$p['contact_number']];
-            }
-        }
-
-        foreach ($recipients as $r) {
-            $rawPhone = trim((string)($r['phone'] ?? ''));
-            if ($rawPhone === '') {
-                continue;
-            }
-            $normPhoneKey = \BshsAms\Notification\SmsService::normalizePhilippineNumber($rawPhone) ?? $rawPhone;
-            if (isset($sentPhoneKeys[$normPhoneKey])) {
-                continue;
-            }
-            $sentPhoneKeys[$normPhoneKey] = true;
-
-            $results['total']++;
-            $res = $service->send($r['phone'], $message, $r['user_id'], $db);
-            if (!empty($res['success'])) {
-                $results['sent']++;
-            } else {
-                $results['failed']++;
-            }
-        }
-    }
-
-    return $results;
-}
-
 function pwaHeadHtml(): string {
     $baseUrl = function_exists('appPublicWebBaseUrl') ? appPublicWebBaseUrl() : '';
     $baseUrl = rtrim((string)$baseUrl, '/');
@@ -906,10 +708,15 @@ function pwaHeadHtml(): string {
     $favicon32Url = $baseUrl !== '' ? $baseUrl . '/assets/images/favicon.png' : (function_exists('appAssetPath') ? appAssetPath('images/favicon.png') : '/assets/images/favicon.png');
     $favicon16Url = $baseUrl !== '' ? $baseUrl . '/assets/images/favicon-16.png' : (function_exists('appAssetPath') ? appAssetPath('images/favicon-16.png') : '/assets/images/favicon-16.png');
     $logoUrl = $baseUrl !== '' ? $baseUrl . '/assets/images/bshs-logo.jpg' : (function_exists('appAssetPath') ? appAssetPath('images/bshs-logo.jpg') : '/assets/images/bshs-logo.jpg');
-    $serviceWorkerUrl = $baseUrl !== '' ? $baseUrl . '/sw.js?v=0.3.82' : '/sw.js?v=0.3.82';
+    $serviceWorkerUrl = $baseUrl !== '' ? $baseUrl . '/sw.js?v=1.0.0' : '/sw.js?v=1.0.0';
     $scopeUrl = $baseUrl !== '' ? $baseUrl . '/' : '/';
 
+    $account = !empty($_SESSION['logged_in']) ? (string)($_SESSION['role'] ?? '') . ':' . (int)($_SESSION['user_id'] ?? 0) : '';
+    $identityScript = function_exists('appAssetPath') ? appAssetPath('js/offlineIdentity.js') : '/assets/js/offlineIdentity.js';
+
     $html = '<link rel="manifest" href="' . htmlspecialchars($manifestUrl, ENT_QUOTES, 'UTF-8') . '">' . "\n";
+    $html .= '<script>window.APP_DOCUMENT_ACCOUNT=' . json_encode($account) . ';</script>' . "\n";
+    $html .= '<script src="' . htmlspecialchars($identityScript, ENT_QUOTES, 'UTF-8') . '"></script>' . "\n";
     $html .= '<meta name="theme-color" content="#1f4f82">' . "\n";
     $html .= '<meta name="mobile-web-app-capable" content="yes">' . "\n";
     $html .= '<meta name="apple-mobile-web-app-capable" content="yes">' . "\n";
@@ -946,12 +753,12 @@ function pwaHeadHtml(): string {
         . '.app-top-progress.is-finishing{opacity:0;transition:width .32s cubic-bezier(0.4,0,0.2,1),opacity .28s ease .12s;}'
         . '</style>' . "\n";
     $html .= '<script>'
-        . 'window._CACHE_NAME="bshs-ams-v37";'
+        . 'window._CACHE_NAME="bshs-ams-v39";'
         . '</script>' . "\n";
 
     $swScript = "
 <script>
-window._CACHE_NAME = 'bshs-ams-v37';
+window._CACHE_NAME = 'bshs-ams-v39';
 if ('serviceWorker' in navigator) {
         var desiredScript = '" . htmlspecialchars($serviceWorkerUrl, ENT_QUOTES, 'UTF-8') . "';
         var desiredScope = '" . htmlspecialchars($scopeUrl, ENT_QUOTES, 'UTF-8') . "';

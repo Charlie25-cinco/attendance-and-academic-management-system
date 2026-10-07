@@ -1951,7 +1951,7 @@ if ("serviceWorker" in navigator && navigator.onLine) {
         .keys()
         .then((keys) => {
           keys.forEach((key) => {
-            if (key.startsWith("bshs-ams-v") && key !== "bshs-ams-v37") {
+            if (key.startsWith("bshs-ams-v") && key !== "bshs-ams-v39" && !key.startsWith("bshs-ams-v39-user-")) {
               caches.delete(key);
             }
           });
@@ -1968,13 +1968,11 @@ if ("serviceWorker" in navigator && navigator.onLine) {
 }
 
 // Clear offline cached session on explicit logout
-document.addEventListener("click", function (e) {
+document.addEventListener("click", async function (e) {
   const link = e.target.closest('a[href*="logout.php"]');
-  if (link) {
-    try {
-      localStorage.removeItem("bshs_cached_teacher");
-      localStorage.removeItem("bshs_teacher_session");
-    } catch (e) {}
+  if (link && window.BSHS_OfflineIdentity) {
+    e.preventDefault();
+    try { await window.BSHS_OfflineIdentity.lock(); } finally { window.location.assign(link.href); }
   }
 });
 

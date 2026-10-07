@@ -11,6 +11,12 @@ if (!isset($current_page)) $current_page = 'dashboard';
 
 // Define sidebar menus for each role
 $sidebar_menus = [
+    'principal' => [
+        ['id' => 'dashboard', 'icon' => 'bi-journal-check', 'label' => 'Report Card Dashboard', 'link' => 'principal.php'],
+        ['id' => 'pending', 'icon' => 'bi-hourglass-split', 'label' => 'Pending Review', 'link' => 'principal.php?status=submitted_admin#report-cards'],
+        ['id' => 'released', 'icon' => 'bi-patch-check', 'label' => 'Released Cards', 'link' => 'principal.php?status=approved#report-cards'],
+        ['id' => 'history', 'icon' => 'bi-clock-history', 'label' => 'Decision History', 'link' => 'principal.php?status=all#report-cards'],
+    ],
     'admin' => [
         ['id' => 'dashboard', 'icon' => 'bi-speedometer2', 'label' => 'Dashboard', 'link' => 'admin.php'],
         ['id' => 'users', 'icon' => 'bi-people', 'label' => 'Manage Users', 'link' => 'admin_Users.php'],

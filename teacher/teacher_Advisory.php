@@ -286,7 +286,7 @@ $page_title = 'Report Card';
                     <div class="alert alert-info py-2 px-3 mb-3 d-flex align-items-center rounded-3 border-0 bg-info bg-opacity-10 text-dark">
                         <i class="bi bi-folder-check me-2 fs-5 text-primary"></i>
                         <div>
-                            <strong>Step 2: Advisory Report Card Compilation</strong> — Review and consolidate verified subject grades. Submitting here sends the completed section report cards to the Admin for official approval, portal release, and automated PhilSMS notification.
+                            <strong>Step 2: Advisory Report Card Compilation</strong> — Review and consolidate verified subject grades. Submitting here sends the completed section report cards to the Principal for official approval, portal release, and in-app/Web Push notification.
                         </div>
                     </div>
 
@@ -368,7 +368,7 @@ $page_title = 'Report Card';
                             <span class="badge bg-<?php echo $rcBadge; ?>">Report Card Submission: <?php echo htmlspecialchars($rcText); ?></span>
                             <?php if (in_array($reportCardSectionStatus, ['', 'rejected', 'mixed'], true)): ?>
                                 <button class="btn btn-primary-custom btn-sm" type="button" onclick="submitReportCardToAdmin('<?php echo htmlspecialchars($selectedAcademicYear, ENT_QUOTES, 'UTF-8'); ?>')">
-                                    <i class="bi bi-send-check me-1"></i>Submit Report Cards to Admin
+                                    <i class="bi bi-send-check me-1"></i>Submit Report Cards to Principal
                                 </button>
                             <?php elseif ($reportCardSectionStatus === 'pending'): ?>
                                 <button class="btn btn-warning btn-sm" type="button" onclick="recallReportCard('<?php echo htmlspecialchars($selectedAcademicYear, ENT_QUOTES, 'UTF-8'); ?>')">
@@ -564,7 +564,7 @@ function submitReportCardToAdmin(academicYear){
     if(window.APP_CSRF_TOKEN)fd.append('csrf_token',window.APP_CSRF_TOKEN);
     fetch('teacher_Action.php?action=submit_report_card',{method:'POST',body:fd})
       .then(r=>r.json())
-      .then(d=>{if(d.success){showNotification(d.message||'Report card submitted to admin','success');setTimeout(()=>location.reload(),700);}else{showNotification(d.message||'Failed to submit report card','danger');}})
+      .then(d=>{if(d.success){showNotification(d.message||'Report card submitted to the Principal','success');setTimeout(()=>location.reload(),700);}else{showNotification(d.message||'Failed to submit report card','danger');}})
       .catch(()=>showNotification('Error submitting report card','danger'));
 }
 function recallReportCard(academicYear){

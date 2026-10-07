@@ -1,7 +1,35 @@
 // BSHS AMS root service worker - PWA cache + push notifications
 
-const CACHE_NAME = "bshs-ams-v37";
+const CACHE_NAME = "bshs-ams-v39";
 const BASE_PATH = (self.location.pathname || "").replace(/\/sw\.js$/, "");
+const IDENTITY_CACHE = "bshs-ams-offline-state";
+const IDENTITY_URL = new URL(BASE_PATH + "/__offline_identity", self.location.origin).href;
+const TEACHER_PAGES = ["/teacher/teacher.php", "/teacher/teacher_Attendance.php", "/teacher/teacher_Classes.php", "/teacher/teacher_Grades.php"];
+let identityTask = Promise.resolve();
+
+async function offlineAccount() {
+  const cache = await caches.open(IDENTITY_CACHE);
+  const response = await cache.match(IDENTITY_URL);
+  const state = response ? await response.json() : null;
+  return state && state.until > Date.now() ? state : null;
+}
+
+function updateOfflineAccount(response, lock) {
+  identityTask = identityTask.catch(() => {}).then(async () => {
+    const account = !lock && response ? response.headers.get("X-App-Offline-Account") : "none";
+    const until = !lock && response ? Number(response.headers.get("X-App-Offline-Until")) * 1000 : 0;
+    const previous = await offlineAccount();
+    const valid = /^(principal|admin|teacher|student|parent):[1-9]\d*$/.test(account) && until > Date.now();
+    if (!valid || !previous || previous.account !== account) {
+      const keys = await caches.keys();
+      await Promise.all(keys.filter(k => k.startsWith("bshs-ams-") && k.includes("-user-")).map(k => caches.delete(k)));
+    }
+    const cache = await caches.open(IDENTITY_CACHE);
+    if (valid) await cache.put(IDENTITY_URL, new Response(JSON.stringify({ account, until })));
+    else await cache.delete(IDENTITY_URL);
+  });
+  return identityTask;
+}
 
 function resolvePath(path) {
   if (!path) return path;
@@ -12,17 +40,13 @@ function resolvePath(path) {
 }
 
 const APP_SHELL_URLS = [
-  "/auth/login.php",
-  "/teacher/teacher.php",
-  "/teacher/teacher_Attendance.php",
-  "/teacher/teacher_Classes.php",
-  "/teacher/teacher_Grades.php",
   "/assets/manifest.json",
   "/assets/css/main.css",
   "/assets/css/role.css",
   "/assets/css/auth.css",
   "/assets/css/Site.css",
   "/assets/js/main.js",
+  "/assets/js/offlineIdentity.js",
   "/assets/js/offlineStorage.js",
   "/assets/js/networkSync.js",
   "/assets/images/bshs-logo.jpg",
@@ -55,6 +79,9 @@ self.addEventListener("message", function (event) {
   if (event.data && event.data.type === "SKIP_WAITING") {
     self.skipWaiting();
   }
+  if (event.data && event.data.type === "LOCK_OFFLINE") {
+    event.waitUntil(updateOfflineAccount(null, true));
+  }
 });
 
 self.addEventListener("activate", function (event) {
@@ -65,7 +92,7 @@ self.addEventListener("activate", function (event) {
         return Promise.all(
           keys
             .filter(function (key) {
-              return key !== CACHE_NAME;
+              return key.startsWith("bshs-ams-") && key !== IDENTITY_CACHE && key !== CACHE_NAME && !key.startsWith(CACHE_NAME + "-user-");
             })
             .map(function (key) {
               return caches.delete(key);
@@ -83,17 +110,18 @@ function shouldCacheResponse(response) {
     response &&
     response.status === 200 &&
     !response.redirected &&
-    response.type !== "opaque"
+    response.type !== "opaque" &&
+    !/no-store|private/i.test(response.headers.get("Cache-Control") || "")
   );
 }
 
 function cacheResponse(request, response) {
-  if (!shouldCacheResponse(response)) return;
+  if (!shouldCacheResponse(response)) return Promise.resolve();
   var clone = response.clone();
-  caches
+  return caches
     .open(CACHE_NAME)
     .then(function (cache) {
-      cache.put(request, clone);
+      return cache.put(request, clone);
     })
     .catch(function (error) {
       console.warn("[SW] Cache put failed:", error);
@@ -112,9 +140,18 @@ self.addEventListener("fetch", function (event) {
     return;
   }
 
+  if (url.pathname === resolvePath("/auth/logout.php")) {
+    event.respondWith((async () => {
+      await updateOfflineAccount(null, true);
+      return fetch(event.request);
+    })());
+    return;
+  }
+
   // Bypass API and action routes from static caching
   var isDynamicRoute =
-    /\b(api|action|_Action|_Export|seed|scripts|logout)\.php/i.test(
+    url.pathname.indexOf(resolvePath("/api/")) === 0 ||
+    /(?:action|_export|seed|scripts|logout)\.php/i.test(
       url.pathname,
     );
   if (isDynamicRoute) {
@@ -128,98 +165,57 @@ self.addEventListener("fetch", function (event) {
     );
 
   if (isAsset || isStaticAsset) {
-    event.respondWith(
-      caches
-        .match(event.request)
-        .then(function (cached) {
-          var fetchAndCache = fetch(event.request)
-            .then(function (networkResponse) {
-              cacheResponse(event.request, networkResponse);
-              return networkResponse;
-            })
-            .catch(function () {
-              return cached;
-            });
-
-          return cached || fetchAndCache;
-        })
-        .catch(function () {
-          return fetch(event.request);
-        }),
-    );
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      try {
+        const response = await fetch(event.request);
+        if (response.status >= 500) {
+          const cached = await cache.match(event.request);
+          if (cached) return cached;
+        }
+        await cacheResponse(event.request, response);
+        return response;
+      } catch (error) {
+        return await cache.match(event.request) || Response.error();
+      }
+    })());
     return;
   }
 
   if (event.request.mode === "navigate") {
-    event.respondWith(
-      fetch(event.request)
-        .then(function (networkResponse) {
-          if (shouldCacheResponse(networkResponse)) {
-            var clone = networkResponse.clone();
-            caches.open(CACHE_NAME).then(function (cache) {
-              cache.put(event.request, clone);
-              cache.put(url.pathname, clone.clone());
-              cache.put(resolvePath(url.pathname), clone.clone());
-            });
+    event.respondWith((async () => {
+      const teacherPage = TEACHER_PAGES.some(path => resolvePath(path) === url.pathname);
+      try {
+        const response = await fetch(event.request);
+        // Only a successful server navigation can establish/switch the offline account.
+        if (response.status < 500) await updateOfflineAccount(response, false);
+        const state = await offlineAccount();
+        if (teacherPage && state && state.account.startsWith("teacher:") && response.status === 200 &&
+            !response.redirected && response.headers.get("X-App-Offline-Account") === state.account) {
+          const cache = await caches.open(CACHE_NAME + "-user-" + state.account);
+          await cache.put(event.request, response.clone());
+        }
+        return response;
+      } catch (error) {
+        await identityTask;
+        const state = await offlineAccount();
+        if (state && state.account.startsWith("teacher:")) {
+          if (teacherPage) {
+            const cache = await caches.open(CACHE_NAME + "-user-" + state.account);
+            // Never substitute a different class/date query's HTML.
+            const cached = await cache.match(event.request);
+            if (cached) return cached;
           }
-          return networkResponse;
-        })
-        .catch(function () {
-          return caches
-            .match(event.request, { ignoreSearch: true })
-            .then(function (cachedPage) {
-              if (cachedPage) {
-                return cachedPage;
-              }
-              var targetPath = resolvePath(url.pathname);
-              return caches
-                .match(targetPath, { ignoreSearch: true })
-                .then(function (matchedPath) {
-                  if (matchedPath) {
-                    return matchedPath;
-                  }
-                  return caches
-                    .match(url.pathname, { ignoreSearch: true })
-                    .then(function (matchedPathname) {
-                      if (matchedPathname) {
-                        return matchedPathname;
-                      }
-
-                      // If navigating to any teacher page offline, fallback to cached teacher shells
-                      if (
-                        url.pathname.indexOf("/teacher/") !== -1 ||
-                        url.pathname === "/" ||
-                        url.pathname === "/index.php"
-                      ) {
-                        return caches
-                          .match(
-                            resolvePath("/teacher/teacher_Attendance.php"),
-                            { ignoreSearch: true },
-                          )
-                          .then(function (attPage) {
-                            if (attPage) return attPage;
-                            return caches
-                              .match(resolvePath("/teacher/teacher.php"), {
-                                ignoreSearch: true,
-                              })
-                              .then(function (dashPage) {
-                                if (dashPage) return dashPage;
-                                return offlineFallbackResponse();
-                              });
-                          });
-                      }
-
-                      return offlineFallbackResponse();
-                    });
-                });
-            });
-        }),
-    );
+          return offlineFallbackResponse(true);
+        }
+        return offlineFallbackResponse(false);
+      }
+    })());
     return;
   }
 });
 
-function offlineFallbackResponse() {
+function offlineFallbackResponse(unlocked) {
   var html =
     '<!DOCTYPE html><html><head><meta charset="utf-8"><title>BSHS AMS - Offline Workspaces</title><meta name="viewport" content="width=device-width,initial-scale=1">' +
     "<style>" +
@@ -258,6 +254,9 @@ function offlineFallbackResponse() {
     "</div>" +
     "</div></body></html>";
 
+  if (!unlocked) {
+    html = '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign in required</title><body><main><h1>Offline workspace locked</h1><p>Reconnect and sign in to your account to access pending offline work.</p><a href="' + resolvePath('/auth/login.php') + '">Return to sign in</a></main></body></html>';
+  }
   return new Response(html, {
     headers: { "Content-Type": "text/html; charset=utf-8" },
   });
@@ -322,17 +321,21 @@ self.addEventListener("sync", function (event) {
   }
 });
 
-async function openOfflineDb() {
+async function openOfflineDb(owner) {
   if (!("indexedDB" in self)) return null;
   return new Promise(function (resolve) {
-    var req = indexedDB.open("bshs_ams_offline_db", 2);
+    var req = indexedDB.open("bshs_ams_offline_db_" + owner.replace(":", "_"), 2);
+    req.onupgradeneeded = function () { req.transaction.abort(); resolve(null); };
     req.onsuccess = function (e) { resolve(e.target.result); };
     req.onerror = function () { resolve(null); };
   });
 }
 
 async function handleBackgroundSync() {
-  var db = await openOfflineDb();
+  await identityTask;
+  var state = await offlineAccount();
+  if (!state || !state.account.startsWith("teacher:")) return;
+  var db = await openOfflineDb(state.account);
   if (!db) return;
 
   var queue = await new Promise(function (resolve) {
@@ -345,7 +348,8 @@ async function handleBackgroundSync() {
     } catch (e) { resolve([]); }
   });
 
-  if (!queue || queue.length === 0) return;
+  queue = queue.filter(item => item.owner === state.account);
+  if (!queue || queue.length === 0) { db.close(); return; }
 
   // Check if any window client is currently open
   var windowClients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
@@ -363,7 +367,7 @@ async function handleBackgroundSync() {
       if (!res.ok) return { authenticated: false };
       var data = await res.json();
       if (data && data.success && data.teacher) {
-        return { authenticated: true, csrfToken: data.csrf_token || "" };
+        return { authenticated: true, owner: "teacher:" + Number(data.teacher.id), csrfToken: data.csrf_token || "" };
       }
       return { authenticated: false };
     } catch (e) {
@@ -371,8 +375,9 @@ async function handleBackgroundSync() {
     }
   })();
 
-  if (!authCheck.authenticated) {
+  if (!authCheck.authenticated || authCheck.owner !== state.account) {
     // Unauthenticated or network error: halt, preserve queue, do not notify
+    db.close();
     return;
   }
 
@@ -383,6 +388,8 @@ async function handleBackgroundSync() {
   var failedCount = 0;
 
   for (var i = 0; i < queue.length; i++) {
+    const active = await offlineAccount();
+    if (!active || active.account !== state.account) break;
     var item = queue[i];
     var payload = item.payload;
     var url = item.url;
@@ -394,6 +401,7 @@ async function handleBackgroundSync() {
       var targetUrl = resolvePath("/teacher/" + url.replace(/^\/?teacher\//, ""));
       var headers = {
         "Content-Type": "application/json",
+        "X-Offline-Owner": state.account,
         Accept: "application/json"
       };
       if (authCheck.csrfToken) {
@@ -481,6 +489,7 @@ async function handleBackgroundSync() {
   }
 
   var totalSynced = syncedAttendanceRecords + syncedActivitySets;
+  db.close();
   if (totalSynced > 0 && failedCount === 0 && isAppClosed) {
     var parts = [];
     if (syncedAttendanceRecords > 0) {

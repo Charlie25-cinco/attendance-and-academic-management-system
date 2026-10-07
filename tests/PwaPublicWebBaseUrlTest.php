@@ -75,7 +75,7 @@ final class PwaPublicWebBaseUrlTest extends TestCase
                 "Incorrect apple touch icon URL for $scriptName"
             );
             $this->assertStringContainsString(
-                "var desiredScript = 'https://balingasagshs.wasmer.app/sw.js?v=0.3.82';",
+                "var desiredScript = 'https://balingasagshs.wasmer.app/sw.js?v=1.0.0';",
                 $headHtml,
                 "Incorrect SW script URL for $scriptName"
             );
@@ -128,7 +128,7 @@ final class PwaPublicWebBaseUrlTest extends TestCase
                 "Incorrect apple touch icon URL for $scriptName"
             );
             $this->assertStringContainsString(
-                "var desiredScript = 'http://localhost/attendance-and-academic-management-system/sw.js?v=0.3.82';",
+                "var desiredScript = 'http://localhost/attendance-and-academic-management-system/sw.js?v=1.0.0';",
                 $headHtml,
                 "Incorrect SW script URL for $scriptName"
             );

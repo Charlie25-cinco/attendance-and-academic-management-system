@@ -385,8 +385,8 @@ $page_title = 'Edit Class - ' . $class['class_name'];
         }
         
         // Current section and schedule from database
-        const currentSection = '<?php echo $class['section']; ?>';
-        const currentTrack = '<?php echo $class['track'] ?? ''; ?>';
+        const currentSection = <?php echo json_encode((string)($class['section'] ?? ''), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+        const currentTrack = <?php echo json_encode((string)($class['track'] ?? ''), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
         const currentSchedule = <?php echo json_encode((string)($class['schedule'] ?? '')); ?>;
         const scheduleRowsData = <?php echo json_encode($scheduleRows); ?>;
         

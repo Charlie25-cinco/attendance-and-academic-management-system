@@ -83,8 +83,10 @@ The application source code lives under the `BshsAms\` namespace in `src/`:
 - **`SimpleXlsxTemplateEditor.php`**: Template cell modifier for fast DepEd Excel report generation.
 - **`SimpleXlsxWriter.php`**: Lightweight memory-efficient XLSX writer.
 
-### 2.6 Notification Component (`BshsAms\Notification`)
-- **`SmsService.php`**: Multi-gateway SMS dispatcher supporting PhilSMS (default), Semaphore, Twilio, and safe log fallbacks with Philippine mobile number normalization.
+### 2.6 Notification and Audit Components
+- **In-app/Web Push delivery**: `appDispatchNotification()` persists user-visible notifications before optional browser push delivery; push failures do not roll back the originating transaction.
+- **`BshsAms\Audit\ActivityLogger`**: Records critical cross-role mutations in `activity_logs` after recursively redacting sensitive metadata.
+- **`BshsAms\Grade\ReportCardReview`**: Enforces Principal-only final report-card decisions and verified-grade prerequisites.
 
 ### 2.7 Storage Component (`BshsAms\Storage`)
 - **`MaterialStorage.php`**: Secure learning material storage manager with randomized filenames, path traversal protection, and role-authorized file streaming.

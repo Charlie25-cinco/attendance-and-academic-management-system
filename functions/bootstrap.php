@@ -112,3 +112,7 @@ if (PHP_SAPI !== 'cli') {
         }
     }
 }
+
+if (PHP_SAPI !== 'cli' && !headers_sent()) {
+    appApplyOfflineIdentity();
+}

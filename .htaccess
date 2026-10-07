@@ -1,0 +1,12 @@
+# Apache/Laragon counterpart of router.php's public-path boundary.
+Options -Indexes -MultiViews
+RewriteEngine On
+RewriteRule (^|/)\. - [R=404,L]
+RewriteRule ^(?:storage|vendor|src|config|functions|includes|database|tests|scripts|docs|resources|examples|deped)(?:/|$) - [R=404,L,NC]
+RewriteRule ^api/(?!index\.php$) - [R=404,L,NC]
+RewriteRule ^assets/uploads/(?:materials|ecr)(?:/|$) - [R=404,L,NC]
+RewriteRule ^assets/uploads/.*\.(?!png$|jpe?g$|gif$|webp$|ico$)[^.]+$ - [R=404,L,NC]
+RewriteRule ^(?:auth|principal|admin|teacher|student|parent)/[^/]+_(?:helper|functions)\.php$ - [R=404,L,NC]
+RewriteRule ^(?:index\.php|sw\.js|(?:auth|principal|admin|teacher|student|parent)/[A-Za-z0-9_-]+\.php|site/(?:index\.php)?|api/index\.php|assets/[A-Za-z0-9_./@+-]+\.(?:css|js|json|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|eot|otf))$ - [L]
+RewriteRule ^$ index.php [L]
+RewriteRule . - [R=404,L]

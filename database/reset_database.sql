@@ -9,6 +9,7 @@
 SET FOREIGN_KEY_CHECKS = 0;
 
 DROP TABLE IF EXISTS sms_logs;
+DROP TABLE IF EXISTS activity_logs;
 DROP TABLE IF EXISTS rbac_role_permissions;
 DROP TABLE IF EXISTS rbac_permissions;
 DROP TABLE IF EXISTS rbac_roles;

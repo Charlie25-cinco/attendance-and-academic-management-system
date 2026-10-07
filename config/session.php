@@ -144,6 +144,16 @@ if (!function_exists('appApplyLogicalSecurityHeaders')) {
     }
 }
 
+// This readable cookie is only a local-data lock, never an authentication credential.
+function appApplyOfflineIdentity(bool $loggedOut = false): void {
+    $account = !$loggedOut && !empty($_SESSION['logged_in']) && !empty($_SESSION['user_id'])
+        ? (string)$_SESSION['role'] . ':' . (int)$_SESSION['user_id'] : '';
+    $until = $account !== '' ? time() + min(86400, max(1, APP_SESSION_IDLE_TIMEOUT)) : 0;
+    header('X-App-Offline-Account: ' . ($account ?: 'none'));
+    header('X-App-Offline-Until: ' . $until);
+    setcookie('app_offline_account', $account !== '' ? $account . '|' . $until : '', appCookieParams($until ?: time() - 3600, false));
+}
+
 if (session_status() !== PHP_SESSION_ACTIVE) {
     $secure = appCookieSecure();
 
@@ -180,7 +190,7 @@ if (!function_exists('appAssetPath')) {
         $normalizedRelativePath = ltrim(str_replace('\\', '/', $relativePath), '/');
         $normalizedRelativePath = preg_replace('#^src/#', '', $normalizedRelativePath);
         $script = str_replace('\\', '/', (string)($_SERVER['SCRIPT_NAME'] ?? ''));
-        if (preg_match('#^(.*)/(admin|api|auth|config|database|includes|teacher|student|parent|assets|site)(?:/|$)#', $script, $m)) {
+        if (preg_match('#^(.*)/(principal|admin|api|auth|config|database|includes|teacher|student|parent|assets|site)(?:/|$)#', $script, $m)) {
             $url = rtrim($m[1], '/') . '/assets/' . $normalizedRelativePath;
         } else {
             $dir = rtrim(str_replace('\\', '/', dirname($script)), '/');
@@ -215,4 +225,3 @@ if (!function_exists('appUiDarkModeEnabled')) {
         return false;
     }
 }
-

@@ -13,7 +13,7 @@ Use "Accept or Reject" before moving from Plan to Build, and before making code 
 ## Project Expectations
 
 - Keep changes small and focused.
-- `database/schema.sql` is the single source of truth for MySQL structure: do not add new runtime `CREATE TABLE` or `ALTER TABLE` statements to application code. Existing exceptions are the SQLite test fixtures (`functions/app-helpers.php`, `config/constants.php`, `src/Notification/SmsService.php`) and the legacy upgrade paths (`ensureAuthLoginLogsTable`, `ensureReportNotesTables`, `ensureStrengthenedShsColumns`). `tests/RuntimeDdlGuardTest.php` enforces this boundary; any new table or column ships in `schema.sql` first.
+- `database/schema.sql` is the single source of truth for MySQL structure: do not add new runtime `CREATE TABLE` or `ALTER TABLE` statements to application code. Existing exceptions are the SQLite test fixtures (`functions/app-helpers.php`, `config/constants.php`) and the legacy upgrade paths (`ensureAuthLoginLogsTable`, `ensureReportNotesTables`, `ensureStrengthenedShsColumns`). `tests/RuntimeDdlGuardTest.php` enforces this boundary; any new table or column ships in `schema.sql` first.
 - Update `README.md` and `AGENTS.md` when project behavior, setup, security posture, or workflow changes.
 - Prefer existing project patterns over new abstractions.
 - Do not commit local secrets, generated files, `vendor/`, `storage/`, or runtime uploads.
@@ -49,6 +49,18 @@ For local manual testing, `composer run serve` starts the PHP development server
 
 ## Security Notes
 
+### Review remediation constraints (v0.3.171)
+
+These operational notes apply ISO/IEC/IEEE 29148 clarity and traceability principles, with full requirements metadata simplified because this is an agent guide rather than a requirements specification.
+
+- Keep `src/Security/HttpAccessPolicy.php`, `router.php`, and root Apache `.htaccess` aligned: only public entry points/assets are served; private source, dotfiles, configuration, dependencies, and document uploads remain blocked.
+- Development API secrets belong in `storage/secrets`; preserve migration/removal of legacy public-directory secret files. Production uses environment secrets.
+- Every authenticated API route/method must be mapped in `src/Security/ApiAccessPolicy.php`; unknown mappings fail closed. Enforce permissions for bearer and session users. Session mutations validate CSRF centrally; JSON routes validate content type.
+- Offline data uses teacher-owned namespaces. Preserve pending work under its owner on logout, but lock all local access, purge private HTML caches, and compare the owner again at the server before syncing. Do not import unowned legacy queues automatically.
+- The readable offline-account cookie is only a local UI/data lock, never authorization. Expire it on logout; other-account and expired documents must not reopen private workspaces.
+- Cache only explicitly designated teacher workspaces under the active account; never globally cache authenticated pages or login forms. Keep assets network-first and cache version references synchronized.
+- `node tests/browser-security.cjs` executes actual service-worker/offline-storage code with browser API doubles; it supplements, rather than replaces, desktop/mobile PWA checks.
+
 - Production must set `APP_ENV=production`.
 - Production must provide strong `API_AUTH_SECRET` and `API_SYNC_SECRET` values.
 - Production must set `API_ALLOWED_ORIGIN` to a trusted origin.
@@ -63,7 +75,7 @@ For local manual testing, `composer run serve` starts the PHP development server
 - API first-login password changes require the temporary token returned by the login endpoint.
 - Web login and remember-me auto-login must both force password setup while a user's password still matches `DEFAULT_NEW_USER_PASSWORD`.
 - Shared profile modal updates must persist email/session-visible fields through the profile API and keep password visibility toggles available on password inputs.
-- Admin Audit Logs must remain read-only and use `admin_audit_logs` plus `auth_login_logs` to show actor, action, target, details, and timestamp records.
+- Admin Audit Logs must remain read-only and combine current `activity_logs`, historical `admin_audit_logs`, and `auth_login_logs`. New activity details must be privacy-sanitized and must not store passwords, secrets, tokens, full contact details, or notification message content.
 - RBAC permission enforcement is centralized from `functions/bootstrap.php`; keep the script-to-permission map in `functions/app-helpers.php` current when adding protected pages or action handlers.
 - Existing AJAX flows may pass CSRF by POST body, query string, or `X-CSRF-Token`; keep `requireCsrfToken()` compatible with all three unless those callers are migrated.
 - Browser camera access must remain limited to `teacher_Attendance.php` for QR attendance scanning; all other pages must keep camera access disabled through `Permissions-Policy`.
@@ -88,14 +100,14 @@ For local manual testing, `composer run serve` starts the PHP development server
 
 ## Grading And Attendance Workflows
 
-- Grade approval flow is subject teacher to admin, admin verification to adviser, adviser submission to admin, then final admin approval.
+- Grade approval flow is subject teacher to Admin, Admin verification to adviser, adviser submission to Principal, then final Principal approval.
 - Subject teacher grade submissions use `grade_approvals.status = submitted`; teacher recall is needed only while a submission is pending admin review.
 - Teacher grade activity creation, score editing, finishing, deleting, and restoring must be blocked only while the matching grading period is submitted.
 - Admin subject-grade verification uses `grade_approvals.status = admin_verified`, which unlocks adviser report-card submission.
 - Admin may return verified subject grades to teachers by setting `grade_approvals.status = rejected`; this unlocks teacher editing and resubmission.
-- Adviser report-card submissions use `report_card_approvals.status = submitted_admin`; adviser recall is allowed only before final admin approval.
+- Adviser report-card submissions use the legacy-compatible `report_card_approvals.status = submitted_admin`; adviser recall is allowed only before final Principal approval.
 - Student and parent grade/report-card visibility must require `report_card_approvals.status = approved`.
-- Official Admin report card approval and release (`report_card_approvals.status = approved`) triggers PhilSMS text notifications to parents and students via `smsNotifyGradePublication()`; attendance marking, teacher score entry, and draft submissions must not trigger SMS.
+- Only an active Principal with `report_cards.review` may make the final report-card decision. Release (`report_card_approvals.status = approved`) saves in-app notifications for parents and students before Web Push is attempted. SMS is not part of the system.
 - After final release, teachers may submit corrected subject grades again; affected approved report cards should be marked `rejected` so student and parent portals stop showing stale final grades until approval runs again.
 - Teacher-created grade activities must be visible to enrolled students and linked parents before scores are recorded.
 - Grade activity creation and score recording should create saved in-app notifications for student and parent recipients.
@@ -159,12 +171,12 @@ For local manual testing, `composer run serve` starts the PHP development server
 - Keep bounded retries around only the external `wasmer deploy` command so transient registry timeouts do not rerun or conceal validation, lint, and test failures.
 - Do not commit real Wasmer owner names, tokens, database credentials, API secrets, or production URLs unless they are intentionally public.
 - Configure GitHub secrets for `WASMER_TOKEN`, `WASMER_OWNER`, `WASMER_APP_NAME`, `APP_PUBLIC_BASE_URL`, `DEFAULT_NEW_USER_PASSWORD`, optional `FIRST_RUN_ADMIN_PASSWORD`, `RESEND_API_KEY`, and `RESEND_FROM_EMAIL`; use `WASMER_APP_NAME=balingasagshs` and `APP_PUBLIC_BASE_URL=https://balingasagshs.wasmer.app` for the school deployment.
-- Configure Wasmer app secrets for Wasmer Attached Database credentials (`DB_PASS` or Wasmer-provided `DB_PASSWORD` are both supported), optional `DB_SSL_CA` or `DB_SSL_CA_CONTENT`, `APP_SESSION_DRIVER=database`, `API_AUTH_SECRET`, `API_SYNC_SECRET`, Resend OTP email secrets, `PUSH_VAPID_PUBLIC_KEY`, `PUSH_VAPID_PRIVATE_KEY`, `PUSH_VAPID_SUBJECT`, and optional SMTP/SMS credentials.
+- Configure Wasmer app secrets for Wasmer Attached Database credentials (`DB_PASS` or Wasmer-provided `DB_PASSWORD` are both supported), optional `DB_SSL_CA` or `DB_SSL_CA_CONTENT`, `APP_SESSION_DRIVER=database`, `API_AUTH_SECRET`, `API_SYNC_SECRET`, Resend OTP email secrets, `PUSH_VAPID_PUBLIC_KEY`, `PUSH_VAPID_PRIVATE_KEY`, `PUSH_VAPID_SUBJECT`, and optional SMTP credentials.
 - `FIRST_RUN_ADMIN_PASSWORD` controls first admin creation, and `DEFAULT_NEW_USER_PASSWORD` controls newly created users.
 - API first-login password changes require the temporary token returned by the login endpoint.
 - Web login and remember-me auto-login must both force password setup while a user's password still matches `DEFAULT_NEW_USER_PASSWORD`.
 - Shared profile modal updates must persist email/session-visible fields through the profile API and keep password visibility toggles available on password inputs.
-- Admin Audit Logs must remain read-only and use `admin_audit_logs` plus `auth_login_logs` to show actor, action, target, details, and timestamp records.
+- Admin Audit Logs must remain read-only and combine current `activity_logs`, historical `admin_audit_logs`, and `auth_login_logs` to show actor, action, target, details, and timestamp records.
 - RBAC permission enforcement is centralized from `functions/bootstrap.php`; keep the script-to-permission map in `functions/app-helpers.php` current when adding protected pages or action handlers.
 - Existing AJAX flows may pass CSRF by POST body, query string, or `X-CSRF-Token`; keep `requireCsrfToken()` compatible with all three unless those callers are migrated.
 - Logical security controls are web/PWA-scoped: `config/session.php` owns security headers, no-cache headers for authenticated pages, forwarded-HTTPS detection, and device permission restrictions; `assets/js/main.js` may warn on dirty sensitive forms but must not claim to disable OS shortcuts or startup programs.

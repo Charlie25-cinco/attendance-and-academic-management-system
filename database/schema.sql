@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS users (
     guardian_relationship VARCHAR(50) NULL,
     grade_level INT NULL,
     section VARCHAR(10) NULL,
-    role ENUM('admin', 'teacher', 'student', 'parent') NOT NULL,
+    role ENUM('admin', 'teacher', 'student', 'parent', 'principal') NOT NULL,
     track VARCHAR(50) DEFAULT NULL COMMENT 'academic|techpro',
     curriculum VARCHAR(50) DEFAULT NULL COMMENT 'strengthened_shs for Grade 11 SY 2026+',
     program VARCHAR(50) DEFAULT NULL COMMENT 'academic_strengthened|technical_professional for Grade 11 SSHS',
@@ -476,6 +476,27 @@ CREATE TABLE IF NOT EXISTS admin_audit_logs (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =============================================================================
+-- ROLE-AWARE ACTIVITY LOGS
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS activity_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    actor_user_id INT NULL,
+    actor_role VARCHAR(30) NOT NULL,
+    action_name VARCHAR(100) NOT NULL,
+    target_type VARCHAR(50) NOT NULL,
+    target_id INT DEFAULT NULL,
+    details_json TEXT DEFAULT NULL,
+    ip_address VARCHAR(45) DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_activity_logs_actor (actor_user_id),
+    INDEX idx_activity_logs_role (actor_role),
+    INDEX idx_activity_logs_action (action_name),
+    INDEX idx_activity_logs_target (target_type, target_id),
+    INDEX idx_activity_logs_created_at (created_at),
+    CONSTRAINT fk_activity_logs_actor FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =============================================================================
 -- RATE LIMITS
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS rate_limits (
@@ -687,24 +708,6 @@ CREATE TABLE IF NOT EXISTS rbac_role_permissions (
     CONSTRAINT fk_rbac_rp_role FOREIGN KEY (role_id) REFERENCES rbac_roles(id) ON DELETE CASCADE,
     CONSTRAINT fk_rbac_rp_perm FOREIGN KEY (permission_id) REFERENCES rbac_permissions(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- =============================================================================
--- SMS DELIVERY LOGS
--- =============================================================================
-CREATE TABLE IF NOT EXISTS sms_logs (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    recipient_user_id INT NULL,
-    recipient_phone VARCHAR(30) NOT NULL,
-    message TEXT NOT NULL,
-    provider VARCHAR(50) NOT NULL,
-    status ENUM('queued', 'sent', 'failed', 'logged') DEFAULT 'queued',
-    response_data TEXT NULL,
-    error_message TEXT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_sms_logs_user (recipient_user_id),
-    INDEX idx_sms_logs_status (status),
-    INDEX idx_sms_logs_created_at (created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =============================================================================
 -- PERFORMANCE COMPOSITE INDEXES (Tuned Data Level)

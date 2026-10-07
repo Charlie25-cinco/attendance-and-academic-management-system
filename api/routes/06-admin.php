@@ -27,7 +27,7 @@ if ($route === 'admin-users' && $method === 'GET') {
     $perPage = 25;
     $offset = ($page - 1) * $perPage;
 
-    if (!in_array($roleFilter, ['', 'admin', 'teacher', 'student', 'parent'], true)) {
+    if (!in_array($roleFilter, ['', 'admin', 'teacher', 'student', 'parent', 'principal'], true)) {
         $roleFilter = '';
     }
     if (!in_array($statusFilter, ['active', 'pending', 'inactive', ''], true)) {
@@ -98,7 +98,7 @@ if ($route === 'admin-users' && $method === 'POST') {
     if ($firstName === '' || $lastName === '' || $role === '' || $email === '') {
         apiJson(['ok' => false, 'message' => 'First name, last name, role, and email are required'], 422);
     }
-    if (!in_array($role, ['admin', 'teacher', 'student', 'parent'], true)) {
+    if (!in_array($role, ['admin', 'teacher', 'student', 'parent', 'principal'], true)) {
         apiJson(['ok' => false, 'message' => 'Invalid role'], 422);
     }
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {

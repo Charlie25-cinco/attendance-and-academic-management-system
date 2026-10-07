@@ -1,5 +1,8 @@
 <?php
 require_once __DIR__ . '/../functions/bootstrap.php';
+if (defined('APP_TESTING') && APP_TESTING) {
+    return;
+}
 // Admin Classes Action Handler
 header('Content-Type: application/json');
 
@@ -22,24 +25,7 @@ $action = $_GET['action'] ?? '';
 
 
 function adminClassAuditLog($db, string $actionName, int $targetId = 0, array $details = []): void {
-    $adminUserId = (int)($_SESSION['user_id'] ?? 0);
-    if ($adminUserId <= 0) {
-        return;
-    }
-
-    try {
-        $stmt = $db->prepare("INSERT INTO admin_audit_logs (admin_user_id, action_name, target_type, target_id, details_json, created_at)
-                              VALUES (?, ?, 'class', ?, ?, ?)");
-        $stmt->execute([
-            $adminUserId,
-            $actionName,
-            $targetId > 0 ? $targetId : null,
-            !empty($details) ? json_encode($details, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : null,
-            date('Y-m-d H:i:s'),
-        ]);
-    } catch (Throwable $e) {
-        error_log('Admin class audit log failed: ' . $e->getMessage());
-    }
+    recordAdminAuditLog($db, $actionName, 'class', $targetId > 0 ? $targetId : null, $details);
 }
 
 if (in_array($action, ['create', 'update', 'delete', 'generate_core_classes'], true)) {

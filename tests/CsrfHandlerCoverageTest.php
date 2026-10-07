@@ -33,7 +33,7 @@ final class CsrfHandlerCoverageTest extends TestCase
         ];
         $missing = [];
 
-        foreach (['admin', 'teacher', 'student', 'parent'] as $portal) {
+        foreach (['principal', 'admin', 'teacher', 'student', 'parent'] as $portal) {
             $files = array_merge(
                 glob(APP_ROOT . '/' . $portal . '/*Action*.php') ?: [],
                 glob(APP_ROOT . '/' . $portal . '/*_action*.php') ?: []

@@ -30,11 +30,8 @@
       if (data && data.success && data.teacher) {
         if (data.csrf_token) {
           global.APP_CSRF_TOKEN = data.csrf_token;
-          if (typeof csrfToken !== "undefined") {
-            csrfToken = data.csrf_token;
-          }
         }
-        return { authenticated: true, csrfToken: data.csrf_token || "" };
+        return { authenticated: true, owner: "teacher:" + Number(data.teacher.id), csrfToken: data.csrf_token || "" };
       }
 
       return { authenticated: false };
@@ -48,14 +45,14 @@
     if (!navigator.onLine) return;
 
     var storage = global.bshsOfflineStorage;
-    if (!storage) return;
+    if (!storage || !storage.isUnlocked()) return;
 
     var queue = await storage.getSyncQueue();
     if (!queue || queue.length === 0) return;
 
     // Pre-flight check: ensure valid server authentication & CSRF context
     var authCheck = await verifyAndRestoreAuth();
-    if (!authCheck.authenticated) {
+    if (!authCheck.authenticated || authCheck.owner !== storage.owner) {
       if (!authCheck.networkError) {
         var authWarning =
           "You have pending offline records, but your server session is not signed in. Please sign in to synchronize.";
@@ -74,6 +71,7 @@
 
     for (var i = 0; i < queue.length; i++) {
       var item = queue[i];
+      if (!storage.isUnlocked() || item.owner !== authCheck.owner) break;
       var payload = item.payload || item.action?.payload;
       var url = item.url || item.action?.url;
       var opType = item.operation || item.action?.type;
@@ -83,20 +81,12 @@
 
       try {
         var targetUrl = url;
-        if (typeof withCsrfUrl === "function") {
-          targetUrl = withCsrfUrl(targetUrl);
-        }
-
-        var currentToken =
-          typeof csrfToken !== "undefined" && csrfToken
-            ? csrfToken
-            : global.APP_CSRF_TOKEN ||
-              document.querySelector('input[name="csrf_token"]')?.value ||
-              authCheck.csrfToken ||
-              "";
+        // The preflight token is authoritative; page-level csrfToken may be a stale const.
+        var currentToken = authCheck.csrfToken || global.APP_CSRF_TOKEN || "";
 
         var headers = {
           "Content-Type": "application/json",
+          "X-Offline-Owner": storage.owner,
           Accept: "application/json",
         };
         if (currentToken) {
@@ -219,6 +209,7 @@
       }
 
       try {
+        var storage = global.bshsOfflineStorage;
         var queue =
           storage && typeof storage.getSyncQueue === "function"
             ? await storage.getSyncQueue()

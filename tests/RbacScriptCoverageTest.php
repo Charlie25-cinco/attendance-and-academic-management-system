@@ -11,7 +11,7 @@ final class RbacScriptCoverageTest extends TestCase
      */
     public function testEveryPortalPageHasAnRbacPermissionMapping(): void
     {
-        $portals = ['admin', 'teacher', 'student', 'parent'];
+        $portals = ['principal', 'admin', 'teacher', 'student', 'parent'];
         $includeOnlyHelpers = [
             'teacher_reports_helper.php',
             'teacher_enrollment_helper.php',
@@ -53,7 +53,7 @@ final class RbacScriptCoverageTest extends TestCase
         $stale = [];
         foreach ($matches[1] as $script) {
             $found = false;
-            foreach (['admin', 'teacher', 'student', 'parent'] as $portal) {
+            foreach (['principal', 'admin', 'teacher', 'student', 'parent'] as $portal) {
                 $candidates = glob(APP_ROOT . '/' . $portal . '/*.php') ?: [];
                 foreach ($candidates as $path) {
                     if (strtolower(basename($path)) === $script) {

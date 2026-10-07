@@ -24,6 +24,7 @@ function establishLoginSession($db, $user) {
 
 function redirectByRole($role) {
     switch ($role) {
+        case 'principal': header("Location: ../principal/principal.php"); break;
         case 'admin': header("Location: ../admin/admin.php"); break;
         case 'teacher': header("Location: ../teacher/teacher.php"); break;
         case 'student': header("Location: ../student/Student.php"); break;
@@ -65,6 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $db) {
         $userStmt->execute([$userId]);
         $user = $userStmt->fetch(PDO::FETCH_ASSOC);
         if ($user) {
+            recordActivityLog($db, 'account.first_password_change', 'user', $userId, [], $userId, (string)$user['role']);
             unset($_SESSION['pending_password_change'], $_SESSION['pending_user_id'], $_SESSION['pending_reference_code']);
             establishLoginSession($db, $user);
             redirectByRole($user['role']);

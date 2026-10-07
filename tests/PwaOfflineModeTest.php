@@ -4,7 +4,7 @@ use PHPUnit\Framework\TestCase;
 
 final class PwaOfflineModeTest extends TestCase
 {
-    public function testServiceWorkerPreCachesTeacherPagesAndHasInteractiveFallback(): void
+    public function testServiceWorkerSupportsAccountScopedTeacherPagesAndInteractiveFallback(): void
     {
         $sw = file_get_contents(__DIR__ . '/../sw.js');
         $this->assertIsString($sw);
@@ -33,7 +33,7 @@ final class PwaOfflineModeTest extends TestCase
         $loginPage = file_get_contents(__DIR__ . '/../auth/login.php');
         $this->assertIsString($loginPage);
 
-        $this->assertStringContainsString('bshs_cached_teacher', $loginPage);
+        $this->assertStringNotContainsString("localStorage.getItem('bshs_cached_teacher')", $loginPage);
         $this->assertStringContainsString('offlineTeacherLaunchpad', $loginPage);
         $this->assertStringContainsString('Open Offline Attendance', $loginPage);
         $this->assertStringContainsString('Open Offline Classes & Grades', $loginPage);

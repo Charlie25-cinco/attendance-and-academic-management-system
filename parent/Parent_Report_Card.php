@@ -149,7 +149,7 @@ if ($db && $parentId > 0) {
         $reportCardReviewedAt = trim((string)($rcMeta['reviewed_at'] ?? ''));
         if (!$reportCardApproved) {
             $reportCardPendingMessage = $rcStatus === 'submitted_admin'
-                ? 'This report card is awaiting admin approval.'
+                ? 'This report card is awaiting Principal approval.'
                 : ($rcStatus === 'rejected'
                     ? 'This report card submission was rejected and is being corrected by the adviser.'
                     : 'This report card has not been released yet.');

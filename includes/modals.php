@@ -227,7 +227,7 @@
                     <div class="mb-3">
                         <label class="form-label">Contact Number (Mobile)</label>
                         <input type="tel" class="form-control" id="profileContactNumber" name="contact_number" value="<?php echo htmlspecialchars($displayContactNumber ?? ''); ?>" placeholder="e.g. 09171234567" autocomplete="tel">
-                        <div class="form-text text-muted">Used for official school SMS alerts (grades and release notices).</div>
+                        <div class="form-text text-muted">Used as school contact information. Keep this number current.</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Sex</label>

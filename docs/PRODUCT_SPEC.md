@@ -12,7 +12,8 @@
 The Balingasag Senior High School Attendance and Academic Management System (BSHS AMS) is an integrated web and Progressive Web Application (PWA) platform designed for managing student attendance, academic grading under the DepEd Senior High School curriculum, official DepEd form generation (SF1, SF2, SF5, SF9, ECR), and school stakeholder communication (Adviser-Parent messaging).
 
 ### 1.1 Scope & Purpose
-The system serves four primary user roles:
+The system serves five primary user roles:
+- **Principal**: Final report-card review, release, return, and withdrawal.
 - **Administrators**: Operational setup, user lifecycle, curriculum mapping, grade approval governance, DepEd reporting, and audit logs.
 - **Subject Teachers & Advisers**: Attendance recording, score tracking, DepEd ECR import/export, grade submission to admin, advisory section management, and parent communication.
 - **Students**: Class schedules, score transparency, attendance history, PWA QR identity card, and released report cards.
@@ -24,11 +25,11 @@ The system serves four primary user roles:
 
 | Requirement ID | Category | Description | Rationale | Acceptance Criteria |
 | :--- | :--- | :--- | :--- | :--- |
-| **REQ-001** | Security | The system shall enforce centralized Role-Based Access Control (RBAC) on every HTTP request. | Prevents unauthorized role privilege escalation across administrative, teaching, student, and parent surfaces. | Unauthorized route access attempts return HTTP 403 or redirect to login; all script-permission mappings in `app-helpers.php` are evaluated prior to execution. |
+| **REQ-001** | Security | The system shall enforce centralized Role-Based Access Control (RBAC) on every HTTP request. | Prevents unauthorized role privilege escalation across Principal, administrative, teaching, student, and parent surfaces. | Unauthorized route access attempts return HTTP 403 or redirect to login; all script-permission mappings in `app-helpers.php` are evaluated prior to execution. |
 | **REQ-002** | Security & Compliance | The system shall store session tokens and authentication state in the database when `APP_SESSION_DRIVER=database`. | Enables session persistence across stateless cloud instances (e.g., Wasmer Edge) without relying on local server files. | Active sessions remain valid across container restarts; session data is queryable in `php_sessions` table. |
-| **REQ-003** | Data Privacy | The system shall obscure sensitive authentication fields and log all admin transactions to `admin_audit_logs`. | Complies with national data privacy standards by establishing auditability without exposing sensitive credentials. | Admin actions (create, edit, delete, promote) insert immutable log records containing actor ID, target ID, action description, and timestamp. |
+| **REQ-003** | Data Privacy | The system shall redact sensitive values and log critical Principal, Admin, and Teacher transactions to `activity_logs`. | Establishes cross-role accountability without storing credentials, tokens, full contact details, or notification content. | Critical mutations store actor ID/role, action, target, sanitized metadata, IP address, and timestamp; legacy admin history remains readable. |
 | **REQ-004** | DepEd Integration | The system shall import and export official DepEd Excel forms (SF1, SF2, SF5, SF9, ECR) preserving official row/column cell mappings. | Ensures compatibility with Department of Education reporting standards. | Official SF1, SF2, and ECR `.xlsx` files parse without structure errors; generated exports match DepEd template dimensions. |
-| **REQ-005** | Grading Workflow | The system shall enforce a 4-tier grade approval state machine (`submitted` → `admin_verified` → `submitted_admin` → `approved`). | Prevents unverified grade changes and locks student/parent grade visibility until final admin release. | Student/parent portals display grades only when `report_card_approvals.status = approved`. |
+| **REQ-005** | Grading Workflow | The system shall enforce a 4-tier grade approval state machine (`submitted` → `admin_verified` → `submitted_admin` → `approved`) with the Principal as the sole final reviewer. | Prevents unverified grade changes and separates academic verification from official release authority. | Admin verifies subject grades; adviser submits; only an active Principal with `report_cards.review` may release, return, or withdraw; family portals display only `approved` records. |
 | **REQ-006** | Grading Recall | The system shall allow subject teachers to recall pending grade submissions while in `submitted` status, and auto-invalidate downstream approved report cards upon re-submission. | Ensures grade corrections update official records while preventing stale final report cards from being viewed. | Re-submitting a previously approved subject grade sets affected report cards to `rejected` until approved again. |
 | **REQ-007** | PWA & Offline | The system shall support offline attendance submission with local queueing and sync upon network recovery. | Enables teachers to mark attendance during network interruptions without losing records. | Submissions queue in `localStorage` when offline and submit automatically to `teacher_Action.php` when connectivity restores. |
 | **REQ-008** | Web Push | The system shall support browser Web Push API notifications for student attendance events and grade publication. | Provides immediate notification to parents and students regarding attendance anomalies and academic updates. | Device subscriptions saved in `push_subscriptions` receive push payloads signed with VAPID keys. |
@@ -44,10 +45,18 @@ The system serves four primary user roles:
 [ Login ] ──► [ Dashboard KPI ] ──► [ Users / Sections / Classes ]
                                            │
                                            ▼
-[ Audit Logs ] ◄── [ Final Approval ] ◄── [ Verify Grades ] ◄── [ SF1/SF2 Reports ]
+[ Audit Logs ] ◄── [ Verify Grades ] ◄── [ SF1/SF2 Reports ]
 ```
 
-### 3.2 Teacher & Adviser Workflow
+### 3.2 Principal Workflow
+```
+[ Login ] ──► [ Pending Report Cards ] ──► [ Verify Completion ] ──► [ Release / Return ]
+                                                                         │
+                                                                         ▼
+                                                          [ Family Notifications ]
+```
+
+### 3.3 Teacher & Adviser Workflow
 ```
 [ Login ] ──► [ Select Class ] ──► [ Mark Attendance ] ──► (Offline Queue / Online Push)
                     │
@@ -58,7 +67,7 @@ The system serves four primary user roles:
           [ Adviser Chat ] ◄── [ Parent Messages ]
 ```
 
-### 3.3 Student & Parent Workflow
+### 3.4 Student & Parent Workflow
 ```
 [ Parent Login ] ──► [ Select Linked Child ] ──► [ Attendance / Grade Activity Feed ]
                                                           │

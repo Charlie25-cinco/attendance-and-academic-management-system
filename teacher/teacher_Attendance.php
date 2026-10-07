@@ -239,10 +239,10 @@ const currentSelectedClassId=<?php echo json_encode($selectedClassId); ?>;
 function persistOfflineRoster(classId, students) {
     try {
         if (initialTeacherClasses && initialTeacherClasses.length > 0) {
-            localStorage.setItem('bshs_offline_classes', JSON.stringify(initialTeacherClasses));
+            window.bshsOfflineStorage.saveClasses(initialTeacherClasses);
         }
         if (classId && students && students.length > 0) {
-            localStorage.setItem('bshs_offline_roster_' + classId, JSON.stringify(students));
+            window.bshsOfflineStorage.saveClassRoster(classId, students);
         }
     } catch (e) {}
 }
@@ -251,12 +251,11 @@ function prefetchOtherTeacherRosters() {
     if (!initialTeacherClasses || initialTeacherClasses.length <= 1) return;
     initialTeacherClasses.forEach(c => {
         if (c.id === currentSelectedClassId) return;
-        if (localStorage.getItem('bshs_offline_roster_' + c.id)) return;
         fetch(`teacher_Action.php?action=fetch_students&class_id=${c.id}&date=${encodeURIComponent(serverToday)}&mode=subject`)
             .then(r => r.json())
             .then(d => {
                 if (d.success && d.students) {
-                    try { localStorage.setItem('bshs_offline_roster_' + c.id, JSON.stringify(d.students)); } catch (e) {}
+                    window.bshsOfflineStorage.saveClassRoster(c.id, d.students);
                 }
             }).catch(() => {});
     });

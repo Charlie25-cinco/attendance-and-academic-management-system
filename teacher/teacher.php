@@ -580,7 +580,6 @@ $page_title = 'Teacher Dashboard';
         }
 
         if (window.bshsOfflineStorage && navigator.onLine) {
-            try { localStorage.setItem('bshs_cached_teacher', '1'); } catch (e) {}
             window.bshsOfflineStorage.saveTeacherSession({
                 teacher_id: <?php echo (int)($_SESSION['user_id'] ?? 0); ?>,
                 role: 'teacher',

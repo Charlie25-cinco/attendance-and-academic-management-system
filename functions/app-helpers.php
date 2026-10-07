@@ -203,6 +203,7 @@ function generateReferenceCode(string $role, ?PDO $db = null, ?string $academicY
         'teacher' => 'T' . $yearPart . '-',
         'student' => 'S' . $yearPart . '-',
         'parent' => 'P' . $yearPart . '-',
+        'principal' => 'PR' . $yearPart . '-',
         'admin' => 'A341227-',
         default => strtoupper(substr($role, 0, 1)) . $yearPart . '-',
     };
@@ -758,22 +759,6 @@ function appEnsureUserNotificationsTable(PDO $db): void {
             $readyConnections[$connectionId] = true;
             return;
         }
-        $db->exec("CREATE TABLE IF NOT EXISTS user_notifications (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            user_id INT NOT NULL,
-            source_key VARCHAR(255) NOT NULL,
-            title VARCHAR(200) NOT NULL,
-            subtitle VARCHAR(255) DEFAULT '',
-            icon VARCHAR(50) DEFAULT 'bi-bell',
-            color VARCHAR(20) DEFAULT 'primary',
-            link VARCHAR(255) DEFAULT '',
-            event_at DATETIME NOT NULL,
-            is_read TINYINT DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            UNIQUE KEY uq_user_source (user_id, source_key),
-            KEY idx_user_read_event (user_id, is_read, event_at)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     } catch (Throwable $e) {
         error_log('User notifications table check failed: ' . $e->getMessage());
     }
@@ -829,6 +814,7 @@ function appNotifyUsers(PDO $db, array $userIds, string $sourceKey, string $titl
 function appNotificationTargetUrl(string $role, string $link = '', string $sourceKey = ''): string {
     $role = strtolower(trim($role));
     $roleLandingPages = [
+        'principal' => '/principal/principal.php',
         'admin' => '/admin/admin.php',
         'teacher' => '/teacher/teacher.php',
         'student' => '/student/Student.php',
@@ -1102,15 +1088,42 @@ function appNotifyAttendanceRecords(PDO $db, int $classId, string $date, array $
 }
 
 
+function recordActivityLog(PDO $db, string $actionName, string $targetType, ?int $targetId = null, array $details = [], ?int $actorUserId = null, ?string $actorRole = null): bool {
+    $actorUserId = $actorUserId ?? (int)($_SESSION['user_id'] ?? 0);
+    $actorRole = $actorRole ?? (string)($_SESSION['role'] ?? '');
+    return \BshsAms\Audit\ActivityLogger::record(
+        $db,
+        $actorUserId,
+        $actorRole,
+        $actionName,
+        $targetType,
+        $targetId,
+        $details,
+        (string)($_SERVER['REMOTE_ADDR'] ?? '')
+    );
+}
+
 function recordAdminAuditLog(PDO $db, string $actionName, string $targetType, ?int $targetId = null, array $details = [], ?int $adminUserId = null): void {
     $adminUserId = $adminUserId ?? (int)($_SESSION['user_id'] ?? 0);
-    if ($adminUserId <= 0) { return; }
+    if (recordActivityLog($db, $actionName, $targetType, $targetId, $details, $adminUserId, 'admin') || $adminUserId <= 0) {
+        return;
+    }
+
+    // Compatibility for installations that have not yet run the v1.0.0 upgrade.
     try {
-        $driver = (string)$db->getAttribute(PDO::ATTR_DRIVER_NAME);
-        $timeSql = $driver === 'sqlite' ? 'CURRENT_TIMESTAMP' : 'NOW()';
-        $stmt = $db->prepare("INSERT INTO admin_audit_logs (admin_user_id, action_name, target_type, target_id, details_json, created_at) VALUES (?, ?, ?, ?, ?, {$timeSql})");
-        $stmt->execute([$adminUserId, substr($actionName, 0, 100), substr($targetType, 0, 50), $targetId && $targetId > 0 ? $targetId : null, !empty($details) ? json_encode($details, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : null]);
-    } catch (Throwable $e) { error_log('Admin audit log insert failed: ' . $e->getMessage()); }
+        $stmt = $db->prepare('INSERT INTO admin_audit_logs (admin_user_id, action_name, target_type, target_id, details_json, created_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)');
+        $stmt->execute([
+            $adminUserId,
+            substr($actionName, 0, 100),
+            substr($targetType, 0, 50),
+            $targetId !== null && $targetId > 0 ? $targetId : null,
+            $details === [] ? null : json_encode(\BshsAms\Audit\ActivityLogger::sanitize($details), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+        ]);
+    } catch (Throwable $e) {
+        if (!defined('APP_TESTING') || !APP_TESTING) {
+            error_log('Administrative activity could not be recorded.');
+        }
+    }
 }
 
 function ensureAuthLoginLogsTable(PDO $db): void {
@@ -1216,6 +1229,7 @@ function ensureRbacRolesSeeded(PDO $db): void {
     } catch (Throwable $e) { return; }
 
     $roles = [
+        ['principal', 'Principal', 'Reviews, approves and releases report cards.', 1],
         ['admin', 'Administrator', 'Full system access.', 1],
         ['teacher', 'Teacher', 'Can manage attendance, grades, and view assigned classes.', 1],
         ['student', 'Student', 'Can view attendance, grades, and class schedules.', 1],
@@ -1225,6 +1239,7 @@ function ensureRbacRolesSeeded(PDO $db): void {
     foreach ($roles as $r) { $stmt->execute($r); }
 
     $permissions = [
+        ['report_cards.review', 'Review and Release Report Cards (Principal)', 'grades'],
         ['attendance.view', 'View Attendance', 'attendance'],
         ['attendance.manage', 'Manage Attendance', 'attendance'],
         ['attendance.reports', 'Attendance Reports', 'attendance'],
@@ -1272,6 +1287,7 @@ function ensureRbacRolesSeeded(PDO $db): void {
     ];
 
     $roleMap = [
+        'principal' => ['report_cards.review'],
         'admin' => null,
         'teacher' => $teacherPerms,
         'student' => $studentPerms,
@@ -1389,6 +1405,8 @@ function requirePagePermission(string $permissionKey): void {
 function permissionForScript(string $scriptName): string {
     $scriptName = strtolower($scriptName);
     $map = [
+        'principal.php' => 'report_cards.review',
+        'principal_action.php' => 'report_cards.review',
         'admin.php' => 'users.view',
         'admin_users.php' => 'users.view',
         'admin_users_action.php' => 'users.view',
@@ -1650,4 +1668,3 @@ function appAttemptRememberLogin(?PDO $db = null): ?array {
         'role' => $row['role']
     ];
 }
-

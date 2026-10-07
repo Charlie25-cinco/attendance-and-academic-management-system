@@ -21,6 +21,7 @@
                                     <select name="role" id="userRole" class="form-select" required onchange="updateReferenceCode(); onRoleChange(this);">
                                         <option value="">Select Role</option>
                                         <option value="teacher">Teacher</option>
+                                        <option value="principal">Principal</option>
                                         <option value="parent">Parent</option>
                                     </select>
                                 </div>

@@ -1,5 +1,8 @@
 <?php
 require_once __DIR__ . '/../functions/bootstrap.php';
+if (defined('APP_TESTING') && APP_TESTING) {
+    return;
+}
 // Admin - SF1 Bulk Import Action Handler
 if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'admin') {
     http_response_code(403);
@@ -75,7 +78,14 @@ function sf1GradeFromHeader(array $header): int {
 }
 
 function ensureSf1Section(PDO $db, string $section, int $gradeLevel, string $track, string $academicYear): array {
-    static $resolvedCache = [];
+    static $resolvedCaches = null;
+    if (!$resolvedCaches instanceof WeakMap) {
+        $resolvedCaches = new WeakMap();
+    }
+    if (!isset($resolvedCaches[$db])) {
+        $resolvedCaches[$db] = [];
+    }
+    $resolvedCache = $resolvedCaches[$db];
 
     $sectionTrimmed = trim($section);
     if ($sectionTrimmed === '' || $gradeLevel <= 0) {
@@ -84,7 +94,7 @@ function ensureSf1Section(PDO $db, string $section, int $gradeLevel, string $tra
 
     $trackNorm = in_array(strtolower(trim($track)), ['academic', 'techpro'], true) ? strtolower(trim($track)) : 'academic';
     $normalizedTarget = sf1NormalizeSectionName($sectionTrimmed);
-    $cacheKey = spl_object_id($db) . '|' . $gradeLevel . '|' . $trackNorm . '|' . $normalizedTarget;
+    $cacheKey = $gradeLevel . '|' . $trackNorm . '|' . $normalizedTarget;
     if (isset($resolvedCache[$cacheKey])) {
         return $resolvedCache[$cacheKey];
     }
@@ -140,6 +150,7 @@ function ensureSf1Section(PDO $db, string $section, int $gradeLevel, string $tra
 
         $result = ['id' => $secId, 'name' => $secName, 'created' => false];
         $resolvedCache[$cacheKey] = $result;
+        $resolvedCaches[$db] = $resolvedCache;
         return $result;
     }
 
@@ -160,6 +171,7 @@ function ensureSf1Section(PDO $db, string $section, int $gradeLevel, string $tra
 
         $result = ['id' => $newId, 'name' => $sectionTrimmed, 'created' => true];
         $resolvedCache[$cacheKey] = $result;
+        $resolvedCaches[$db] = $resolvedCache;
         return $result;
     } catch (PDOException $e) {
         $code = (string)$e->getCode();
@@ -177,6 +189,7 @@ function ensureSf1Section(PDO $db, string $section, int $gradeLevel, string $tra
             if (sf1NormalizeSectionName((string)$cand['name']) === $normalizedTarget || strtolower(trim((string)$cand['name'])) === strtolower($sectionTrimmed)) {
                 $result = ['id' => (int)$cand['id'], 'name' => (string)$cand['name'], 'created' => false];
                 $resolvedCache[$cacheKey] = $result;
+                $resolvedCaches[$db] = $resolvedCache;
                 return $result;
             }
         }

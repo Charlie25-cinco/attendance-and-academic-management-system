@@ -163,6 +163,16 @@ if ($route === 'profile' && $method === 'POST') {
         bumpUserApiTokenVersion($db, (int)$user['id']);
     }
 
+    recordActivityLog(
+        $db,
+        'account.profile_update',
+        'user',
+        (int)$user['id'],
+        ['changed_fields' => array_keys($updates)],
+        (int)$user['id'],
+        (string)($user['role'] ?? ($_SESSION['role'] ?? 'user'))
+    );
+
     foreach (['first_name', 'middle_name', 'last_name', 'email', 'sex', 'contact_number'] as $sessionField) {
         if (array_key_exists($sessionField, $updates)) {
             $_SESSION[$sessionField] = $updates[$sessionField];

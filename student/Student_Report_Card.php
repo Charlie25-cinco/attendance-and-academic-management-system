@@ -126,7 +126,7 @@ if ($db && $studentId > 0) {
     $reportCardReviewedAt = trim((string)($rcMeta['reviewed_at'] ?? ''));
     if (!$reportCardApproved) {
         $reportCardPendingMessage = $rcStatus === 'pending'
-            ? 'Your report card is submitted and awaiting admin approval.'
+            ? 'Your report card is submitted and awaiting Principal approval.'
             : ($rcStatus === 'rejected'
                 ? 'Your report card submission was rejected and is being corrected by your adviser.'
                 : 'Your report card is not yet submitted by your adviser.');

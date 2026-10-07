@@ -112,7 +112,9 @@ final class MaterialStorageTest extends TestCase
         $this->assertStringNotContainsString('createObjectURL', $teacherPage);
 
         $this->assertIsString($router);
-        $this->assertStringContainsString('(?:storage|assets/uploads/materials)', $router);
+        $this->assertStringContainsString('HttpAccessPolicy::allows', $router);
+        $this->assertFalse(\BshsAms\Security\HttpAccessPolicy::allows('/assets/uploads/materials/private.pdf'));
+        $this->assertFalse(\BshsAms\Security\HttpAccessPolicy::allows('/storage/materials/private.pdf'));
         $this->assertIsString($uploadProtection);
         $this->assertStringContainsString('RewriteRule ^materials(?:/|$)', $uploadProtection);
     }

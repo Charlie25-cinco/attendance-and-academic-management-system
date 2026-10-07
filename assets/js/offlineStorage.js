@@ -6,7 +6,17 @@
 (function (global) {
   "use strict";
 
-  const DB_NAME = "bshs_ams_offline_db";
+  const identity = global.BSHS_OfflineIdentity;
+  const owner = global.APP_DOCUMENT_ACCOUNT || "";
+  const isUnlocked = () => /^teacher:[1-9]\d*$/.test(owner) && identity.currentAccount() === owner;
+  const DB_NAME = "bshs_ams_offline_db_" + owner.replace(":", "_");
+  // Scope every legacy fallback key as well as IndexedDB to its owning teacher.
+  const prefix = "bshs_user_" + owner + ":";
+  const localStorage = {
+    getItem(key) { return isUnlocked() ? global.localStorage.getItem(prefix + key) : null; },
+    setItem(key, value) { if (isUnlocked()) global.localStorage.setItem(prefix + key, value); },
+    removeItem(key) { if (isUnlocked()) global.localStorage.removeItem(prefix + key); },
+  };
   const DB_VERSION = 2;
   const STORES = {
     SESSION: "teacher_session",
@@ -21,6 +31,7 @@
   let dbInstance = null;
 
   function openDatabase() {
+    if (!isUnlocked()) return Promise.resolve(null);
     if (dbInstance) return Promise.resolve(dbInstance);
     if (!("indexedDB" in global)) {
       return Promise.resolve(null);
@@ -78,11 +89,13 @@
   }
 
   const bshsOfflineStorage = {
+    owner,
+    isUnlocked,
     // -------------------------------------------------------------
     // 1. Teacher Session Management
     // -------------------------------------------------------------
     async saveTeacherSession(session) {
-      if (!session || !session.teacher_id) return;
+      if (!session || "teacher:" + Number(session.teacher_id) !== owner || !isUnlocked()) return;
       const data = {
         key: "current_user",
         teacher_id: parseInt(session.teacher_id, 10),
@@ -120,26 +133,10 @@
     },
 
     async clearTeacherSession() {
-      try {
-        localStorage.removeItem("bshs_teacher_session");
-        localStorage.removeItem("bshs_cached_teacher");
-      } catch (e) {}
-      const db = await openDatabase();
-      if (!db) return;
-      return new Promise((resolve) => {
-        try {
-          const tx = db.transaction(
-            [STORES.SESSION, STORES.PROFILE],
-            "readwrite",
-          );
-          tx.objectStore(STORES.SESSION).clear();
-          tx.objectStore(STORES.PROFILE).clear();
-          tx.oncomplete = () => resolve(true);
-          tx.onerror = () => resolve(false);
-        } catch (e) {
-          resolve(false);
-        }
-      });
+      if (identity) await identity.lock();
+      // Pending work stays in its account namespace until the same teacher signs in.
+      if (dbInstance) { dbInstance.close(); dbInstance = null; }
+      return true;
     },
 
     async getTeacherSession() {
@@ -271,6 +268,7 @@
     // 4. Local Offline Attendance Records
     // -------------------------------------------------------------
     async saveAttendanceLocally(classId, date, records) {
+      if (!isUnlocked()) throw new Error("Sign in to your account before saving offline work.");
       const cId = parseInt(classId, 10);
       const localId = "att_" + cId + "_" + date;
       const recordItem = {
@@ -283,6 +281,7 @@
       };
 
       const syncOperation = {
+        owner,
         id: "op_" + localId,
         operation_id: localId,
         operation: "attendance.upsert",
@@ -316,6 +315,7 @@
           JSON.parse(localStorage.getItem("bshs_offline_queue")) || [];
         const filtered = queue.filter((q) => q.id !== syncOperation.id);
         filtered.push({
+          owner,
           id: syncOperation.id,
           action: {
             type: "submit_attendance",
@@ -374,6 +374,7 @@
       dateArg,
       scoresArg,
     ) {
+      if (!isUnlocked()) throw new Error("Sign in to your account before saving offline work.");
       let cId, actTitle, comp, total, actDate, actScores, localId, serverId;
 
       if (typeof classIdOrObj === "object" && classIdOrObj !== null) {
@@ -412,6 +413,7 @@
       };
 
       const syncOperation = {
+        owner,
         id: "op_" + localId,
         operation_id: localId,
         operation: "activity.upsert",
@@ -448,6 +450,7 @@
           JSON.parse(localStorage.getItem("bshs_offline_queue")) || [];
         const filtered = queue.filter((q) => q.id !== syncOperation.id && q.id !== localId);
         filtered.push({
+          owner,
           id: syncOperation.id,
           action: {
             type: "save_offline_activity",
@@ -513,7 +516,7 @@
         }
       });
 
-      return Array.from(map.values());
+      return isUnlocked() ? Array.from(map.values()).filter(item => item.owner === owner) : [];
     },
 
     async deleteActivityLocally(identifier) {
@@ -679,7 +682,7 @@
     // 7. Online Bootstrap Sync (Fetches Real Teacher Data)
     // -------------------------------------------------------------
     async bootstrapOnline() {
-      if (!navigator.onLine) return false;
+      if (!navigator.onLine || !isUnlocked()) return false;
       try {
         const targetUrl =
           typeof withCsrfUrl === "function"
@@ -694,6 +697,7 @@
         if (!res.ok) return false;
         const data = await res.json();
         if (!data || !data.success) return false;
+        if (!data.teacher || "teacher:" + Number(data.teacher.id) !== owner || !isUnlocked()) return false;
 
         if (data.teacher) {
           await this.saveTeacherSession({
@@ -719,36 +723,30 @@
 
         if ("caches" in global) {
           try {
-            const cacheKeys = await caches.keys();
-            const activeCacheName =
-              cacheKeys.find((k) => k.startsWith("bshs-ams-")) ||
-              "bshs-ams-v37";
+            const activeCacheName = "bshs-ams-v39-user-" + owner;
             const cache = await caches.open(activeCacheName);
             const teacherPages = [
               "/teacher/teacher.php",
               "/teacher/teacher_Attendance.php",
               "/teacher/teacher_Classes.php",
               "/teacher/teacher_Grades.php",
-              "/teacher/teacher_Archives.php",
             ];
             const warmPages = async () => {
               for (const pageUrl of teacherPages) {
+                if (!isUnlocked()) return;
                 try {
-                  const pageRes = await fetch(pageUrl, {
+                  const target = (identity.base || "") + pageUrl;
+                  const pageRes = await fetch(target, {
                     credentials: "same-origin",
                   });
                   if (
                     pageRes &&
                     pageRes.status === 200 &&
-                    !pageRes.redirected
+                    !pageRes.redirected && isUnlocked() &&
+                    pageRes.headers.get("X-App-Offline-Account") === owner
                   ) {
-                    await cache.put(pageUrl, pageRes.clone());
-                    if (global.location && global.location.origin) {
-                      await cache.put(
-                        new URL(pageUrl, global.location.origin).href,
-                        pageRes,
-                      );
-                    }
+                    await cache.put(target, pageRes);
+                    if (!isUnlocked()) await caches.delete(activeCacheName);
                   }
                 } catch (e) {}
               }
@@ -768,5 +766,17 @@
     },
   };
 
+  // An account switch during an asynchronous read must not return the old account's data.
+  for (const [method, empty] of Object.entries({
+    getTeacherSession: null, getClasses: [], getClassRoster: [], getLocalAttendance: null,
+    getAllLocalAttendance: [], getAllLocalActivities: [], getSyncQueue: [],
+  })) {
+    const read = bshsOfflineStorage[method];
+    bshsOfflineStorage[method] = async function (...args) {
+      if (!isUnlocked()) return empty;
+      const result = await read.apply(this, args);
+      return isUnlocked() ? result : empty;
+    };
+  }
   global.bshsOfflineStorage = bshsOfflineStorage;
 })(typeof window !== "undefined" ? window : this);

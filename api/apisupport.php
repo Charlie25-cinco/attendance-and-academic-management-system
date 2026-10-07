@@ -75,11 +75,7 @@ function apiTableExists(PDO $db, string $table): bool {
 }
 
 function apiConfig(string $key, string $default = ''): string {
-    $value = getenv($key);
-    if ($value !== false && $value !== '') {
-        return (string)$value;
-    }
-    return $default;
+    return appEnvValue($key, $default);
 }
 
 function apiFailSecretConfiguration(string $detail): void {
@@ -121,8 +117,9 @@ function apiSecret(): string {
         apiFailSecretConfiguration('API_AUTH_SECRET must be set in production. Set the API_AUTH_SECRET environment variable.');
     }
 
-    error_log('[SECURITY] API_AUTH_SECRET is not set — using api/.api_secret. Set API_AUTH_SECRET in production.');
-    $secretFile = __DIR__ . '/.api_secret';
+    error_log('[SECURITY] API_AUTH_SECRET is not set — using protected development storage. Set API_AUTH_SECRET in production.');
+    $secretFile = APP_ROOT . '/storage/secrets/api_auth';
+    apiMigrateDevelopmentSecret(__DIR__ . '/.api_secret', $secretFile);
     if (file_exists($secretFile)) {
         $secret = trim((string)file_get_contents($secretFile));
     }
@@ -152,8 +149,9 @@ function apiSyncSecret(): string {
         apiFailSecretConfiguration('API_SYNC_SECRET must be set in production. Set the API_SYNC_SECRET environment variable.');
     }
 
-    error_log('[SECURITY] API_SYNC_SECRET is not set — using api/.api_sync_secret. Set API_SYNC_SECRET in production.');
-    $secretFile = __DIR__ . '/.api_sync_secret';
+    error_log('[SECURITY] API_SYNC_SECRET is not set — using protected development storage. Set API_SYNC_SECRET in production.');
+    $secretFile = APP_ROOT . '/storage/secrets/api_sync';
+    apiMigrateDevelopmentSecret(__DIR__ . '/.api_sync_secret', $secretFile);
     if (file_exists($secretFile)) {
         $secret = trim((string)file_get_contents($secretFile));
     }
@@ -177,6 +175,16 @@ function apiDb(): ?PDO {
     return $db ?: null;
 }
 
+function apiMigrateDevelopmentSecret(string $legacyPath, string $protectedPath): void {
+    if (!is_file($legacyPath)) { return; }
+    if (!is_file($protectedPath) && !apiWriteSecretFile($protectedPath, trim((string)file_get_contents($legacyPath)))) {
+        apiFailSecretConfiguration('Unable to migrate development API secret into protected storage.');
+    }
+    if (!@unlink($legacyPath)) {
+        apiFailSecretConfiguration('Unable to remove legacy development API secret.');
+    }
+}
+
 function apiJson(array $payload, int $status = 200): void {
     http_response_code($status);
     header('Content-Type: application/json; charset=utf-8');
@@ -185,13 +193,20 @@ function apiJson(array $payload, int $status = 200): void {
 }
 
 function apiRequestBody(): array {
+    static $body = null;
+    if ($body !== null) { return $body; }
+    $contentType = strtolower(trim(explode(';', (string)($_SERVER['CONTENT_TYPE'] ?? ''))[0]));
+    if ($contentType !== 'application/json') {
+        apiJson(['ok' => false, 'message' => 'Content-Type must be application/json'], 415);
+    }
     $raw = file_get_contents('php://input');
     if (!is_string($raw) || trim($raw) === '') {
         return [];
     }
 
     $data = json_decode($raw, true);
-    return is_array($data) ? $data : [];
+    $body = is_array($data) ? $data : [];
+    return $body;
 }
 
 function apiHandleCors(): void {
@@ -206,7 +221,7 @@ function apiHandleCors(): void {
         apiFailSecretConfiguration('API_ALLOWED_ORIGIN must be set to a trusted origin in production.');
     }
     header('Access-Control-Allow-Origin: ' . $origin);
-    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Sync-Key');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Sync-Key, X-CSRF-Token');
     header('Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS');
     if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
         http_response_code(204);
@@ -263,6 +278,7 @@ function apiReadTokenPayload(string $token): ?array {
 }
 
 function apiAuthUser(): ?array {
+    $GLOBALS['api_auth_source'] = null;
     // Check for PHP session (for web-based access)
     if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true && isset($_SESSION['user_id'])) {
         $db = apiDb();
@@ -274,6 +290,7 @@ function apiAuthUser(): ?array {
             $stmt->execute([(int)$_SESSION['user_id']]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($user) {
+                $GLOBALS['api_auth_source'] = 'session';
                 return $user;
             }
         }
@@ -333,6 +350,7 @@ function apiAuthUser(): ?array {
         return null;
     }
 
+    $GLOBALS['api_auth_source'] = 'bearer';
     return $user;
 }
 
@@ -340,6 +358,22 @@ function apiRequireUser(): array {
     $user = apiAuthUser();
     if (!$user) {
         apiJson(['ok' => false, 'message' => 'Unauthorized'], 401);
+    }
+    $route = preg_replace('/^v\d+\//', '', strtolower(trim((string)($_GET['route'] ?? 'health'))));
+    $method = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+    $required = \BshsAms\Security\ApiAccessPolicy::permissions($route, $method, (string)$user['role']);
+    $granted = $required === [] ? [] : loadRbacPermissions(apiDb(), (string)$user['role']);
+    if (!\BshsAms\Security\ApiAccessPolicy::permits($required, $granted)) {
+        apiJson(['ok' => false, 'message' => 'Insufficient permissions.'], 403);
+    }
+    if (($GLOBALS['api_auth_source'] ?? '') === 'session' && !in_array($method, ['GET', 'HEAD', 'OPTIONS'], true)) {
+        $body = str_starts_with(strtolower((string)($_SERVER['CONTENT_TYPE'] ?? '')), 'application/json') ? apiRequestBody() : [];
+        if (!\BshsAms\Security\ApiAccessPolicy::validCsrf((string)($_SESSION['csrf_token'] ?? ''), [
+            $_SERVER['HTTP_X_CSRF_TOKEN'] ?? null, $_POST['csrf_token'] ?? null,
+            $_GET['csrf_token'] ?? null, $body['csrf_token'] ?? null,
+        ])) {
+            apiJson(['ok' => false, 'message' => 'Invalid CSRF token'], 403);
+        }
     }
     return $user;
 }

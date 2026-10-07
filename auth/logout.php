@@ -32,6 +32,8 @@ if (ini_get('session.use_cookies')) {
 }
 
 session_destroy();
+appApplyOfflineIdentity(true);
+header('Cache-Control: no-store');
 
 header("Location: login.php");
 exit();

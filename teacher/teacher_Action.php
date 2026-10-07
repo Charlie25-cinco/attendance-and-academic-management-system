@@ -32,6 +32,12 @@ if (!$db) {
 }
 
 $teacherId = (int)($_SESSION['user_id'] ?? 0);
+if (isset($_SERVER['HTTP_X_OFFLINE_OWNER']) && $_SERVER['HTTP_X_OFFLINE_OWNER'] !== 'teacher:' . $teacherId) {
+    http_response_code(403);
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'Offline records belong to another account']);
+    exit();
+}
 $action = $_GET['action'] ?? '';
 
 $writeActions = [
@@ -1435,6 +1441,7 @@ function submitAttendance($db, $teacherId) {
         }
 
         [, $summary] = buildStudentAttendancePayload($db, $classId, $date);
+        recordActivityLog($db, 'attendance.record', 'class', $classId, ['date' => $date, 'record_count' => count($records)], $teacherId, 'teacher');
         echo json_encode(['success' => true, 'message' => 'Attendance saved successfully', 'summary' => $summary]);
     } catch (PDOException $e) {
         if ($db->inTransaction()) {
@@ -2005,6 +2012,7 @@ function submitGrades($db, $teacherId) {
             error_log('Admin grade submission notification failed: ' . $e->getMessage());
         }
 
+        recordActivityLog($db, 'grades.submit', 'class', $classId, ['academic_year' => $academicYear, 'term' => $term], $teacherId, 'teacher');
         echo json_encode(['success' => true, 'message' => 'Grades submitted to Admin for verification']);
     } catch (PDOException $e) {
         if ($db->inTransaction()) {
@@ -2093,6 +2101,7 @@ function recallGrades($db, $teacherId) {
             return;
         }
 
+        recordActivityLog($db, 'grades.recall', 'class', $classId, ['academic_year' => $academicYear, 'term' => $term], $teacherId, 'teacher');
         echo json_encode(['success' => true, 'message' => 'Grade submission recalled. You can edit and submit again.']);
     } catch (PDOException $e) {
         error_log("recallGrades error: " . $e->getMessage());
@@ -2189,6 +2198,7 @@ function uploadMaterial($db, $teacherId) {
 
         notifyMaterialUploadRecipients($db, $teacherId, $classId, $materialId, $title);
 
+        recordActivityLog($db, 'material.upload', 'material', $materialId, ['class_id' => $classId, 'file_type' => $extension], $teacherId, 'teacher');
         echo json_encode(['success' => true, 'message' => 'Material uploaded successfully']);
     } catch (PDOException $e) {
         if (!$materialSaved && is_string($targetPath) && is_file($targetPath)) { @unlink($targetPath); }
@@ -2300,6 +2310,7 @@ function updateMaterial($db, $teacherId) {
                               WHERE id = ? AND uploaded_by = ?");
         $stmt->execute([$title, $classSubjectId, $materialId, $teacherId]);
 
+        recordActivityLog($db, 'material.update', 'material', $materialId, ['class_id' => $classId], $teacherId, 'teacher');
         echo json_encode(['success' => true, 'message' => 'Material updated successfully']);
     } catch (PDOException $e) {
         echo json_encode(['success' => false, 'message' => 'Database error. Please try again.']);
@@ -2329,6 +2340,7 @@ function deleteMaterial($db, $teacherId) {
             error_log('Material file could not be deleted: ' . (string)$material['file_name']);
         }
 
+        recordActivityLog($db, 'material.delete', 'material', $materialId, [], $teacherId, 'teacher');
         echo json_encode(['success' => true, 'message' => 'Material deleted successfully']);
     } catch (PDOException $e) {
         echo json_encode(['success' => false, 'message' => 'Database error. Please try again.']);
@@ -2503,6 +2515,7 @@ function createGradeItem($db, $teacherId) {
         $gradeItemId = (int)$db->lastInsertId();
         appNotifyGradeActivityCreated($db, $classId, $gradeItemId, $title, $component, round($totalScore, 2));
 
+        recordActivityLog($db, 'grade_activity.create', 'grade_item', $gradeItemId, ['class_id' => $classId, 'component' => $component], $teacherId, 'teacher');
         echo json_encode(['success' => true, 'message' => 'Grade activity created successfully']);
     } catch (PDOException $e) {
         echo json_encode(['success' => false, 'message' => 'Database error. Please try again.']);
@@ -2653,6 +2666,7 @@ function saveGradeItemScores($db, $teacherId) {
         }
         $db->commit();
         notifyGradeItemScoreParents($db, $teacherId, $item, $notifiedScores);
+        recordActivityLog($db, 'grade_activity.score', 'grade_item', $gradeItemId, ['score_count' => count($notifiedScores)], $teacherId, 'teacher');
         echo json_encode(['success' => true, 'message' => 'Scores saved successfully']);
     } catch (PDOException $e) {
         if ($db->inTransaction()) $db->rollBack();
@@ -2728,6 +2742,7 @@ function finishGradeItem($db, $teacherId) {
             );
         }
 
+        recordActivityLog($db, 'grade_activity.finish', 'grade_item', $gradeItemId, ['class_id' => $classId], $teacherId, 'teacher');
         echo json_encode(['success' => true, 'message' => 'Grade activity finished and moved to archive']);
     } catch (PDOException $e) {
         echo json_encode(['success' => false, 'message' => 'Database error. Please try again.']);
@@ -2763,6 +2778,7 @@ function deleteGradeItem($db, $teacherId) {
             echo json_encode(['success' => false, 'message' => 'Grade activity not found']);
             return;
         }
+        recordActivityLog($db, 'grade_activity.delete', 'grade_item', $gradeItemId, [], $teacherId, 'teacher');
         echo json_encode(['success' => true, 'message' => 'Grade activity deleted successfully']);
     } catch (PDOException $e) {
         echo json_encode(['success' => false, 'message' => 'Database error. Please try again.']);
@@ -2803,6 +2819,7 @@ function restoreGradeItem($db, $teacherId) {
             echo json_encode(['success' => false, 'message' => 'Grade activity not found or already active']);
             return;
         }
+        recordActivityLog($db, 'grade_activity.restore', 'grade_item', $itemId, [], $teacherId, 'teacher');
         echo json_encode(['success' => true, 'message' => 'Grade activity restored. You can edit it in Grade Entry.']);
     } catch (PDOException $e) {
         echo json_encode(['success' => false, 'message' => 'Database error. Please try again.']);
@@ -2936,10 +2953,10 @@ function submitReportCard($db, $teacherId) {
         }
         $db->commit();
 
-        // Dispatch notification to Admin users about Adviser Report Card submission
+        // Dispatch notification to Principal users about Adviser Report Card submission
         try {
-            $adminStmt = $db->query("SELECT id FROM users WHERE role = 'admin' AND COALESCE(status, 'active') = 'active'");
-            $adminIds = $adminStmt ? $adminStmt->fetchAll(PDO::FETCH_COLUMN) : [];
+            $principalStmt = $db->query("SELECT id FROM users WHERE role = 'principal' AND COALESCE(status, 'active') = 'active'");
+            $principalIds = $principalStmt ? $principalStmt->fetchAll(PDO::FETCH_COLUMN) : [];
             $advStmt = $db->prepare("SELECT u.first_name, u.last_name, s.grade_level, s.name AS section_name FROM users u LEFT JOIN sections s ON s.adviser_id = u.id WHERE u.id = ? LIMIT 1");
             $advStmt->execute([$teacherId]);
             $advInfo = $advStmt->fetch(PDO::FETCH_ASSOC);
@@ -2947,32 +2964,33 @@ function submitReportCard($db, $teacherId) {
             $advGLevel = (int)($advInfo['grade_level'] ?? 0);
             $advSecName = (string)($advInfo['section_name'] ?? '');
 
-            if (!empty($adminIds) && function_exists('appDispatchNotification')) {
-                $targetLink = 'admin_Grade_Approvals_Detail.php?tab=report_cards&grade_level=' . $advGLevel . '&section=' . urlencode($advSecName) . '&academic_year=' . urlencode($academicYear) . '&semester=' . urlencode((string)($semester ?? ''));
+            if (!empty($principalIds) && function_exists('appDispatchNotification')) {
+                $targetLink = 'principal.php?status=submitted_admin&grade_level=' . $advGLevel . '&section=' . urlencode($advSecName) . '&academic_year=' . urlencode($academicYear) . '&semester=' . urlencode((string)($semester ?? ''));
                 $minRcStmt = $db->prepare("SELECT MIN(rc.id) AS min_id, MAX(rc.submitted_at) AS sub_at FROM report_card_approvals rc WHERE rc.advisory_teacher_id = ? AND rc.academic_year = ?");
                 $minRcStmt->execute([$teacherId, $academicYear]);
                 $rcMeta = $minRcStmt->fetch(PDO::FETCH_ASSOC) ?: [];
                 $minRcId = (int)($rcMeta['min_id'] ?? 0);
                 $rcSubAtTs = strtotime((string)($rcMeta['sub_at'] ?? 'now')) ?: time();
-                $rcSubKey = 'report_card_sub_admin_' . $teacherId . '_' . preg_replace('/[^a-zA-Z0-9]/', '', $academicYear) . '_' . ($semester ?? '3term') . '_appr_' . $minRcId . '_' . $rcSubAtTs;
+                $rcSubKey = 'report_card_sub_principal_' . $teacherId . '_' . preg_replace('/[^a-zA-Z0-9]/', '', $academicYear) . '_' . ($semester ?? '3term') . '_appr_' . $minRcId . '_' . $rcSubAtTs;
 
                 appDispatchNotification(
                     $db,
-                    $adminIds,
+                    $principalIds,
                     $rcSubKey,
                     'Report Cards Submitted for Approval',
-                    "Adviser {$advName} submitted report cards for Grade {$advGLevel} - {$advSecName} ({$submittedCount} students) for final admin approval.",
+                    "Adviser {$advName} submitted report cards for Grade {$advGLevel} - {$advSecName} ({$submittedCount} students) for final principal approval.",
                     'bi-folder-check',
                     'success',
-                    ['admin' => $targetLink],
+                    ['principal' => $targetLink],
                     ['type' => 'report_card_submission', 'teacher_id' => $teacherId, 'academic_year' => $academicYear]
                 );
             }
         } catch (Throwable $e) {
-            error_log('Admin report card submission notification failed: ' . $e->getMessage());
+            error_log('Principal report card submission notification failed: ' . $e->getMessage());
         }
 
-        echo json_encode(['success' => true, 'message' => 'Submitted report cards for ' . $submittedCount . ' student(s) to admin for approval']);
+        recordActivityLog($db, 'report_card.submit', 'class', $classId, ['academic_year' => $academicYear, 'semester' => $semester, 'student_count' => $submittedCount], $teacherId, 'teacher');
+        echo json_encode(['success' => true, 'message' => 'Submitted report cards for ' . $submittedCount . ' student(s) to principal for approval']);
     } catch (PDOException $e) {
         if ($db->inTransaction()) {
             $db->rollBack();
@@ -3031,9 +3049,10 @@ function recallReportCard($db, $teacherId) {
         $db->commit();
 
         if ($deletedCount <= 0) {
-            echo json_encode(['success' => false, 'message' => 'No adviser report card submission is available to recall, or it was already finally approved by admin.']);
+            echo json_encode(['success' => false, 'message' => 'No adviser report card submission is available to recall, or it was already finally approved by the Principal.']);
             return;
         }
+        recordActivityLog($db, 'report_card.recall', 'class', $classId, ['academic_year' => $academicYear, 'semester' => $semester, 'student_count' => $deletedCount], $teacherId, 'teacher');
         echo json_encode(['success' => true, 'message' => 'Recalled ' . $deletedCount . ' report card submission(s).']);
     } catch (PDOException $e) {
         if ($db->inTransaction()) {
@@ -3087,6 +3106,7 @@ function createClassAnnouncement($db, $teacherId) {
             error_log('Class announcement saved, but push delivery failed: ' . $notificationError->getMessage());
         }
 
+        recordActivityLog($db, 'announcement.create', 'class_announcement', $announcementId, ['class_id' => $classId], $teacherId, 'teacher');
         echo json_encode(['success' => true, 'message' => 'Class announcement posted successfully']);
     } catch (PDOException $e) {
         echo json_encode(['success' => false, 'message' => 'Database error. Please try again.']);
@@ -3142,6 +3162,7 @@ function deleteClassAnnouncement($db, $teacherId) {
             return;
         }
 
+        recordActivityLog($db, 'announcement.delete', 'class_announcement', $announcementId, [], $teacherId, 'teacher');
         echo json_encode(['success' => true, 'message' => 'Class announcement deleted successfully']);
     } catch (PDOException $e) {
         echo json_encode(['success' => false, 'message' => 'Database error. Please try again.']);
@@ -3291,6 +3312,7 @@ function teacherSaveOfflineActivity($db, $teacherId) {
             error_log('Offline activity sync notification error: ' . $notificationError->getMessage());
         }
 
+        recordActivityLog($db, 'grade_activity.offline_sync', 'grade_item', $gradeItemId, ['class_id' => $classId, 'score_count' => is_array($scores) ? count($scores) : 0], $teacherId, 'teacher');
         echo json_encode(['success' => true, 'message' => 'Offline activity and scores saved successfully', 'grade_item_id' => $gradeItemId]);
     } catch (PDOException $e) {
         if ($db->inTransaction()) $db->rollBack();

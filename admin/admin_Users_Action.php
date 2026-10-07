@@ -1,5 +1,8 @@
 <?php
 require_once __DIR__ . '/../functions/bootstrap.php';
+if (defined('APP_TESTING') && APP_TESTING) {
+    return;
+}
 // Admin Users Action Handler
 header('Content-Type: application/json');
 ini_set('display_errors', '0');
@@ -116,6 +119,10 @@ function getTeacherSubjectConflicts($db, $classIds, $excludeTeacherId = 0) {
 function createUser($db) {
     try {
         $role = trim((string)($_POST['role'] ?? ''));
+        if (!in_array($role, ['teacher', 'parent', 'principal', 'student'], true)) {
+            echo json_encode(['success' => false, 'message' => 'Invalid account role']);
+            return;
+        }
         $referenceCode = strtoupper(trim((string)($_POST['reference_code'] ?? '')));
         $firstName = trim((string)($_POST['first_name'] ?? ''));
         $middleName = trim((string)($_POST['middle_name'] ?? ''));

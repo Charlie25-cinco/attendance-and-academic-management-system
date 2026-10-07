@@ -20,6 +20,7 @@ $stats = [
 
 // Get next reference codes
 $nextRefCodes = [
+    'principal' => '',
     'teacher' => '',
     'parent' => ''
 ];
@@ -282,6 +283,7 @@ $page_title = 'Manage Users';
                             <select name="role" class="form-select">
                                 <option value="">All Roles</option>
                                 <option value="teacher" <?php echo $role_filter === 'teacher' ? 'selected' : ''; ?>>Teacher</option>
+                                <option value="principal" <?php echo $role_filter === 'principal' ? 'selected' : ''; ?>>Principal</option>
                                 <option value="parent" <?php echo $role_filter === 'parent' ? 'selected' : ''; ?>>Parent</option>
                                 <option value="admin" <?php echo $role_filter === 'admin' ? 'selected' : ''; ?>>Administrator</option>
                             </select>

@@ -15,6 +15,7 @@ Attendance and Academic Management System for Balingasag Senior High School.
 2. Install dependencies with `composer install`.
 3. Configure database settings in `.env`.
 4. Import `database/schema.sql`.
+   - Existing installations upgrading to v1.0.0 must run `database/upgrade_principal_portal.sql` once before use.
 5. Optional: import seed data from `database/seed.sql` and `database/seed_ssms_g11_subjects.sql`.
 6. Start the local server with `composer run serve`.
 
@@ -48,6 +49,7 @@ Open `http://localhost:5000`.
 - `functions/` - bootstrap, helpers, grade logic, database helpers, and exporters.
 - `includes/` - shared header, sidebar, footer, modals, and UI fragments.
 - `parent/`, `student/`, `teacher/` - role-specific web modules.
+- `principal/` - final report-card review and release portal.
 - `resources/` - legacy/reference DepEd material.
 - `site/` - public site entry point.
 - `src/` - PSR-4 namespaced classes (`BshsAms\Database`, `BshsAms\Schedule`, `BshsAms\Grade`, `BshsAms\Export`, `BshsAms\Xlsx`).
@@ -56,12 +58,24 @@ Open `http://localhost:5000`.
 
 ## Authentication And Security
 
+### Security review fixes (v0.3.171)
+
+This operational documentation applies ISO/IEC/IEEE 29148 clarity and traceability principles; it is not a complete requirements specification.
+
+- `router.php` and the root Apache `.htaccess` restrict HTTP access to public entry points and assets. Apache requires `mod_rewrite` and overrides enabled; other servers must enforce the same boundary. Configuration, source helpers, dependencies, stored documents, and dotfiles are private.
+- Development API secrets are stored in `storage/secrets`; existing `api/.api_secret` and `api/.api_sync_secret` files migrate there when used. Production continues to require environment secrets.
+- Authenticated API routes enforce method-specific RBAC through `src/Security/ApiAccessPolicy.php`. Cookie-authenticated mutations require a session CSRF token in the header, query string, form body, or JSON body. JSON APIs require `Content-Type: application/json`; bearer-only requests do not require browser CSRF tokens.
+- Offline teacher data is stored in account-specific IndexedDB databases and localStorage namespaces. Logout locks pending records and deletes private HTML caches. Only signing into the same account unlocks pending work; sync verifies its account owner on both client and server. The local lock expires with the configured idle timeout, capped at 24 hours, and is not an authentication credential or encryption.
+- Old unscoped offline queues are not automatically assigned to a user because their ownership cannot be verified. Synchronize pending work before upgrading an existing installation. Legacy browser data is left untouched for deliberate recovery, but is no longer loaded by the application.
+- Only the designated teacher offline workspaces may retain authenticated HTML in an account-specific cache. Other authenticated pages and login forms are not cached. JavaScript/CSS use network-first delivery with offline fallback.
+- Run the browser-behavior simulation with `node tests/browser-security.cjs` as well as Composer lint/tests. Manual installed-PWA logout/account-switch testing remains necessary on desktop and mobile.
+
 - Web requests load `functions/bootstrap.php`, which loads Composer and starts sessions through `config/session.php`.
 - Web forms use a session CSRF token.
 - API bearer tokens are signed with `API_AUTH_SECRET` and carry an `api_token_version` claim; password changes bump that version, so previously issued tokens stop working immediately on all devices.
 - Logout requires the session CSRF token, preventing cross-site drive-by logout links.
 - API sync routes use `API_SYNC_SECRET`.
-- Admin Audit Logs show important admin changes from `admin_audit_logs` and recent sign-in attempts from `auth_login_logs`.
+- Admin Audit Logs show role-aware critical activity from `activity_logs`, historical admin records from `admin_audit_logs`, and recent sign-in attempts from `auth_login_logs`. Sensitive details are redacted before new activity records are stored.
 - In production, set `APP_ENV=production`, `API_AUTH_SECRET`, `API_SYNC_SECRET`, and a trusted `API_ALLOWED_ORIGIN`.
 - Set `APP_SESSION_DRIVER=database` in stateless hosting such as Wasmer so active PHP sessions are stored in the SQL database instead of local instance files.
 - `APP_SESSION_LIFETIME` and `APP_SESSION_IDLE_TIMEOUT` control how long an active web/PWA session can survive after closing and reopening; the example uses 24 hours, while remember-me tokens keep trusted devices signed in longer.
@@ -75,6 +89,12 @@ Open `http://localhost:5000`.
 - The app warns before refreshing or leaving dirty sensitive POST forms; browser security does not permit the PWA to disable operating-system controls such as `Ctrl+Alt+Del`, `Alt+Tab`, or startup programs.
 
 ## Role Modules
+
+### Principal
+
+- Dedicated dashboard for pending, released, and returned report cards.
+- Final report-card release, return-for-correction, and release-withdrawal actions through the `report_cards.review` permission.
+- Final release saves notifications for students and linked parents before Web Push delivery is attempted.
 
 ### Admin
 
@@ -104,10 +124,10 @@ Open `http://localhost:5000`.
 3. Subject teacher may recall while grades are `submitted`; rejected, verified, or final-released grades may be corrected by submitting again.
 4. Admin verifies subject grades for adviser review or rejects them: `admin_verified` or `rejected`.
 5. Admin may return verified subject grades to the teacher by marking them `rejected`, which unlocks teacher editing and resubmission.
-6. Adviser submits compiled report cards to admin: `report_card_approvals.status = 'submitted_admin'`.
-7. Adviser may recall while report cards are `submitted_admin` or `rejected`; final-approved report cards are locked from adviser recall.
-8. Admin gives final report-card approval or rejection: `approved` or `rejected`.
-9. Student and parent portals show grades only after final admin approval through `report_card_approvals.status = 'approved'`.
+6. Adviser submits compiled report cards to the Principal: `report_card_approvals.status = 'submitted_admin'` (the legacy storage name is retained for compatibility).
+7. Adviser may recall while report cards are `submitted_admin`; Principal-returned cards may be corrected and resubmitted.
+8. Principal gives final report-card approval or return decision: `approved` or `rejected`; a released card may also be withdrawn for correction.
+9. Student and parent portals show grades only after final Principal approval through `report_card_approvals.status = 'approved'`.
 10. After final release, teachers may submit corrected subject grades again; the affected approved report cards are marked `rejected` so student and parent portals stop showing stale final grades until approval runs again.
 
 ## Chat
@@ -121,7 +141,7 @@ Open `http://localhost:5000`.
 
 - Shared UI styling lives in `assets/css/main.css` and role-specific refinements live in `assets/css/role.css`.
 - Pages should use the common card, table, button, form, badge, modal, header, and chat styles instead of one-off visual treatments.
-- The current visual direction is simple, modern, professional, compact, and consistent across admin, teacher, student, and parent portals.
+- The current visual direction is simple, modern, professional, compact, and consistent across Principal, Admin, Teacher, Student, and Parent portals.
 - Admin core pages share compact headers, stat cards, filter forms, tables, action buttons, pagination, and modal panel styling from the shared CSS layer.
 - Teacher portal pages share compact heroes, KPI cards, filters, attendance status controls, grade tables, action bars, and chat surfaces from the shared CSS layer.
 - Modal, helper text, empty-state, and note styles should preserve readable contrast on light and dark surfaces.
@@ -135,7 +155,7 @@ Open `http://localhost:5000`.
 ## PWA
 
 - PWA metadata lives in `assets/manifest.json`.
-- The active service worker is root-scoped at `sw.js` so it can cover `/auth/`, `/admin/`, `/teacher/`, `/student/`, `/parent/`, and `/site/`.
+- The active service worker is root-scoped at `sw.js` so it can cover `/auth/`, `/principal/`, `/admin/`, `/teacher/`, `/student/`, `/parent/`, and `/site/`.
 - `assets/push-sw.js` is kept only as a compatibility bridge for older browser registrations.
 - Installed app icons are generated from the school seal with safe padding for normal, maskable, and Apple touch icon use; regenerate them with `php scripts/generate_pwa_icons.php` after replacing `assets/images/bshs-logo.jpg`.
 - Install prompts are exposed through the shared header install button when the browser supports installation.
@@ -169,7 +189,6 @@ Open `http://localhost:5000`.
   - `API_AUTH_SECRET`, `API_SYNC_SECRET`
   - `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `RESEND_FROM_NAME` for password reset OTP email
   - `PUSH_VAPID_PUBLIC_KEY`, `PUSH_VAPID_PRIVATE_KEY`, `PUSH_VAPID_SUBJECT` for installed PWA device notifications
-  - `SMS_PROVIDER=philsms`, `SMS_API_KEY`, `SMS_SENDER_NAME=BSHS-AMS`, and `SMS_ENDPOINT` for official grade approval SMS notifications to parents and students
   - SMTP secrets if email fallback is enabled
 - `app.yaml` intentionally contains placeholder owner/public URL values that the GitHub workflow replaces from secrets.
 - Composer runtime platform checks are disabled in `composer.json` because Wasmer's PHP/WASI runtime can report a non-64-bit platform even though the application can still boot and serve normal web requests.
@@ -186,7 +205,7 @@ Open `http://localhost:5000`.
 ## RBAC
 
 - RBAC tables and default permissions are included in `database/schema.sql`.
-- Runtime helpers also auto-create and seed RBAC tables when the RBAC control panel or protected pages are loaded.
+- RBAC structure is imported from `database/schema.sql`; runtime helpers load/seed permissions without creating new MySQL tables.
 - Permission checks are enforced through `functions/bootstrap.php` using the current script-to-permission map in `functions/app-helpers.php`.
 - The Admin RBAC Control Panel is available from the admin sidebar.
 
