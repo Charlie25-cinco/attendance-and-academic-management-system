@@ -2,6 +2,21 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v2.0.0 — 2026-10-08
+
+### Added
+
+- Added `composer run database:setup-sql`, which generates one ignored `database/reset_and_setup.local.sql` containing the full reset, canonical schema, baseline data, RBAC configuration, and protected Admin/Principal accounts.
+
+### Changed
+
+- Made `database/schema.sql` the complete source for both structure and non-secret baseline website, school-setting, Strengthened SHS subject, and RBAC data.
+- Reduced the committed database SQL surface to `schema.sql` and `reset_database.sql` and documented a single-file production reset workflow.
+
+### Removed
+
+- Removed the separate `seed.sql`, `seed_ssms_g11_subjects.sql`, and `upgrade_principal_portal.sql` files and the obsolete account-only SQL generator.
+
 ## v1.0.3 — 2026-10-08
 
 ### Changed

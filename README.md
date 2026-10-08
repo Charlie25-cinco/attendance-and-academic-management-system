@@ -14,13 +14,13 @@ Attendance and Academic Management System for Balingasag Senior High School.
 1. Copy `.env.example` to `.env`.
 2. Install dependencies with `composer install`.
 3. Configure database settings in `.env`.
-4. Import `database/schema.sql`.
-   - Existing installations upgrading to v1.0.0 must run `database/upgrade_principal_portal.sql` once before use.
-5. Provision Admin and Principal accounts:
-   - With database CLI access, run `composer run seed:admin`.
-   - For a database dashboard, run `composer run seed:accounts-sql`, import the ignored `database/seed_system_accounts.local.sql`, then delete that generated file.
-6. Optional: import seed data from `database/seed.sql` and `database/seed_ssms_g11_subjects.sql`.
-7. Start the local server with `composer run serve`.
+4. Set `DEFAULT_NEW_USER_PASSWORD` to the approved shared first-login password.
+5. Run `composer run database:setup-sql`.
+6. Select the intended database and import the ignored `database/reset_and_setup.local.sql`.
+7. Delete the generated SQL file after a successful import.
+8. Start the local server with `composer run serve`.
+
+The generated setup is intentionally destructive: it resets the selected database, creates the complete schema, loads baseline school/subject/RBAC data, and provisions the protected Admin and Principal accounts. Back up any database that must be preserved before importing it.
 
 The development server runs from the project root with `router.php`:
 
@@ -83,7 +83,7 @@ This operational documentation applies ISO/IEC/IEEE 29148 clarity and traceabili
 - Set `APP_SESSION_DRIVER=database` in stateless hosting such as Wasmer so active PHP sessions are stored in the SQL database instead of local instance files.
 - `APP_SESSION_LIFETIME` and `APP_SESSION_IDLE_TIMEOUT` control how long an active web/PWA session can survive after closing and reopening; the example uses 24 hours, while remember-me tokens keep trusted devices signed in longer.
 - Create the protected Admin and Principal accounts with `composer run seed:admin`, which runs `database/seed_admin.php` using the same strong `DEFAULT_NEW_USER_PASSWORD` configured for every role.
-- For a database-dashboard import, run `composer run seed:accounts-sql` locally and import the ignored `database/seed_system_accounts.local.sql` file after `database/schema.sql`, then delete the generated file.
+- For a complete database-dashboard reset, run `composer run database:setup-sql`, import the ignored `database/reset_and_setup.local.sql`, then delete the generated file.
 - `DEFAULT_NEW_USER_PASSWORD` controls first-login credentials for Admin, Principal, Teacher, Student, and Parent accounts. Admin cannot create, edit, reset, deactivate, or archive the deployment-owned Principal account.
 - The API first-login password-change flow requires the `temp_token` returned by `POST /api/index.php?route=login` when `must_change_password` is true.
 - Web login, remember-me auto-login, and API login force password setup while a user still has the configured default password.
@@ -201,16 +201,15 @@ This operational documentation applies ISO/IEC/IEEE 29148 clarity and traceabili
 - Teacher learning-material uploads are stored under `/app/storage/materials` on Wasmer and downloaded only through authenticated teacher/student handlers. `MATERIAL_STORAGE_PATH` may override this location for a trusted deployment.
 - Teacher Classes uses a learning-material upload modal whose primary Chromium picker starts in Documents, avoiding a stalled Downloads folder. Standard-picker compatibility, drag-and-drop, and clipboard paste remain available; browser and server validation restrict uploads to supported file types and 10 MB without previewing or reading file contents before upload.
 - For installed PWA use, set `APP_SESSION_DRIVER=database`, `APP_SESSION_LIFETIME=86400`, and `APP_SESSION_IDLE_TIMEOUT=86400`; users can stay signed in longer through the checked-by-default trusted-device option on login.
-- Wasmer Attached Database uses hosted MySQL; import `database/schema.sql` first so `app_sessions` and authentication tables exist before production traffic.
+- Wasmer Attached Database uses hosted MySQL; use `database/reset_and_setup.local.sql` for an approved full reset, or `database/schema.sql` only when creating an empty database without resetting an existing one.
 - Use `DB_SSL_CA` for a CA file path, or `DB_SSL_CA_CONTENT` when the CA PEM is stored directly as a GitHub/Wasmer secret.
 - Password reset uses a 6-digit OTP sent through Resend when configured, with SMTP as fallback; reset codes are hashed in `auth_password_resets.token_hash` and expire after 10 minutes.
-- For both Laragon and Wasmer Attached Database imports, use `database/schema.sql`. It is hosted-MySQL-compatible and does not include local-only `DROP DATABASE`, `CREATE DATABASE`, or `USE school_db` statements.
+- `database/schema.sql` is the canonical structure and baseline-data source. It is hosted-MySQL-compatible and contains no `DROP DATABASE`, `CREATE DATABASE`, or `USE` statements.
 - If migrating existing hosted data into Wasmer Attached Database, import `database/schema.sql` first, import the data dump, then update Wasmer app environment variables to the Wasmer database values. Keep the previous database as backup until all login, SF1, SF2, attendance, and grading flows are verified.
 
 ## RBAC
 
-- RBAC tables and default permissions are included in `database/schema.sql`.
-- RBAC structure is imported from `database/schema.sql`; runtime helpers load/seed permissions without creating new MySQL tables.
+- RBAC tables, default roles, permissions, and role mappings are included in `database/schema.sql`; runtime helpers only preserve compatibility and idempotently confirm those rows.
 - Permission checks are enforced through `functions/bootstrap.php` using the current script-to-permission map in `functions/app-helpers.php`.
 - The Admin RBAC Control Panel is available from the admin sidebar.
 

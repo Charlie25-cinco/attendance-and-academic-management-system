@@ -1,11 +1,9 @@
 -- Reset the selected Balingasag SHS AMS database.
 -- WARNING: This permanently deletes all application tables and data.
--- Wasmer/Laragon usage:
--- 1. Run this file against the selected database.
--- 2. Run database/schema.sql.
--- 3. Run composer run seed:admin, or generate the private dashboard import with
---    composer run seed:accounts-sql and import database/seed_system_accounts.local.sql.
--- 4. Optionally run database/seed.sql and database/seed_ssms_g11_subjects.sql.
+-- Standalone use: run this file, then database/schema.sql, then provision the
+-- protected accounts with composer run seed:admin.
+-- One-file dashboard use: run composer run database:setup-sql and import the
+-- ignored database/reset_and_setup.local.sql instead of this source file.
 
 SET FOREIGN_KEY_CHECKS = 0;
 

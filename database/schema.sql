@@ -6,6 +6,9 @@
 --           DM 74, s. 2025 / DM 12, s. 2026 SSHS weight distribution
 --           Combined EC/MK subject averaging
 --           Configurable academic year settings
+--           Baseline website, school settings, Grade 11 subjects, and RBAC data
+-- Select the intended database before importing. This file does not reset data
+-- and does not provision password-bearing Admin or Principal accounts.
 -- =============================================================================
 
 
@@ -719,3 +722,302 @@ CREATE INDEX idx_attendance_student_date_status ON attendance (student_id, date,
 CREATE INDEX idx_grades_student_cs_term_ay ON grades (student_id, class_subject_id, academic_year, term);
 CREATE INDEX idx_grade_items_class_teacher_date_status ON grade_items (class_id, teacher_id, activity_date, status);
 CREATE INDEX idx_gis_item_student ON grade_item_scores (grade_item_id, student_id);
+
+-- =============================================================================
+-- BASELINE DATA
+-- =============================================================================
+-- Fresh imports include required public content, school settings, the complete
+-- Strengthened SHS Grade 11 subject registry, and default RBAC configuration.
+
+-- WEBSITE CONTENT (admin-managed school website pages)
+-- =============================================================================
+INSERT IGNORE INTO website_content (section_key, title, content) VALUES
+('hero_title', 'Welcome to Balingasag Senior High School',
+ 'Nurturing excellence, building futures. A DepEd-accredited Senior High School in Balingasag, Misamis Oriental.'),
+('about', 'About Our School',
+ 'Balingasag Senior High School (BSHS) is committed to providing quality education for Senior High School students in the municipality of Balingasag. We offer various tracks and strands aligned with the K to 12 curriculum of the Department of Education.'),
+('contact_address', 'Address',
+ 'Balingasag, Misamis Oriental, Philippines'),
+('contact_email', 'Email',
+ 'balingasagshs@deped.gov.ph'),
+('contact_phone', 'Phone',
+ '(088) 000-0000'),
+('contact_hours', 'Office Hours',
+ 'Monday â€“ Friday: 7:00 AM â€“ 5:00 PM');
+
+-- =============================================================================
+-- ACADEMIC YEAR SETTINGS
+-- =============================================================================
+INSERT IGNORE INTO academic_year_settings (academic_year, grading_system) VALUES
+('2025-2026', '4_quarter'),
+('2026-2027', '3_term');
+
+-- =============================================================================
+-- SCHOOL SETTINGS
+-- =============================================================================
+INSERT IGNORE INTO school_settings (setting_key, setting_value) VALUES
+('school_name', 'Balingasag Senior High School'),
+('school_id', '341227'),
+('district', 'Balingasag North'),
+('division', 'Misamis Oriental'),
+('region', 'Region X'),
+('school_address', 'Balingasag, Misamis Oriental, Philippines');
+
+-- CORE SUBJECTS (Required for ALL Grade 11 learners, both tracks)
+-- Year-long: 160 hours across Term 1 + Term 2 + Term 3
+-- =============================================================================
+INSERT IGNORE INTO subjects (subject_code, subject_name, subject_category, grade_level, track, term_count, curriculum) VALUES
+('ELECTCOM',    'Effective Communication',                                      'core', 11, NULL, 3, 'strengthened_shs'),
+('MK',          'Mabisang Komunikasyon',                                        'core', 11, NULL, 3, 'strengthened_shs'),
+('GENMATH',     'General Mathematics',                                          'core', 11, NULL, 3, 'strengthened_shs'),
+('GENSCI',      'General Science',                                              'core', 11, NULL, 3, 'strengthened_shs'),
+('LIFECARE',    'Life and Career Skills',                                       'core', 11, NULL, 3, 'strengthened_shs'),
+('KKLP',        'Pag-aaral ng Kasaysayan at Lipunang Pilipino',                'core', 11, NULL, 3, 'strengthened_shs');
+
+-- =============================================================================
+-- ACADEMIC TRACK ELECTIVES (80 hours each, single term)
+-- Students take at least 9 electives (960 hours total)
+-- =============================================================================
+
+-- Cluster 1: Arts, Social Sciences, and Humanities
+INSERT IGNORE INTO subjects (subject_code, subject_name, subject_category, grade_level, track, term_count, curriculum) VALUES
+('ACOLIT1',     'Contemporary Literature 1',                                    'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('ACOLIT2',     'Contemporary Literature 2',                                    'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('ACRECOMP1',   'Creative Composition 1',                                       'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('ACRECOMP2',   'Creative Composition 2',                                       'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('AFILART',     'Filipino Identity Through the Arts',                           'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('AFIL1',       'Filipino 1 (Wika at Komunikasyon sa Akademikong Filipino)',    'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('AFIL2TP',     'Filipino 2 (Filipino sa Larang Teknikal Propesyonal)',         'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('AFIL2IS',     'Filipino 2 (Filipino sa Isports)',                             'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('AFIL2SD',     'Filipino 2 (Filipino sa Sining at Disenyo)',                   'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('AARTS1',      'Arts 1 (Creative Industries - Visual, Literary, Media, Applied, Traditional Art)', 'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('AARTS2',      'Arts 2 (Creative Industries - Music, Dance, Theater)',         'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('APHIL1',      'Introduction to Philosophy',                                   'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('ALEADART',    'Leadership and Management in the Arts',                        'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('AMALPAG',     'Malikhaing Pagsulat',                                          'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('APHGOV',      'Philippine Governance (Philippine Politics and Governance)',   'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('ASOSTP',      'Social Sciences Theory and Practice',                          'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('ACITCIV',     'Citizenship and Civic Engagement',                             'academic_elective', 11, 'academic', 1, 'strengthened_shs');
+
+-- Cluster 2: Business and Entrepreneurship
+INSERT IGNORE INTO subjects (subject_code, subject_name, subject_category, grade_level, track, term_count, curriculum) VALUES
+('ABUS1',       'Business 1 (Basic Accounting)',                                'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('AINTOM',      'Introduction to Organization and Management',                  'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('ABUS2',       'Business 2 (Business Finance and Income Taxation)',            'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('ABUS3',       'Business 3 (Business Economics)',                              'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('ACONMKG',     'Contemporary Marketing',                                       'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('AENTREP',     'Entrepreneurship',                                             'academic_elective', 11, 'academic', 1, 'strengthened_shs');
+
+-- Cluster 3: STEM
+INSERT IGNORE INTO subjects (subject_code, subject_name, subject_category, grade_level, track, term_count, curriculum) VALUES
+('AFINM1',      'Finite Mathematics 1',                                         'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('AFINM2',      'Finite Mathematics 2',                                         'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('ABIO1',       'Biology 1',                                                    'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('ABIO2',       'Biology 2',                                                    'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('ACHEM1',      'Chemistry 1',                                                  'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('ACHEM2',      'Chemistry 2',                                                  'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('AESS1',       'Earth and Space Science 1',                                    'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('AESS2',       'Earth and Space Science 2',                                    'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('APHYS1',      'Physics 1',                                                    'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('APHYS2',      'Physics 2',                                                    'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('AADVM1',      'Advanced Mathematics 1',                                       'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('AADVM2',      'Advanced Mathematics 2',                                       'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('ABIO3',       'Biology 3',                                                    'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('ABIO4',       'Biology 4',                                                    'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('ACHEM3',      'Chemistry 3',                                                  'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('ACHEM4',      'Chemistry 4',                                                  'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('AESS3',       'Earth and Space Science 3',                                    'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('AESS4',       'Earth and Space Science 4',                                    'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('APHYS3',      'Physics 3',                                                    'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('APHYS4',      'Physics 4',                                                    'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('ACALC1',      'Calculus 1',                                                   'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('ACALC2',      'Calculus 2',                                                   'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('ATRIG1',      'Trigonometry 1',                                               'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('ATRIG2',      'Trigonometry 2',                                               'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('AEMPTECH',    'Empowerment Technologies',                                     'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('ADATAMGT',    'Database Management',                                          'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('ADATAAN',     'Fundamentals of Data Analytics and Management',                'academic_elective', 11, 'academic', 1, 'strengthened_shs');
+
+-- Cluster 4: Sports, Health, and Wellness
+INSERT IGNORE INTO subjects (subject_code, subject_name, subject_category, grade_level, track, term_count, curriculum) VALUES
+('AHUMOV1',     'Human Movement 1 (Basic Anatomy in Sports and Exercise)',      'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('APE1',        'Physical Education 1 (Fitness and Recreation)',                'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('AHUMOV2',     'Human Movement 2 (Motor Skills Development)',                  'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('APE2',        'Physical Education 2 (Sports and Dance)',                      'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('ASPTACT',     'Sports Activity Management',                                   'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('ASPTCOA',     'Sports Coaching',                                              'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('ASPTOFF',     'Sports Officiating',                                           'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('AEXSPR',      'Exercise and Sports Programming',                              'academic_elective', 11, 'academic', 1, 'strengthened_shs'),
+('ASAFFirstAid','Safety and First Aid',                                         'academic_elective', 11, 'academic', 1, 'strengthened_shs');
+
+-- =============================================================================
+-- TECHPRO TRACK ELECTIVES (320 hours each, full year in Grade 11)
+-- Students take at least 2 TechPro electives (640 hours)
+-- =============================================================================
+
+-- Cluster 1: Aesthetic, Wellness, and Human Care
+INSERT IGNORE INTO subjects (subject_code, subject_name, subject_category, grade_level, track, term_count, curriculum) VALUES
+('TESPAESTH',   'Aesthetic Services (Beauty Care)',                             'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TESPBARB',    'Barbering Services',                                           'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TESPCARGIV',  'Caregiving (Adult Care)',                                      'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TESPCARKID',  'Caregiving (Child Care)',                                      'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TESPHAIR',    'Hairdressing Services',                                        'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TESPWELL',    'Wellness Services (Hilot/Massage)',                            'techpro_elective', 11, 'techpro', 3, 'strengthened_shs');
+
+-- Cluster 2: Agri-Fishery Business and Food Innovation
+INSERT IGNORE INTO subjects (subject_code, subject_name, subject_category, grade_level, track, term_count, curriculum) VALUES
+('TEAGRCRP',    'Agricultural Crops Production',                                'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TEAGRAGR',    'Agro-entrepreneurship',                                        'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TEAQUACUL',   'Aquaculture',                                                  'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TEFISHCAP',   'Fish Capture Operation',                                       'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TEFOODPRC',   'Food Processing',                                              'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TEORGAGR',    'Organic Agriculture Production',                               'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TEPOULCHR',   'Poultry Production (Chicken)',                                 'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TERUMPROD',   'Ruminants Production',                                         'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TESWIPROD',   'Swine Production',                                             'techpro_elective', 11, 'techpro', 3, 'strengthened_shs');
+
+-- Cluster 3: Artisanry and Creative Enterprise
+INSERT IGNORE INTO subjects (subject_code, subject_name, subject_category, grade_level, track, term_count, curriculum) VALUES
+('TEGARPART',   'Garments Artisanry',                                           'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TEHANDWEAV',  'Handicrafts (Weaving)',                                        'techpro_elective', 11, 'techpro', 3, 'strengthened_shs');
+
+-- Cluster 4: Automotive and Small Engine Technologies
+INSERT IGNORE INTO subjects (subject_code, subject_name, subject_category, grade_level, track, term_count, curriculum) VALUES
+('TEAUTOELEC',  'Automotive Servicing (Electrical Repair)',                     'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TEAUTOECHR',  'Automotive Servicing (Engine and Chassis Repairs)',            'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TEAUTOALL',   'Driving and Automotive Servicing',                             'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TEMOTOENG',   'Motorcycle and Small Engine Servicing',                        'techpro_elective', 11, 'techpro', 3, 'strengthened_shs');
+
+-- Cluster 5: Construction and Building Technologies
+INSERT IGNORE INTO subjects (subject_code, subject_name, subject_category, grade_level, track, term_count, curriculum) VALUES
+('TECARP',      'Carpentry',                                                    'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TECONOP',     'Construction Operation',                                       'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TEWELD',      'Manual Metal Arc Welding',                                     'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TETECHDFT',   'Technical Drafting',                                           'techpro_elective', 11, 'techpro', 3, 'strengthened_shs');
+
+-- Cluster 6: Creative Arts and Design Technologies
+INSERT IGNORE INTO subjects (subject_code, subject_name, subject_category, grade_level, track, term_count, curriculum) VALUES
+('TEANIM',      'Animation',                                                    'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TEILLUS',     'Illustration',                                                 'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TEVISGDES',   'Visual Graphic Design',                                        'techpro_elective', 11, 'techpro', 3, 'strengthened_shs');
+
+-- Cluster 7: Hospitality and Tourism
+INSERT IGNORE INTO subjects (subject_code, subject_name, subject_category, grade_level, track, term_count, curriculum) VALUES
+('TEBAKERY',    'Bakery Operation',                                             'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TEEVTMGT',    'Events Management Services',                                   'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TEFBOPER',    'Food and Beverage Operation',                                  'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TEHOTELFO',   'Hotel Operation (Front Office Services)',                      'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TEHOTELHS',   'Hotel Operation (Housekeeping Services)',                      'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TEKITCHEN',   'Kitchen Operation',                                            'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TETOURISM',   'Tourism Services',                                             'techpro_elective', 11, 'techpro', 3, 'strengthened_shs');
+
+-- Cluster 8: ICT Support and Computer Programming Technologies
+INSERT IGNORE INTO subjects (subject_code, subject_name, subject_category, grade_level, track, term_count, curriculum) VALUES
+('TEBROADINS',  'Broadband Installation',                                       'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TECOMPROG1',  'Computer Programming (Java)',                                  'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TECOMPROG2',  'Computer Programming (.NET Technology)',                       'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TECOMPROG3',  'Computer Programming (Oracle Database)',                       'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TECOMPSERV',  'Computer Systems Servicing',                                   'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TECONCTR',    'Contact Center Services',                                      'techpro_elective', 11, 'techpro', 3, 'strengthened_shs');
+
+-- Cluster 9: Industrial Technologies
+INSERT IGNORE INTO subjects (subject_code, subject_name, subject_category, grade_level, track, term_count, curriculum) VALUES
+('TEACINS',     'Commercial Air-Conditioning Installation and Servicing',       'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TERACSERV',   'Domestic Refrigeration and Air-Conditioning Servicing',        'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TEELCINS',    'Electrical Installation and Maintenance',                      'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TEELCPROD',   'Electronics Product Assembly and Servicing',                   'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TEMECHTRN',   'Mechatronics',                                                 'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TEPHOTVS',    'Photovoltaic Systems Installation',                            'techpro_elective', 11, 'techpro', 3, 'strengthened_shs');
+
+-- Cluster 10: Maritime Transport
+INSERT IGNORE INTO subjects (subject_code, subject_name, subject_category, grade_level, track, term_count, curriculum) VALUES
+('TEMARENG',    'Marine Engineering at the Support Level',                       'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TEMARTRANS',  'Marine Transportation at the Support Level',                   'techpro_elective', 11, 'techpro', 3, 'strengthened_shs'),
+('TESHPCAT',    'Ships Catering Services',                                      'techpro_elective', 11, 'techpro', 3, 'strengthened_shs');
+
+-- =============================================================================
+-- WORK IMMERSION (TechPro mandatory in G12, Academic optional)
+-- 320-640 hours, typically Grade 12
+-- =============================================================================
+INSERT IGNORE INTO subjects (subject_code, subject_name, subject_category, grade_level, track, term_count, curriculum) VALUES
+('WORKIMM',     'Work Immersion',                                               'work_immersion', 11, NULL, 3, 'strengthened_shs');
+
+-- =============================================================================
+-- FIELD EXPERIENCE (Academic track, mainly Grade 12)
+-- =============================================================================
+INSERT IGNORE INTO subjects (subject_code, subject_name, subject_category, grade_level, track, term_count, curriculum) VALUES
+('FIELDEXP',    'Field Experience / Exposure',                                  'field_experience_elective', 11, 'academic', 1, 'strengthened_shs');
+
+SELECT
+    COUNT(*) AS strengthened_g11_subject_count
+FROM subjects
+WHERE grade_level = 11
+AND curriculum = 'strengthened_shs';
+
+-- =============================================================================
+-- DEFAULT RBAC ROLES, PERMISSIONS, AND ROLE MAPPINGS
+-- =============================================================================
+INSERT IGNORE INTO rbac_roles (role_key, label, description, is_system) VALUES
+('principal', 'Principal', 'Reviews, approves and releases report cards.', 1),
+('admin', 'Administrator', 'Full system access.', 1),
+('teacher', 'Teacher', 'Can manage attendance, grades, and view assigned classes.', 1),
+('student', 'Student', 'Can view attendance, grades, and class schedules.', 1),
+('parent', 'Parent', 'Can view child progress and report cards.', 1);
+
+INSERT IGNORE INTO rbac_permissions (permission_key, label, category) VALUES
+('report_cards.review', 'Review and Release Report Cards (Principal)', 'grades'),
+('attendance.view', 'View Attendance', 'attendance'),
+('attendance.manage', 'Manage Attendance', 'attendance'),
+('attendance.reports', 'Attendance Reports', 'attendance'),
+('grades.view', 'View Grades', 'grades'),
+('grades.enter', 'Enter Grades', 'grades'),
+('grades.approve', 'Approve Grades', 'grades'),
+('grades.reports', 'Grade Reports', 'grades'),
+('classes.view', 'View Classes', 'classes'),
+('classes.manage', 'Manage Classes', 'classes'),
+('classes.assign', 'Assign Teachers', 'classes'),
+('users.view', 'View Users', 'users'),
+('users.create', 'Create Users', 'users'),
+('users.edit', 'Edit Users', 'users'),
+('users.delete', 'Delete Users', 'users'),
+('users.reset_password', 'Reset Passwords', 'users'),
+('announcements.view', 'View Announcements', 'announcements'),
+('announcements.create', 'Create Announcements', 'announcements'),
+('announcements.delete', 'Delete Announcements', 'announcements'),
+('reports.view', 'View Reports', 'reports'),
+('reports.export', 'Export Reports', 'reports'),
+('settings.view', 'View Settings', 'settings'),
+('settings.manage', 'Manage Settings', 'settings'),
+('messages.view', 'View Messages', 'messages'),
+('messages.send', 'Send Messages', 'messages'),
+('archives.view', 'View Archives', 'archives'),
+('archives.manage', 'Manage Archives', 'archives');
+
+INSERT IGNORE INTO rbac_role_permissions (role_id, permission_id, enabled)
+SELECT r.id, p.id, 1
+FROM rbac_roles r
+CROSS JOIN rbac_permissions p
+WHERE r.role_key = 'admin'
+   OR (r.role_key = 'principal' AND p.permission_key = 'report_cards.review')
+   OR (
+       r.role_key = 'teacher'
+       AND p.permission_key IN (
+           'attendance.view', 'attendance.manage', 'attendance.reports',
+           'grades.view', 'grades.enter', 'classes.view', 'users.view',
+           'announcements.view', 'reports.view', 'reports.export',
+           'messages.view', 'messages.send', 'archives.view'
+       )
+   )
+   OR (
+       r.role_key = 'student'
+       AND p.permission_key IN (
+           'attendance.view', 'grades.view', 'classes.view', 'announcements.view'
+       )
+   )
+   OR (
+       r.role_key = 'parent'
+       AND p.permission_key IN (
+           'attendance.view', 'grades.view', 'reports.view',
+           'announcements.view', 'messages.view', 'messages.send'
+       )
+   );

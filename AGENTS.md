@@ -70,7 +70,7 @@ These operational notes apply ISO/IEC/IEEE 29148 clarity and traceability princi
 - Stateless production hosts such as Wasmer must set `APP_SESSION_DRIVER=database` so PHP sessions are stored in SQL instead of instance-local files.
 - Installed PWA login persistence depends on database sessions plus `APP_SESSION_LIFETIME` and `APP_SESSION_IDLE_TIMEOUT`; keep the trusted-device remember option available and checked by default unless the user requests stricter login behavior.
 - Hosted MySQL deployments may require `DB_SSL_CA` or `DB_SSL_CA_CONTENT`; keep `DB_SSL_VERIFY_SERVER_CERT` enabled unless a trusted deployment explicitly disables it.
-- Protected system-account seeding should use `composer run seed:admin`, which provisions Admin and Principal from the shared `DEFAULT_NEW_USER_PASSWORD`. Hosted database dashboards must first run `composer run seed:accounts-sql` and import the ignored `database/seed_system_accounts.local.sql`; delete it after use and never commit generated hashes.
+- Protected system-account repair may use `composer run seed:admin`. Fresh or reset database-dashboard setup must use `composer run database:setup-sql` and import the ignored `database/reset_and_setup.local.sql`; it combines reset, canonical schema, baseline data, and Admin/Principal provisioning. Delete it after use and never commit generated hashes.
 - `DEFAULT_NEW_USER_PASSWORD` controls the initial password for every role and must be strong, stored only in local/hosting secrets, and replaced by each user during first login.
 - Admin may view the protected Principal account but must never create, edit, reset, activate/deactivate, or archive it through web or API user-management paths. Principal profile/password changes remain self-service, with deployment-operator reseeding reserved for recovery.
 - API first-login password changes require the temporary token returned by the login endpoint.
@@ -185,4 +185,4 @@ These operational notes apply ISO/IEC/IEEE 29148 clarity and traceability princi
 - Treat Wasmer app instances as stateless; use configured volumes for `/app/storage` and `/app/assets/uploads`, and keep durable school records plus active PHP sessions in Wasmer Attached Database.
 - Production PWA deployments should use database sessions and PWA-friendly session lifetimes, for example `APP_SESSION_LIFETIME=86400` and `APP_SESSION_IDLE_TIMEOUT=86400`.
 - Password reset uses 6-digit OTP codes sent through Resend when configured, with SMTP fallback. Store only hashed reset codes in `auth_password_resets.token_hash`.
-- Use `database/schema.sql` for both local and Wasmer Attached Database imports; it omits local-only database drop/create/use statements and is hosted-MySQL-compatible.
+- `database/schema.sql` is the single committed source for MySQL structure and non-secret baseline data. `database/reset_database.sql` is the only other committed SQL source. Both omit database-selection statements and remain hosted-MySQL-compatible.

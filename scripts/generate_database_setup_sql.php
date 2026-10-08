@@ -9,14 +9,20 @@ if (!validateStrongPassword($defaultPassword, $passwordError)) {
     exit(1);
 }
 
-$template = <<<'SQL'
+$resetPath = __DIR__ . '/../database/reset_database.sql';
+$schemaPath = __DIR__ . '/../database/schema.sql';
+$resetSql = file_get_contents($resetPath);
+$schemaSql = file_get_contents($schemaPath);
+if (!is_string($resetSql) || !is_string($schemaSql)) {
+    fwrite(STDERR, "Unable to read the canonical reset and schema SQL files.\n");
+    exit(1);
+}
+
+$accountTemplate = <<<'SQL'
 -- =============================================================================
--- Balingasag Senior High School - Generated Protected System Accounts
+-- PROTECTED SYSTEM ACCOUNTS
 -- =============================================================================
--- Import after database/schema.sql.
--- This local file contains reusable password hashes. Do not commit or share it.
--- Re-importing it intentionally resets both accounts to the configured default.
--- =============================================================================
+-- Both accounts use DEFAULT_NEW_USER_PASSWORD and must change it on first login.
 
 INSERT INTO users (
     reference_code, email, password, first_name, last_name, role, status, created_at, updated_at
@@ -63,20 +69,35 @@ ON DUPLICATE KEY UPDATE
     updated_at = NOW();
 SQL;
 
-$generated = str_replace(
+$accountSql = str_replace(
     '{{DEFAULT_PASSWORD_HASH}}',
     password_hash($defaultPassword, PASSWORD_BCRYPT),
-    $template
+    $accountTemplate
 );
+
+$generated = <<<'SQL'
+-- =============================================================================
+-- Balingasag SHS AMS - Generated Complete Reset and Setup
+-- =============================================================================
+-- WARNING: Importing this file permanently deletes existing application data.
+-- Select the intended database before import. This file contains reusable
+-- password hashes; do not commit, upload publicly, or retain it after use.
+-- =============================================================================
+
+SQL;
+$generated .= rtrim($resetSql) . "\n\n";
+$generated .= rtrim($schemaSql) . "\n\n";
+$generated .= rtrim($accountSql) . "\n";
+
 if (str_contains($generated, '{{')) {
-    fwrite(STDERR, "Seed SQL generation failed because a template placeholder remains.\n");
+    fwrite(STDERR, "Database setup generation failed because a template placeholder remains.\n");
     exit(1);
 }
 
-$outputPath = __DIR__ . '/../database/seed_system_accounts.local.sql';
+$outputPath = __DIR__ . '/../database/reset_and_setup.local.sql';
 if (file_put_contents($outputPath, $generated, LOCK_EX) === false) {
-    fwrite(STDERR, "Unable to write generated seed SQL.\n");
+    fwrite(STDERR, "Unable to write generated database setup SQL.\n");
     exit(1);
 }
 @chmod($outputPath, 0600);
-echo "Generated private seed SQL: database/seed_system_accounts.local.sql\n";
+echo "Generated complete database setup: database/reset_and_setup.local.sql\n";
