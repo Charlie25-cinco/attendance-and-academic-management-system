@@ -123,4 +123,67 @@ final class PrincipalReportCardQuery
 
         return $statement->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    /**
+     * @param array{academic_year?: string, grade_level?: int, section?: string, search?: string, decision?: string} $filters
+     * @return list<array<string, mixed>>
+     */
+    public function decisionHistory(array $filters = [], int $limit = 250): array
+    {
+        $actions = ['report_card.approve', 'report_card.reject', 'report_card.withdraw'];
+        $where = [
+            "al.actor_role = 'principal'",
+            "al.target_type = 'report_card'",
+            'al.action_name IN (?, ?, ?)',
+        ];
+        $params = $actions;
+        $academicYear = trim((string)($filters['academic_year'] ?? ''));
+        $gradeLevel = (int)($filters['grade_level'] ?? 0);
+        $section = trim((string)($filters['section'] ?? ''));
+        $search = trim((string)($filters['search'] ?? ''));
+        $decision = trim((string)($filters['decision'] ?? ''));
+
+        if (in_array($decision, $actions, true)) {
+            $where[] = 'al.action_name = ?';
+            $params[] = $decision;
+        }
+        if ($academicYear !== '') {
+            $where[] = 'rc.academic_year = ?';
+            $params[] = $academicYear;
+        }
+        if (in_array($gradeLevel, [11, 12], true)) {
+            $where[] = 's.grade_level = ?';
+            $params[] = $gradeLevel;
+        }
+        if ($section !== '') {
+            $where[] = 'LOWER(TRIM(s.section)) = LOWER(TRIM(?))';
+            $params[] = $section;
+        }
+        if ($search !== '') {
+            $where[] = '(s.reference_code LIKE ? OR s.first_name LIKE ? OR s.last_name LIKE ? OR s.section LIKE ?)';
+            $needle = '%' . $search . '%';
+            array_push($params, $needle, $needle, $needle, $needle);
+        }
+
+        $limit = max(1, min(250, $limit));
+        $reviewerNameSql = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite'
+            ? "TRIM(COALESCE(actor.first_name, '') || ' ' || COALESCE(actor.last_name, ''))"
+            : "CONCAT(actor.first_name, ' ', actor.last_name)";
+        $sql = "SELECT al.id event_id, al.action_name, al.created_at decision_at,
+                       rc.id report_card_id, rc.academic_year, rc.semester,
+                       CASE WHEN rc.reviewed_at = al.created_at THEN rc.remarks ELSE NULL END decision_remarks,
+                       s.reference_code, s.first_name, s.last_name, s.grade_level, s.section,
+                       $reviewerNameSql reviewer_name
+                FROM activity_logs al
+                JOIN report_card_approvals rc ON rc.id = al.target_id
+                JOIN users s ON s.id = rc.student_id
+                LEFT JOIN users actor ON actor.id = al.actor_user_id
+                WHERE " . implode(' AND ', $where) . "
+                ORDER BY al.created_at DESC, al.id DESC
+                LIMIT $limit";
+        $statement = $this->db->prepare($sql);
+        $statement->execute($params);
+
+        return $statement->fetchAll(PDO::FETCH_ASSOC);
+    }
 }

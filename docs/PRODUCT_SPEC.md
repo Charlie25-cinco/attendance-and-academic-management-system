@@ -1,7 +1,7 @@
 # Product Specification: Balingasag SHS AMS
 
 **System Name:** Balingasag Senior High School - Attendance and Academic Management System (BSHS AMS)  
-**Document Version:** 2.1.0
+**Document Version:** 2.1.1
 **Standard Compliance:** ISO/IEC/IEEE 29148:2018 (Systems and software engineering — Life cycle processes — Requirements engineering)  
 **Status:** Approved  
 
@@ -55,8 +55,8 @@ The system serves five primary user roles:
 - **Rationale:** Each sidebar destination must represent a predictable workspace instead of reloading one page with an implicit status filter.
 - **Source:** Developer clarification, October 8, 2026
 - **Priority:** High
-- **Acceptance criteria:** Each sidebar item resolves to a distinct protected URL and displays the correct active state; the pending page permits release and return; the released page permits withdrawal; the history page is read-only; all four pages require `report_cards.review`.
-- **Traceability:** `principal/principal.php`, `principal/principal_Pending.php`, `principal/principal_Released.php`, `principal/principal_History.php`, `includes/principal-report-card-page.php`, `src/Grade/PrincipalReportCardQuery.php`, `functions/app-helpers.php`, and `tests/PrincipalNavigationTest.php`.
+- **Acceptance criteria:** Each sidebar item resolves to a distinct protected URL, independently rendered workspace, and correct active state; the pending page presents a readiness-focused action queue with release and return controls; the released page presents a family-visibility register with withdrawal controls; the history page presents a read-only chronological audit trail; all four pages require `report_cards.review`.
+- **Traceability:** `principal/principal.php`, `principal/principal_Pending.php`, `principal/principal_Released.php`, `principal/principal_History.php`, `src/Grade/PrincipalReportCardQuery.php`, `functions/app-helpers.php`, and `tests/PrincipalNavigationTest.php`.
 
 ---
 

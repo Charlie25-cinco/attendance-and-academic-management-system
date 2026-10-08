@@ -52,7 +52,7 @@ Open `http://localhost:5000`.
 - `functions/` - bootstrap, helpers, grade logic, database helpers, and exporters.
 - `includes/` - shared header, sidebar, footer, modals, and UI fragments.
 - `parent/`, `student/`, `teacher/` - role-specific web modules.
-- `principal/` - separate Principal dashboard, pending-review, released-card, decision-history, and action routes.
+- `principal/` - independently rendered Principal dashboard, readiness-focused pending queue, family-visible release register, read-only decision history, and secured action route.
 - `resources/` - legacy/reference DepEd material.
 - `site/` - public site entry point.
 - `src/` - PSR-4 namespaced classes (`BshsAms\Database`, `BshsAms\Schedule`, `BshsAms\Grade`, `BshsAms\Export`, `BshsAms\Xlsx`).

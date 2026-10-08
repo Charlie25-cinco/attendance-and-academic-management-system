@@ -3612,6 +3612,11 @@ body.dark-mode .chat-empty-search-title {
     background: rgba(31, 79, 130, .06);
 }
 
+.principal-history-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+}
+
 body.dark-mode .principal-stat-card,
 body.dark-mode .principal-action-bar {
     border-color: rgba(148, 163, 184, .22);

@@ -16,18 +16,22 @@ final class PrincipalNavigationTest extends TestCase
         self::assertStringNotContainsString('principal.php?status=', $sidebar);
     }
 
-    public function testPrincipalPagesHaveExpectedFocusedBehavior(): void
+    public function testPrincipalPagesHaveIndependentFocusedInterfaces(): void
     {
         $pending = (string)file_get_contents(APP_ROOT . '/principal/principal_Pending.php');
         $released = (string)file_get_contents(APP_ROOT . '/principal/principal_Released.php');
         $history = (string)file_get_contents(APP_ROOT . '/principal/principal_History.php');
 
-        self::assertStringContainsString("'statuses' => ['submitted_admin']", $pending);
-        self::assertStringContainsString("'actions' => ['approve', 'reject']", $pending);
-        self::assertStringContainsString("'statuses' => ['approved']", $released);
-        self::assertStringContainsString("'actions' => ['withdraw']", $released);
-        self::assertStringContainsString("'statuses' => ['approved', 'rejected']", $history);
-        self::assertStringContainsString("'actions' => []", $history);
+        self::assertStringContainsString("find(['submitted_admin']", $pending);
+        self::assertStringContainsString('Ready to release', $pending);
+        self::assertStringContainsString("decision, remarks", $pending);
+        self::assertStringContainsString("find(['approved']", $released);
+        self::assertStringContainsString('Family-visible records', $released);
+        self::assertStringContainsString("decision: 'withdraw'", $released);
+        self::assertStringContainsString('decisionHistory(', $history);
+        self::assertStringContainsString('Read-only audit trail', $history);
+        self::assertStringNotContainsString('principal_Action.php', $history);
+        self::assertFileDoesNotExist(APP_ROOT . '/includes/principal-report-card-page.php');
     }
 
     public function testEveryPrincipalDestinationUsesReviewPermission(): void

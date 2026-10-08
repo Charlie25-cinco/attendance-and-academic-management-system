@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v2.1.1 — 2026-10-09
+
+### Fixed
+
+- Replaced the shared Principal report-card page shell with dedicated Pending Review, Released Cards, and Decision History interfaces so each sidebar destination is visually and functionally distinct.
+- Made Decision History a read-only chronological audit trail backed by recorded Principal release, return, and withdrawal events.
+
 ## v2.1.0 — 2026-10-08
 
 ### Added

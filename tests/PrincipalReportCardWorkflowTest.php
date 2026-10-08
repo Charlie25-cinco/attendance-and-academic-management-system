@@ -1,6 +1,7 @@
 <?php
 
 use BshsAms\Audit\ActivityLogger;
+use BshsAms\Grade\PrincipalReportCardQuery;
 use BshsAms\Grade\ReportCardReview;
 use PHPUnit\Framework\TestCase;
 
@@ -12,7 +13,10 @@ final class PrincipalReportCardWorkflowTest extends TestCase
     {
         $this->db = new PDO('sqlite::memory:');
         $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $this->db->exec('CREATE TABLE users (id INTEGER PRIMARY KEY, role TEXT, status TEXT)');
+        $this->db->exec('CREATE TABLE users (
+            id INTEGER PRIMARY KEY, reference_code TEXT, first_name TEXT, last_name TEXT,
+            grade_level INTEGER, section TEXT, role TEXT, status TEXT
+        )');
         $this->db->exec('CREATE TABLE classes (id INTEGER PRIMARY KEY, class_name TEXT)');
         $this->db->exec('CREATE TABLE class_subjects (id INTEGER PRIMARY KEY, class_id INTEGER)');
         $this->db->exec('CREATE TABLE grades (id INTEGER PRIMARY KEY, student_id INTEGER, class_subject_id INTEGER, academic_year TEXT, semester TEXT)');
@@ -26,7 +30,11 @@ final class PrincipalReportCardWorkflowTest extends TestCase
             action_name TEXT, target_type TEXT, target_id INTEGER, details_json TEXT,
             ip_address TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )');
-        $this->db->exec("INSERT INTO users VALUES (1, 'principal', 'active'), (2, 'admin', 'active'), (10, 'student', 'active'), (20, 'teacher', 'active')");
+        $this->db->exec("INSERT INTO users VALUES
+            (1, 'PR-001', 'School', 'Principal', NULL, NULL, 'principal', 'active'),
+            (2, 'A-001', 'System', 'Admin', NULL, NULL, 'admin', 'active'),
+            (10, 'S-001', 'Sample', 'Learner', 11, 'A', 'student', 'active'),
+            (20, 'T-001', 'Class', 'Adviser', NULL, NULL, 'teacher', 'active')");
         $this->db->exec("INSERT INTO classes VALUES (1, 'General Mathematics')");
         $this->db->exec('INSERT INTO class_subjects VALUES (1, 1)');
         $this->db->exec("INSERT INTO grades VALUES (1, 10, 1, '2026-2027', 'S1')");
@@ -45,6 +53,22 @@ final class PrincipalReportCardWorkflowTest extends TestCase
         self::assertSame('approved', $this->db->query('SELECT status FROM report_card_approvals WHERE id = 1')->fetchColumn());
         self::assertSame([[10, 'approve']], $notified);
         self::assertSame('report_card.approve', $this->db->query('SELECT action_name FROM activity_logs')->fetchColumn());
+    }
+
+    public function testDecisionHistoryPreservesReleaseAndWithdrawalEvents(): void
+    {
+        $service = new ReportCardReview($this->db, static function (): void {});
+        self::assertSame(1, $service->review(1, [1], 'approve'));
+        self::assertSame(1, $service->review(1, [1], 'withdraw', 'Correct the learner record.'));
+
+        $events = (new PrincipalReportCardQuery($this->db))->decisionHistory();
+
+        self::assertCount(2, $events);
+        self::assertSame('report_card.withdraw', $events[0]['action_name']);
+        self::assertSame('Correct the learner record.', $events[0]['decision_remarks']);
+        self::assertSame('report_card.approve', $events[1]['action_name']);
+        self::assertSame('Sample', $events[0]['first_name']);
+        self::assertSame('School Principal', $events[0]['reviewer_name']);
     }
 
     public function testNonPrincipalCannotDecideAndReturnRequiresReason(): void
