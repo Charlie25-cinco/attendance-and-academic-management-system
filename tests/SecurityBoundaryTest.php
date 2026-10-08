@@ -11,7 +11,7 @@ final class SecurityBoundaryTest extends TestCase
         foreach (['/.env', '/api/.api_secret', '/storage/secrets/api_auth', '/database/schema.sql', '/vendor/composer/installed.json', '/config/session.php', '/api/routes/03-profile.php', '/assets/uploads/Materials/test.pdf', '/assets/uploads/ecr/import.xlsx', '/assets/../.env', '/assets/%2e%2e/.env', '/assets\\..\\.env', '/assets/uploads/test.php', '/router.php'] as $path) {
             self::assertFalse(HttpAccessPolicy::allows($path), $path);
         }
-        foreach (['/', '/index.php', '/sw.js', '/auth/login.php', '/api/index.php', '/principal/principal.php', '/principal/principal_Action.php', '/teacher/teacher_Action.php', '/assets/css/main.css', '/assets/js/offlineIdentity.js', '/assets/uploads/profile.jpg'] as $path) {
+        foreach (['/', '/index.php', '/sw.js', '/auth/login.php', '/api/index.php', '/principal/principal.php', '/principal/principal_Pending.php', '/principal/principal_Released.php', '/principal/principal_History.php', '/principal/principal_Action.php', '/teacher/teacher_Action.php', '/assets/css/main.css', '/assets/js/offlineIdentity.js', '/assets/uploads/profile.jpg'] as $path) {
             self::assertTrue(HttpAccessPolicy::allows($path), $path);
         }
     }

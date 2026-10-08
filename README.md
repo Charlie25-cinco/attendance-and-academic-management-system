@@ -47,12 +47,12 @@ Open `http://localhost:5000`.
 - `assets/` - CSS, JavaScript, images, bundled frontend vendor files, manifest, service worker, and uploads.
 - `auth/` - web login, logout, password reset, and first-login password change pages.
 - `config/` - constants, database connection, and session/security headers.
-- `database/` - schema, seed SQL, and admin seeder.
+- `database/` - canonical schema, reset source, protected-account seeder, and ignored generated setup import.
 - `deped/` - source-of-truth DepEd SF1/SF2 workbooks, ECR `.xlsx` template, and curriculum reference ZIP.
 - `functions/` - bootstrap, helpers, grade logic, database helpers, and exporters.
 - `includes/` - shared header, sidebar, footer, modals, and UI fragments.
 - `parent/`, `student/`, `teacher/` - role-specific web modules.
-- `principal/` - final report-card review and release portal.
+- `principal/` - separate Principal dashboard, pending-review, released-card, decision-history, and action routes.
 - `resources/` - legacy/reference DepEd material.
 - `site/` - public site entry point.
 - `src/` - PSR-4 namespaced classes (`BshsAms\Database`, `BshsAms\Schedule`, `BshsAms\Grade`, `BshsAms\Export`, `BshsAms\Xlsx`).

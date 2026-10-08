@@ -2,6 +2,17 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v2.1.0 — 2026-10-08
+
+### Added
+
+- Added separate Principal pages for the overview dashboard, pending review queue, released report cards, and read-only decision history.
+- Added a shared parameterized Principal report-card query service and navigation regression coverage.
+
+### Changed
+
+- Updated Principal sidebar destinations so every navigation item opens its own protected route with focused actions and an accurate active state.
+
 ## v2.0.0 — 2026-10-08
 
 ### Added

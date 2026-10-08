@@ -1,7 +1,7 @@
 # Product Specification: Balingasag SHS AMS
 
 **System Name:** Balingasag Senior High School - Attendance and Academic Management System (BSHS AMS)  
-**Document Version:** 2.0.0
+**Document Version:** 2.1.0
 **Standard Compliance:** ISO/IEC/IEEE 29148:2018 (Systems and software engineering — Life cycle processes — Requirements engineering)  
 **Status:** Approved  
 
@@ -47,6 +47,17 @@ The system serves five primary user roles:
 - **Acceptance criteria:** The Principal account is seeded from the same `DEFAULT_NEW_USER_PASSWORD` used for every role; Admin interfaces expose it read-only; direct Admin mutation requests return a denial; Principal self-service profile changes, password changes, and password recovery remain available; web, remembered-session, and API login require the default password to be replaced before portal access.
 - **Traceability:** `src/User/SystemAccountPolicy.php`, `database/seed_admin.php`, `scripts/generate_database_setup_sql.php`, `database/schema.sql`, `admin/admin_Users_Action.php`, `api/routes/06-admin.php`, and `tests/PrincipalAccountProtectionTest.php`.
 
+### 2.2 Principal Portal Navigation Requirement
+
+- **Requirement ID:** REQ-012
+- **Category:** Principal workflow and usability
+- **Description:** The system shall provide separate Principal pages for the report-card overview, pending review queue, released cards, and completed decision history.
+- **Rationale:** Each sidebar destination must represent a predictable workspace instead of reloading one page with an implicit status filter.
+- **Source:** Developer clarification, October 8, 2026
+- **Priority:** High
+- **Acceptance criteria:** Each sidebar item resolves to a distinct protected URL and displays the correct active state; the pending page permits release and return; the released page permits withdrawal; the history page is read-only; all four pages require `report_cards.review`.
+- **Traceability:** `principal/principal.php`, `principal/principal_Pending.php`, `principal/principal_Released.php`, `principal/principal_History.php`, `includes/principal-report-card-page.php`, `src/Grade/PrincipalReportCardQuery.php`, `functions/app-helpers.php`, and `tests/PrincipalNavigationTest.php`.
+
 ---
 
 ## 3. User Personas & Workflows
@@ -61,10 +72,10 @@ The system serves five primary user roles:
 
 ### 3.2 Principal Workflow
 ```
-[ Login ] ──► [ Pending Report Cards ] ──► [ Verify Completion ] ──► [ Release / Return ]
-                                                                         │
-                                                                         ▼
-                                                          [ Family Notifications ]
+[ Login ] ──► [ Principal Dashboard ] ──► [ Pending Review ] ──► [ Release / Return ]
+                       │                                           │
+                       ├──► [ Released Cards / Withdraw ]          ▼
+                       └──► [ Read-only Decision History ] [ Family Notifications ]
 ```
 
 ### 3.3 Teacher & Adviser Workflow

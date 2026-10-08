@@ -1402,6 +1402,9 @@ function permissionForScript(string $scriptName): string {
     $scriptName = strtolower($scriptName);
     $map = [
         'principal.php' => 'report_cards.review',
+        'principal_pending.php' => 'report_cards.review',
+        'principal_released.php' => 'report_cards.review',
+        'principal_history.php' => 'report_cards.review',
         'principal_action.php' => 'report_cards.review',
         'admin.php' => 'users.view',
         'admin_users.php' => 'users.view',
