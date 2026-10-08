@@ -1,7 +1,7 @@
 # Product Specification: Balingasag SHS AMS
 
 **System Name:** Balingasag Senior High School - Attendance and Academic Management System (BSHS AMS)  
-**Document Version:** 1.0.2
+**Document Version:** 1.0.3
 **Standard Compliance:** ISO/IEC/IEEE 29148:2018 (Systems and software engineering — Life cycle processes — Requirements engineering)  
 **Status:** Approved  
 
@@ -45,7 +45,7 @@ The system serves five primary user roles:
 - **Source:** Capstone defense follow-up clarification, October 8, 2026
 - **Priority:** High
 - **Acceptance criteria:** The Principal account is seeded from the same `DEFAULT_NEW_USER_PASSWORD` used for every role; Admin interfaces expose it read-only; direct Admin mutation requests return a denial; Principal self-service profile changes, password changes, and password recovery remain available; web, remembered-session, and API login require the default password to be replaced before portal access.
-- **Traceability:** `src/User/SystemAccountPolicy.php`, `database/seed_admin.php`, `database/seed_admin.sql`, `admin/admin_Users_Action.php`, `api/routes/06-admin.php`, and `tests/PrincipalAccountProtectionTest.php`.
+- **Traceability:** `src/User/SystemAccountPolicy.php`, `database/seed_admin.php`, `scripts/generate_seed_accounts_sql.php`, `admin/admin_Users_Action.php`, `api/routes/06-admin.php`, and `tests/PrincipalAccountProtectionTest.php`.
 
 ---
 

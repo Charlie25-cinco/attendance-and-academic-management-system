@@ -16,8 +16,11 @@ Attendance and Academic Management System for Balingasag Senior High School.
 3. Configure database settings in `.env`.
 4. Import `database/schema.sql`.
    - Existing installations upgrading to v1.0.0 must run `database/upgrade_principal_portal.sql` once before use.
-5. Optional: import seed data from `database/seed.sql` and `database/seed_ssms_g11_subjects.sql`.
-6. Start the local server with `composer run serve`.
+5. Provision Admin and Principal accounts:
+   - With database CLI access, run `composer run seed:admin`.
+   - For a database dashboard, run `composer run seed:accounts-sql`, import the ignored `database/seed_system_accounts.local.sql`, then delete that generated file.
+6. Optional: import seed data from `database/seed.sql` and `database/seed_ssms_g11_subjects.sql`.
+7. Start the local server with `composer run serve`.
 
 The development server runs from the project root with `router.php`:
 
@@ -80,7 +83,7 @@ This operational documentation applies ISO/IEC/IEEE 29148 clarity and traceabili
 - Set `APP_SESSION_DRIVER=database` in stateless hosting such as Wasmer so active PHP sessions are stored in the SQL database instead of local instance files.
 - `APP_SESSION_LIFETIME` and `APP_SESSION_IDLE_TIMEOUT` control how long an active web/PWA session can survive after closing and reopening; the example uses 24 hours, while remember-me tokens keep trusted devices signed in longer.
 - Create the protected Admin and Principal accounts with `composer run seed:admin`, which runs `database/seed_admin.php` using the same strong `DEFAULT_NEW_USER_PASSWORD` configured for every role.
-- For a database-dashboard import, run `composer run seed:accounts-sql` locally and import the private `storage/generated/seed_system_accounts.sql` file after `database/schema.sql`. The committed `database/seed_admin.sql` is a template and must not be imported directly.
+- For a database-dashboard import, run `composer run seed:accounts-sql` locally and import the ignored `database/seed_system_accounts.local.sql` file after `database/schema.sql`, then delete the generated file.
 - `DEFAULT_NEW_USER_PASSWORD` controls first-login credentials for Admin, Principal, Teacher, Student, and Parent accounts. Admin cannot create, edit, reset, deactivate, or archive the deployment-owned Principal account.
 - The API first-login password-change flow requires the `temp_token` returned by `POST /api/index.php?route=login` when `must_change_password` is true.
 - Web login, remember-me auto-login, and API login force password setup while a user still has the configured default password.

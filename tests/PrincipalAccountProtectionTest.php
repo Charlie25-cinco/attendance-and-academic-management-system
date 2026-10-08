@@ -35,22 +35,22 @@ final class PrincipalAccountProtectionTest extends TestCase
         }
     }
 
-    public function testSeedTemplateContainsSeparateProtectedAccountsWithoutPlaintextPasswords(): void
+    public function testSeedGeneratorContainsSeparateProtectedAccountsWithoutPlaintextPasswords(): void
     {
-        $sql = (string)file_get_contents(APP_ROOT . '/database/seed_admin.sql');
         $seeder = (string)file_get_contents(APP_ROOT . '/database/seed_admin.php');
         $generator = (string)file_get_contents(APP_ROOT . '/scripts/generate_seed_accounts_sql.php');
 
-        self::assertStringContainsString("'A341227-1'", $sql);
-        self::assertStringContainsString("'PR341227-1'", $sql);
-        self::assertStringContainsString("'principal'", $sql);
-        self::assertSame(2, substr_count($sql, '{{DEFAULT_PASSWORD_HASH}}'));
-        self::assertStringNotContainsString('Temporary admin login', $sql);
+        self::assertStringContainsString("'A341227-1'", $generator);
+        self::assertStringContainsString("'PR341227-1'", $generator);
+        self::assertStringContainsString("'principal'", $generator);
+        self::assertSame(3, substr_count($generator, '{{DEFAULT_PASSWORD_HASH}}'));
+        self::assertStringNotContainsString('Temporary admin login', $generator);
         self::assertStringContainsString('getDefaultNewUserPassword()', $seeder);
         self::assertStringContainsString('getDefaultNewUserPassword()', $generator);
-        self::assertStringNotContainsString('FIRST_RUN_ADMIN_PASSWORD', $seeder . $generator . $sql);
-        self::assertStringNotContainsString('FIRST_RUN_PRINCIPAL_PASSWORD', $seeder . $generator . $sql);
-        self::assertStringContainsString('storage/generated/seed_system_accounts.sql', $generator);
+        self::assertStringNotContainsString('FIRST_RUN_ADMIN_PASSWORD', $seeder . $generator);
+        self::assertStringNotContainsString('FIRST_RUN_PRINCIPAL_PASSWORD', $seeder . $generator);
+        self::assertStringContainsString('database/seed_system_accounts.local.sql', $generator);
+        self::assertFileDoesNotExist(APP_ROOT . '/database/seed_admin.sql');
     }
 
     public function testAdminWebAndApiMutationsEnforcePrincipalProtection(): void

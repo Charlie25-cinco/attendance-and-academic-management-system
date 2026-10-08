@@ -21,6 +21,7 @@ tmp_ecr_template/
 # Runtime and generated secrets
 api/.api_secret
 api/.api_sync_secret
+database/seed_system_accounts.local.sql
 config/push_keys.php
 config/push_keys.json
 docs/DEMO_TEMP_SETUP.md

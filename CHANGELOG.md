@@ -2,6 +2,17 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v1.0.3 — 2026-10-08
+
+### Changed
+
+- Moved the generated Admin/Principal database-dashboard import beside the other SQL files as ignored `database/seed_system_accounts.local.sql`.
+- Clarified fresh-install, database-reset, and protected-account seeding instructions across setup and agent documentation.
+
+### Removed
+
+- Removed the committed `database/seed_admin.sql` placeholder template so it can no longer be imported accidentally as invalid credentials.
+
 ## v1.0.2 — 2026-10-08
 
 ### Changed

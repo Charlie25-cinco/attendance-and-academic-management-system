@@ -9,12 +9,59 @@ if (!validateStrongPassword($defaultPassword, $passwordError)) {
     exit(1);
 }
 
-$templatePath = __DIR__ . '/../database/seed_admin.sql';
-$template = file_get_contents($templatePath);
-if (!is_string($template)) {
-    fwrite(STDERR, "Unable to read database/seed_admin.sql.\n");
-    exit(1);
-}
+$template = <<<'SQL'
+-- =============================================================================
+-- Balingasag Senior High School - Generated Protected System Accounts
+-- =============================================================================
+-- Import after database/schema.sql.
+-- This local file contains reusable password hashes. Do not commit or share it.
+-- Re-importing it intentionally resets both accounts to the configured default.
+-- =============================================================================
+
+INSERT INTO users (
+    reference_code, email, password, first_name, last_name, role, status, created_at, updated_at
+) VALUES (
+    'A341227-1',
+    'A341227-1@balingasag.edu.ph',
+    '{{DEFAULT_PASSWORD_HASH}}',
+    'System',
+    'Administrator',
+    'admin',
+    'active',
+    NOW(),
+    NOW()
+)
+ON DUPLICATE KEY UPDATE
+    email = VALUES(email),
+    password = VALUES(password),
+    first_name = VALUES(first_name),
+    last_name = VALUES(last_name),
+    role = 'admin',
+    status = 'active',
+    updated_at = NOW();
+
+INSERT INTO users (
+    reference_code, email, password, first_name, last_name, role, status, created_at, updated_at
+) VALUES (
+    'PR341227-1',
+    'PR341227-1@balingasag.edu.ph',
+    '{{DEFAULT_PASSWORD_HASH}}',
+    'School',
+    'Principal',
+    'principal',
+    'active',
+    NOW(),
+    NOW()
+)
+ON DUPLICATE KEY UPDATE
+    email = VALUES(email),
+    password = VALUES(password),
+    first_name = VALUES(first_name),
+    last_name = VALUES(last_name),
+    role = 'principal',
+    status = 'active',
+    updated_at = NOW();
+SQL;
 
 $generated = str_replace(
     '{{DEFAULT_PASSWORD_HASH}}',
@@ -26,16 +73,10 @@ if (str_contains($generated, '{{')) {
     exit(1);
 }
 
-$outputDirectory = __DIR__ . '/../storage/generated';
-if (!is_dir($outputDirectory) && !mkdir($outputDirectory, 0700, true) && !is_dir($outputDirectory)) {
-    fwrite(STDERR, "Unable to create storage/generated.\n");
-    exit(1);
-}
-
-$outputPath = $outputDirectory . '/seed_system_accounts.sql';
+$outputPath = __DIR__ . '/../database/seed_system_accounts.local.sql';
 if (file_put_contents($outputPath, $generated, LOCK_EX) === false) {
     fwrite(STDERR, "Unable to write generated seed SQL.\n");
     exit(1);
 }
 @chmod($outputPath, 0600);
-echo "Generated private seed SQL: storage/generated/seed_system_accounts.sql\n";
+echo "Generated private seed SQL: database/seed_system_accounts.local.sql\n";
