@@ -143,7 +143,10 @@ if (!$db) {
 if ((!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) && $db) {
     $rememberUser = attemptRememberLogin($db);
     if ($rememberUser) {
-        if (password_verify(getDefaultNewUserPassword(), (string)$rememberUser['password'])) {
+        if (appUserRequiresPasswordChange(
+            (string)($rememberUser['role'] ?? ''),
+            (string)$rememberUser['password']
+        )) {
             rememberRevokeByCookie($db, (string)($_COOKIE[REMEMBER_COOKIE_NAME] ?? ''));
             authClearRememberCookie();
             $_SESSION['pending_password_change'] = true;
@@ -191,7 +194,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($user && password_verify($password, $user['password'])) {
-                if (password_verify(getDefaultNewUserPassword(), $user['password'])) {
+                if (appUserRequiresPasswordChange((string)$user['role'], (string)$user['password'])) {
                     $_SESSION['pending_password_change'] = true;
                     $_SESSION['pending_user_id'] = (int)$user['id'];
                     $_SESSION['pending_reference_code'] = (string)$user['reference_code'];

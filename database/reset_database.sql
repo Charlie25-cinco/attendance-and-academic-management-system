@@ -3,8 +3,9 @@
 -- Wasmer/Laragon usage:
 -- 1. Run this file against the selected database.
 -- 2. Run database/schema.sql.
--- 3. Optionally run seed SQL files such as database/seed_admin.sql,
---    database/seed.sql, and database/seed_ssms_g11_subjects.sql.
+-- 3. Run composer run seed:admin, or generate the private dashboard import with
+--    composer run seed:accounts-sql. Do not import database/seed_admin.sql directly.
+-- 4. Optionally run database/seed.sql and database/seed_ssms_g11_subjects.sql.
 
 SET FOREIGN_KEY_CHECKS = 0;
 

@@ -2,6 +2,20 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v1.0.1 — 2026-10-08
+
+### Changed
+
+- Provisioned the Principal as a protected deployment-owned system account with a separate `FIRST_RUN_PRINCIPAL_PASSWORD` bootstrap secret.
+- Changed `database/seed_admin.sql` into a no-plaintext template and added `composer run seed:accounts-sql` for generating a private, importable SQL file containing only password hashes.
+- Centralized first-login password-change detection across web login, remembered sessions, and API login for default, Admin bootstrap, and Principal bootstrap passwords.
+
+### Fixed
+
+- Blocked Admin takeover of the Principal account through account creation, profile editing, password reset, status changes, or archival in both web and API handlers.
+- Kept the Principal visible to Admin as a read-only protected account while preserving Principal self-service profile and password recovery.
+- Removed the committed fixed temporary Admin password from the SQL seed workflow.
+
 ## v1.0.0 — 2026-10-07
 
 ### Added

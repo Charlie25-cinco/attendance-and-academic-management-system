@@ -1,7 +1,7 @@
 # Technical Architecture Specification
 
 **System Name:** Balingasag Senior High School - Attendance and Academic Management System (BSHS AMS)  
-**Document Version:** 1.0.1  
+**Document Version:** 1.0.2
 **Status:** Approved  
 
 ---
@@ -97,13 +97,14 @@ The application source code lives under the `BshsAms\` namespace in `src/`:
 
 ### 3.1 Authentication & Session Management
 - **Password Hashing:** Passwords are hashed using `PASSWORD_DEFAULT` (Bcrypt/Argon2id).
-- **Default Password Guard:** Web login and remember-me auto-login enforce mandatory password setup if `password_verify(DEFAULT_NEW_USER_PASSWORD)` matches.
+- **Bootstrap Password Guard:** Web login, remember-me auto-login, and API login enforce mandatory password setup when a hash matches `DEFAULT_NEW_USER_PASSWORD` or its role-specific Admin/Principal bootstrap secret.
+- **Protected Principal Account:** `BshsAms\User\SystemAccountPolicy` identifies the deployment-owned Principal account. Admin user-management surfaces may read it but web and API handlers deny creation, profile mutation, password reset, status changes, and archival. Principal profile/password maintenance remains self-service.
 - **Stateless Cloud Sessions:** When running on cloud container platforms such as Wasmer Edge, setting `APP_SESSION_DRIVER=database` delegates session storage to the SQL `app_sessions` table.
 
 ### 3.2 Authorization & Centralized RBAC
 Script-level RBAC is configured centrally in `functions/bootstrap.php` via `enforceScriptPermission($db)`:
 - Maps requested script URIs to permission keys.
-- Validates user roles (`admin`, `teacher`, `student`, `parent`).
+- Validates user roles (`principal`, `admin`, `teacher`, `student`, `parent`).
 - Logs access violations and terminates unauthorized execution with HTTP 403.
 
 ### 3.3 CSRF Protection

@@ -48,7 +48,10 @@ if (PHP_SAPI !== 'cli') {
             if ($dbConn) {
                 $rememberUser = appAttemptRememberLogin($dbConn);
                 if ($rememberUser) {
-                    if (function_exists('getDefaultNewUserPassword') && password_verify(getDefaultNewUserPassword(), (string)$rememberUser['password'])) {
+                    if (function_exists('appUserRequiresPasswordChange') && appUserRequiresPasswordChange(
+                        (string)($rememberUser['role'] ?? ''),
+                        (string)$rememberUser['password']
+                    )) {
                         appRememberRevokeByCookie($dbConn, (string)($_COOKIE['remember_token'] ?? ''));
                         appAuthClearRememberCookie();
                     } else {

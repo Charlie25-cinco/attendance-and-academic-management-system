@@ -31,6 +31,7 @@
     },
     "scripts": {
         "seed:admin": "php database/seed_admin.php",
+        "seed:accounts-sql": "php scripts/generate_seed_accounts_sql.php",
         "push:keys": "php scripts/generate_vapid_keys.php",
         "serve": "php -S localhost:5000 -t . router.php",
         "lint": "phpcs --standard=phpcs.xml",

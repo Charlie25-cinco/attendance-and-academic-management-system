@@ -1,7 +1,7 @@
 # Product Specification: Balingasag SHS AMS
 
 **System Name:** Balingasag Senior High School - Attendance and Academic Management System (BSHS AMS)  
-**Document Version:** 1.0.0  
+**Document Version:** 1.0.1
 **Standard Compliance:** ISO/IEC/IEEE 29148:2018 (Systems and software engineering — Life cycle processes — Requirements engineering)  
 **Status:** Approved  
 
@@ -14,7 +14,7 @@ The Balingasag Senior High School Attendance and Academic Management System (BSH
 ### 1.1 Scope & Purpose
 The system serves five primary user roles:
 - **Principal**: Final report-card review, release, return, and withdrawal.
-- **Administrators**: Operational setup, user lifecycle, curriculum mapping, grade approval governance, DepEd reporting, and audit logs.
+- **Administrators**: Operational setup, non-Principal user lifecycle, curriculum mapping, grade approval governance, DepEd reporting, and audit logs.
 - **Subject Teachers & Advisers**: Attendance recording, score tracking, DepEd ECR import/export, grade submission to admin, advisory section management, and parent communication.
 - **Students**: Class schedules, score transparency, attendance history, PWA QR identity card, and released report cards.
 - **Parents / Guardians**: Linked student academic monitoring, attendance notifications, report cards, and direct adviser messaging.
@@ -35,6 +35,17 @@ The system serves five primary user roles:
 | **REQ-008** | Web Push | The system shall support browser Web Push API notifications for student attendance events and grade publication. | Provides immediate notification to parents and students regarding attendance anomalies and academic updates. | Device subscriptions saved in `push_subscriptions` receive push payloads signed with VAPID keys. |
 | **REQ-009** | UI/UX Standard | The system shall maintain an accessible visual design system supporting high contrast, dark mode, and responsive layouts. | Adheres to UI/UX Engineering & Design Standards (§9 & §10). | UI components utilize tokens defined in `assets/css/main.css`; contrast ratios meet WCAG AA standards across light and dark themes. |
 | **REQ-010** | Communication | The system shall restrict parent chat contacts exclusively to the section adviser of their linked students. | Protects teacher privacy while maintaining clear communication channels with section advisers. | Parent chat directory lists only advisers of currently enrolled section classes for linked children. |
+
+### 2.1 Protected Principal Account Requirement
+
+- **Requirement ID:** REQ-011
+- **Category:** Security and separation of duties
+- **Description:** The system shall provision the Principal as a deployment-owned protected account and shall deny Administrator attempts to create, edit, reset, activate, deactivate, or archive any Principal account through web or API user-management interfaces.
+- **Rationale:** Prevents an Administrator from assuming the Principal identity and bypassing independent final report-card authority.
+- **Source:** Capstone defense follow-up clarification, October 8, 2026
+- **Priority:** High
+- **Acceptance criteria:** The Principal account is seeded from `FIRST_RUN_PRINCIPAL_PASSWORD`; Admin interfaces expose it read-only; direct Admin mutation requests return a denial; Principal self-service profile changes, password changes, and password recovery remain available; web, remembered-session, and API login require the bootstrap password to be replaced before portal access.
+- **Traceability:** `src/User/SystemAccountPolicy.php`, `database/seed_admin.php`, `database/seed_admin.sql`, `admin/admin_Users_Action.php`, `api/routes/06-admin.php`, and `tests/PrincipalAccountProtectionTest.php`.
 
 ---
 

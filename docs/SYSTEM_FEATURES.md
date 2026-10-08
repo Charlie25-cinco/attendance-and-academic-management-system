@@ -125,7 +125,7 @@ The platform provides a centralized, role-based ecosystem connecting the **Princ
 
 | Feature / Capability | Principal | Admin | Teacher / Adviser | Student | Parent / Guardian |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Manage Users & Role Assignments** | No | Yes | No | No | No |
+| **Manage Users & Role Assignments** | Self only | Yes, except protected Principal | No | No | No |
 | **Curriculum & Section Configuration** | No | Yes | No | No | No |
 | **SF1 Register Import / Export** | No | Yes | Yes (Adviser) | No | No |
 | **Daily Attendance Marking** | No | View | Yes | View own | View linked |

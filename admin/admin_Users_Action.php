@@ -119,7 +119,14 @@ function getTeacherSubjectConflicts($db, $classIds, $excludeTeacherId = 0) {
 function createUser($db) {
     try {
         $role = trim((string)($_POST['role'] ?? ''));
-        if (!in_array($role, ['teacher', 'parent', 'principal', 'student'], true)) {
+        if (\BshsAms\User\SystemAccountPolicy::isPrincipalRole($role)) {
+            echo json_encode([
+                'success' => false,
+                'message' => \BshsAms\User\SystemAccountPolicy::protectedMessage(),
+            ]);
+            return;
+        }
+        if (!in_array($role, ['teacher', 'parent', 'student'], true)) {
             echo json_encode(['success' => false, 'message' => 'Invalid account role']);
             return;
         }
@@ -313,6 +320,13 @@ function deleteUser($db) {
         $roleStmt = $db->prepare("SELECT role FROM users WHERE id = ?");
         $roleStmt->execute([$userId]);
         $role = $roleStmt->fetchColumn();
+        if (\BshsAms\User\SystemAccountPolicy::isPrincipalRole((string)$role)) {
+            echo json_encode([
+                'success' => false,
+                'message' => \BshsAms\User\SystemAccountPolicy::protectedMessage(),
+            ]);
+            return;
+        }
         if ($role === 'student') {
             echo json_encode(['success' => false, 'message' => 'Students must be managed through the Enrollments page']);
             return;
@@ -357,6 +371,13 @@ function resetUserPassword($db) {
         $existingUser = $existsStmt->fetch(PDO::FETCH_ASSOC);
         if (!$existingUser) {
             echo json_encode(['success' => false, 'message' => 'User not found']);
+            return;
+        }
+        if (\BshsAms\User\SystemAccountPolicy::isPrincipalRole((string)$existingUser['role'])) {
+            echo json_encode([
+                'success' => false,
+                'message' => \BshsAms\User\SystemAccountPolicy::protectedMessage(),
+            ]);
             return;
         }
         if ($existingUser['role'] === 'student') {
@@ -513,6 +534,13 @@ function updateUser($db) {
         $userRole = $roleStmt->fetchColumn();
         if (!$userRole) {
             echo json_encode(['success' => false, 'message' => 'User not found']);
+            return;
+        }
+        if (\BshsAms\User\SystemAccountPolicy::isPrincipalRole((string)$userRole)) {
+            echo json_encode([
+                'success' => false,
+                'message' => \BshsAms\User\SystemAccountPolicy::protectedMessage(),
+            ]);
             return;
         }
         if ($userRole === 'student') {
@@ -814,6 +842,13 @@ function setUserStatus(PDO $db): void {
     $roleStmt = $db->prepare("SELECT role FROM users WHERE id = ?");
     $roleStmt->execute([$userId]);
     $role = $roleStmt->fetchColumn();
+    if (\BshsAms\User\SystemAccountPolicy::isPrincipalRole((string)$role)) {
+        echo json_encode([
+            'success' => false,
+            'message' => \BshsAms\User\SystemAccountPolicy::protectedMessage(),
+        ]);
+        return;
+    }
     if ($role === 'student') {
         echo json_encode(['success' => false, 'message' => 'Students must be managed through the Enrollments page']);
         return;

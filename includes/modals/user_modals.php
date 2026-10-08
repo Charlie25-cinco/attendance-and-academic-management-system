@@ -21,7 +21,6 @@
                                     <select name="role" id="userRole" class="form-select" required onchange="updateReferenceCode(); onRoleChange(this);">
                                         <option value="">Select Role</option>
                                         <option value="teacher">Teacher</option>
-                                        <option value="principal">Principal</option>
                                         <option value="parent">Parent</option>
                                     </select>
                                 </div>
@@ -133,11 +132,11 @@
                             </div>
                             <div class="form-text text-muted">Select at least 1 student.</div>
                         </div>
-                        <div class="app-modal-note">
+                            <div class="app-modal-note">
                             <i class="bi bi-info-circle-fill"></i>
                             <div>
                                 <strong>Access reminder</strong>
-                                <p>Default password will be assigned during account creation. Users should update it from their profile after first login.</p>
+                                    <p>Default passwords are assigned to Teacher and Parent accounts. The protected Principal account is provisioned separately during deployment.</p>
                             </div>
                         </div>
                         <div class="app-modal-note d-none" id="classAvailabilityWarning">

@@ -70,7 +70,7 @@ if ($route === 'login' && $method === 'POST') {
         apiJson(['ok' => false, 'message' => 'Invalid reference code or password'], 401);
     }
 
-    if (password_verify(getDefaultNewUserPassword(), $user['password'])) {
+    if (appUserRequiresPasswordChange((string)$user['role'], (string)$user['password'])) {
         $token = bin2hex(random_bytes(32));
         $db->prepare("DELETE FROM rate_limits WHERE context = 'api' AND action_key = 'login' AND identifier_hash = ?")
             ->execute([$identifierHash]);

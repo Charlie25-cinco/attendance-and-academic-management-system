@@ -98,7 +98,10 @@ if ($route === 'admin-users' && $method === 'POST') {
     if ($firstName === '' || $lastName === '' || $role === '' || $email === '') {
         apiJson(['ok' => false, 'message' => 'First name, last name, role, and email are required'], 422);
     }
-    if (!in_array($role, ['admin', 'teacher', 'student', 'parent', 'principal'], true)) {
+    if (\BshsAms\User\SystemAccountPolicy::isPrincipalRole($role)) {
+        apiJson(['ok' => false, 'message' => \BshsAms\User\SystemAccountPolicy::protectedMessage()], 403);
+    }
+    if (!in_array($role, ['admin', 'teacher', 'student', 'parent'], true)) {
         apiJson(['ok' => false, 'message' => 'Invalid role'], 422);
     }
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -172,6 +175,16 @@ if ($route === 'admin-user-status' && $method === 'POST') {
 
     if ($userId <= 0 || !in_array($newStatus, ['active', 'pending', 'inactive'], true)) {
         apiJson(['ok' => false, 'message' => 'Invalid user ID or status'], 422);
+    }
+
+    $roleStmt = $db->prepare('SELECT role FROM users WHERE id = ? LIMIT 1');
+    $roleStmt->execute([$userId]);
+    $targetRole = $roleStmt->fetchColumn();
+    if (!$targetRole) {
+        apiJson(['ok' => false, 'message' => 'User not found'], 404);
+    }
+    if (\BshsAms\User\SystemAccountPolicy::isPrincipalRole((string)$targetRole)) {
+        apiJson(['ok' => false, 'message' => \BshsAms\User\SystemAccountPolicy::protectedMessage()], 403);
     }
 
     $stmt = $db->prepare("UPDATE users SET status = ?, updated_at = NOW() WHERE id = ?");

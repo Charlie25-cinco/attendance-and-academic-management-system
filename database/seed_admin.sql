@@ -1,20 +1,18 @@
 -- =============================================================================
--- Balingasag Senior High School - Attendance and Academic Management System
--- FIRST ADMIN ACCOUNT SEED
+-- Balingasag Senior High School - Protected System Accounts Seed Template
 -- =============================================================================
--- Import after database/schema.sql.
+-- The committed copy is a template and intentionally contains password-hash
+-- placeholders so no reusable privileged credential is committed to Git.
 --
--- Temporary admin login:
---   Reference Code: A341227-1
---   Password: Bshsams_341227
+-- 1. Set FIRST_RUN_ADMIN_PASSWORD and FIRST_RUN_PRINCIPAL_PASSWORD in .env.
+-- 2. Run: composer run seed:accounts-sql
+-- 3. Import storage/generated/seed_system_accounts.sql after database/schema.sql.
 --
--- IMPORTANT:
--- Change this password immediately after login. This file intentionally resets
--- the first admin password when re-imported, so keep it out of routine
--- production imports unless you need account recovery.
+-- Importing the generated SQL again intentionally resets both bootstrap account
+-- passwords. Keep the generated file private and delete it after use.
 -- =============================================================================
 
-INSERT IGNORE INTO users (
+INSERT INTO users (
     reference_code,
     email,
     password,
@@ -27,7 +25,7 @@ INSERT IGNORE INTO users (
 ) VALUES (
     'A341227-1',
     'A341227-1@balingasag.edu.ph',
-    '$2y$10$WElty8dLDYBeQ0k5Di.Tt.gYXatazNrNgjF1RStXQ93Q5F5cfrNaG',
+    '{{ADMIN_PASSWORD_HASH}}',
     'System',
     'Administrator',
     'admin',
@@ -41,5 +39,35 @@ ON DUPLICATE KEY UPDATE
     first_name = VALUES(first_name),
     last_name = VALUES(last_name),
     role = 'admin',
+    status = 'active',
+    updated_at = NOW();
+
+INSERT INTO users (
+    reference_code,
+    email,
+    password,
+    first_name,
+    last_name,
+    role,
+    status,
+    created_at,
+    updated_at
+) VALUES (
+    'PR341227-1',
+    'PR341227-1@balingasag.edu.ph',
+    '{{PRINCIPAL_PASSWORD_HASH}}',
+    'School',
+    'Principal',
+    'principal',
+    'active',
+    NOW(),
+    NOW()
+)
+ON DUPLICATE KEY UPDATE
+    email = VALUES(email),
+    password = VALUES(password),
+    first_name = VALUES(first_name),
+    last_name = VALUES(last_name),
+    role = 'principal',
     status = 'active',
     updated_at = NOW();

@@ -79,10 +79,11 @@ This operational documentation applies ISO/IEC/IEEE 29148 clarity and traceabili
 - In production, set `APP_ENV=production`, `API_AUTH_SECRET`, `API_SYNC_SECRET`, and a trusted `API_ALLOWED_ORIGIN`.
 - Set `APP_SESSION_DRIVER=database` in stateless hosting such as Wasmer so active PHP sessions are stored in the SQL database instead of local instance files.
 - `APP_SESSION_LIFETIME` and `APP_SESSION_IDLE_TIMEOUT` control how long an active web/PWA session can survive after closing and reopening; the example uses 24 hours, while remember-me tokens keep trusted devices signed in longer.
-- Create the first admin with `composer run seed:admin`, which runs `database/seed_admin.php`; the Wasmer database dashboard can alternatively import `database/seed_admin.sql` after `database/schema.sql`.
-- `FIRST_RUN_ADMIN_PASSWORD` controls PHP-based first admin seeding, and `DEFAULT_NEW_USER_PASSWORD` controls newly created users.
+- Create the protected Admin and Principal accounts with `composer run seed:admin`, which runs `database/seed_admin.php` using strong, mutually distinct `FIRST_RUN_ADMIN_PASSWORD` and `FIRST_RUN_PRINCIPAL_PASSWORD` secrets that also differ from `DEFAULT_NEW_USER_PASSWORD`.
+- For a database-dashboard import, run `composer run seed:accounts-sql` locally and import the private `storage/generated/seed_system_accounts.sql` file after `database/schema.sql`. The committed `database/seed_admin.sql` is a template and must not be imported directly.
+- `DEFAULT_NEW_USER_PASSWORD` controls newly created Teacher and Parent accounts. Admin cannot create, edit, reset, deactivate, or archive the deployment-owned Principal account.
 - The API first-login password-change flow requires the `temp_token` returned by `POST /api/index.php?route=login` when `must_change_password` is true.
-- Web login and remember-me auto-login both force password setup while a user's password still matches `DEFAULT_NEW_USER_PASSWORD`.
+- Web login, remember-me auto-login, and API login force password setup while a user still has the default or role-specific bootstrap password.
 - Shared profile modal updates name, sex, email, and password through the profile API; password fields include visibility toggles and require the current password before changing.
 - Default or first-run passwords must be changed before production.
 - Logical security is implemented at the web/PWA layer: `config/session.php` applies security headers, restricts camera and other device permissions by page, sends no-cache headers for authenticated pages, and recognizes forwarded HTTPS for hosted deployments.
@@ -179,7 +180,7 @@ This operational documentation applies ISO/IEC/IEEE 29148 clarity and traceabili
   - `WASMER_OWNER`
   - `WASMER_APP_NAME`, for example `balingasagshs`; if omitted, the package default is `bshs-ams`
   - `APP_PUBLIC_BASE_URL`, for example `https://balingasagshs.wasmer.app`
-  - `DEFAULT_NEW_USER_PASSWORD` and optional `FIRST_RUN_ADMIN_PASSWORD`
+  - `DEFAULT_NEW_USER_PASSWORD`, `FIRST_RUN_ADMIN_PASSWORD`, and `FIRST_RUN_PRINCIPAL_PASSWORD`
   - `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, and optional `RESEND_FROM_NAME`
 - Configure production secrets in Wasmer for database and API values:
   - `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS` or `DB_PASSWORD`
@@ -187,6 +188,7 @@ This operational documentation applies ISO/IEC/IEEE 29148 clarity and traceabili
   - `DB_SSL_VERIFY_SERVER_CERT` optional, defaults to `1`
   - `APP_SESSION_DRIVER=database`
   - `API_AUTH_SECRET`, `API_SYNC_SECRET`
+  - `DEFAULT_NEW_USER_PASSWORD`, `FIRST_RUN_ADMIN_PASSWORD`, and `FIRST_RUN_PRINCIPAL_PASSWORD`
   - `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `RESEND_FROM_NAME` for password reset OTP email
   - `PUSH_VAPID_PUBLIC_KEY`, `PUSH_VAPID_PRIVATE_KEY`, `PUSH_VAPID_SUBJECT` for installed PWA device notifications
   - SMTP secrets if email fallback is enabled

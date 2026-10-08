@@ -20,7 +20,6 @@ $stats = [
 
 // Get next reference codes
 $nextRefCodes = [
-    'principal' => '',
     'teacher' => '',
     'parent' => ''
 ];
@@ -362,11 +361,17 @@ $page_title = 'Manage Users';
                                     <td>
                                         <div class="d-flex gap-2">
                                             <button type="button" class="material-btn js-view-user" data-user-id="<?php echo $user['id']; ?>" title="View" style="color: var(--secondary-color);"><i class="bi bi-eye"></i></button>
+                                            <?php if (($user['role'] ?? '') !== 'principal'): ?>
                                             <button type="button" class="material-btn js-toggle-status" data-user-id="<?php echo $user['id']; ?>" data-current-status="<?php echo $user['status']; ?>" title="<?php echo $user['status'] === 'active' ? 'Deactivate' : 'Activate'; ?>" style="color: <?php echo $user['status'] === 'active' ? 'var(--warning-color)' : 'var(--accent-color)'; ?>;">
                                                 <i class="bi bi-<?php echo $user['status'] === 'active' ? 'toggle-off' : 'toggle-on'; ?>"></i>
                                             </button>
                                             <button type="button" class="material-btn js-edit-user" data-user-id="<?php echo $user['id']; ?>" title="Edit" style="color: var(--warning-color);"><i class="bi bi-pencil"></i></button>
                                             <button type="button" class="material-btn js-delete-user" data-user-id="<?php echo $user['id']; ?>" title="Delete" style="color: var(--danger-color);"><i class="bi bi-trash"></i></button>
+                                            <?php else: ?>
+                                            <span class="badge text-bg-secondary align-self-center" title="Principal credentials are managed outside the Admin portal">
+                                                <i class="bi bi-shield-lock me-1" aria-hidden="true"></i>Protected
+                                            </span>
+                                            <?php endif; ?>
                                         </div>
                                     </td>
                                 </tr>

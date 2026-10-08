@@ -155,6 +155,62 @@ function getFirstRunAdminPassword(): string {
     return getDefaultNewUserPassword();
 }
 
+function getFirstRunPrincipalPassword(): string {
+    $env = appEnvValue('FIRST_RUN_PRINCIPAL_PASSWORD', '');
+    if ($env === '' || $env === false) {
+        throw new RuntimeException('FIRST_RUN_PRINCIPAL_PASSWORD must be set before seeding the Principal account.');
+    }
+    appWarnUnsafeDefaults('FIRST_RUN_PRINCIPAL_PASSWORD', (string)$env, [
+        'bshsams341227',
+        'change-me',
+        'change-this-before-production',
+    ]);
+    $error = null;
+    if (!validateStrongPassword((string)$env, $error)) {
+        throw new RuntimeException('FIRST_RUN_PRINCIPAL_PASSWORD is not strong enough: ' . $error);
+    }
+    return (string)$env;
+}
+
+function appAssertDistinctBootstrapPasswords(string $adminPassword, string $principalPassword): void {
+    $defaultPassword = getDefaultNewUserPassword();
+    $pairs = [
+        ['FIRST_RUN_ADMIN_PASSWORD', $adminPassword, 'DEFAULT_NEW_USER_PASSWORD', $defaultPassword],
+        ['FIRST_RUN_PRINCIPAL_PASSWORD', $principalPassword, 'DEFAULT_NEW_USER_PASSWORD', $defaultPassword],
+        ['FIRST_RUN_PRINCIPAL_PASSWORD', $principalPassword, 'FIRST_RUN_ADMIN_PASSWORD', $adminPassword],
+    ];
+    foreach ($pairs as [$leftName, $leftValue, $rightName, $rightValue]) {
+        if ($leftValue !== '' && $rightValue !== '' && hash_equals($leftValue, $rightValue)) {
+            throw new RuntimeException($leftName . ' must be different from ' . $rightName . '.');
+        }
+    }
+}
+
+function appUserRequiresPasswordChange(string $role, string $passwordHash): bool {
+    if ($passwordHash === '') { return false; }
+
+    $candidates = [getDefaultNewUserPassword()];
+    $role = strtolower(trim($role));
+    if ($role === 'admin') {
+        $adminPassword = appEnvValue('FIRST_RUN_ADMIN_PASSWORD', '');
+        if ($adminPassword !== '' && $adminPassword !== false) {
+            $candidates[] = (string)$adminPassword;
+        }
+    } elseif ($role === 'principal') {
+        $principalPassword = appEnvValue('FIRST_RUN_PRINCIPAL_PASSWORD', '');
+        if ($principalPassword !== '' && $principalPassword !== false) {
+            $candidates[] = (string)$principalPassword;
+        }
+    }
+
+    foreach (array_unique($candidates) as $candidate) {
+        if ($candidate !== '' && password_verify($candidate, $passwordHash)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 function validateStrongPassword(string $password, ?string &$error = null): bool {
     if (strlen($password) < 12) { $error = 'Password must be at least 12 characters.'; return false; }
     if (strlen($password) > 72) { $error = 'Password must not exceed 72 characters.'; return false; }
