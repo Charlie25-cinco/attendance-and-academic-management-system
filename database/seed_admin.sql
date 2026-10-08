@@ -4,7 +4,7 @@
 -- The committed copy is a template and intentionally contains password-hash
 -- placeholders so no reusable privileged credential is committed to Git.
 --
--- 1. Set FIRST_RUN_ADMIN_PASSWORD and FIRST_RUN_PRINCIPAL_PASSWORD in .env.
+-- 1. Set DEFAULT_NEW_USER_PASSWORD in .env to the approved shared first-login password.
 -- 2. Run: composer run seed:accounts-sql
 -- 3. Import storage/generated/seed_system_accounts.sql after database/schema.sql.
 --
@@ -25,7 +25,7 @@ INSERT INTO users (
 ) VALUES (
     'A341227-1',
     'A341227-1@balingasag.edu.ph',
-    '{{ADMIN_PASSWORD_HASH}}',
+    '{{DEFAULT_PASSWORD_HASH}}',
     'System',
     'Administrator',
     'admin',
@@ -55,7 +55,7 @@ INSERT INTO users (
 ) VALUES (
     'PR341227-1',
     'PR341227-1@balingasag.edu.ph',
-    '{{PRINCIPAL_PASSWORD_HASH}}',
+    '{{DEFAULT_PASSWORD_HASH}}',
     'School',
     'Principal',
     'principal',

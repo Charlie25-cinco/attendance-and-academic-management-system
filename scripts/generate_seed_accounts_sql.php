@@ -2,23 +2,10 @@
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-$adminPassword = trim((string)appEnvValue('FIRST_RUN_ADMIN_PASSWORD', ''));
-if ($adminPassword === '') {
-    fwrite(STDERR, "FIRST_RUN_ADMIN_PASSWORD must be set before generating seed SQL.\n");
-    exit(1);
-}
-
-$adminError = null;
-if (!validateStrongPassword($adminPassword, $adminError)) {
-    fwrite(STDERR, 'FIRST_RUN_ADMIN_PASSWORD is not strong enough: ' . $adminError . "\n");
-    exit(1);
-}
-
-try {
-    $principalPassword = getFirstRunPrincipalPassword();
-    appAssertDistinctBootstrapPasswords($adminPassword, $principalPassword);
-} catch (RuntimeException $e) {
-    fwrite(STDERR, $e->getMessage() . "\n");
+$defaultPassword = getDefaultNewUserPassword();
+$passwordError = null;
+if (!validateStrongPassword($defaultPassword, $passwordError)) {
+    fwrite(STDERR, 'DEFAULT_NEW_USER_PASSWORD is not strong enough: ' . $passwordError . "\n");
     exit(1);
 }
 
@@ -30,8 +17,8 @@ if (!is_string($template)) {
 }
 
 $generated = str_replace(
-    ['{{ADMIN_PASSWORD_HASH}}', '{{PRINCIPAL_PASSWORD_HASH}}'],
-    [password_hash($adminPassword, PASSWORD_BCRYPT), password_hash($principalPassword, PASSWORD_BCRYPT)],
+    '{{DEFAULT_PASSWORD_HASH}}',
+    password_hash($defaultPassword, PASSWORD_BCRYPT),
     $template
 );
 if (str_contains($generated, '{{')) {

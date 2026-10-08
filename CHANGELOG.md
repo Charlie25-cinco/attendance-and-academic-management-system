@@ -2,6 +2,17 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v1.0.2 — 2026-10-08
+
+### Changed
+
+- Standardized first-login provisioning so Admin, Principal, Teacher, Student, and Parent accounts use the single password configured by `DEFAULT_NEW_USER_PASSWORD`.
+- Simplified protected-account seeding, private SQL generation, and deployment validation by removing the separate Admin and Principal bootstrap secrets.
+
+### Fixed
+
+- Kept mandatory first-login password replacement role-independent while preserving every Admin-side Principal account protection.
+
 ## v1.0.1 — 2026-10-08
 
 ### Changed

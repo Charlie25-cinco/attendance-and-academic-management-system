@@ -47,8 +47,6 @@ jobs:
               "DB_NAME",
               "DB_USER",
               "DEFAULT_NEW_USER_PASSWORD",
-              "FIRST_RUN_ADMIN_PASSWORD",
-              "FIRST_RUN_PRINCIPAL_PASSWORD",
               "API_AUTH_SECRET",
               "API_SYNC_SECRET",
               "RESEND_API_KEY",
@@ -60,22 +58,15 @@ jobs:
           if missing:
               raise SystemExit("Missing required GitHub secrets: " + ", ".join(missing))
 
-          bootstrap_passwords = {
-              key: os.environ[key]
-              for key in [
-                  "DEFAULT_NEW_USER_PASSWORD",
-                  "FIRST_RUN_ADMIN_PASSWORD",
-                  "FIRST_RUN_PRINCIPAL_PASSWORD",
-              ]
-          }
-          if len(set(bootstrap_passwords.values())) != len(bootstrap_passwords):
-              raise SystemExit("Default, Admin, and Principal bootstrap passwords must be different.")
-          for key, value in bootstrap_passwords.items():
-              if not (12 <= len(value) <= 72):
-                  raise SystemExit(f"{key} must contain 12 to 72 characters.")
-              if not (re.search(r"[A-Z]", value) and re.search(r"[a-z]", value)
-                      and re.search(r"[0-9]", value) and re.search(r"[^A-Za-z0-9\s]", value)):
-                  raise SystemExit(f"{key} must include uppercase, lowercase, number, and special characters.")
+          default_password = os.environ["DEFAULT_NEW_USER_PASSWORD"]
+          if not (12 <= len(default_password) <= 72):
+              raise SystemExit("DEFAULT_NEW_USER_PASSWORD must contain 12 to 72 characters.")
+          if not (re.search(r"[A-Z]", default_password) and re.search(r"[a-z]", default_password)
+                  and re.search(r"[0-9]", default_password)
+                  and re.search(r"[^A-Za-z0-9\s]", default_password)):
+              raise SystemExit(
+                  "DEFAULT_NEW_USER_PASSWORD must include uppercase, lowercase, number, and special characters."
+              )
 
           if not re.fullmatch(r"[a-z0-9]([-a-z0-9]*[a-z0-9])?", os.environ["WASMER_APP_NAME"]):
               raise SystemExit("WASMER_APP_NAME must use lowercase letters, numbers, and hyphens only.")
@@ -123,8 +114,6 @@ jobs:
           DB_PASS: ${{ secrets.DB_PASS }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DEFAULT_NEW_USER_PASSWORD: ${{ secrets.DEFAULT_NEW_USER_PASSWORD }}
-          FIRST_RUN_ADMIN_PASSWORD: ${{ secrets.FIRST_RUN_ADMIN_PASSWORD }}
-          FIRST_RUN_PRINCIPAL_PASSWORD: ${{ secrets.FIRST_RUN_PRINCIPAL_PASSWORD }}
           API_AUTH_SECRET: ${{ secrets.API_AUTH_SECRET }}
           API_SYNC_SECRET: ${{ secrets.API_SYNC_SECRET }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}

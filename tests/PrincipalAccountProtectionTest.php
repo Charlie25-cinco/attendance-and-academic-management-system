@@ -11,8 +11,6 @@ final class PrincipalAccountProtectionTest extends TestCase
     protected function tearDown(): void
     {
         putenv('DEFAULT_NEW_USER_PASSWORD');
-        putenv('FIRST_RUN_ADMIN_PASSWORD');
-        putenv('FIRST_RUN_PRINCIPAL_PASSWORD');
     }
 
     public function testPrincipalRoleIsAProtectedSystemAccount(): void
@@ -24,29 +22,17 @@ final class PrincipalAccountProtectionTest extends TestCase
         self::assertSame('PR341227-1', SystemAccountPolicy::PRINCIPAL_REFERENCE_CODE);
     }
 
-    public function testDistinctBootstrapPasswordsRequireFirstLoginChange(): void
+    public function testSharedDefaultPasswordRequiresFirstLoginChangeForEveryRole(): void
     {
-        putenv('DEFAULT_NEW_USER_PASSWORD=Default!Account123');
-        putenv('FIRST_RUN_ADMIN_PASSWORD=Admin!Bootstrap123');
-        putenv('FIRST_RUN_PRINCIPAL_PASSWORD=Principal!Bootstrap123');
+        putenv('DEFAULT_NEW_USER_PASSWORD=Shared!Default123');
 
-        $principalHash = password_hash('Principal!Bootstrap123', PASSWORD_BCRYPT);
-        $adminHash = password_hash('Admin!Bootstrap123', PASSWORD_BCRYPT);
+        $defaultHash = password_hash('Shared!Default123', PASSWORD_BCRYPT);
         $changedHash = password_hash('Changed!Account123', PASSWORD_BCRYPT);
 
-        self::assertTrue(appUserRequiresPasswordChange('principal', $principalHash));
-        self::assertTrue(appUserRequiresPasswordChange('admin', $adminHash));
-        self::assertFalse(appUserRequiresPasswordChange('principal', $changedHash));
-        self::assertFalse(appUserRequiresPasswordChange('teacher', $principalHash));
-    }
-
-    public function testBootstrapPasswordsCannotBeReusedAcrossRoles(): void
-    {
-        putenv('DEFAULT_NEW_USER_PASSWORD=Default!Account123');
-
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('FIRST_RUN_PRINCIPAL_PASSWORD must be different');
-        appAssertDistinctBootstrapPasswords('Admin!Bootstrap123', 'Default!Account123');
+        foreach (['principal', 'admin', 'teacher', 'student', 'parent'] as $role) {
+            self::assertTrue(appUserRequiresPasswordChange($role, $defaultHash), $role);
+            self::assertFalse(appUserRequiresPasswordChange($role, $changedHash), $role);
+        }
     }
 
     public function testSeedTemplateContainsSeparateProtectedAccountsWithoutPlaintextPasswords(): void
@@ -58,11 +44,12 @@ final class PrincipalAccountProtectionTest extends TestCase
         self::assertStringContainsString("'A341227-1'", $sql);
         self::assertStringContainsString("'PR341227-1'", $sql);
         self::assertStringContainsString("'principal'", $sql);
-        self::assertStringContainsString('{{ADMIN_PASSWORD_HASH}}', $sql);
-        self::assertStringContainsString('{{PRINCIPAL_PASSWORD_HASH}}', $sql);
+        self::assertSame(2, substr_count($sql, '{{DEFAULT_PASSWORD_HASH}}'));
         self::assertStringNotContainsString('Temporary admin login', $sql);
-        self::assertStringContainsString('getFirstRunPrincipalPassword()', $seeder);
-        self::assertStringContainsString('getFirstRunPrincipalPassword()', $generator);
+        self::assertStringContainsString('getDefaultNewUserPassword()', $seeder);
+        self::assertStringContainsString('getDefaultNewUserPassword()', $generator);
+        self::assertStringNotContainsString('FIRST_RUN_ADMIN_PASSWORD', $seeder . $generator . $sql);
+        self::assertStringNotContainsString('FIRST_RUN_PRINCIPAL_PASSWORD', $seeder . $generator . $sql);
         self::assertStringContainsString('storage/generated/seed_system_accounts.sql', $generator);
     }
 
@@ -92,12 +79,12 @@ final class PrincipalAccountProtectionTest extends TestCase
         }
     }
 
-    public function testDeploymentWorkflowRequiresSeparatePrincipalSecret(): void
+    public function testDeploymentWorkflowRequiresOnlySharedDefaultPassword(): void
     {
         $workflow = (string)file_get_contents(APP_ROOT . '/.github/workflows/wasmer-deploy.yml');
 
-        self::assertStringContainsString('FIRST_RUN_ADMIN_PASSWORD', $workflow);
-        self::assertStringContainsString('FIRST_RUN_PRINCIPAL_PASSWORD', $workflow);
-        self::assertStringContainsString('bootstrap passwords must be different', $workflow);
+        self::assertStringContainsString('DEFAULT_NEW_USER_PASSWORD', $workflow);
+        self::assertStringNotContainsString('FIRST_RUN_ADMIN_PASSWORD', $workflow);
+        self::assertStringNotContainsString('FIRST_RUN_PRINCIPAL_PASSWORD', $workflow);
     }
 }

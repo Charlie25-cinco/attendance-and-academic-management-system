@@ -1,6 +1,6 @@
 <?php
 // Seed protected system accounts.
-// Passwords come from FIRST_RUN_ADMIN_PASSWORD and FIRST_RUN_PRINCIPAL_PASSWORD.
+// Every role uses the password configured by DEFAULT_NEW_USER_PASSWORD.
 // Run this after database/schema.sql is imported.
 // Usage: composer run seed:admin
 
@@ -9,16 +9,10 @@ require_once __DIR__ . '/../functions/bootstrap.php';
 use BshsAms\User\SystemAccountPolicy;
 
 try {
-    $configuredAdminPassword = trim((string)appEnvValue('FIRST_RUN_ADMIN_PASSWORD', ''));
-    if ($configuredAdminPassword === '') {
-        throw new RuntimeException('FIRST_RUN_ADMIN_PASSWORD must be set before seeding protected system accounts.');
-    }
-    $adminPassword = getFirstRunAdminPassword();
-    $principalPassword = getFirstRunPrincipalPassword();
-    appAssertDistinctBootstrapPasswords($adminPassword, $principalPassword);
-    $adminError = null;
-    if (!validateStrongPassword($adminPassword, $adminError)) {
-        throw new RuntimeException('FIRST_RUN_ADMIN_PASSWORD is not strong enough: ' . $adminError);
+    $defaultPassword = getDefaultNewUserPassword();
+    $passwordError = null;
+    if (!validateStrongPassword($defaultPassword, $passwordError)) {
+        throw new RuntimeException('DEFAULT_NEW_USER_PASSWORD is not strong enough: ' . $passwordError);
     }
 } catch (RuntimeException $e) {
     fwrite(STDERR, $e->getMessage() . "\n");
@@ -38,7 +32,6 @@ $accounts = [
         'first_name' => 'System',
         'last_name' => 'Administrator',
         'role' => 'admin',
-        'password' => $adminPassword,
     ],
     [
         'reference_code' => SystemAccountPolicy::PRINCIPAL_REFERENCE_CODE,
@@ -46,9 +39,10 @@ $accounts = [
         'first_name' => 'School',
         'last_name' => 'Principal',
         'role' => 'principal',
-        'password' => $principalPassword,
     ],
 ];
+
+$defaultPasswordHash = password_hash($defaultPassword, PASSWORD_BCRYPT);
 
 $db->beginTransaction();
 try {
@@ -64,12 +58,11 @@ try {
     );
 
     foreach ($accounts as $account) {
-        $hash = password_hash($account['password'], PASSWORD_BCRYPT);
         $find->execute([$account['reference_code']]);
         if ($find->fetchColumn()) {
             $update->execute([
                 $account['email'],
-                $hash,
+                $defaultPasswordHash,
                 $account['first_name'],
                 $account['last_name'],
                 $account['role'],
@@ -81,7 +74,7 @@ try {
         $insert->execute([
             $account['reference_code'],
             $account['email'],
-            $hash,
+            $defaultPasswordHash,
             $account['first_name'],
             $account['last_name'],
             $account['role'],

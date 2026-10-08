@@ -1,7 +1,7 @@
 # Technical Architecture Specification
 
 **System Name:** Balingasag Senior High School - Attendance and Academic Management System (BSHS AMS)  
-**Document Version:** 1.0.2
+**Document Version:** 1.0.3
 **Status:** Approved  
 
 ---
@@ -97,7 +97,7 @@ The application source code lives under the `BshsAms\` namespace in `src/`:
 
 ### 3.1 Authentication & Session Management
 - **Password Hashing:** Passwords are hashed using `PASSWORD_DEFAULT` (Bcrypt/Argon2id).
-- **Bootstrap Password Guard:** Web login, remember-me auto-login, and API login enforce mandatory password setup when a hash matches `DEFAULT_NEW_USER_PASSWORD` or its role-specific Admin/Principal bootstrap secret.
+- **Bootstrap Password Guard:** Every role is provisioned from `DEFAULT_NEW_USER_PASSWORD`; web login, remember-me auto-login, and API login enforce mandatory password setup while the stored hash still matches that configured value.
 - **Protected Principal Account:** `BshsAms\User\SystemAccountPolicy` identifies the deployment-owned Principal account. Admin user-management surfaces may read it but web and API handlers deny creation, profile mutation, password reset, status changes, and archival. Principal profile/password maintenance remains self-service.
 - **Stateless Cloud Sessions:** When running on cloud container platforms such as Wasmer Edge, setting `APP_SESSION_DRIVER=database` delegates session storage to the SQL `app_sessions` table.
 

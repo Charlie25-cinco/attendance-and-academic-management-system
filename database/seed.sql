@@ -9,9 +9,9 @@
 -- =============================================================================
 -- DEFAULT SYSTEM ACCOUNTS
 -- =============================================================================
--- Admin credentials must not be hardcoded in SQL.
--- Create the first admin with: composer run seed:admin
--- The password comes from FIRST_RUN_ADMIN_PASSWORD in .env.
+-- Protected system-account credentials must not be hardcoded in SQL.
+-- Create the Admin and Principal with: composer run seed:admin
+-- Their shared first-login password comes from DEFAULT_NEW_USER_PASSWORD in .env.
 
 -- =============================================================================
 -- WEBSITE CONTENT (admin-managed school website pages)
