@@ -213,6 +213,7 @@ CREATE TABLE IF NOT EXISTS grade_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
     class_id INT NOT NULL,
     teacher_id INT NOT NULL,
+    client_operation_id VARCHAR(120) NULL,
     title VARCHAR(150) NOT NULL,
     component ENUM('WW','PT','ASSESSMENT') NOT NULL,
     total_score DECIMAL(7,2) NOT NULL,
@@ -221,7 +222,8 @@ CREATE TABLE IF NOT EXISTS grade_items (
     finished_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
-    FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY uq_grade_item_teacher_operation (teacher_id, client_operation_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =============================================================================

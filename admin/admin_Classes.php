@@ -10,6 +10,7 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'admin') {
 
 $database = new Database();
 $db = $database->getConnection();
+$canManageClasses = hasPermission('classes.manage');
 
 $classes = [];
 $search = trim((string)($_GET['search'] ?? ''));
@@ -272,9 +273,9 @@ $page_title = 'Manage Classes';
                     <h4 class="mb-1">Manage Classes</h4>
                     <p class="text-muted mb-0">Create subject classes, set schedules, and manage grade-level sections.</p>
                 </div>
-                <button class="btn btn-primary-custom" data-bs-toggle="modal" data-bs-target="#addClassModal">
+                <?php if ($canManageClasses): ?><button class="btn btn-primary-custom" data-bs-toggle="modal" data-bs-target="#addClassModal">
                     <i class="bi bi-plus-lg me-2"></i>Add New Class
-                </button>
+                </button><?php endif; ?>
             </div>
 
             <div class="content-card mb-4">
@@ -667,9 +668,9 @@ $page_title = 'Manage Classes';
                             <span class="badge bg-secondary-subtle text-dark border px-2 py-1" id="groupModalTotalStudentsBadge">0 Total Students</span>
                         </div>
                         <div class="d-flex align-items-center gap-2">
-                            <button type="button" class="btn btn-sm btn-primary-custom" id="groupModalAddSectionBtn" onclick="openAddSectionForGroup()">
+                            <?php if ($canManageClasses): ?><button type="button" class="btn btn-sm btn-primary-custom" id="groupModalAddSectionBtn" onclick="openAddSectionForGroup()">
                                 <i class="bi bi-plus-circle me-1"></i>Add Section
-                            </button>
+                            </button><?php endif; ?>
                         </div>
                     </div>
                     <div id="groupModalSectionsList" class="d-flex flex-column gap-2">
@@ -1450,6 +1451,7 @@ $page_title = 'Manage Classes';
         let activeGroupIndex = null;
         window.groupedClassesData = groupedClassesData;
         window.activeGroupIndex = activeGroupIndex;
+        const canManageClasses = <?php echo $canManageClasses ? 'true' : 'false'; ?>;
 
         function openGroupedClassModal(index) {
             activeGroupIndex = index;
@@ -1505,12 +1507,12 @@ $page_title = 'Manage Classes';
                             <a href="admin_Class_Detail.php?id=${sec.id}" class="btn btn-sm btn-primary-custom" title="View Class Details for Section ${escapeHtml(sec.section)}">
                                 <i class="bi bi-eye me-1"></i>View Details
                             </a>
-                            <a href="admin_Class_Edit.php?id=${sec.id}" class="btn btn-sm btn-outline-secondary" title="Edit Class for Section ${escapeHtml(sec.section)}">
+                            ${canManageClasses ? `<a href="admin_Class_Edit.php?id=${sec.id}" class="btn btn-sm btn-outline-secondary" title="Edit Class for Section ${escapeHtml(sec.section)}">
                                 <i class="bi bi-pencil me-1"></i>Edit
                             </a>
                             <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteSectionFromGroupModal(${sec.id}, '${escapeHtml(group.class_name)}', '${escapeHtml(sec.section)}')" title="Delete Class for Section ${escapeHtml(sec.section)}">
                                 <i class="bi bi-trash"></i>
-                            </button>
+                            </button>` : ''}
                         </div>
                     `;
                     sectionsList.appendChild(row);

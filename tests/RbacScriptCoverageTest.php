@@ -73,4 +73,27 @@ final class RbacScriptCoverageTest extends TestCase
             'permissionForScript() contains keys pointing to files that do not exist.'
         );
     }
+
+    public function testMutationHandlersUseActionSpecificPermissions(): void
+    {
+        $expected = [
+            ['admin_users_action.php', 'create', 'users.create'],
+            ['admin_users_action.php', 'update', 'users.edit'],
+            ['admin_users_action.php', 'delete', 'users.delete'],
+            ['admin_users_action.php', 'reset_password', 'users.reset_password'],
+            ['admin_enrollments_action.php', 'export_sf1', 'reports.export'],
+            ['admin_classes_action.php', 'create', 'classes.manage'],
+            ['admin_classes_action.php', 'export_sf2', 'reports.export'],
+            ['admin_announcements_action.php', 'delete', 'announcements.delete'],
+            ['teacher_action.php', 'submit_attendance', 'attendance.manage'],
+            ['teacher_action.php', 'save_offline_activity', 'grades.enter'],
+            ['teacher_action.php', 'export_grades', 'reports.export'],
+            ['teacher_chat_action.php', 'send_message', 'messages.send'],
+            ['parent_chat_action.php', 'send_message', 'messages.send'],
+        ];
+
+        foreach ($expected as [$script, $action, $permission]) {
+            $this->assertSame($permission, permissionForScriptAction($script, $action), "$script?action=$action");
+        }
+    }
 }

@@ -605,7 +605,7 @@ function exportSf1(PDO $db): void {
         if (!headers_sent()) {
             header('Content-Type: application/json');
         }
-        echo json_encode(['success' => false, 'message' => 'Export failed: ' . $e->getMessage()]);
+        echo json_encode(['success' => false, 'message' => 'Export failed. Please try again.', 'error_code' => 'export_failed']);
     }
     exit();
 }

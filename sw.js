@@ -1,6 +1,6 @@
 // BSHS AMS root service worker - PWA cache + push notifications
 
-const CACHE_NAME = "bshs-ams-v40";
+const CACHE_NAME = "bshs-ams-v41";
 const BASE_PATH = (self.location.pathname || "").replace(/\/sw\.js$/, "");
 const IDENTITY_CACHE = "bshs-ams-offline-state";
 const IDENTITY_URL = new URL(BASE_PATH + "/__offline_identity", self.location.origin).href;

@@ -10,7 +10,8 @@ final class ParentMessagingPermissionTest extends TestCase
         $this->assertIsString($content);
 
         $this->assertStringContainsString("'parent_chat.php' => 'messages.view'", $content);
-        $this->assertStringContainsString("'parent_chat_action.php' => 'messages.send'", $content);
+        $this->assertSame('messages.view', permissionForScriptAction('parent_chat_action.php', 'get_messages'));
+        $this->assertSame('messages.send', permissionForScriptAction('parent_chat_action.php', 'send_message'));
 
         $parentPermsStart = strpos($content, '$parentPerms =');
         $roleMapStart = strpos($content, '$roleMap =', $parentPermsStart);

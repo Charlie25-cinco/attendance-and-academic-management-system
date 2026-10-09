@@ -8,6 +8,9 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'admin') {
 
 $database = new Database();
 $db = $database->getConnection();
+$canCreateStudents = hasPermission('users.create');
+$canEditStudents = hasPermission('users.edit');
+$canDeleteStudents = hasPermission('users.delete');
 
 $statsStmt = $db->query("SELECT
     SUM(CASE WHEN role = 'student' AND status = 'active' THEN 1 ELSE 0 END) as active,
@@ -160,12 +163,12 @@ if (isset($_GET['download_template'])) {
                     <div class="content-card-header">
                     <h5 class="content-card-title">Enrolled Students</h5>
                     <div class="d-flex gap-2">
-                        <button class="btn btn-outline-primary btn-sm" onclick="openImportModal()">
+                        <?php if ($canCreateStudents): ?><button class="btn btn-outline-primary btn-sm" onclick="openImportModal()">
                             <i class="bi bi-file-earmark-spreadsheet me-1"></i>Import SF1
                         </button>
                         <button class="btn btn-primary-custom btn-sm" onclick="openAddModal()">
                             <i class="bi bi-person-plus me-1"></i>Add Student
-                        </button>
+                        </button><?php endif; ?>
                     </div>
                 </div>
                 <div class="content-card-body">
@@ -308,6 +311,8 @@ if (isset($_GET['download_template'])) {
                 tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No students found</td></tr>';
                 return;
             }
+            const canEditStudents = <?php echo json_encode($canEditStudents); ?>;
+            const canDeleteStudents = <?php echo json_encode($canDeleteStudents); ?>;
             tbody.innerHTML = students.map(s => `
                 <tr>
                     <td><span class="fw-medium">${escHtml(s.reference_code || '—')}</span></td>
@@ -330,11 +335,11 @@ if (isset($_GET['download_template'])) {
                     <td>
                         <div class="d-flex gap-2">
                             <button class="material-btn js-view-student" data-id="${s.id}" title="View" style="color:var(--secondary-color);"><i class="bi bi-eye"></i></button>
-                            <button class="material-btn js-edit-student" data-id="${s.id}" title="Edit" style="color:var(--warning-color);"><i class="bi bi-pencil"></i></button>
+                            ${canEditStudents ? `<button class="material-btn js-edit-student" data-id="${s.id}" title="Edit" style="color:var(--warning-color);"><i class="bi bi-pencil"></i></button>
                             <button class="material-btn js-toggle-student-status" data-id="${s.id}" data-status="${s.status}" title="${s.status === 'active' ? 'Archive' : 'Activate'}" style="color:${s.status === 'active' ? 'var(--warning-color)' : 'var(--accent-color)'};">
                                 <i class="bi bi-${s.status === 'active' ? 'toggle-off' : 'toggle-on'}"></i>
-                            </button>
-                            <button class="material-btn js-delete-student" data-id="${s.id}" title="Delete" style="color:var(--danger-color);"><i class="bi bi-trash"></i></button>
+                            </button>` : ''}
+                            ${canDeleteStudents ? `<button class="material-btn js-delete-student" data-id="${s.id}" title="Delete" style="color:var(--danger-color);"><i class="bi bi-trash"></i></button>` : ''}
                         </div>
                     </td>
                 </tr>

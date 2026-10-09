@@ -53,20 +53,9 @@ switch ($action) {
         echo json_encode(['success' => false, 'message' => 'Invalid action']);
 }
 
-function ensureClassTrackColumn($db) {
-    try {
-        $exists = dbHasColumn($db, 'classes', 'subject_category');
-        if (!$exists) {
-            $db->exec("ALTER TABLE classes ADD COLUMN subject_category VARCHAR(50) DEFAULT 'core' COMMENT 'core|academic_elective|techpro_elective|work_immersion|field_experience_elective'");
-        }
-        $exists = dbHasColumn($db, 'classes', 'track');
-        if (!$exists) {
-            $db->exec("ALTER TABLE classes ADD COLUMN track VARCHAR(50) DEFAULT 'academic' COMMENT 'academic|techpro'");
-        }
-        ensureStrengthenedShsColumns($db);
-    } catch (PDOException $e) {
-        // Ignore if schema change is not permitted.
-    }
+function ensureClassTrackColumn($db): bool {
+    return dbHasColumn($db, 'classes', 'subject_category')
+        && dbHasColumn($db, 'classes', 'track');
 }
 
 function normalizeScheduleRows($rows, &$error = '') {
@@ -337,7 +326,10 @@ function createClass($db) {
             return;
         }
 
-        ensureClassTrackColumn($db);
+        if (!ensureClassTrackColumn($db)) {
+            echo json_encode(['success' => false, 'message' => 'Database update required before classes can be created.', 'error_code' => 'database_upgrade_required']);
+            return;
+        }
         $teacherId = isset($_POST['teacher_id']) && (int)$_POST['teacher_id'] > 0 ? (int)$_POST['teacher_id'] : null;
         if ($teacherId !== null) {
             $tCheck = $db->prepare("SELECT id FROM users WHERE id = ? AND role = 'teacher' AND status = 'active' LIMIT 1");
@@ -550,7 +542,7 @@ function createClass($db) {
             $db->rollBack();
         }
         error_log("Admin_Classes_Action create error: " . $e->getMessage());
-        echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+        echo json_encode(['success' => false, 'message' => 'Database error. Please try again.', 'error_code' => 'database_error']);
     }
 }
 
@@ -655,7 +647,10 @@ function updateClass($db) {
         }
         
         // Update class
-        ensureClassTrackColumn($db);
+        if (!ensureClassTrackColumn($db)) {
+            echo json_encode(['success' => false, 'message' => 'Database update required before classes can be updated.', 'error_code' => 'database_upgrade_required']);
+            return;
+        }
         $teacherId = isset($_POST['teacher_id']) && (int)$_POST['teacher_id'] > 0 ? (int)$_POST['teacher_id'] : null;
         if ($teacherId !== null) {
             $tCheck = $db->prepare("SELECT id FROM users WHERE id = ? AND role = 'teacher' AND status = 'active' LIMIT 1");

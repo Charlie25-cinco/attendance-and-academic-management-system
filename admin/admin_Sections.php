@@ -8,6 +8,7 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'admin') {
 
 $database = new Database();
 $db = $database->getConnection();
+$canManageSections = hasPermission('classes.manage');
 
 $current_role = 'admin';
 $current_page = 'sections';
@@ -35,9 +36,9 @@ $page_title = 'Sections';
                     <h4 class="mb-1">Sections</h4>
                     <p class="text-muted mb-0">Manage Grade 11 Strengthened SHS sections by program while keeping Grade 12 unchanged.</p>
                 </div>
-                <button class="btn btn-primary-custom" onclick="openCreateModal()">
+                <?php if ($canManageSections): ?><button class="btn btn-primary-custom" onclick="openCreateModal()">
                     <i class="bi bi-plus-lg me-1"></i>Create Section
-                </button>
+                </button><?php endif; ?>
             </div>
 
             <div class="row g-4" id="sectionsContainer">
@@ -201,6 +202,7 @@ $page_title = 'Sections';
                         'linear-gradient(135deg, #0ea5e9, #0284c7)',
                         'linear-gradient(135deg, #14b8a6, #0f766e)'
                     ];
+                    const canManageSections = <?php echo $canManageSections ? 'true' : 'false'; ?>;
                     container.innerHTML = sections.map((s, i) => {
                         const g = gradients[i % gradients.length];
                         const trackLabel = programLabel(s);
@@ -215,14 +217,14 @@ $page_title = 'Sections';
                                     <div class="class-card-stats mb-3">
                                         <span class="class-card-stat"><i class="bi bi-people"></i> ${Number(s.student_count || 0)} Students</span>
                                     </div>
-                                    <div class="d-flex gap-2">
+                                    ${canManageSections ? `<div class="d-flex gap-2">
                                         <button class="btn btn-sm btn-outline-primary flex-fill" onclick="editSection(${s.id}, '${escHtml(s.name)}', ${s.grade_level}, '${s.track}')">
                                             <i class="bi bi-pencil"></i> Edit
                                         </button>
                                         <button class="btn btn-sm btn-outline-danger" onclick="confirmDelete(${s.id}, '${escHtml(s.name)}')">
                                             <i class="bi bi-trash"></i>
                                         </button>
-                                    </div>
+                                    </div>` : ''}
                                 </div>
                             </div>
                         </div>`;

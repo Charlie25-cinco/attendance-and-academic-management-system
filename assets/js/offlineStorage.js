@@ -496,6 +496,7 @@
         operation: "activity.upsert",
         url: "teacher_Action.php?action=save_offline_activity",
         payload: {
+          client_operation_id: localId,
           grade_item_id: serverId,
           server_id: serverId,
           class_id: cId,
@@ -727,7 +728,7 @@
         keys.forEach(key => global.localStorage.removeItem(key));
       } catch (e) {}
       if ("caches" in global) {
-        try { await global.caches.delete("bshs-ams-v40-user-" + owner); } catch (e) {}
+        try { await global.caches.delete("bshs-ams-v41-user-" + owner); } catch (e) {}
       }
       notifySyncStatusChanged();
       return true;
@@ -951,7 +952,7 @@
 
         if ("caches" in global) {
           try {
-            const activeCacheName = "bshs-ams-v40-user-" + owner;
+            const activeCacheName = "bshs-ams-v41-user-" + owner;
             const cache = await caches.open(activeCacheName);
             const teacherPages = [
               "/teacher/teacher.php",

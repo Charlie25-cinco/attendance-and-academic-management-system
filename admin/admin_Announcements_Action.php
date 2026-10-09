@@ -30,17 +30,7 @@ function adminAnnouncementsRequireCsrf() {
 }
 
 function adminAnnouncementsEnsureWebsiteColumn(PDO $db): bool {
-    if (dbHasColumn($db, 'announcements', 'show_on_website')) {
-        return true;
-    }
-
-    try {
-        $db->exec("ALTER TABLE announcements ADD COLUMN show_on_website TINYINT NOT NULL DEFAULT 0 AFTER views");
-        return true;
-    } catch (Throwable $e) {
-        error_log('Admin announcements website column update failed: ' . $e->getMessage());
-        return false;
-    }
+    return dbHasColumn($db, 'announcements', 'show_on_website');
 }
 
 if (in_array($action, ['create', 'update', 'archive', 'restore', 'delete'], true)) {

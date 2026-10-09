@@ -11,7 +11,7 @@ final class NotificationDeliveryTest extends TestCase
         $db->exec("CREATE TABLE users (id INTEGER PRIMARY KEY, role TEXT NOT NULL)");
         $db->exec("INSERT INTO users (id, role) VALUES (1, 'student'), (2, 'parent')");
 
-        appDispatchNotification(
+        $persisted = appDispatchNotification(
             $db,
             [1, 2],
             'school_announcement_42',
@@ -23,6 +23,8 @@ final class NotificationDeliveryTest extends TestCase
             ['type' => 'school_announcement', 'announcement_id' => 42]
         );
 
+        $this->assertTrue($persisted);
+
         $rows = $db->query("SELECT user_id, link, is_read FROM user_notifications ORDER BY user_id")
             ->fetchAll(PDO::FETCH_ASSOC);
 
@@ -30,6 +32,19 @@ final class NotificationDeliveryTest extends TestCase
         $this->assertSame('/student/Student_Announcements.php#notification-school-42', $rows[0]['link']);
         $this->assertSame('/parent/Parent_Announcements.php#notification-school-42', $rows[1]['link']);
         $this->assertSame(0, (int)$rows[0]['is_read']);
+    }
+
+    public function testDispatcherReportsPersistenceFailure(): void
+    {
+        $db = new PDO('sqlite::memory:');
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $db->exec("CREATE TABLE users (id INTEGER PRIMARY KEY, role TEXT NOT NULL)");
+        $db->exec("INSERT INTO users (id, role) VALUES (1, 'student')");
+        appEnsureUserNotificationsTable($db);
+        $db->exec("CREATE TRIGGER reject_notification BEFORE INSERT ON user_notifications BEGIN SELECT RAISE(ABORT, 'rejected'); END");
+
+        $this->assertFalse(appDispatchNotification($db, [1], 'test_failure', 'Title', 'Body'));
+        $this->assertSame(0, (int)$db->query('SELECT COUNT(*) FROM user_notifications')->fetchColumn());
     }
 
     public function testNotificationActionsAreScopedToAuthenticatedUser(): void
@@ -56,7 +71,7 @@ final class NotificationDeliveryTest extends TestCase
         $this->assertStringNotContainsString('sendTestPushNotification', $javascript);
 
         $this->assertIsString($serviceWorker);
-        $this->assertStringContainsString('bshs-ams-v40', $serviceWorker);
+        $this->assertStringContainsString('bshs-ams-v41', $serviceWorker);
         $this->assertStringContainsString('new URL(targetUrl, self.location.origin).href', $serviceWorker);
     }
 

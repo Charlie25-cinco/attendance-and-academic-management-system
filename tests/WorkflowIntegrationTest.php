@@ -75,11 +75,13 @@ final class WorkflowIntegrationTest extends TestCase
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             class_id INTEGER NOT NULL,
             teacher_id INTEGER NOT NULL,
+            client_operation_id TEXT,
             title TEXT NOT NULL,
             component TEXT NOT NULL,
             total_score REAL NOT NULL,
             activity_date TEXT NOT NULL,
-            status TEXT DEFAULT 'active'
+            status TEXT DEFAULT 'active',
+            UNIQUE(teacher_id, client_operation_id)
         )");
 
         $this->db->exec("CREATE TABLE grade_item_scores (

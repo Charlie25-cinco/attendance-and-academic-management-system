@@ -190,6 +190,8 @@ Attendance recording accepts only `present`, `absent`, and `late`. Additional ab
   - `WASMER_OWNER`
   - `WASMER_APP_NAME`, for example `balingasagshs`; if omitted, the package default is `bshs-ams`
   - `APP_PUBLIC_BASE_URL`, for example `https://balingasagshs.wasmer.app`
+  - `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and either `DB_PASS` or `DB_PASSWORD`
+  - `API_AUTH_SECRET` and `API_SYNC_SECRET`
   - `DEFAULT_NEW_USER_PASSWORD`, shared by every role for first login
   - `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, and optional `RESEND_FROM_NAME`
 - Configure production secrets in Wasmer for database and API values:
@@ -202,13 +204,13 @@ Attendance recording accepts only `present`, `absent`, and `late`. Additional ab
   - `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `RESEND_FROM_NAME` for password reset OTP email
   - `PUSH_VAPID_PUBLIC_KEY`, `PUSH_VAPID_PRIVATE_KEY`, `PUSH_VAPID_SUBJECT` for installed PWA device notifications
   - SMTP secrets if email fallback is enabled
-- `app.yaml` intentionally contains placeholder owner/public URL values that the GitHub workflow replaces from secrets.
+- `app.yaml` contains the public school deployment owner, app name, and URL. The GitHub workflow validates that these committed public values match `WASMER_OWNER`, `WASMER_APP_NAME`, and `APP_PUBLIC_BASE_URL`; private database and API values remain secrets.
 - Composer runtime platform checks are disabled in `composer.json` because Wasmer's PHP/WASI runtime can report a non-64-bit platform even though the application can still boot and serve normal web requests.
 - Wasmer app instances are stateless; runtime files should use the configured Wasmer volumes for `/app/storage` and `/app/assets/uploads`, while durable school data and PHP sessions should live in Wasmer Attached Database.
 - Teacher learning-material uploads are stored under `/app/storage/materials` on Wasmer and downloaded only through authenticated teacher/student handlers. `MATERIAL_STORAGE_PATH` may override this location for a trusted deployment.
 - Teacher Classes uses a learning-material upload modal whose primary Chromium picker starts in Documents, avoiding a stalled Downloads folder. Standard-picker compatibility, drag-and-drop, and clipboard paste remain available; browser and server validation restrict uploads to supported file types and 10 MB without previewing or reading file contents before upload.
 - For installed PWA use, set `APP_SESSION_DRIVER=database`, `APP_SESSION_LIFETIME=86400`, and `APP_SESSION_IDLE_TIMEOUT=86400`; users can stay signed in longer through the checked-by-default trusted-device option on login.
-- Wasmer Attached Database uses hosted MySQL; use `database/reset_and_setup.local.sql` for an approved full reset, or `database/schema.sql` only when creating an empty database without resetting an existing one.
+- Wasmer Attached Database uses hosted MySQL; import `database/schema.sql` into an empty hosted database. For an explicitly approved full reset, generate `database/reset_and_setup.local.sql` locally with `composer run database:setup-sql`, import it into the selected local or hosted database, and delete it afterward; the ignored file contains destructive table drops and reusable credential hashes and must never be committed.
 - Use `DB_SSL_CA` for a CA file path, or `DB_SSL_CA_CONTENT` when the CA PEM is stored directly as a GitHub/Wasmer secret.
 - Password reset uses a 6-digit OTP sent through Resend when configured, with SMTP as fallback; reset codes are hashed in `auth_password_resets.token_hash` and expire after 10 minutes.
 - `database/schema.sql` is the canonical structure and baseline-data source. It is hosted-MySQL-compatible and contains no `DROP DATABASE`, `CREATE DATABASE`, or `USE` statements.
@@ -217,7 +219,7 @@ Attendance recording accepts only `present`, `absent`, and `late`. Additional ab
 ## RBAC
 
 - RBAC tables, default roles, permissions, and role mappings are included in `database/schema.sql`; runtime helpers only preserve compatibility and idempotently confirm those rows.
-- Permission checks are enforced through `functions/bootstrap.php` using the current script-to-permission map in `functions/app-helpers.php`.
+- Permission checks are enforced through `functions/bootstrap.php` using page mappings from `permissionForScript()` and handler-action mappings from `permissionForScriptAction()` in `functions/app-helpers.php`.
 - The Admin RBAC Control Panel is available from the admin sidebar.
 
 ## DepEd Templates

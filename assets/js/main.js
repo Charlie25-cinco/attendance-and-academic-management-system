@@ -1951,7 +1951,7 @@ if ("serviceWorker" in navigator && navigator.onLine) {
         .keys()
         .then((keys) => {
           keys.forEach((key) => {
-            if (key.startsWith("bshs-ams-v") && key !== "bshs-ams-v40" && !key.startsWith("bshs-ams-v40-user-")) {
+            if (key.startsWith("bshs-ams-v") && key !== "bshs-ams-v41" && !key.startsWith("bshs-ams-v41-user-")) {
               caches.delete(key);
             }
           });

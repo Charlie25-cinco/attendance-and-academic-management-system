@@ -20,7 +20,7 @@ final class PrincipalReportCardWorkflowTest extends TestCase
         )');
         $this->db->exec('CREATE TABLE classes (id INTEGER PRIMARY KEY, class_name TEXT)');
         $this->db->exec('CREATE TABLE class_subjects (id INTEGER PRIMARY KEY, class_id INTEGER)');
-        $this->db->exec('CREATE TABLE grades (id INTEGER PRIMARY KEY, student_id INTEGER, class_subject_id INTEGER, academic_year TEXT, semester TEXT)');
+        $this->db->exec('CREATE TABLE grades (id INTEGER PRIMARY KEY, student_id INTEGER, class_subject_id INTEGER, academic_year TEXT, semester TEXT, recorded_by INTEGER)');
         $this->db->exec('CREATE TABLE grade_approvals (id INTEGER PRIMARY KEY, grade_id INTEGER, status TEXT)');
         $this->db->exec('CREATE TABLE report_card_approvals (
             id INTEGER PRIMARY KEY, student_id INTEGER, academic_year TEXT, semester TEXT,
@@ -31,6 +31,7 @@ final class PrincipalReportCardWorkflowTest extends TestCase
             action_name TEXT, target_type TEXT, target_id INTEGER, details_json TEXT,
             ip_address TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )');
+        $this->db->exec('CREATE TABLE parent_students (parent_id INTEGER, student_id INTEGER)');
         $this->db->exec("INSERT INTO users VALUES
             (1, 'PR-001', 'School', 'Principal', NULL, NULL, 'principal', 'active'),
             (2, 'A-001', 'System', 'Admin', NULL, NULL, 'admin', 'active'),
@@ -38,7 +39,7 @@ final class PrincipalReportCardWorkflowTest extends TestCase
             (20, 'T-001', 'Class', 'Adviser', NULL, NULL, 'teacher', 'active')");
         $this->db->exec("INSERT INTO classes VALUES (1, 'General Mathematics')");
         $this->db->exec('INSERT INTO class_subjects VALUES (1, 1)');
-        $this->db->exec("INSERT INTO grades VALUES (1, 10, 1, '2026-2027', 'S1')");
+        $this->db->exec("INSERT INTO grades VALUES (1, 10, 1, '2026-2027', 'S1', 20)");
         $this->db->exec("INSERT INTO grade_approvals VALUES (1, 1, 'admin_verified')");
         $this->db->exec("INSERT INTO report_card_approvals VALUES (1, 10, '2026-2027', 'S1', 20, 'submitted_admin', NULL, NULL, NULL)");
     }
@@ -81,6 +82,21 @@ final class PrincipalReportCardWorkflowTest extends TestCase
         self::assertSame('report_card.approve', $events[0]['action_name']);
         self::assertSame('Sample', $events[0]['first_name']);
         self::assertSame('School Principal', $events[0]['reviewer_name']);
+    }
+
+    public function testAdminReleaseRollsBackWhenSavedNotificationCannotBeWritten(): void
+    {
+        (new ReportCardReview($this->db, static function (): void {}))->review(1, [1], 'approve');
+        appEnsureUserNotificationsTable($this->db);
+        $this->db->exec("CREATE TRIGGER reject_release_notification BEFORE INSERT ON user_notifications BEGIN SELECT RAISE(ABORT, 'rejected'); END");
+
+        try {
+            (new AdminReportCardRelease($this->db))->decide(2, [1], 'approve');
+            self::fail('Notification persistence failure must abort the release.');
+        } catch (PDOException $e) {
+            self::assertSame('pending', $this->db->query('SELECT status FROM report_card_approvals WHERE id = 1')->fetchColumn());
+            self::assertSame(1, (int)$this->db->query('SELECT COUNT(*) FROM activity_logs')->fetchColumn());
+        }
     }
 
     public function testNonPrincipalCannotDecideAndReturnRequiresReason(): void

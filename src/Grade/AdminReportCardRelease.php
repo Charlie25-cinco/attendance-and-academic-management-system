@@ -50,7 +50,12 @@ final class AdminReportCardRelease
                 if (!$logged) {
                     throw new DomainException('The decision could not be audited, so no report card was changed.');
                 }
-                $events[] = $card;
+                $deliveries = [];
+                if ($this->notify === null) {
+                    $deliveries = $this->prepareDeliveries($card, $decision, $remarks);
+                    \appPersistNotificationDeliveries($this->db, $deliveries);
+                }
+                $events[] = ['card' => $card, 'deliveries' => $deliveries];
             }
             $this->db->commit();
         } catch (Throwable $e) {
@@ -58,12 +63,13 @@ final class AdminReportCardRelease
             throw $e;
         }
 
-        foreach ($events as $card) {
+        foreach ($events as $event) {
+            $card = $event['card'];
             try {
                 if ($this->notify !== null) {
                     ($this->notify)($card, $decision, $remarks);
                 } else {
-                    $this->dispatch($card, $decision, $remarks);
+                    \appPushNotificationDeliveries($this->db, $event['deliveries']);
                 }
             } catch (Throwable $e) {
                 error_log('Admin report-card notification delivery failed.');
@@ -72,7 +78,7 @@ final class AdminReportCardRelease
         return count($events);
     }
 
-    private function dispatch(array $card, string $decision, string $remarks): void
+    private function prepareDeliveries(array $card, string $decision, string $remarks): array
     {
         $released = $decision === 'approve';
         $title = $released ? 'Official Report Card Released' : ($decision === 'withdraw' ? 'Report Card Release Withdrawn' : 'Report Card Returned by Admin');
@@ -81,7 +87,7 @@ final class AdminReportCardRelease
         $parents->execute([$card['student_id']]);
         $family = array_merge([(int)$card['student_id']], $parents->fetchAll(PDO::FETCH_COLUMN));
         $key = 'admin_report_card_' . $decision . '_' . $card['id'] . '_' . time();
-        \appDispatchNotification($this->db, $family, $key, $title, $copy,
+        $deliveries = \appPrepareNotificationDeliveries($this->db, $family, $key, $title, $copy,
             'bi-journal-check', $released ? 'success' : 'warning',
             ['student' => 'Student_Report_Card.php', 'parent' => 'Parent_Report_Card.php'],
             ['type' => $released ? 'grade_publication' : 'grade_recall']);
@@ -92,9 +98,9 @@ final class AdminReportCardRelease
         $semester = (string)($card['semester'] ?? '');
         $teacherStmt->execute([$card['student_id'], $card['academic_year'], $semester, $semester]);
         $staff = array_merge($staff, $principalIds, $teacherStmt->fetchAll(PDO::FETCH_COLUMN));
-        \appDispatchNotification($this->db, $staff, $key . '_staff', $title, $copy,
+        return array_merge($deliveries, \appPrepareNotificationDeliveries($this->db, $staff, $key . '_staff', $title, $copy,
             'bi-journal-check', $released ? 'success' : 'warning',
             ['principal' => 'principal_Released.php', 'teacher' => 'teacher_Advisory.php'],
-            ['type' => $released ? 'grade_publication' : 'grade_recall']);
+            ['type' => $released ? 'grade_publication' : 'grade_recall']));
     }
 }

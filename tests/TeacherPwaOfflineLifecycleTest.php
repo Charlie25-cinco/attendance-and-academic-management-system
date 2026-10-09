@@ -113,13 +113,15 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             class_id INTEGER NOT NULL,
             teacher_id INTEGER NOT NULL,
+            client_operation_id TEXT,
             title TEXT NOT NULL,
             component TEXT NOT NULL,
             total_score REAL NOT NULL,
             activity_date TEXT NOT NULL,
             status TEXT DEFAULT 'active',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(teacher_id, client_operation_id)
         )");
 
         $this->db->exec("CREATE TABLE grade_item_scores (
@@ -522,6 +524,11 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
         $this->assertStringContainsString('waitForTransaction', $offlineStorageJs);
         $this->assertStringContainsString('saveAttendanceSnapshot', $offlineStorageJs);
         $this->assertStringContainsString('markSyncItemFailed', $offlineStorageJs);
+        $this->assertStringContainsString('client_operation_id: localId', $offlineStorageJs);
+        $teacherAction = (string)file_get_contents(__DIR__ . '/../teacher/teacher_Action.php');
+        $this->assertStringContainsString('WHERE teacher_id = ? AND client_operation_id = ?', $teacherAction);
+        $this->assertStringNotContainsString('WHERE class_id = ? AND teacher_id = ? AND title = ? AND activity_date = ?', $teacherAction);
+        $this->assertStringNotContainsString('SET component = ?, total_score = ?, updated_at = NOW()', $teacherAction);
         $this->assertStringContainsString('bshs-offline-sync', $swJs);
         $this->assertStringContainsString('handleBackgroundSync', $swJs);
         $this->assertStringContainsString('item.status !== "failed"', $swJs);

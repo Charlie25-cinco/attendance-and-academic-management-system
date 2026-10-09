@@ -16,13 +16,15 @@ final class AnnouncementPostingTest extends TestCase
         $this->assertStringContainsString('action=create_class_announcement', $matches[1]);
     }
 
-    public function testAdminAnnouncementPostingSupportsLegacyWebsiteSchema(): void
+    public function testAdminAnnouncementPostingRequiresCanonicalWebsiteSchemaWithoutRuntimeDdl(): void
     {
         $content = file_get_contents(__DIR__ . '/../admin/admin_Announcements_Action.php');
         $this->assertIsString($content);
 
         $this->assertStringContainsString("dbHasColumn(\$db, 'announcements', 'show_on_website')", $content);
-        $this->assertStringContainsString('ALTER TABLE announcements ADD COLUMN show_on_website', $content);
+        $this->assertStringNotContainsString('ALTER TABLE announcements ADD COLUMN show_on_website', $content);
+        $schema = (string)file_get_contents(__DIR__ . '/../database/schema.sql');
+        $this->assertStringContainsString('show_on_website TINYINT DEFAULT 0', $schema);
     }
 
     public function testAdminAnnouncementModalsInitializeAfterBootstrapLoads(): void

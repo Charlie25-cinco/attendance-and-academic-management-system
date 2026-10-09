@@ -50,6 +50,7 @@ The platform provides a centralized, role-based ecosystem connecting the **Princ
   - Teacher-owned IndexedDB with account-scoped localStorage fallback allows manual attendance on cached scheduled dates without active internet.
   - Durable saves register Background Sync and also retry on reconnection or application startup; teachers can inspect pending/failed counts and retry explicitly.
   - Attendance snapshots are keyed by class and date, while QR scanning remains online-only for server-authoritative Present/Late classification.
+  - Offline grade activities use teacher-scoped client operation IDs so retries are idempotent while separate same-title/same-date activities remain distinct.
 - **DepEd School Form 2 (SF2) Daily Attendance Export:**
   - Fully automated XLSX generation strictly following the official `deped/SF2_Senior_High_School.xlsx` template.
   - Preserves merged headers, summary formulas (rows 60–89), dynamic Monday–Saturday day anchors, and official DepEd attendance symbols (Blank = Present, `X` = Absent, Upper-half block = Late).
@@ -85,7 +86,7 @@ The platform provides a centralized, role-based ecosystem connecting the **Princ
   - New grade activity announcements and recorded scores.
   - Official grade publication and report card releases.
   - Administrative grade recalls or schedule announcements.
-- **Saved and Device Notifications:** Report-card release is saved in-app for students and linked parents before optional Web Push delivery is attempted.
+- **Saved and Device Notifications:** Report-card release and its saved family/staff notifications commit atomically; optional Web Push delivery is attempted only after the database commit.
 - **Targeted School & Class Announcements:** School-wide and section-level announcement boards with rich-text formatting, priority pinning, and role-based audience filters.
 
 ---
@@ -93,7 +94,7 @@ The platform provides a centralized, role-based ecosystem connecting the **Princ
 ## 3. Secondary & Supporting System Features
 
 ### 3.1 Security & Access Control (RBAC)
-- **Centralized Role-Based Access Control (RBAC):** Strict per-route permission enforcement mapped across 5 roles: `principal`, `admin`, `teacher`, `student`, and `parent`.
+- **Centralized Role-Based Access Control (RBAC):** Strict per-page and per-handler-action permission enforcement mapped across 5 roles: `principal`, `admin`, `teacher`, `student`, and `parent`; unavailable mutation controls are hidden or disabled in the relevant portal UI.
 - **Triple-Layer CSRF Protection:** Protects all state-modifying requests via token validation across POST bodies, URL query parameters, and `X-CSRF-Token` headers.
 - **Stateless Database Session Driver:** Stores active user sessions in SQL (`php_sessions`) to support seamless container deployment (e.g., Wasmer Edge, Docker) without losing login state across server restarts.
 - **Immediate Token Version Revocation:** API bearer tokens enforce an `api_token_version` check against the database; changing or resetting a password immediately revokes all existing active tokens.

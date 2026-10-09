@@ -2,6 +2,23 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v3.0.3 â€” 2026-10-09
+
+### Fixed
+
+- Enforced action-specific RBAC permissions for user, enrollment, class, section, announcement, report, chat, attendance, and grading handlers, with unavailable Admin and Teacher mutation controls hidden or disabled.
+- Made offline grade-activity synchronization idempotent with a teacher-scoped client operation ID, preserved distinct same-title/same-date activities, normalized component values for MySQL, and removed an update to the nonexistent `grade_items.updated_at` column.
+- Prevented unchanged attendance re-saves from generating duplicate student and parent notifications.
+- Made Admin report-card release and saved in-app notifications commit atomically, while keeping optional device push delivery after the database commit.
+- Replaced raw database and SF1 exception details in client responses with stable error messages and codes while retaining server-side diagnostics.
+- Removed request-time schema alterations from Admin class and announcement handlers and expanded the runtime DDL guard to cover both `CREATE TABLE` and `ALTER TABLE`.
+- Corrected public grade-workflow wording and Wasmer deployment/reset documentation.
+
+### Changed
+
+- Added `grade_items.client_operation_id` and a unique teacher/operation key to `database/schema.sql`; reset and re-import the schema before testing offline grade synchronization.
+- Bumped the PWA cache namespace to `bshs-ams-v41`.
+
 ## v3.0.2 — 2026-10-09
 
 ### Added

@@ -527,7 +527,7 @@ if ($action === 'preview' || (isset($_FILES['sf1_file']) && $action !== 'commit'
 
     } catch (Throwable $e) {
         error_log('SF1 preview parse error: ' . $e->getMessage());
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        echo json_encode(['success' => false, 'message' => 'The SF1 file could not be parsed. Verify the template and try again.', 'error_code' => 'sf1_parse_failed']);
         exit();
     }
 }
@@ -650,12 +650,13 @@ function commitSf1Students(PDO $db, array $students, string $academicYear = '202
             $lrnCheck->execute([$lrn]);
             $existingUser = $lrnCheck->fetch(PDO::FETCH_ASSOC);
         } catch (Throwable $e) {
+            error_log('SF1 LRN lookup failed for import row ' . $rowNum . ': ' . $e->getMessage());
             $results['rows'][] = [
                 'row'     => $rowNum,
                 'lrn'     => $lrn,
                 'name'    => "$firstName $lastName",
                 'status'  => 'error',
-                'message' => 'Database error checking LRN: ' . $e->getMessage()
+                'message' => 'Database error while checking this learner.'
             ];
             $results['errors']++;
             continue;
@@ -711,12 +712,13 @@ function commitSf1Students(PDO $db, array $students, string $academicYear = '202
                 ];
                 $results['skipped']++;
             } catch (Throwable $e) {
+                error_log('SF1 enrollment sync failed for import row ' . $rowNum . ': ' . $e->getMessage());
                 $results['rows'][] = [
                     'row'     => $rowNum,
                     'lrn'     => $lrn,
                     'name'    => "$firstName $lastName",
                     'status'  => 'error',
-                    'message' => 'Enrollment sync failed: ' . $e->getMessage()
+                    'message' => 'Enrollment sync failed for this learner.'
                 ];
                 $results['errors']++;
             }

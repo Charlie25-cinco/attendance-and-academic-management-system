@@ -12,6 +12,7 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'teacher') {
 
 $db = (new Database())->getConnection();
 $teacherId = (int)($_SESSION['user_id'] ?? 0);
+$canEnterGrades = hasPermission('grades.enter');
 
 $formatSchedule = function ($schedule) {
     $schedule = trim((string)$schedule);
@@ -240,7 +241,7 @@ $page_title = 'Classes';
                                 <?php endforeach; ?>
                             </select>
                             <button class="btn btn-sm btn-secondary-custom" onclick="loadGradeItems()"><i class="bi bi-arrow-clockwise"></i></button>
-                            <button class="btn btn-sm btn-primary-custom" data-bs-toggle="modal" data-bs-target="#createGradeItemModal"><i class="bi bi-plus-lg me-1"></i>New Activity</button>
+                            <?php if ($canEnterGrades): ?><button class="btn btn-sm btn-primary-custom" data-bs-toggle="modal" data-bs-target="#createGradeItemModal"><i class="bi bi-plus-lg me-1"></i>New Activity</button><?php endif; ?>
                         </div>
                     </div>
                     <div id="gradeActivitiesCollapse" class="collapse show">
@@ -562,6 +563,7 @@ const materialFileInput = document.getElementById('materialFileInput');
 const materialFileStatus = document.getElementById('materialFileStatus');
 const chooseMaterialFileBtn = document.getElementById('chooseMaterialFileBtn');
 const csrfToken = (window.APP_CSRF_TOKEN || '').toString();
+const canEnterGrades = <?php echo $canEnterGrades ? 'true' : 'false'; ?>;
 
 function capitalizeWords(input) {
     if (!input || !input.value) return;
@@ -732,7 +734,7 @@ function loadGradeItems(){
         }
     });
 }
-function renderGradeItems(items){const container=document.getElementById('gradeItemsContainer');if(!container)return;if(!items||items.length===0){container.innerHTML='<div class="text-center text-muted py-3">No active grade activities yet.</div>';return;}container.innerHTML=items.map(i=>`<div class="announcement-card activity-card mb-3"><div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3"><div class="flex-grow-1 min-w-0 w-100"><div class="announcement-header d-flex justify-content-between align-items-start gap-2 flex-wrap mb-2"><h6 class="announcement-title mb-0 text-break">${escapeHtml(i.title)}</h6><span class="announcement-badge info flex-shrink-0">${escapeHtml(`${i.class_name} (G${i.grade_level} - ${i.section})`)}</span></div><p class="announcement-content mb-2"><strong>Component:</strong> ${escapeHtml(i.component)} | <strong>Total Score:</strong> ${escapeHtml(i.total_score)} | <strong>Date:</strong> ${escapeHtml(i.activity_date)}</p><div class="announcement-meta"><span><i class="bi bi-pencil-square"></i> ${escapeHtml(i.score_count)} score record(s)</span></div></div><div class="activity-actions d-flex flex-wrap gap-2 align-items-center flex-shrink-0 justify-content-start justify-content-md-end"><button class="btn btn-sm btn-secondary-custom d-inline-flex align-items-center" onclick="openRecordScores('${i.id}')" title="Record scores"><i class="bi bi-list-check me-1"></i><span>Record</span></button><button class="btn btn-sm btn-outline-warning d-inline-flex align-items-center" onclick="finishGradeItem('${i.id}', '${escapeHtml(i.title)}')" title="Finish activity and move to archive"><i class="bi bi-check2-circle me-1"></i><span>Finish</span></button><button class="btn btn-sm btn-outline-danger d-inline-flex align-items-center" onclick="deleteGradeItem('${i.id}', '${escapeHtml(i.title)}')" title="Delete activity"><i class="bi bi-trash me-1"></i><span>Delete</span></button></div></div></div>`).join('');}
+function renderGradeItems(items){const container=document.getElementById('gradeItemsContainer');if(!container)return;if(!items||items.length===0){container.innerHTML='<div class="text-center text-muted py-3">No active grade activities yet.</div>';return;}container.innerHTML=items.map(i=>{const actions=canEnterGrades?`<div class="activity-actions d-flex flex-wrap gap-2 align-items-center flex-shrink-0 justify-content-start justify-content-md-end"><button class="btn btn-sm btn-secondary-custom d-inline-flex align-items-center" onclick="openRecordScores('${i.id}')" title="Record scores"><i class="bi bi-list-check me-1"></i><span>Record</span></button><button class="btn btn-sm btn-outline-warning d-inline-flex align-items-center" onclick="finishGradeItem('${i.id}', '${escapeHtml(i.title)}')" title="Finish activity and move to archive"><i class="bi bi-check2-circle me-1"></i><span>Finish</span></button><button class="btn btn-sm btn-outline-danger d-inline-flex align-items-center" onclick="deleteGradeItem('${i.id}', '${escapeHtml(i.title)}')" title="Delete activity"><i class="bi bi-trash me-1"></i><span>Delete</span></button></div>`:'';return `<div class="announcement-card activity-card mb-3"><div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3"><div class="flex-grow-1 min-w-0 w-100"><div class="announcement-header d-flex justify-content-between align-items-start gap-2 flex-wrap mb-2"><h6 class="announcement-title mb-0 text-break">${escapeHtml(i.title)}</h6><span class="announcement-badge info flex-shrink-0">${escapeHtml(`${i.class_name} (G${i.grade_level} - ${i.section})`)}</span></div><p class="announcement-content mb-2"><strong>Component:</strong> ${escapeHtml(i.component)} | <strong>Total Score:</strong> ${escapeHtml(i.total_score)} | <strong>Date:</strong> ${escapeHtml(i.activity_date)}</p><div class="announcement-meta"><span><i class="bi bi-pencil-square"></i> ${escapeHtml(i.score_count)} score record(s)</span></div></div>${actions}</div></div>`;}).join('');}
 function openRecordScores(id){
     resetRecordScoresModal();
     if(!navigator.onLine || String(id).startsWith('act_')){

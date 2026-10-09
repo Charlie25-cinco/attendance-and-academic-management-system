@@ -1428,9 +1428,8 @@ function submitAttendance($db, $teacherId) {
         $db->commit();
 
         try {
-            $notifRecords = !empty($changedRecords) ? $changedRecords : $records;
-            if (!empty($notifRecords)) {
-                notifyAttendanceParents($db, $teacherId, $classId, $date, $notifRecords);
+            if (!empty($changedRecords)) {
+                notifyAttendanceParents($db, $teacherId, $classId, $date, $changedRecords);
             }
         } catch (Throwable $notifError) {
             error_log('submitAttendance notification error: ' . $notifError->getMessage());
@@ -1444,7 +1443,7 @@ function submitAttendance($db, $teacherId) {
             $db->rollBack();
         }
         error_log("Teacher_Action submitAttendance error: " . $e->getMessage());
-        echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+        echo json_encode(['success' => false, 'message' => 'Database error. Please try again.', 'retryable' => true, 'error_code' => 'database_error']);
     }
 }
 
@@ -3224,15 +3223,14 @@ function teacherSaveOfflineActivity($db, $teacherId) {
         $activityDate = trim((string)($payload['activity_date'] ?? date('Y-m-d')));
         $scores = $payload['scores'] ?? [];
         $existingServerId = (int)($payload['grade_item_id'] ?? $payload['server_id'] ?? 0);
+        $clientOperationId = trim((string)($payload['client_operation_id'] ?? ''));
 
         if ($classId <= 0 || $title === '' || $totalScore <= 0) {
             echo json_encode(['success' => false, 'message' => 'Class, title, and total score are required', 'retryable' => false, 'error_code' => 'missing_activity_data']);
             return;
         }
 
-        if (!in_array($component, ['ww', 'pt', 'qa'], true)) {
-            $component = 'ww';
-        }
+        $component = ['ww' => 'WW', 'pt' => 'PT', 'qa' => 'ASSESSMENT', 'assessment' => 'ASSESSMENT'][$component] ?? 'WW';
 
         if (!teacherOwnsClass($db, $teacherId, $classId)) {
             echo json_encode(['success' => false, 'message' => 'You are not assigned to this class', 'retryable' => false, 'error_code' => 'class_not_assigned']);
@@ -3244,31 +3242,56 @@ function teacherSaveOfflineActivity($db, $teacherId) {
             return;
         }
 
+        try {
+            $db->query("SELECT client_operation_id FROM grade_items WHERE 1 = 0");
+        } catch (Throwable $schemaError) {
+            error_log('Offline activity sync schema check failed: ' . $schemaError->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Database update required before offline grade activities can sync.', 'retryable' => false, 'error_code' => 'database_upgrade_required']);
+            return;
+        }
+
+        if ($existingServerId <= 0 && ($clientOperationId === '' || strlen($clientOperationId) > 120 || preg_match('/^[A-Za-z0-9_.:-]+$/', $clientOperationId) !== 1)) {
+            echo json_encode(['success' => false, 'message' => 'The offline activity operation ID is missing or invalid.', 'retryable' => false, 'error_code' => 'invalid_operation_id']);
+            return;
+        }
+
         $db->beginTransaction();
 
         $gradeItemId = 0;
         if ($existingServerId > 0) {
-            $check = $db->prepare("SELECT id FROM grade_items WHERE id = ? AND teacher_id = ? LIMIT 1");
+            $check = $db->prepare("SELECT id, class_id FROM grade_items WHERE id = ? AND teacher_id = ? LIMIT 1");
             $check->execute([$existingServerId, $teacherId]);
-            $gradeItemId = (int)$check->fetchColumn();
+            $existingItem = $check->fetch(PDO::FETCH_ASSOC);
+            if (!$existingItem || (int)$existingItem['class_id'] !== $classId) {
+                $db->rollBack();
+                echo json_encode(['success' => false, 'message' => 'The grade activity no longer exists or does not belong to this class.', 'retryable' => false, 'error_code' => 'grade_item_not_found']);
+                return;
+            }
+            $gradeItemId = (int)$existingItem['id'];
         }
 
-        if ($gradeItemId <= 0) {
-            // Find existing matching activity to avoid duplicates during retried sync
-            $find = $db->prepare("SELECT id FROM grade_items WHERE class_id = ? AND teacher_id = ? AND title = ? AND activity_date = ? LIMIT 1");
-            $find->execute([$classId, $teacherId, $title, $activityDate]);
+        if ($gradeItemId <= 0 && $clientOperationId !== '') {
+            $find = $db->prepare("SELECT id FROM grade_items WHERE teacher_id = ? AND client_operation_id = ? LIMIT 1");
+            $find->execute([$teacherId, $clientOperationId]);
             $gradeItemId = (int)$find->fetchColumn();
         }
 
         $isNewItem = false;
         if ($gradeItemId <= 0) {
-            $isNewItem = true;
-            $stmt = $db->prepare("INSERT INTO grade_items (class_id, teacher_id, title, component, total_score, activity_date, status, created_at)
-                                  VALUES (?, ?, ?, ?, ?, ?, 'active', NOW())");
-            $stmt->execute([$classId, $teacherId, $title, $component, round($totalScore, 2), $activityDate]);
-            $gradeItemId = (int)$db->lastInsertId();
+            $stmt = $db->prepare("INSERT INTO grade_items (class_id, teacher_id, client_operation_id, title, component, total_score, activity_date, status, created_at)
+                                  VALUES (?, ?, ?, ?, ?, ?, ?, 'active', NOW())");
+            try {
+                $stmt->execute([$classId, $teacherId, $clientOperationId, $title, $component, round($totalScore, 2), $activityDate]);
+                $gradeItemId = (int)$db->lastInsertId();
+                $isNewItem = true;
+            } catch (PDOException $insertError) {
+                if ((string)$insertError->getCode() !== '23000') { throw $insertError; }
+                $find->execute([$teacherId, $clientOperationId]);
+                $gradeItemId = (int)$find->fetchColumn();
+                if ($gradeItemId <= 0) { throw $insertError; }
+            }
         } else {
-            $upd = $db->prepare("UPDATE grade_items SET component = ?, total_score = ?, updated_at = NOW() WHERE id = ? AND teacher_id = ?");
+            $upd = $db->prepare("UPDATE grade_items SET component = ?, total_score = ? WHERE id = ? AND teacher_id = ?");
             $upd->execute([$component, round($totalScore, 2), $gradeItemId, $teacherId]);
         }
 
@@ -3310,7 +3333,8 @@ function teacherSaveOfflineActivity($db, $teacherId) {
         echo json_encode(['success' => true, 'message' => 'Offline activity and scores saved successfully', 'grade_item_id' => $gradeItemId]);
     } catch (PDOException $e) {
         if ($db->inTransaction()) $db->rollBack();
-        echo json_encode(['success' => false, 'message' => 'Database error. Please try again.']);
+        error_log('Offline activity sync database error: ' . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Database error. Please try again.', 'retryable' => true, 'error_code' => 'database_error']);
     }
 }
 

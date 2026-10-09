@@ -16,6 +16,7 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'teacher') {
 require_once __DIR__ . '/teacher_Enrollment_Helper.php';
 $db = (new Database())->getConnection();
 $teacherId = (int)($_SESSION['user_id'] ?? 0);
+$canManageAttendance = hasPermission('attendance.manage');
 
 $classes = [];
 $students = [];
@@ -59,9 +60,11 @@ if ($db) {
             }
         }
 
-        $canEditSelectedClass = $selectedClass !== null && ScheduleParser::hasScheduleOnDate($selectedClass['schedule'] ?? '', $selectedDate);
+        $canEditSelectedClass = $canManageAttendance && $selectedClass !== null && ScheduleParser::hasScheduleOnDate($selectedClass['schedule'] ?? '', $selectedDate);
         if (!$canEditSelectedClass) {
-            $editBlockedReason = 'This class has no schedule on the selected date.';
+            $editBlockedReason = !$canManageAttendance
+                ? 'You do not have permission to manage attendance.'
+                : 'This class has no schedule on the selected date.';
         }
         $students = tEnrollFetchStudentsWithAttendance($db, $selectedClassId, $selectedDate, $selectedSex);
 
@@ -140,7 +143,7 @@ $page_title = 'Attendance';
                     <p>Record attendance by subject class.</p>
                 </div>
                 <div class="d-flex gap-2 flex-wrap mt-3 app-filter-panel" style="width: 100%;">
-                    <button class="btn btn-outline-primary" type="button" onclick="openQrScanner()"><i class="bi bi-qr-code-scan me-1"></i>QR Scan Mode</button>
+                    <?php if ($canManageAttendance): ?><button class="btn btn-outline-primary" type="button" onclick="openQrScanner()"><i class="bi bi-qr-code-scan me-1"></i>QR Scan Mode</button><?php endif; ?>
                     <div class="attendance-date-picker"><i class="bi bi-calendar3"></i><input type="date" id="attendanceDate" value="<?php echo htmlspecialchars($selectedDate); ?>"></div>
                     <select id="classSelect" class="form-select" style="width: auto; border-radius: 10px;">
                         <?php foreach ($classes as $class): ?>
@@ -225,6 +228,7 @@ $page_title = 'Attendance';
 <script src="<?php echo appAssetPath('js/main.js'); ?>"></script>
 <script>
 let canEditAttendance=<?php echo $canEditSelectedClass ? 'true' : 'false'; ?>;
+const canManageAttendance=<?php echo $canManageAttendance ? 'true' : 'false'; ?>;
 let editBlockedReason=<?php echo json_encode($editBlockedReason); ?>;
 const serverToday=<?php echo json_encode(date('Y-m-d')); ?>;
 const csrfToken=(window.APP_CSRF_TOKEN||'').toString();
@@ -345,7 +349,7 @@ function applySearchFilter(){
         emptyRow.style.display = 'none';
     }
 }
-function renderStudents(students){const tbody=document.getElementById('attendanceBody');if(!students||students.length===0){tbody.innerHTML='<tr><td colspan="4" class="text-center text-muted py-4">No enrolled students for this class.</td></tr>';updateSummaryCounts({present:0,absent:0,late:0});return;}tbody.innerHTML=students.map(s=>{const fn=`${s.first_name} ${s.last_name}`;const inits=`${s.first_name[0]||''}${s.last_name[0]||''}`.toUpperCase();const st=s.attendance_status||'present';return `<tr data-student-id="${s.id}"><td><div class="student-info"><div class="user-avatar-small">${inits}</div><span class="student-name">${escapeHtml(fn)}</span></div></td><td>${escapeHtml(s.reference_code)}</td><td><button type="button" class="teacher-status ${st}" data-status="${st}" onclick="cycleStatus(this)">${statusTemplate[st]||statusTemplate.present}</button></td><td><input type="text" class="form-control form-control-sm attendance-remarks" value="${escapeHtml(s.remarks||'')}" placeholder="Add remarks..."></td></tr>`;}).join('');updateSummaryCounts();applySearchFilter();}
+function renderStudents(students){const tbody=document.getElementById('attendanceBody');if(!students||students.length===0){tbody.innerHTML='<tr><td colspan="4" class="text-center text-muted py-4">No enrolled students for this class.</td></tr>';updateSummaryCounts({present:0,absent:0,late:0});return;}const locked=canManageAttendance?'':' disabled aria-disabled="true"';tbody.innerHTML=students.map(s=>{const fn=`${s.first_name} ${s.last_name}`;const inits=`${s.first_name[0]||''}${s.last_name[0]||''}`.toUpperCase();const st=s.attendance_status||'present';return `<tr data-student-id="${s.id}"><td><div class="student-info"><div class="user-avatar-small">${inits}</div><span class="student-name">${escapeHtml(fn)}</span></div></td><td>${escapeHtml(s.reference_code)}</td><td><button type="button" class="teacher-status ${st}" data-status="${st}" onclick="cycleStatus(this)"${locked}>${statusTemplate[st]||statusTemplate.present}</button></td><td><input type="text" class="form-control form-control-sm attendance-remarks" value="${escapeHtml(s.remarks||'')}" placeholder="Add remarks..."${locked}></td></tr>`;}).join('');updateSummaryCounts();applySearchFilter();}
 async function loadAttendanceData(){
     const classId=(document.getElementById('classSelect')?.value||'').trim();
     const date=(document.getElementById('attendanceDate')?.value||'').trim();
@@ -358,8 +362,8 @@ async function loadAttendanceData(){
     if(!navigator.onLine){
         if(window.bshsOfflineStorage){
             const scheduled = await window.bshsOfflineStorage.isClassScheduledOnDate(classId, date);
-            canEditAttendance = scheduled;
-            editBlockedReason = scheduled ? '' : 'This class has no cached schedule on the selected date.';
+            canEditAttendance = canManageAttendance && scheduled;
+            editBlockedReason = !canManageAttendance ? 'You do not have permission to manage attendance.' : (scheduled ? '' : 'This class has no cached schedule on the selected date.');
             updateEditState();
             window.bshsOfflineStorage.getClassRoster(classId).then(students => {
                 if(students && students.length > 0){
@@ -398,8 +402,8 @@ async function loadAttendanceData(){
 
     fetch(url).then(r=>r.json()).then(d=>{
         if(!d.success){showNotification(d.message||'Failed to load attendance data','danger');return;}
-        canEditAttendance=!!d.can_edit;
-        editBlockedReason=(d.message||'').trim();
+        canEditAttendance=canManageAttendance&&!!d.can_edit;
+        editBlockedReason=!canManageAttendance?'You do not have permission to manage attendance.':(d.message||'').trim();
         renderStudents(d.students||[]);
         updateSummaryCounts(d.summary||null);
         updateEditState();
@@ -412,8 +416,8 @@ async function loadAttendanceData(){
                 window.bshsOfflineStorage.isClassScheduledOnDate(classId, date),
             ]).then(([students, scheduled]) => {
                 if(students && students.length > 0){
-                    canEditAttendance = scheduled;
-                    editBlockedReason = scheduled ? '' : 'This class has no cached schedule on the selected date.';
+                    canEditAttendance = canManageAttendance && scheduled;
+                    editBlockedReason = !canManageAttendance ? 'You do not have permission to manage attendance.' : (scheduled ? '' : 'This class has no cached schedule on the selected date.');
                     renderStudents(students);
                     updateEditState();
                     showNotification('Loaded offline class roster from device storage', 'info');
@@ -511,8 +515,8 @@ if (!navigator.onLine || !initialTeacherClasses || initialTeacherClasses.length 
                                 student.remarks = markMap[student.id].remarks || '';
                             }
                         });
-                        canEditAttendance = scheduled;
-                        editBlockedReason = scheduled ? '' : 'This class has no cached schedule on the selected date.';
+                        canEditAttendance = canManageAttendance && scheduled;
+                        editBlockedReason = !canManageAttendance ? 'You do not have permission to manage attendance.' : (scheduled ? '' : 'This class has no cached schedule on the selected date.');
                         renderStudents(cachedStudents);
                         updateEditState();
                     }

@@ -196,7 +196,7 @@ if ($db instanceof PDO && function_exists('getSchoolSetting')) {
                             <div class="feature-card">
                                 <div class="feature-icon"><i class="bi bi-clipboard-data"></i></div>
                                 <div class="feature-title">Grades &amp; Reports</div>
-                                <p>Grade workflows support admin review, adviser report cards, and final release to families.</p>
+                                <p>Subject grades pass through Principal verification; advisers compile report cards for Principal endorsement and Admin final release to families.</p>
                             </div>
                             <div class="feature-card">
                                 <div class="feature-icon"><i class="bi bi-file-earmark-spreadsheet"></i></div>

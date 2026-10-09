@@ -10,6 +10,9 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'admin') {
 
 $database = new Database();
 $db = $database->getConnection();
+$canCreateUsers = hasPermission('users.create');
+$canEditUsers = hasPermission('users.edit');
+$canDeleteUsers = hasPermission('users.delete');
 
 $users = [];
 $stats = [
@@ -237,9 +240,9 @@ $page_title = 'Manage Users';
                     <a class="btn btn-outline-primary" href="admin_Enrollments.php">
                         <i class="bi bi-mortarboard me-2"></i>Student Records
                     </a>
-                    <button class="btn btn-primary-custom" data-bs-toggle="modal" data-bs-target="#addUserModal">
+                    <?php if ($canCreateUsers): ?><button class="btn btn-primary-custom" data-bs-toggle="modal" data-bs-target="#addUserModal">
                         <i class="bi bi-person-plus me-2"></i>Add New User
-                    </button>
+                    </button><?php endif; ?>
                 </div>
             </div>
 
@@ -365,11 +368,13 @@ $page_title = 'Manage Users';
                                         <div class="d-flex gap-2">
                                             <button type="button" class="material-btn js-view-user" data-user-id="<?php echo $user['id']; ?>" title="View" style="color: var(--secondary-color);"><i class="bi bi-eye"></i></button>
                                             <?php if (($user['role'] ?? '') !== 'principal'): ?>
+                                            <?php if ($canEditUsers): ?>
                                             <button type="button" class="material-btn js-toggle-status" data-user-id="<?php echo $user['id']; ?>" data-current-status="<?php echo $user['status']; ?>" title="<?php echo $user['status'] === 'active' ? 'Deactivate' : 'Activate'; ?>" style="color: <?php echo $user['status'] === 'active' ? 'var(--warning-color)' : 'var(--accent-color)'; ?>;">
                                                 <i class="bi bi-<?php echo $user['status'] === 'active' ? 'toggle-off' : 'toggle-on'; ?>"></i>
                                             </button>
                                             <button type="button" class="material-btn js-edit-user" data-user-id="<?php echo $user['id']; ?>" title="Edit" style="color: var(--warning-color);"><i class="bi bi-pencil"></i></button>
-                                            <button type="button" class="material-btn js-delete-user" data-user-id="<?php echo $user['id']; ?>" title="Delete" style="color: var(--danger-color);"><i class="bi bi-trash"></i></button>
+                                            <?php endif; ?>
+                                            <?php if ($canDeleteUsers): ?><button type="button" class="material-btn js-delete-user" data-user-id="<?php echo $user['id']; ?>" title="Delete" style="color: var(--danger-color);"><i class="bi bi-trash"></i></button><?php endif; ?>
                                             <?php else: ?>
                                             <span class="badge text-bg-secondary align-self-center" title="Principal credentials are managed outside the Admin portal">
                                                 <i class="bi bi-shield-lock me-1" aria-hidden="true"></i>Protected

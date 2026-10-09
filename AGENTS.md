@@ -66,7 +66,7 @@ These operational notes apply ISO/IEC/IEEE 29148 clarity and traceability princi
 - Production must provide strong `API_AUTH_SECRET` and `API_SYNC_SECRET` values.
 - Production must set `API_ALLOWED_ORIGIN` to a trusted origin.
 - API bearer tokens carry an `api_token_version` claim matched against `users.api_token_version`; every password change or reset path must call `bumpUserApiTokenVersion()` so old tokens are revoked immediately.
-- The script-to-permission map in `permissionForScript()` must cover every portal page; `tests/RbacScriptCoverageTest.php` and `tests/CsrfHandlerCoverageTest.php` enforce RBAC map and CSRF coverage and must keep passing when adding pages or handlers.
+- The script-to-permission map in `permissionForScript()` must cover every portal page, and mutation handlers must map each supported action in `permissionForScriptAction()`; `tests/RbacScriptCoverageTest.php` and `tests/CsrfHandlerCoverageTest.php` enforce RBAC map and CSRF coverage and must keep passing when adding pages or handler actions.
 - Logout validates the session CSRF token from the query string before destroying the session; keep the header logout link tokenized.
 - Stateless production hosts such as Wasmer must set `APP_SESSION_DRIVER=database` so PHP sessions are stored in SQL instead of instance-local files.
 - Installed PWA login persistence depends on database sessions plus `APP_SESSION_LIFETIME` and `APP_SESSION_IDLE_TIMEOUT`; keep the trusted-device remember option available and checked by default unless the user requests stricter login behavior.
@@ -164,6 +164,7 @@ These operational notes apply ISO/IEC/IEEE 29148 clarity and traceability princi
 - Saved notification links should be root-relative and use `school_announcement_ID` or `class_announcement_ID` source keys to target exact announcement-card anchors. Mutation APIs must return the authoritative unread count.
 - Core user events must use `appDispatchNotification()` so in-app records are saved before browser Web Push and legacy mobile delivery are attempted; push failures must not roll back the primary event.
 - Teacher offline writes must be acknowledged only after IndexedDB or account-scoped localStorage persistence succeeds. Attendance and grade-activity queues register Background Sync, retain visible failed states after bounded retries, and may be retried or cleared only through explicit teacher actions.
+- Offline grade-activity operations must send a stable `client_operation_id`; `grade_items` enforces uniqueness per teacher so retries are idempotent without merging separate same-title/same-date activities. Reset and re-import the canonical schema when introducing this column.
 - Manual offline attendance must validate the cached class schedule and use class/date-specific attendance snapshots. QR scanning remains online-only so Present/Late classification stays authoritative to `Asia/Manila` server time.
 - Test install/offline behavior on desktop and mobile before production release.
 - Portal pages must load shared JavaScript through `appAssetPath()`; keep JavaScript and CSS network-first in `sw.js` with cached offline fallback so installed PWAs do not retain obsolete notification behavior.

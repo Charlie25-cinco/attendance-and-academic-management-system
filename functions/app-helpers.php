@@ -730,9 +730,9 @@ function sf1NormalizeSectionName(string $name): string {
 }
 
 function appEnsureUserNotificationsTable(PDO $db): void {
-    static $readyConnections = [];
-    $connectionId = spl_object_id($db);
-    if (isset($readyConnections[$connectionId])) { return; }
+    static $readyConnections = null;
+    if (!$readyConnections instanceof WeakMap) { $readyConnections = new WeakMap(); }
+    if (isset($readyConnections[$db])) { return; }
     try {
         $driver = strtolower((string)$db->getAttribute(PDO::ATTR_DRIVER_NAME));
         if ($driver === 'sqlite') {
@@ -752,59 +752,56 @@ function appEnsureUserNotificationsTable(PDO $db): void {
                 UNIQUE (user_id, source_key)
             )");
             $db->exec("CREATE INDEX IF NOT EXISTS idx_user_read_event ON user_notifications (user_id, is_read, event_at)");
-            $readyConnections[$connectionId] = true;
+            $readyConnections[$db] = true;
             return;
         }
     } catch (Throwable $e) {
         error_log('User notifications table check failed: ' . $e->getMessage());
     }
-    $readyConnections[$connectionId] = true;
+    $readyConnections[$db] = true;
 }
 
-function appNotifyUsers(PDO $db, array $userIds, string $sourceKey, string $title, string $subtitle, string $icon = 'bi-bell', string $color = 'primary', string $link = '', ?string $eventAt = null): void {
+function appNotifyUsers(PDO $db, array $userIds, string $sourceKey, string $title, string $subtitle, string $icon = 'bi-bell', string $color = 'primary', string $link = '', ?string $eventAt = null): bool {
     $userIds = array_values(array_unique(array_filter(array_map('intval', $userIds), function ($id) { return $id > 0; })));
     if (empty($userIds) || trim($sourceKey) === '' || trim($title) === '') {
-        return;
+        return false;
     }
     appEnsureUserNotificationsTable($db);
     $eventAt = $eventAt ?: date('Y-m-d H:i:s');
-    try {
-        $driver = strtolower((string)$db->getAttribute(PDO::ATTR_DRIVER_NAME));
-        if ($driver === 'sqlite') {
-            $stmt = $db->prepare("INSERT INTO user_notifications
+    $driver = strtolower((string)$db->getAttribute(PDO::ATTR_DRIVER_NAME));
+    if ($driver === 'sqlite') {
+        $stmt = $db->prepare("INSERT INTO user_notifications
                 (user_id, source_key, title, subtitle, icon, color, link, event_at, is_read)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
                 ON CONFLICT(user_id, source_key) DO UPDATE SET
                 title = excluded.title, subtitle = excluded.subtitle, icon = excluded.icon,
                 color = excluded.color, link = excluded.link, event_at = excluded.event_at,
                 is_read = 0, updated_at = DATETIME('now')");
-        } else {
-            $stmt = $db->prepare("INSERT INTO user_notifications
+    } else {
+        $stmt = $db->prepare("INSERT INTO user_notifications
                 (user_id, source_key, title, subtitle, icon, color, link, event_at, is_read)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
                 ON DUPLICATE KEY UPDATE title = VALUES(title), subtitle = VALUES(subtitle),
                 icon = VALUES(icon), color = VALUES(color), link = VALUES(link),
                 event_at = VALUES(event_at), is_read = 0, updated_at = NOW()");
-        }
-        foreach ($userIds as $userId) {
-            $stmt->execute([
-                $userId,
-                substr($sourceKey, 0, 255),
-                substr($title, 0, 200),
-                substr($subtitle, 0, 255),
-                substr($icon, 0, 50),
-                substr($color, 0, 20),
-                substr($link, 0, 255),
-                $eventAt
-            ]);
-        }
-        $currentUserId = (int)($_SESSION['user_id'] ?? 0);
-        if ($currentUserId > 0 && in_array($currentUserId, $userIds, true)) {
-            unset($_SESSION['app_header_notifications']);
-        }
-    } catch (Throwable $e) {
-        error_log('User notification insert failed: ' . $e->getMessage());
     }
+    foreach ($userIds as $userId) {
+        $stmt->execute([
+            $userId,
+            substr($sourceKey, 0, 255),
+            substr($title, 0, 200),
+            substr($subtitle, 0, 255),
+            substr($icon, 0, 50),
+            substr($color, 0, 20),
+            substr($link, 0, 255),
+            $eventAt
+        ]);
+    }
+    $currentUserId = (int)($_SESSION['user_id'] ?? 0);
+    if ($currentUserId > 0 && in_array($currentUserId, $userIds, true)) {
+        unset($_SESSION['app_header_notifications']);
+    }
+    return true;
 }
 
 function appNotificationTargetUrl(string $role, string $link = '', string $sourceKey = ''): string {
@@ -841,6 +838,103 @@ function appNotificationTargetUrl(string $role, string $link = '', string $sourc
     return str_starts_with($link, '/') ? $link : '/' . $role . '/' . ltrim($link, '/');
 }
 
+function appPushNotificationToUsers(PDO $db, array $userIds, string $sourceKey, string $title, string $subtitle, string $targetUrl, array $data = []): void {
+    $payload = [
+        'title' => $title,
+        'body' => $subtitle,
+        'icon' => '/assets/images/icon-192.png',
+        'badge' => '/assets/images/icon-192.png',
+        'url' => $targetUrl,
+        'data' => array_merge($data, [
+            'source_key' => $sourceKey,
+            'url' => $targetUrl,
+            'link' => $targetUrl,
+        ]),
+    ];
+    try {
+        if (function_exists('pushSendToUserIds')) {
+            pushSendToUserIds($db, $userIds, $payload);
+        }
+        if (function_exists('pushNotifyUsers')) {
+            pushNotifyUsers($db, $userIds, $title, $subtitle, $payload['data']);
+        }
+    } catch (Throwable $e) {
+        error_log('[notification] Push delivery failed for source ' . $sourceKey . ': ' . $e->getMessage());
+    }
+}
+
+function appPrepareNotificationDeliveries(
+    PDO $db,
+    array $userIds,
+    string $sourceKey,
+    string $title,
+    string $subtitle,
+    string $icon = 'bi-bell',
+    string $color = 'primary',
+    array $linksByRole = [],
+    array $data = [],
+    ?string $eventAt = null
+): array {
+    $userIds = array_values(array_unique(array_filter(array_map('intval', $userIds), static fn($id) => $id > 0)));
+    if (empty($userIds)) { return []; }
+
+    $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+    $stmt = $db->prepare("SELECT id, role FROM users WHERE id IN ($placeholders)");
+    $stmt->execute($userIds);
+    $idsByRole = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $role = strtolower(trim((string)($row['role'] ?? '')));
+        if ($role !== '') { $idsByRole[$role][] = (int)$row['id']; }
+    }
+
+    $deliveries = [];
+    foreach ($idsByRole as $role => $roleUserIds) {
+        $link = trim((string)($linksByRole[$role] ?? $linksByRole['default'] ?? ''));
+        $deliveries[] = [
+            'user_ids' => $roleUserIds,
+            'source_key' => $sourceKey,
+            'title' => $title,
+            'subtitle' => $subtitle,
+            'icon' => $icon,
+            'color' => $color,
+            'target_url' => appNotificationTargetUrl($role, $link, $sourceKey),
+            'data' => $data,
+            'event_at' => $eventAt,
+        ];
+    }
+    return $deliveries;
+}
+
+function appPersistNotificationDeliveries(PDO $db, array $deliveries): void {
+    foreach ($deliveries as $delivery) {
+        appNotifyUsers(
+            $db,
+            $delivery['user_ids'],
+            $delivery['source_key'],
+            $delivery['title'],
+            $delivery['subtitle'],
+            $delivery['icon'],
+            $delivery['color'],
+            $delivery['target_url'],
+            $delivery['event_at']
+        );
+    }
+}
+
+function appPushNotificationDeliveries(PDO $db, array $deliveries): void {
+    foreach ($deliveries as $delivery) {
+        appPushNotificationToUsers(
+            $db,
+            $delivery['user_ids'],
+            $delivery['source_key'],
+            $delivery['title'],
+            $delivery['subtitle'],
+            $delivery['target_url'],
+            $delivery['data']
+        );
+    }
+}
+
 function appDispatchNotification(
     PDO $db,
     array $userIds,
@@ -852,56 +946,16 @@ function appDispatchNotification(
     array $linksByRole = [],
     array $data = [],
     ?string $eventAt = null
-): void {
-    $userIds = array_values(array_unique(array_filter(array_map('intval', $userIds), function ($id) {
-        return $id > 0;
-    })));
-    if (empty($userIds)) {
-        return;
-    }
-
+): bool {
     try {
-        $placeholders = implode(',', array_fill(0, count($userIds), '?'));
-        $stmt = $db->prepare("SELECT id, role FROM users WHERE id IN ($placeholders)");
-        $stmt->execute($userIds);
-        $idsByRole = [];
-        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            $role = strtolower(trim((string)($row['role'] ?? '')));
-            if ($role !== '') {
-                $idsByRole[$role][] = (int)$row['id'];
-            }
-        }
-
-        foreach ($idsByRole as $role => $roleUserIds) {
-            $link = trim((string)($linksByRole[$role] ?? $linksByRole['default'] ?? ''));
-            $targetUrl = appNotificationTargetUrl($role, $link, $sourceKey);
-            appNotifyUsers($db, $roleUserIds, $sourceKey, $title, $subtitle, $icon, $color, $targetUrl, $eventAt);
-            $payload = [
-                'title' => $title,
-                'body' => $subtitle,
-                'icon' => '/assets/images/icon-192.png',
-                'badge' => '/assets/images/icon-192.png',
-                'url' => $targetUrl,
-                'data' => array_merge($data, [
-                    'source_key' => $sourceKey,
-                    'url' => $targetUrl,
-                    'link' => $targetUrl,
-                ]),
-            ];
-
-            try {
-                if (function_exists('pushSendToUserIds')) {
-                    pushSendToUserIds($db, $roleUserIds, $payload);
-                }
-                if (function_exists('pushNotifyUsers')) {
-                    pushNotifyUsers($db, $roleUserIds, $title, $subtitle, $payload['data']);
-                }
-            } catch (Throwable $e) {
-                error_log('[notification] Push delivery failed for source ' . $sourceKey . ': ' . $e->getMessage());
-            }
-        }
+        $deliveries = appPrepareNotificationDeliveries($db, $userIds, $sourceKey, $title, $subtitle, $icon, $color, $linksByRole, $data, $eventAt);
+        if (empty($deliveries)) { return false; }
+        appPersistNotificationDeliveries($db, $deliveries);
+        appPushNotificationDeliveries($db, $deliveries);
+        return true;
     } catch (Throwable $e) {
-        error_log('[notification] Dispatch failed for source ' . $sourceKey . ': ' . $e->getMessage());
+        error_log('[notification] Persistence failed for source ' . $sourceKey . ': ' . $e->getMessage());
+        return false;
     }
 }
 
@@ -1424,13 +1478,13 @@ function permissionForScript(string $scriptName): string {
         'admin_classes.php' => 'classes.view',
         'admin_class_detail.php' => 'classes.view',
         'admin_class_edit.php' => 'classes.manage',
-        'admin_classes_action.php' => 'classes.manage',
+        'admin_classes_action.php' => 'classes.view',
         'admin_sections.php' => 'classes.view',
         'admin_section_detail.php' => 'classes.view',
-        'admin_sections_action.php' => 'classes.manage',
+        'admin_sections_action.php' => 'classes.view',
         'admin_attendance.php' => 'attendance.view',
         'admin_announcements.php' => 'announcements.view',
-        'admin_announcements_action.php' => 'announcements.create',
+        'admin_announcements_action.php' => 'announcements.view',
         'admin_grade_approvals.php' => 'grades.approve',
         'admin_grade_approvals_detail.php' => 'grades.approve',
         'admin_grade_approvals_action.php' => 'grades.approve',
@@ -1454,7 +1508,7 @@ function permissionForScript(string $scriptName): string {
         'teacher_announcements.php' => 'announcements.view',
         'teacher_archives.php' => 'archives.view',
         'teacher_chat.php' => 'messages.view',
-        'teacher_chat_action.php' => 'messages.send',
+        'teacher_chat_action.php' => 'messages.view',
         'teacher_sf2_export.php' => 'reports.export',
         'teacher_sf5_export.php' => 'reports.export',
         'teacher_sf9_export.php' => 'reports.export',
@@ -1471,15 +1525,119 @@ function permissionForScript(string $scriptName): string {
         'parent_report_card.php' => 'grades.view',
         'parent_announcements.php' => 'announcements.view',
         'parent_chat.php' => 'messages.view',
-        'parent_chat_action.php' => 'messages.send',
+        'parent_chat_action.php' => 'messages.view',
     ];
     return $map[$scriptName] ?? '';
+}
+
+function permissionForScriptAction(string $scriptName, string $action): string {
+    $scriptName = strtolower(trim($scriptName));
+    $action = strtolower(trim($action));
+    $map = [
+        'admin_users_action.php' => [
+            'get' => 'users.view',
+            'create' => 'users.create',
+            'update' => 'users.edit',
+            'set_status' => 'users.edit',
+            'delete' => 'users.delete',
+            'reset_password' => 'users.reset_password',
+        ],
+        'admin_enrollments_action.php' => [
+            'list' => 'users.view',
+            'get' => 'users.view',
+            'create' => 'users.create',
+            'update' => 'users.edit',
+            'toggle_status' => 'users.edit',
+            'delete' => 'users.delete',
+            'export_sf1' => 'reports.export',
+        ],
+        'admin_classes_action.php' => [
+            'create' => 'classes.manage',
+            'update' => 'classes.manage',
+            'delete' => 'classes.manage',
+            'generate_core_classes' => 'classes.manage',
+            'export_sf2' => 'reports.export',
+        ],
+        'admin_sections_action.php' => [
+            'list' => 'classes.view',
+            'create' => 'classes.manage',
+            'update' => 'classes.manage',
+            'delete' => 'classes.manage',
+        ],
+        'admin_announcements_action.php' => [
+            'get' => 'announcements.view',
+            'create' => 'announcements.create',
+            'update' => 'announcements.create',
+            'archive' => 'announcements.create',
+            'restore' => 'announcements.create',
+            'delete' => 'announcements.delete',
+        ],
+        'admin_reports_action.php' => [
+            'export' => 'reports.export',
+            'list_notes' => 'reports.view',
+            'save_note' => 'reports.view',
+            'update_note' => 'reports.view',
+            'delete_note' => 'reports.view',
+        ],
+        'teacher_reports_action.php' => [
+            'export' => 'reports.export',
+            'list_notes' => 'reports.view',
+            'save_note' => 'reports.view',
+            'update_note' => 'reports.view',
+            'delete_note' => 'reports.view',
+        ],
+        'teacher_chat_action.php' => [
+            'get_messages' => 'messages.view',
+            'send_message' => 'messages.send',
+        ],
+        'parent_chat_action.php' => [
+            'get_messages' => 'messages.view',
+            'send_message' => 'messages.send',
+        ],
+        'teacher_action.php' => [
+            'fetch_students' => 'classes.view',
+            'fetch_class_students' => 'classes.view',
+            'submit_attendance' => 'attendance.manage',
+            'classify_qr_scan' => 'attendance.manage',
+            'fetch_grades' => 'grades.view',
+            'submit_grades' => 'grades.enter',
+            'recall_grades' => 'grades.enter',
+            'upload_material' => 'classes.view',
+            'get_material' => 'classes.view',
+            'update_material' => 'classes.view',
+            'delete_material' => 'classes.view',
+            'download_material' => 'classes.view',
+            'export_grades' => 'reports.export',
+            'create_class_announcement' => 'classes.view',
+            'fetch_class_announcements' => 'classes.view',
+            'delete_class_announcement' => 'classes.view',
+            'create_grade_item' => 'grades.enter',
+            'fetch_grade_items' => 'grades.view',
+            'fetch_grade_item_students' => 'grades.view',
+            'save_grade_item_scores' => 'grades.enter',
+            'finish_grade_item' => 'grades.enter',
+            'restore_grade_item' => 'grades.enter',
+            'delete_grade_item' => 'grades.enter',
+            'submit_report_card' => 'grades.enter',
+            'recall_report_card' => 'grades.enter',
+            'offline_bootstrap' => 'classes.view',
+            'save_offline_activity' => 'grades.enter',
+        ],
+        'student_action.php' => [
+            'download_material' => 'classes.view',
+        ],
+    ];
+    return $map[$scriptName][$action] ?? '';
 }
 
 function enforceScriptPermission(?PDO $db = null): void {
     if (empty($_SESSION['logged_in']) || empty($_SESSION['role'])) { return; }
     $script = basename((string)($_SERVER['SCRIPT_NAME'] ?? ''));
-    $permission = permissionForScript($script);
+    $action = trim((string)($_GET['action'] ?? $_POST['action'] ?? ''));
+    $permission = permissionForScriptAction($script, $action);
+    if ($permission === '') {
+        $permission = permissionForScript($script);
+    }
     if ($permission === '') { return; }
 
     if (!isRbacPermissionsCacheValid()) {

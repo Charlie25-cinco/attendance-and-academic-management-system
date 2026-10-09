@@ -1,7 +1,7 @@
 # Product Specification: Balingasag SHS AMS
 
 **System Name:** Balingasag Senior High School - Attendance and Academic Management System (BSHS AMS)  
-**Document Version:** 3.0.2
+**Document Version:** 3.0.3
 **Standard Compliance:** ISO/IEC/IEEE 29148:2018 (Systems and software engineering — Life cycle processes — Requirements engineering)  
 **Status:** Approved  
 
@@ -25,7 +25,7 @@ The system serves five primary user roles:
 
 | Requirement ID | Category | Description | Rationale | Acceptance Criteria |
 | :--- | :--- | :--- | :--- | :--- |
-| **REQ-001** | Security | The system shall enforce centralized Role-Based Access Control (RBAC) on every HTTP request. | Prevents unauthorized role privilege escalation across Principal, administrative, teaching, student, and parent surfaces. | Unauthorized route access attempts return HTTP 403 or redirect to login; all script-permission mappings in `app-helpers.php` are evaluated prior to execution. |
+| **REQ-001** | Security | The system shall enforce centralized Role-Based Access Control (RBAC) on every HTTP request and handler action. | Prevents unauthorized role privilege escalation across Principal, administrative, teaching, student, and parent surfaces. | Unauthorized route or action access attempts return HTTP 403 or redirect to login; page mappings in `permissionForScript()` and action mappings in `permissionForScriptAction()` are evaluated before handler execution. |
 | **REQ-002** | Security & Compliance | The system shall store session tokens and authentication state in the database when `APP_SESSION_DRIVER=database`. | Enables session persistence across stateless cloud instances (e.g., Wasmer Edge) without relying on local server files. | Active sessions remain valid across container restarts; session data is queryable in `php_sessions` table. |
 | **REQ-003** | Data Privacy | The system shall redact sensitive values and log critical Principal, Admin, and Teacher transactions to `activity_logs`. | Establishes cross-role accountability without storing credentials, tokens, full contact details, or notification content. | Critical mutations store actor ID/role, action, target, sanitized metadata, IP address, and timestamp; legacy admin history remains readable. |
 | **REQ-004** | DepEd Integration | The system shall import and export official DepEd Excel forms (SF1, SF2, SF5, SF9, ECR) preserving official row/column cell mappings. | Ensures compatibility with Department of Education reporting standards. | Official SF1, SF2, and ECR `.xlsx` files parse without structure errors; generated exports match DepEd template dimensions. |
@@ -99,8 +99,19 @@ The system serves five primary user roles:
 - **Rationale:** Connectivity indicators and background execution are not reliable enough to guarantee that unsaved or rejected academic records will recover without explicit persistence and user feedback.
 - **Source:** Developer-requested offline feature review and approved remediation plan, October 9, 2026
 - **Priority:** High
-- **Acceptance criteria:** Offline saves report success only after a durable local write; attendance registers Background Sync; transient failures receive no more than five automatic attempts before becoming visible failures; permanent validation failures become visible immediately; manual Retry Sync and confirmation-protected Clear Local Data controls are available; manual attendance is restricted by cached schedules and class/date snapshots; QR scanning is unavailable offline; server account ownership, CSRF, class ownership, schedule, and record validation remain authoritative.
+- **Acceptance criteria:** Offline saves report success only after a durable local write; each locally created grade activity carries a stable client operation ID and repeated delivery creates no duplicate while separate same-title/same-date activities remain distinct; attendance registers Background Sync; transient failures receive no more than five automatic attempts before becoming visible failures; permanent validation failures become visible immediately; manual Retry Sync and confirmation-protected Clear Local Data controls are available; manual attendance is restricted by cached schedules and class/date snapshots; QR scanning is unavailable offline; server account ownership, CSRF, class ownership, schedule, and record validation remain authoritative.
 - **Traceability:** `sw.js`, `assets/js/offlineStorage.js`, `assets/js/networkSync.js`, `teacher/teacher_Attendance.php`, `teacher/teacher_Classes.php`, `teacher/teacher_Action.php`, `tests/browser-security.cjs`, `tests/QrAttendanceStatusTest.php`, and `tests/TeacherPwaOfflineLifecycleTest.php`.
+
+### 2.7 Notification Consistency Requirement
+
+- **Requirement ID:** REQ-017
+- **Category:** System requirement / notification integrity
+- **Description:** The system shall save authoritative in-app notifications before attempting optional device push delivery and shall not release an official report card when its required saved notifications cannot be persisted.
+- **Rationale:** Device push is best-effort, while the in-app record is the durable notification channel and must remain consistent with official release state.
+- **Source:** System review remediation plan, October 9, 2026
+- **Priority:** High
+- **Acceptance criteria:** Notification dispatch returns failure when saved-notification persistence fails and does not attempt push for that failed delivery; Admin final release and its saved family/staff notifications commit or roll back together; device push occurs only after successful persistence and does not roll back an already committed primary event.
+- **Traceability:** `functions/app-helpers.php`, `src/Grade/AdminReportCardRelease.php`, `tests/NotificationDeliveryTest.php`, and `tests/PrincipalReportCardWorkflowTest.php`.
 
 ---
 

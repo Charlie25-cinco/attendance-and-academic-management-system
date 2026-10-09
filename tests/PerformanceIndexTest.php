@@ -14,6 +14,8 @@ final class PerformanceIndexTest extends TestCase
         $this->assertStringContainsString('PERFORMANCE COMPOSITE INDEXES', $content);
         $this->assertStringContainsString('idx_users_role_status_grade', $content);
         $this->assertStringContainsString('idx_grade_items_class_teacher_date_status', $content);
+        $this->assertStringContainsString('client_operation_id VARCHAR(120) NULL', $content);
+        $this->assertStringContainsString('UNIQUE KEY uq_grade_item_teacher_operation (teacher_id, client_operation_id)', $content);
         $this->assertStringNotContainsString('idx_grade_items_class_term', $content);
         $this->assertStringNotContainsString('CREATE INDEX IF NOT EXISTS', $content);
     }

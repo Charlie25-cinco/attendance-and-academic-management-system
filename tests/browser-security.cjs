@@ -139,6 +139,11 @@ async function storageTests(useIndexedDb = false) {
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(syncTags.includes('bshs-offline-sync'), true);
   assert.equal((await first.getSyncQueue()).length, 1);
+  await first.saveActivityLocally({ class_id: 1, local_id: 'act_1_abc', title: 'Quiz', component: 'ww', total_score: 10, activity_date: '2026-10-03', scores: [] });
+  const activityOperation = (await first.getSyncQueue()).find(item =>
+    item.payload?.client_operation_id === 'act_1_abc' || item.action?.payload?.client_operation_id === 'act_1_abc'
+  );
+  assert.equal(activityOperation?.payload?.client_operation_id || activityOperation?.action?.payload?.client_operation_id, 'act_1_abc');
   account = 'teacher:2';
   assert.equal((await first.getClasses()).length, 0);
   assert.equal(await first.getTeacherSession(), null);
@@ -146,12 +151,12 @@ async function storageTests(useIndexedDb = false) {
   assert.equal((await second.getSyncQueue()).length, 0);
   assert.equal((await second.getClasses()).length, 0);
   account = 'teacher:1';
-  assert.equal((await first.getSyncQueue()).length, 1);
+  assert.equal((await first.getSyncQueue()).length, 2);
   await first.clearTeacherSession();
   assert.equal((await first.getSyncQueue()).length, 0);
   await assert.rejects(first.saveAttendanceLocally(1, '2026-10-03', []), /Sign in/);
   account = 'teacher:1';
-  assert.equal((await makeStorage().getSyncQueue()).length, 1);
+  assert.equal((await makeStorage().getSyncQueue()).length, 2);
   console.log('PASS offline storage (' + (useIndexedDb ? 'IndexedDB' : 'localStorage fallback') + '): account namespaces, logout lock, preserved pending work, rejected legacy queue');
 }
 

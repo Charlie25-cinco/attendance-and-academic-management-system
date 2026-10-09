@@ -13,6 +13,7 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'teacher') {
 require_once __DIR__ . '/teacher_Enrollment_Helper.php';
 $db = (new Database())->getConnection();
 $teacherId = (int)($_SESSION['user_id'] ?? 0);
+$canEnterGrades = hasPermission('grades.enter');
 
 $classes = [];
 $gradeStudents = [];
@@ -311,7 +312,7 @@ $page_title = 'Grade Entry';
                         </tbody>
                     </table>
                 </div>
-                <div class="teacher-action-bar justify-content-end mt-3" id="submitButtonGroup">
+                <?php if ($canEnterGrades): ?><div class="teacher-action-bar justify-content-end mt-3" id="submitButtonGroup">
                     <span class="text-muted small me-auto" id="gradeSubmitLockNote" style="display:none;">
                         Resubmitting verified grades starts a correction and hides the released report card until approval.
                     </span>
@@ -321,7 +322,7 @@ $page_title = 'Grade Entry';
                     <button class="btn btn-outline-warning" id="recallGradesBtn" type="button" onclick="recallGrades()" style="display:none;">
                         <i class="bi bi-arrow-return-left me-2"></i>Recall Submission
                     </button>
-                </div>
+                </div><?php endif; ?>
             </div>
         </div>
     </div>

@@ -9,6 +9,8 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'admin') {
 
 $database = new Database();
 $db = $database->getConnection();
+$canCreateAnnouncements = hasPermission('announcements.create');
+$canDeleteAnnouncements = hasPermission('announcements.delete');
 
 $announcements = [];
 
@@ -101,9 +103,9 @@ $visibleAnnouncementCount = count($announcements);
                             <small>Use the create button to send a new school-wide announcement immediately.</small>
                         </div>
                         <div class="admin-action-strip">
-                            <button class="btn btn-primary-custom" data-bs-toggle="modal" data-bs-target="#createAnnouncementModal">
+                            <?php if ($canCreateAnnouncements): ?><button class="btn btn-primary-custom" data-bs-toggle="modal" data-bs-target="#createAnnouncementModal">
                                 <i class="bi bi-plus-lg me-2"></i>New Announcement
-                            </button>
+                            </button><?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -168,12 +170,12 @@ $visibleAnnouncementCount = count($announcements);
                                         <span class="status-badge status-<?php echo htmlspecialchars($announcement['status']); ?>"><?php echo ucfirst($announcement['status']); ?></span>
                                     </div>
                                 </div>
-                                <div class="dropdown">
+                                <?php if ($canCreateAnnouncements || $canDeleteAnnouncements): ?><div class="dropdown">
                                     <button class="btn btn-sm btn-link" data-bs-toggle="dropdown">
                                         <i class="bi bi-three-dots-vertical"></i>
                                     </button>
                                     <ul class="dropdown-menu dropdown-menu-end">
-                                        <li>
+                                        <?php if ($canCreateAnnouncements): ?><li>
                                             <a class="dropdown-item" href="#" onclick="editAnnouncement(<?php echo (int)$announcement['id']; ?>); return false;">
                                                 <i class="bi bi-pencil me-2"></i>Edit
                                             </a>
@@ -191,14 +193,15 @@ $visibleAnnouncementCount = count($announcements);
                                                 </a>
                                             </li>
                                         <?php endif; ?>
-                                        <li><hr class="dropdown-divider"></li>
+                                        <?php endif; ?>
+                                        <?php if ($canDeleteAnnouncements): ?><li><hr class="dropdown-divider"></li>
                                         <li>
                                             <a class="dropdown-item text-danger" href="#" onclick='deleteAnnouncement(<?php echo (int)$announcement['id']; ?>, <?php echo json_encode($announcement["title"]); ?>); return false;'>
                                                 <i class="bi bi-trash me-2"></i>Delete
                                             </a>
-                                        </li>
+                                        </li><?php endif; ?>
                                     </ul>
-                                </div>
+                                </div><?php endif; ?>
                             </div>
                         </div>
                     <?php endforeach; ?>

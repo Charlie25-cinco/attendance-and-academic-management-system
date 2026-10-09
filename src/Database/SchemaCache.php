@@ -72,7 +72,8 @@ class SchemaCache
             'id', 'student_id', 'class_id', 'grade_level', 'section', 'academic_year', 'status', 'enrolled_at'
         ],
         'grade_items' => [
-            'id', 'class_id', 'grading_period', 'component', 'item_number', 'item_name', 'total_score', 'weight', 'created_at', 'updated_at'
+            'id', 'class_id', 'teacher_id', 'client_operation_id', 'title', 'component',
+            'total_score', 'activity_date', 'status', 'finished_at', 'created_at'
         ],
         'grade_item_scores' => [
             'id', 'grade_item_id', 'student_id', 'score', 'created_at', 'updated_at'

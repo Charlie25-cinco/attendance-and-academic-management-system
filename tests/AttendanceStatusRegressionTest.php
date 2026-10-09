@@ -25,5 +25,8 @@ final class AttendanceStatusRegressionTest extends TestCase
         $handler = (string)file_get_contents(APP_ROOT . '/teacher/teacher_Action.php');
         self::assertStringContainsString("\$validStatuses = ['present', 'absent', 'late'];", $handler);
         self::assertStringContainsString('Attendance status must be present, absent, or late.', $handler);
+        self::assertStringContainsString('if (!empty($changedRecords))', $handler);
+        self::assertStringContainsString('notifyAttendanceParents($db, $teacherId, $classId, $date, $changedRecords);', $handler);
+        self::assertStringNotContainsString('$notifRecords = !empty($changedRecords) ? $changedRecords : $records;', $handler);
     }
 }

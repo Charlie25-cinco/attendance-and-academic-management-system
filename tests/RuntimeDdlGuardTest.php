@@ -5,7 +5,7 @@ use PHPUnit\Framework\TestCase;
 final class RuntimeDdlGuardTest extends TestCase
 {
     /**
-     * Files allowed to contain runtime CREATE TABLE statements:
+     * Files allowed to contain documented compatibility CREATE/ALTER TABLE statements:
      * - functions/app-helpers.php: SQLite test fixtures plus the RBAC bootstrap
      *   that README documents as auto-creating and seeding RBAC tables.
      * - config/constants.php: SQLite test fixtures.
@@ -19,7 +19,7 @@ final class RuntimeDdlGuardTest extends TestCase
         ];
     }
 
-    public function testNoNewRuntimeCreateTableStatementsOutsideTheAllowlist(): void
+    public function testNoNewRuntimeDdlStatementsOutsideTheAllowlist(): void
     {
         $directories = ['principal', 'admin', 'api', 'auth', 'config', 'functions', 'includes', 'parent', 'scripts', 'site', 'src', 'student', 'teacher'];
         $offenders = [];
@@ -37,7 +37,7 @@ final class RuntimeDdlGuardTest extends TestCase
                 if (in_array($relative, $this->allowedRuntimeFiles(), true)) {
                     continue;
                 }
-                if (preg_match('/CREATE TABLE\s+(IF NOT EXISTS\s+)?[`"]?[a-z_]+/i', (string)file_get_contents($path))) {
+                if (preg_match('/\b(?:CREATE|ALTER)\s+TABLE\b/i', (string)file_get_contents($path))) {
                     $offenders[] = $relative;
                 }
             }
@@ -45,7 +45,7 @@ final class RuntimeDdlGuardTest extends TestCase
         $this->assertSame(
             [],
             $offenders,
-            'Runtime MySQL DDL must live in database/schema.sql. New tables ship there first; '
+            'Runtime MySQL DDL must live in database/schema.sql. New tables and columns ship there first; '
             . 'SQLite test fixtures stay inside the allowlisted fixture files.'
         );
     }
