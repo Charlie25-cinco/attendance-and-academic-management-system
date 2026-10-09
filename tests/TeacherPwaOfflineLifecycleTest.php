@@ -519,10 +519,16 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
 
         $this->assertStringContainsString('deleteActivityLocally', $offlineStorageJs);
         $this->assertStringContainsString('requestBackgroundSync', $offlineStorageJs);
+        $this->assertStringContainsString('waitForTransaction', $offlineStorageJs);
+        $this->assertStringContainsString('saveAttendanceSnapshot', $offlineStorageJs);
+        $this->assertStringContainsString('markSyncItemFailed', $offlineStorageJs);
         $this->assertStringContainsString('bshs-offline-sync', $swJs);
         $this->assertStringContainsString('handleBackgroundSync', $swJs);
+        $this->assertStringContainsString('item.status !== "failed"', $swJs);
         $this->assertStringContainsString('wasOffline', $networkSyncJs);
         $this->assertStringContainsString('bshs:sync-completed', $networkSyncJs);
+        $this->assertStringContainsString('offlineSyncStatus', $networkSyncJs);
+        $this->assertStringContainsString('retryFailedItems', $networkSyncJs);
 
         $nodeScript = "
         class MockStore {

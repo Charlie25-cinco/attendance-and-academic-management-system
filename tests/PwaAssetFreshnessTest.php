@@ -24,7 +24,7 @@ final class PwaAssetFreshnessTest extends TestCase
         $serviceWorker = file_get_contents(__DIR__ . '/../sw.js');
 
         $this->assertIsString($serviceWorker);
-        $this->assertStringContainsString('bshs-ams-v39', $serviceWorker);
+        $this->assertStringContainsString('bshs-ams-v40', $serviceWorker);
         $this->assertStringContainsString('BASE_PATH = (self.location.pathname ||', $serviceWorker);
         $this->assertStringContainsString("function resolvePath(path)", $serviceWorker);
         $this->assertStringContainsString('/assets/js/offlineStorage.js', $serviceWorker);
@@ -96,7 +96,7 @@ final class PwaAssetFreshnessTest extends TestCase
         $this->assertStringContainsString("navigator.serviceWorker.addEventListener('controllerchange', function () {", $constants);
         $this->assertStringContainsString('if (refreshingForUpdate || !hadPreviousController) { return; }', $constants);
         $this->assertStringContainsString('navigator.serviceWorker.register(desiredScript', $constants);
-        $this->assertStringContainsString('window._CACHE_NAME = \'bshs-ams-v39\';', $constants);
+        $this->assertStringContainsString('window._CACHE_NAME = \'bshs-ams-v40\';', $constants);
     }
 
     public function testPwaInstallButtonBindsSettingsModalAndGuidance(): void

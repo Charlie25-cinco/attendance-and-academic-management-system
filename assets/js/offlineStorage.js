@@ -30,6 +30,20 @@
 
   let dbInstance = null;
 
+  function waitForTransaction(tx) {
+    return new Promise((resolve) => {
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => resolve(false);
+      tx.onabort = () => resolve(false);
+    });
+  }
+
+  function notifySyncStatusChanged() {
+    if (typeof global.dispatchEvent === "function" && typeof global.CustomEvent === "function") {
+      try { global.dispatchEvent(new global.CustomEvent("bshs:sync-status-changed")); } catch (e) {}
+    }
+  }
+
   function openDatabase() {
     if (!isUnlocked()) return Promise.resolve(null);
     if (dbInstance) return Promise.resolve(dbInstance);
@@ -210,10 +224,19 @@
     async saveClassRoster(classId, students) {
       if (!classId || !Array.isArray(students)) return;
       const cId = parseInt(classId, 10);
+      const roster = students.map((student) => ({
+        id: parseInt(student.id, 10),
+        first_name: student.first_name || "",
+        last_name: student.last_name || "",
+        reference_code: student.reference_code || "",
+        lrn: student.lrn || "",
+        sex: student.sex || student.gender || "",
+        gender: student.gender || student.sex || "",
+      }));
       try {
         localStorage.setItem(
           "bshs_offline_roster_" + cId,
-          JSON.stringify(students),
+          JSON.stringify(roster),
         );
       } catch (e) {}
 
@@ -224,7 +247,7 @@
           const tx = db.transaction([STORES.ROSTERS], "readwrite");
           tx.objectStore(STORES.ROSTERS).put({
             class_id: cId,
-            students,
+            students: roster,
             updatedAt: Date.now(),
           });
           tx.oncomplete = () => resolve(true);
@@ -251,17 +274,53 @@
             Array.isArray(item.students) &&
             item.students.length > 0
           ) {
-            return item.students;
+            return item.students.map(({ attendance_status, remarks, ...student }) => student);
           }
         } catch (e) {}
       }
       try {
-        return (
-          JSON.parse(localStorage.getItem("bshs_offline_roster_" + cId)) || []
-        );
+        const stored = JSON.parse(localStorage.getItem("bshs_offline_roster_" + cId)) || [];
+        return stored.map(({ attendance_status, remarks, ...student }) => student);
       } catch (e) {
         return [];
       }
+    },
+
+    async saveAttendanceSnapshot(classId, date, students) {
+      if (!isUnlocked() || !classId || !/^\d{4}-\d{2}-\d{2}$/.test(String(date)) || !Array.isArray(students)) return false;
+      const cId = parseInt(classId, 10);
+      const localId = "att_" + cId + "_" + date;
+      const existing = await this.getLocalAttendance(cId, date);
+      if (existing && existing.sync_status === "pending") return false;
+      const recordItem = {
+        local_id: localId,
+        class_id: cId,
+        date: String(date),
+        records: students.map((student) => ({
+          student_id: parseInt(student.id || student.student_id, 10),
+          status: student.attendance_status || "present",
+          remarks: student.remarks || "",
+        })),
+        saved_at: new Date().toISOString(),
+        sync_status: "synced",
+        source: "server",
+      };
+
+      let idbSaved = false;
+      const db = await openDatabase();
+      if (db) {
+        try {
+          const tx = db.transaction([STORES.ATTENDANCE], "readwrite");
+          tx.objectStore(STORES.ATTENDANCE).put(recordItem);
+          idbSaved = await waitForTransaction(tx);
+        } catch (e) {}
+      }
+      let fallbackSaved = false;
+      try {
+        localStorage.setItem("bshs_offline_attendance_" + cId + "_" + date, JSON.stringify(recordItem));
+        fallbackSaved = Boolean(localStorage.getItem("bshs_offline_attendance_" + cId + "_" + date));
+      } catch (e) {}
+      return idbSaved || fallbackSaved;
     },
 
     // -------------------------------------------------------------
@@ -297,6 +356,7 @@
         status: "pending",
       };
 
+      let idbSaved = false;
       const db = await openDatabase();
       if (db) {
         try {
@@ -306,28 +366,40 @@
           );
           tx.objectStore(STORES.ATTENDANCE).put(recordItem);
           tx.objectStore(STORES.SYNC_QUEUE).put(syncOperation);
+          idbSaved = await waitForTransaction(tx);
         } catch (e) {}
       }
 
       // Also persist in localStorage queue for sync bridge
+      let fallbackSaved = false;
       try {
-        const queue =
-          JSON.parse(localStorage.getItem("bshs_offline_queue")) || [];
-        const filtered = queue.filter((q) => q.id !== syncOperation.id);
-        filtered.push({
-          owner,
-          id: syncOperation.id,
-          action: {
-            type: "submit_attendance",
-            url: syncOperation.url,
-            payload: syncOperation.payload,
-          },
-          addedAt: syncOperation.added_at,
-          attempts: 0,
-        });
-        localStorage.setItem("bshs_offline_queue", JSON.stringify(filtered));
+        if (!idbSaved) {
+          const queue = JSON.parse(localStorage.getItem("bshs_offline_queue")) || [];
+          const filtered = queue.filter((q) => q.id !== syncOperation.id);
+          filtered.push({
+            owner,
+            id: syncOperation.id,
+            action: {
+              type: "submit_attendance",
+              url: syncOperation.url,
+              payload: syncOperation.payload,
+            },
+            addedAt: syncOperation.added_at,
+            attempts: 0,
+            status: "pending",
+          });
+          localStorage.setItem("bshs_offline_queue", JSON.stringify(filtered));
+        }
+        localStorage.setItem("bshs_offline_attendance_" + cId + "_" + date, JSON.stringify(recordItem));
+        fallbackSaved = Boolean(localStorage.getItem("bshs_offline_attendance_" + cId + "_" + date)) &&
+          (idbSaved || Boolean(localStorage.getItem("bshs_offline_queue")));
       } catch (e) {}
 
+      if (!idbSaved && !fallbackSaved) {
+        throw new Error("This device could not store the attendance sheet. Free storage space and try again.");
+      }
+      this.requestBackgroundSync();
+      notifySyncStatusChanged();
       return recordItem;
     },
 
@@ -337,15 +409,20 @@
       const db = await openDatabase();
       if (db) {
         try {
-          return await new Promise((resolve) => {
+          const stored = await new Promise((resolve) => {
             const tx = db.transaction([STORES.ATTENDANCE], "readonly");
             const req = tx.objectStore(STORES.ATTENDANCE).get(localId);
             req.onsuccess = () => resolve(req.result || null);
             req.onerror = () => resolve(null);
           });
+          if (stored) return stored;
         } catch (e) {}
       }
-      return null;
+      try {
+        return JSON.parse(localStorage.getItem("bshs_offline_attendance_" + cId + "_" + date)) || null;
+      } catch (e) {
+        return null;
+      }
     },
 
     async getAllLocalAttendance() {
@@ -433,6 +510,7 @@
         status: "pending",
       };
 
+      let idbSaved = false;
       const db = await openDatabase();
       if (db) {
         try {
@@ -442,28 +520,38 @@
           );
           tx.objectStore(STORES.ACTIVITIES).put(activityItem);
           tx.objectStore(STORES.SYNC_QUEUE).put(syncOperation);
+          idbSaved = await waitForTransaction(tx);
         } catch (e) {}
       }
 
+      let fallbackSaved = false;
       try {
-        const queue =
-          JSON.parse(localStorage.getItem("bshs_offline_queue")) || [];
-        const filtered = queue.filter((q) => q.id !== syncOperation.id && q.id !== localId);
-        filtered.push({
-          owner,
-          id: syncOperation.id,
-          action: {
-            type: "save_offline_activity",
-            url: syncOperation.url,
-            payload: syncOperation.payload,
-          },
-          addedAt: syncOperation.added_at,
-          attempts: 0,
-        });
-        localStorage.setItem("bshs_offline_queue", JSON.stringify(filtered));
+        if (!idbSaved) {
+          const queue = JSON.parse(localStorage.getItem("bshs_offline_queue")) || [];
+          const filtered = queue.filter((q) => q.id !== syncOperation.id && q.id !== localId);
+          filtered.push({
+            owner,
+            id: syncOperation.id,
+            action: {
+              type: "save_offline_activity",
+              url: syncOperation.url,
+              payload: syncOperation.payload,
+            },
+            addedAt: syncOperation.added_at,
+            attempts: 0,
+            status: "pending",
+          });
+          localStorage.setItem("bshs_offline_queue", JSON.stringify(filtered));
+          fallbackSaved = Boolean(localStorage.getItem("bshs_offline_queue"));
+        }
       } catch (e) {}
 
-      if (typeof bshsOfflineStorage !== "undefined" && typeof bshsOfflineStorage.requestBackgroundSync === "function") { bshsOfflineStorage.requestBackgroundSync(); } return activityItem;
+      if (!idbSaved && !fallbackSaved) {
+        throw new Error("This device could not store the grade activity. Free storage space and try again.");
+      }
+      this.requestBackgroundSync();
+      notifySyncStatusChanged();
+      return activityItem;
     },
 
     async getAllLocalActivities() {
@@ -503,6 +591,17 @@
         lsQueue = JSON.parse(localStorage.getItem("bshs_offline_queue")) || [];
       } catch (e) {}
 
+      // IndexedDB is the authoritative queue whenever available. Remove legacy
+      // mirrored entries so a service-worker sync cannot be replayed later.
+      if (idbQueue.length > 0 && lsQueue.length > 0) {
+        const idbKeys = new Set(idbQueue.map(item => item.id || ("op_" + (item.operation_id || item.local_id))));
+        const fallbackOnly = lsQueue.filter(item => !idbKeys.has(item.id || ("op_" + (item.operation_id || item.local_id))));
+        if (fallbackOnly.length !== lsQueue.length) {
+          lsQueue = fallbackOnly;
+          try { localStorage.setItem("bshs_offline_queue", JSON.stringify(lsQueue)); } catch (e) {}
+        }
+      }
+
       // Merge queues by key to prevent duplicates while ensuring survival across restarts
       const map = new Map();
       idbQueue.forEach((item) => {
@@ -516,7 +615,122 @@
         }
       });
 
-      return isUnlocked() ? Array.from(map.values()).filter(item => item.owner === owner) : [];
+      return isUnlocked()
+        ? Array.from(map.values()).filter(item => item.owner === owner).map(item => ({
+            ...item,
+            status: item.status || "pending",
+            attempts: Number(item.attempts || 0),
+          }))
+        : [];
+    },
+
+    async updateSyncItemState(identifier, changes) {
+      const id = String(identifier || "");
+      const opKey = id.startsWith("op_") ? id : "op_" + id;
+      const db = await openDatabase();
+      if (db) {
+        try {
+          const tx = db.transaction([STORES.SYNC_QUEUE], "readwrite");
+          const store = tx.objectStore(STORES.SYNC_QUEUE);
+          const req = store.get(opKey);
+          req.onsuccess = function () {
+            if (req.result) store.put({ ...req.result, ...changes });
+          };
+          await waitForTransaction(tx);
+        } catch (e) {}
+      }
+      try {
+        const queue = JSON.parse(localStorage.getItem("bshs_offline_queue")) || [];
+        const updated = queue.map((item) => item.id === opKey || item.id === id
+          ? { ...item, ...changes }
+          : item);
+        localStorage.setItem("bshs_offline_queue", JSON.stringify(updated));
+      } catch (e) {}
+      notifySyncStatusChanged();
+    },
+
+    async markSyncItemFailed(identifier, message, permanent = false) {
+      const queue = await this.getSyncQueue();
+      const id = String(identifier || "");
+      const item = queue.find(entry => entry.id === id || entry.operation_id === id || entry.id === "op_" + id);
+      const attempts = Number(item?.attempts || 0) + 1;
+      const failed = permanent || attempts >= 5;
+      await this.updateSyncItemState(identifier, {
+        attempts,
+        status: failed ? "failed" : "pending",
+        last_error: String(message || "Synchronization failed"),
+        last_attempt_at: new Date().toISOString(),
+        retryable: !permanent,
+      });
+      return failed;
+    },
+
+    async retryFailedItems() {
+      const queue = await this.getSyncQueue();
+      for (const item of queue.filter(entry => entry.status === "failed")) {
+        await this.updateSyncItemState(item.id, {
+          status: "pending",
+          attempts: 0,
+          last_error: "",
+          retryable: true,
+        });
+      }
+      this.requestBackgroundSync();
+      return true;
+    },
+
+    async getSyncStatus() {
+      const queue = await this.getSyncQueue();
+      const pending = queue.filter(item => item.status !== "failed").length;
+      const failedItems = queue.filter(item => item.status === "failed");
+      const failed = failedItems.length;
+      let lastSyncedAt = "";
+      try { lastSyncedAt = localStorage.getItem("bshs_offline_last_sync") || ""; } catch (e) {}
+      return { pending, failed, total: queue.length, lastSyncedAt, lastError: failedItems[0]?.last_error || "" };
+    },
+
+    async isClassScheduledOnDate(classId, date) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date || ""))) return false;
+      const classes = await this.getClasses();
+      const selected = classes.find(item => String(item.id) === String(classId));
+      const schedule = String(selected?.schedule || "").trim();
+      if (!schedule) return false;
+      const parsedDate = new Date(String(date) + "T12:00:00");
+      if (Number.isNaN(parsedDate.getTime())) return false;
+      const day = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][parsedDate.getDay()];
+      return schedule.split(/\s*;\s*/).some((segment) => {
+        const match = segment.trim().match(/^([\w,\s/\-]+)\s+(\d{1,2}:\d{2}\s*[AP]M)\s*-\s*(\d{1,2}:\d{2}\s*[AP]M)$/i);
+        if (!match) return false;
+        return match[1].replace(/\s*\/\s*/g, ",").split(",")
+          .map(value => value.trim().slice(0, 3).toLowerCase())
+          .includes(day.toLowerCase());
+      });
+    },
+
+    async clearLocalData() {
+      if (!isUnlocked()) return false;
+      if (dbInstance) { dbInstance.close(); dbInstance = null; }
+      if ("indexedDB" in global && typeof global.indexedDB.deleteDatabase === "function") {
+        await new Promise((resolve) => {
+          try {
+            const req = global.indexedDB.deleteDatabase(DB_NAME);
+            req.onsuccess = req.onerror = req.onblocked = () => resolve();
+          } catch (e) { resolve(); }
+        });
+      }
+      try {
+        const keys = [];
+        for (let i = 0; i < global.localStorage.length; i++) {
+          const key = global.localStorage.key(i);
+          if (key && key.startsWith(prefix)) keys.push(key);
+        }
+        keys.forEach(key => global.localStorage.removeItem(key));
+      } catch (e) {}
+      if ("caches" in global) {
+        try { await global.caches.delete("bshs-ams-v40-user-" + owner); } catch (e) {}
+      }
+      notifySyncStatusChanged();
+      return true;
     },
 
     async deleteActivityLocally(identifier) {
@@ -649,6 +863,7 @@
           // Remove from sync queue
           tx.objectStore(STORES.SYNC_QUEUE).delete(opKey);
           tx.objectStore(STORES.SYNC_QUEUE).delete(rawId);
+          await waitForTransaction(tx);
         } catch (e) {}
       }
 
@@ -659,7 +874,18 @@
           (q) => q.id !== rawId && q.id !== opKey && (q.operation_id !== rawId),
         );
         localStorage.setItem("bshs_offline_queue", JSON.stringify(filtered));
+        if (rawId.startsWith("att_")) {
+          const attendanceKey = "bshs_offline_attendance_" + rawId.substring(4);
+          const stored = JSON.parse(localStorage.getItem(attendanceKey) || "null");
+          if (stored) {
+            stored.sync_status = "synced";
+            stored.synced_at = new Date().toISOString();
+            localStorage.setItem(attendanceKey, JSON.stringify(stored));
+          }
+        }
+        localStorage.setItem("bshs_offline_last_sync", new Date().toISOString());
       } catch (e) {}
+      notifySyncStatusChanged();
     },
 
     async removeSyncItem(id) {
@@ -668,6 +894,7 @@
         try {
           const tx = db.transaction([STORES.SYNC_QUEUE], "readwrite");
           tx.objectStore(STORES.SYNC_QUEUE).delete(id);
+          await waitForTransaction(tx);
         } catch (e) {}
       }
       try {
@@ -676,6 +903,7 @@
         const filtered = queue.filter((q) => q.id !== id);
         localStorage.setItem("bshs_offline_queue", JSON.stringify(filtered));
       } catch (e) {}
+      notifySyncStatusChanged();
     },
 
     // -------------------------------------------------------------
@@ -723,7 +951,7 @@
 
         if ("caches" in global) {
           try {
-            const activeCacheName = "bshs-ams-v39-user-" + owner;
+            const activeCacheName = "bshs-ams-v40-user-" + owner;
             const cache = await caches.open(activeCacheName);
             const teacherPages = [
               "/teacher/teacher.php",

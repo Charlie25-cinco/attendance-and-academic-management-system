@@ -753,12 +753,12 @@ function pwaHeadHtml(): string {
         . '.app-top-progress.is-finishing{opacity:0;transition:width .32s cubic-bezier(0.4,0,0.2,1),opacity .28s ease .12s;}'
         . '</style>' . "\n";
     $html .= '<script>'
-        . 'window._CACHE_NAME="bshs-ams-v39";'
+        . 'window._CACHE_NAME="bshs-ams-v40";'
         . '</script>' . "\n";
 
     $swScript = "
 <script>
-window._CACHE_NAME = 'bshs-ams-v39';
+window._CACHE_NAME = 'bshs-ams-v40';
 if ('serviceWorker' in navigator) {
         var desiredScript = '" . htmlspecialchars($serviceWorkerUrl, ENT_QUOTES, 'UTF-8') . "';
         var desiredScope = '" . htmlspecialchars($scopeUrl, ENT_QUOTES, 'UTF-8') . "';

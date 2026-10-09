@@ -1355,7 +1355,7 @@ function submitAttendance($db, $teacherId) {
         $payload = json_decode($rawBody, true);
 
         if (!is_array($payload)) {
-            echo json_encode(['success' => false, 'message' => 'Invalid request payload']);
+            echo json_encode(['success' => false, 'message' => 'Invalid request payload', 'retryable' => false, 'error_code' => 'invalid_payload']);
             return;
         }
 
@@ -1368,20 +1368,20 @@ function submitAttendance($db, $teacherId) {
         $records = $payload['records'] ?? [];
 
         if ($classId <= 0 || !is_array($records) || empty($records)) {
-            echo json_encode(['success' => false, 'message' => 'Class, date, and records are required']);
+            echo json_encode(['success' => false, 'message' => 'Class, date, and records are required', 'retryable' => false, 'error_code' => 'missing_attendance_data']);
             return;
         }
         if ($mode === 'advisory') {
-            echo json_encode(['success' => false, 'message' => 'Advisory attendance is view-only']);
+            echo json_encode(['success' => false, 'message' => 'Advisory attendance is view-only', 'retryable' => false, 'error_code' => 'advisory_read_only']);
             return;
         }
 
         if (!teacherOwnsClass($db, $teacherId, $classId)) {
-            echo json_encode(['success' => false, 'message' => 'You are not assigned to this class']);
+            echo json_encode(['success' => false, 'message' => 'You are not assigned to this class', 'retryable' => false, 'error_code' => 'class_not_assigned']);
             return;
         }
         if (!teacherClassHasScheduleOnDate($db, $classId, $date)) {
-            echo json_encode(['success' => false, 'message' => 'Cannot record attendance because this class has no schedule on the selected date']);
+            echo json_encode(['success' => false, 'message' => 'Cannot record attendance because this class has no schedule on the selected date', 'retryable' => false, 'error_code' => 'class_not_scheduled']);
             return;
         }
 
@@ -1391,7 +1391,7 @@ function submitAttendance($db, $teacherId) {
         foreach ($records as $record) {
             $requestedStatus = strtolower(trim((string)($record['status'] ?? '')));
             if (!in_array($requestedStatus, $validStatuses, true)) {
-                echo json_encode(['success' => false, 'message' => 'Attendance status must be present, absent, or late.']);
+                echo json_encode(['success' => false, 'message' => 'Attendance status must be present, absent, or late.', 'retryable' => false, 'error_code' => 'invalid_attendance_status']);
                 return;
             }
         }
@@ -3213,7 +3213,7 @@ function teacherSaveOfflineActivity($db, $teacherId) {
     try {
         $payload = json_decode((string)file_get_contents('php://input'), true);
         if (!is_array($payload)) {
-            echo json_encode(['success' => false, 'message' => 'Invalid JSON payload']);
+            echo json_encode(['success' => false, 'message' => 'Invalid JSON payload', 'retryable' => false, 'error_code' => 'invalid_payload']);
             return;
         }
 
@@ -3226,7 +3226,7 @@ function teacherSaveOfflineActivity($db, $teacherId) {
         $existingServerId = (int)($payload['grade_item_id'] ?? $payload['server_id'] ?? 0);
 
         if ($classId <= 0 || $title === '' || $totalScore <= 0) {
-            echo json_encode(['success' => false, 'message' => 'Class, title, and total score are required']);
+            echo json_encode(['success' => false, 'message' => 'Class, title, and total score are required', 'retryable' => false, 'error_code' => 'missing_activity_data']);
             return;
         }
 
@@ -3235,12 +3235,12 @@ function teacherSaveOfflineActivity($db, $teacherId) {
         }
 
         if (!teacherOwnsClass($db, $teacherId, $classId)) {
-            echo json_encode(['success' => false, 'message' => 'You are not assigned to this class']);
+            echo json_encode(['success' => false, 'message' => 'You are not assigned to this class', 'retryable' => false, 'error_code' => 'class_not_assigned']);
             return;
         }
 
         if (!gradeItemsTablesExist($db)) {
-            echo json_encode(['success' => false, 'message' => 'Grade items table not found']);
+            echo json_encode(['success' => false, 'message' => 'Grade items table not found', 'retryable' => false, 'error_code' => 'grade_items_unavailable']);
             return;
         }
 

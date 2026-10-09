@@ -232,13 +232,14 @@ const initialTeacherClasses=<?php echo json_encode(array_map(function($c) { retu
 const initialStudents=<?php echo json_encode(array_map(function($s) { return ['id' => (int)$s['id'], 'first_name' => $s['first_name'] ?? '', 'last_name' => $s['last_name'] ?? '', 'reference_code' => $s['reference_code'] ?? '', 'lrn' => $s['lrn'] ?? '', 'sex' => $s['sex'] ?? $s['gender'] ?? '', 'attendance_status' => $s['attendance_status'] ?? 'present', 'remarks' => $s['remarks'] ?? '']; }, $students)); ?>;
 const currentSelectedClassId=<?php echo json_encode($selectedClassId); ?>;
 
-function persistOfflineRoster(classId, students) {
+async function persistOfflineRoster(classId, students, date = '') {
     try {
         if (initialTeacherClasses && initialTeacherClasses.length > 0) {
-            window.bshsOfflineStorage.saveClasses(initialTeacherClasses);
+            await window.bshsOfflineStorage.saveClasses(initialTeacherClasses);
         }
         if (classId && students && students.length > 0) {
-            window.bshsOfflineStorage.saveClassRoster(classId, students);
+            await window.bshsOfflineStorage.saveClassRoster(classId, students);
+            if (date) await window.bshsOfflineStorage.saveAttendanceSnapshot(classId, date, students);
         }
     } catch (e) {}
 }
@@ -252,12 +253,13 @@ function prefetchOtherTeacherRosters() {
             .then(d => {
                 if (d.success && d.students) {
                     window.bshsOfflineStorage.saveClassRoster(c.id, d.students);
+                    window.bshsOfflineStorage.saveAttendanceSnapshot(c.id, serverToday, d.students);
                 }
             }).catch(() => {});
     });
 }
 
-persistOfflineRoster(currentSelectedClassId, initialStudents);
+persistOfflineRoster(currentSelectedClassId, initialStudents, <?php echo json_encode($selectedDate); ?>);
 if (window.bshsOfflineStorage && navigator.onLine) {
     window.bshsOfflineStorage.saveTeacherSession({
         teacher_id: <?php echo (int)($_SESSION['user_id'] ?? 0); ?>,
@@ -285,11 +287,8 @@ if (!navigator.onLine) {
     }
     const note = document.querySelector('.teacher-summary-note');
     if (note) {
-        note.textContent = 'Offline Mode: Attendance editing and camera QR scanning are active.';
+        note.textContent = 'Offline Mode: Manual attendance is available for scheduled dates. QR scanning requires a connection.';
     }
-    canEditAttendance = true;
-    editBlockedReason = '';
-    updateEditState();
 }
 
 if (!navigator.onLine && window.bshsOfflineStorage) {
@@ -347,7 +346,7 @@ function applySearchFilter(){
     }
 }
 function renderStudents(students){const tbody=document.getElementById('attendanceBody');if(!students||students.length===0){tbody.innerHTML='<tr><td colspan="4" class="text-center text-muted py-4">No enrolled students for this class.</td></tr>';updateSummaryCounts({present:0,absent:0,late:0});return;}tbody.innerHTML=students.map(s=>{const fn=`${s.first_name} ${s.last_name}`;const inits=`${s.first_name[0]||''}${s.last_name[0]||''}`.toUpperCase();const st=s.attendance_status||'present';return `<tr data-student-id="${s.id}"><td><div class="student-info"><div class="user-avatar-small">${inits}</div><span class="student-name">${escapeHtml(fn)}</span></div></td><td>${escapeHtml(s.reference_code)}</td><td><button type="button" class="teacher-status ${st}" data-status="${st}" onclick="cycleStatus(this)">${statusTemplate[st]||statusTemplate.present}</button></td><td><input type="text" class="form-control form-control-sm attendance-remarks" value="${escapeHtml(s.remarks||'')}" placeholder="Add remarks..."></td></tr>`;}).join('');updateSummaryCounts();applySearchFilter();}
-function loadAttendanceData(){
+async function loadAttendanceData(){
     const classId=(document.getElementById('classSelect')?.value||'').trim();
     const date=(document.getElementById('attendanceDate')?.value||'').trim();
     const sex=(document.getElementById('sexFilter')?.value||'').trim().toLowerCase();
@@ -358,24 +357,31 @@ function loadAttendanceData(){
 
     if(!navigator.onLine){
         if(window.bshsOfflineStorage){
+            const scheduled = await window.bshsOfflineStorage.isClassScheduledOnDate(classId, date);
+            canEditAttendance = scheduled;
+            editBlockedReason = scheduled ? '' : 'This class has no cached schedule on the selected date.';
+            updateEditState();
             window.bshsOfflineStorage.getClassRoster(classId).then(students => {
                 if(students && students.length > 0){
-                    canEditAttendance = true;
-                    editBlockedReason = '';
                     const statValues = document.querySelectorAll('.teacher-summary-stat .teacher-summary-value');
                     if (statValues.length >= 2) {
                         statValues[1].textContent = 'Open (Offline)';
                     }
                     const note = document.querySelector('.teacher-summary-note');
                     if (note) {
-                        note.textContent = 'Offline Mode: Attendance editing and camera QR scanning are active.';
+                        note.textContent = scheduled
+                            ? 'Offline Mode: Manual attendance is available. QR scanning requires a connection.'
+                            : editBlockedReason;
                     }
                     window.bshsOfflineStorage.getLocalAttendance(classId, date).then(localSaved => {
                         if (localSaved && Array.isArray(localSaved.records)) {
                             const markMap = {};
-                            localSaved.records.forEach(r => { markMap[r.student_id] = r.status; });
+                            localSaved.records.forEach(r => { markMap[r.student_id] = r; });
                             students.forEach(s => {
-                                if (markMap[s.id]) s.attendance_status = markMap[s.id];
+                                if (markMap[s.id]) {
+                                    s.attendance_status = markMap[s.id].status;
+                                    s.remarks = markMap[s.id].remarks || '';
+                                }
                             });
                         }
                         renderStudents(students);
@@ -397,16 +403,17 @@ function loadAttendanceData(){
         renderStudents(d.students||[]);
         updateSummaryCounts(d.summary||null);
         updateEditState();
-        persistOfflineRoster(classId, d.students||[]);
-        if(window.bshsOfflineStorage){
-            window.bshsOfflineStorage.saveClassRoster(classId, d.students||[]);
-        }
+        persistOfflineRoster(classId, d.students||[], date);
         if(!canEditAttendance&&editBlockedReason){showNotification(editBlockedReason,'warning');}
     }).catch(()=>{
         if(window.bshsOfflineStorage){
-            window.bshsOfflineStorage.getClassRoster(classId).then(students => {
+            Promise.all([
+                window.bshsOfflineStorage.getClassRoster(classId),
+                window.bshsOfflineStorage.isClassScheduledOnDate(classId, date),
+            ]).then(([students, scheduled]) => {
                 if(students && students.length > 0){
-                    canEditAttendance = true;
+                    canEditAttendance = scheduled;
+                    editBlockedReason = scheduled ? '' : 'This class has no cached schedule on the selected date.';
                     renderStudents(students);
                     updateEditState();
                     showNotification('Loaded offline class roster from device storage', 'info');
@@ -418,7 +425,7 @@ function loadAttendanceData(){
     });
 }
 function exportAttendanceSf2(format){const classId=(document.getElementById('classSelect')?.value||'').trim();const dateValue=(document.getElementById('attendanceDate')?.value||'').trim();if(!classId){showNotification('Select a class for SF2 export','warning');return;}if(!dateValue||!/^\d{4}-\d{2}-\d{2}$/.test(dateValue)){showNotification('Select a valid attendance date for SF2 export','warning');return;}const parts=dateValue.split('-');const params=new URLSearchParams({class_id:classId,month:String(Number(parts[1])),year:parts[0],export:format==='csv'?'csv':'xlsx'});if(typeof appTriggerExport==='function'){appTriggerExport('teacher_SF2_Export.php?'+params.toString());}else{window.APP_SUPPRESS_NEXT_UNLOAD_PROGRESS=true;window.location.href='teacher_SF2_Export.php?'+params.toString();}}
-function submitAttendance(){
+async function submitAttendance(){
     if(!canEditAttendance){showNotification(editBlockedReason||'Attendance is unavailable for this class on the selected date','info');return;}
     const classId=document.getElementById('classSelect')?.value||'';
     const date=document.getElementById('attendanceDate')?.value||'';
@@ -430,13 +437,16 @@ function submitAttendance(){
     btn.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
 
     if(!navigator.onLine){
-        if(window.bshsOfflineStorage){
-            window.bshsOfflineStorage.saveAttendanceLocally(classId, date, records);
+        try {
+            if(!window.bshsOfflineStorage) throw new Error('Offline storage is unavailable on this device.');
+            await window.bshsOfflineStorage.saveAttendanceLocally(classId, date, records);
+            showNotification('Attendance saved offline on device. Will sync automatically when online.', 'success');
+        } catch (error) {
+            showNotification(error.message || 'Attendance could not be saved offline.', 'danger');
         }
         btn.disabled=false;
         btn.innerHTML='<i class="bi bi-save me-2"></i>Save Attendance';
         updateEditState();
-        showNotification('Attendance saved offline on device. Will sync automatically when online.', 'success');
         return;
     }
 
@@ -444,22 +454,24 @@ function submitAttendance(){
         method:'POST',
         headers:{'Content-Type':'application/json','X-CSRF-Token':csrfToken},
         body:JSON.stringify({class_id:parseInt(classId,10),date:date,mode:'subject',records:records})
-    }).then(r=>r.json()).then(d=>{
+    }).then(r=>r.json()).then(async d=>{
         if(d.success){
             if(window.bshsOfflineStorage){
-                window.bshsOfflineStorage.saveAttendanceLocally(classId, date, records);
-                window.bshsOfflineStorage.markRecordSynced('att_' + classId + '_' + date);
+                await window.bshsOfflineStorage.saveAttendanceSnapshot(classId, date, records);
             }
             showNotification(d.message||'Attendance saved successfully','success');
             updateSummaryCounts(d.summary||null);
         }else{
             showNotification(d.message||'Failed to save attendance','danger');
         }
-    }).catch(function(){
-        if(window.bshsOfflineStorage){
-            window.bshsOfflineStorage.saveAttendanceLocally(classId, date, records);
+    }).catch(async function(){
+        try {
+            if(!window.bshsOfflineStorage) throw new Error('Offline storage is unavailable on this device.');
+            await window.bshsOfflineStorage.saveAttendanceLocally(classId, date, records);
+            showNotification('Connection dropped. Attendance saved offline for background sync.','warning');
+        } catch (error) {
+            showNotification(error.message || 'Connection dropped and attendance could not be stored offline.','danger');
         }
-        showNotification('Connection dropped. Attendance saved offline for background sync.','warning');
     }).finally(()=>{
         updateEditState();
     });
@@ -485,9 +497,22 @@ if (!navigator.onLine || !initialTeacherClasses || initialTeacherClasses.length 
                     sel.innerHTML = cachedClasses.map(c => `<option value="${c.id}">${escapeHtml(c.name || '')} (Grade ${c.grade_level || ''} - ${escapeHtml(c.section || '')})</option>`).join('');
                 }
                 const firstId = cachedClasses[0].id;
-                window.bshsOfflineStorage.getClassRoster(firstId).then(cachedStudents => {
+                Promise.all([
+                    window.bshsOfflineStorage.getClassRoster(firstId),
+                    window.bshsOfflineStorage.getLocalAttendance(firstId, document.getElementById('attendanceDate')?.value || ''),
+                    window.bshsOfflineStorage.isClassScheduledOnDate(firstId, document.getElementById('attendanceDate')?.value || ''),
+                ]).then(([cachedStudents, cachedAttendance, scheduled]) => {
                     if (cachedStudents && cachedStudents.length > 0) {
-                        canEditAttendance = true;
+                        const markMap = {};
+                        (cachedAttendance?.records || []).forEach(record => { markMap[record.student_id] = record; });
+                        cachedStudents.forEach(student => {
+                            if (markMap[student.id]) {
+                                student.attendance_status = markMap[student.id].status;
+                                student.remarks = markMap[student.id].remarks || '';
+                            }
+                        });
+                        canEditAttendance = scheduled;
+                        editBlockedReason = scheduled ? '' : 'This class has no cached schedule on the selected date.';
                         renderStudents(cachedStudents);
                         updateEditState();
                     }
@@ -505,6 +530,7 @@ function openQrScanner() {
     const classId = document.getElementById('classSelect')?.value;
     const date = document.getElementById('attendanceDate')?.value;
     if (!classId || !date) { showNotification('Please select a class and date first.', 'warning'); return; }
+    if (!navigator.onLine) { showNotification('QR scanning requires an internet connection so Present and Late status can be verified by server time.', 'warning'); return; }
     if (!canEditAttendance) { showNotification(editBlockedReason || 'Cannot edit attendance for this class/date.', 'info'); return; }
     if (date !== serverToday) { showNotification('QR attendance scanning is available only for today.', 'warning'); return; }
 
@@ -626,28 +652,7 @@ async function handleQrScan(decodedText) {
     const classId = document.getElementById('classSelect')?.value || '';
     const date = document.getElementById('attendanceDate')?.value || '';
     try {
-        if (!navigator.onLine) {
-            const matchingRow = Array.from(document.querySelectorAll('#attendanceBody tr[data-student-id]')).find(r => {
-                const code = r.children?.[1]?.textContent?.trim()?.toLowerCase();
-                return code === refCode.toLowerCase();
-            });
-            if (!matchingRow) throw new Error('Student QR code (' + refCode + ') not found in this class');
-            const status = 'present';
-            const btn = matchingRow.querySelector('.teacher-status');
-            if (btn) {
-                btn.dataset.status = status;
-                btn.className = `teacher-status ${status}`;
-                btn.innerHTML = statusTemplate[status];
-                updateSummaryCounts();
-            }
-            const sName = matchingRow.querySelector('.student-name')?.textContent || refCode;
-            if (result) {
-                result.innerHTML = `<div class="alert alert-success"><i class="bi bi-check-circle-fill me-2"></i><strong>${escapeHtml(sName)}</strong> marked as <strong>Present (Offline)</strong></div>`;
-            }
-            matchingRow.style.background = '#d1fae5';
-            setTimeout(() => { matchingRow.style.background = ''; }, 2000);
-            return;
-        }
+        if (!navigator.onLine) throw new Error('Reconnect before scanning QR attendance.');
 
         const response = await fetch(withCsrfUrl('teacher_Action.php?action=classify_qr_scan'), {
             method: 'POST',

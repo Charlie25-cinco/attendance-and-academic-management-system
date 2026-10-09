@@ -44,12 +44,14 @@ final class QrAttendanceStatusTest extends TestCase
         $page = file_get_contents(__DIR__ . '/../teacher/teacher_Attendance.php');
 
         $this->assertIsString($action);
+        $this->assertIsString($page);
         $this->assertStringContainsString("'classify_qr_scan'", $action);
         $this->assertStringContainsString('ScheduleParser::attendanceStatusAt', $action);
+        $this->assertStringContainsString('QR scanning requires an internet connection', $page);
+        $this->assertStringNotContainsString("const status = 'present';", $page);
         $this->assertStringContainsString("\$date !== date('Y-m-d')", $action);
         $this->assertStringContainsString('teacherOwnsClass($db, $teacherId, $classId)', $action);
 
-        $this->assertIsString($page);
         $this->assertStringContainsString('teacher_Action.php?action=classify_qr_scan', $page);
         $this->assertStringContainsString("status === 'late' ? 'late' : 'present'", $page);
         $this->assertStringContainsString('date !== serverToday', $page);

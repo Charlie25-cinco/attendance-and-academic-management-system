@@ -1,6 +1,6 @@
 // BSHS AMS root service worker - PWA cache + push notifications
 
-const CACHE_NAME = "bshs-ams-v39";
+const CACHE_NAME = "bshs-ams-v40";
 const BASE_PATH = (self.location.pathname || "").replace(/\/sw\.js$/, "");
 const IDENTITY_CACHE = "bshs-ams-offline-state";
 const IDENTITY_URL = new URL(BASE_PATH + "/__offline_identity", self.location.origin).href;
@@ -331,6 +331,13 @@ async function openOfflineDb(owner) {
   });
 }
 
+function waitForOfflineTransaction(tx) {
+  return new Promise(function (resolve) {
+    tx.oncomplete = function () { resolve(true); };
+    tx.onerror = tx.onabort = function () { resolve(false); };
+  });
+}
+
 async function handleBackgroundSync() {
   await identityTask;
   var state = await offlineAccount();
@@ -348,7 +355,7 @@ async function handleBackgroundSync() {
     } catch (e) { resolve([]); }
   });
 
-  queue = queue.filter(item => item.owner === state.account);
+  queue = queue.filter(item => item.owner === state.account && item.status !== "failed");
   if (!queue || queue.length === 0) { db.close(); return; }
 
   // Check if any window client is currently open
@@ -386,6 +393,7 @@ async function handleBackgroundSync() {
   var syncedActivitySets = 0;
   var syncedActivityScores = 0;
   var failedCount = 0;
+  var retryableFailureCount = 0;
 
   for (var i = 0; i < queue.length; i++) {
     const active = await offlineAccount();
@@ -415,9 +423,9 @@ async function handleBackgroundSync() {
         body: JSON.stringify(payload)
       });
 
-      if (response.ok) {
-        var result = await response.json();
-        if (result && result.success) {
+      var result = null;
+      try { result = await response.json(); } catch (e) {}
+      if (response.ok && result && result.success) {
           if (opType === "attendance.upsert" || opType === "submit_attendance") {
             syncedAttendanceSheets++;
             var recCount = 1;
@@ -439,28 +447,28 @@ async function handleBackgroundSync() {
           // Delete from sync_queue and update local record in IndexedDB
           try {
             var rawId = String(opId || "").replace(/^op_/, "");
-            var wtx = db.transaction(["sync_queue", "activity_records", "attendance_records"], "readwrite");
+            const wtx = db.transaction(["sync_queue", "activity_records", "attendance_records"], "readwrite");
             wtx.objectStore("sync_queue").delete(item.id);
             wtx.objectStore("sync_queue").delete("op_" + rawId);
             wtx.objectStore("sync_queue").delete(rawId);
 
             if (opType === "attendance.upsert" || opType === "submit_attendance") {
-              var attStore = wtx.objectStore("attendance_records");
-              var attReq = attStore.get(rawId);
+              const attStore = wtx.objectStore("attendance_records");
+              const attReq = attStore.get(rawId);
               attReq.onsuccess = function () {
                 if (attReq.result) {
-                  var rec = attReq.result;
+                  const rec = attReq.result;
                   rec.sync_status = "synced";
                   rec.synced_at = new Date().toISOString();
                   attStore.put(rec);
                 }
               };
             } else {
-              var actStore = wtx.objectStore("activity_records");
-              var actReq = actStore.get(rawId);
+              const actStore = wtx.objectStore("activity_records");
+              const actReq = actStore.get(rawId);
               actReq.onsuccess = function () {
                 if (actReq.result) {
-                  var rec = actReq.result;
+                  const rec = actReq.result;
                   rec.sync_status = "synced";
                   rec.synced_at = new Date().toISOString();
                   if (result.grade_item_id && parseInt(result.grade_item_id, 10) > 0) {
@@ -471,19 +479,40 @@ async function handleBackgroundSync() {
                 }
               };
             }
+            await waitForOfflineTransaction(wtx);
           } catch (e) {}
-        } else {
-          failedCount++;
-          if (result && (result.message === "Unauthorized access" || result.message === "Invalid CSRF token")) {
-            // Mid-queue auth failure: halt and preserve remaining
-            break;
-          }
-        }
       } else {
         failedCount++;
+        var message = result && result.message ? result.message : "The server could not synchronize this offline item.";
+        var authFailure = response.status === 401 || response.status === 403 || message === "Unauthorized access" || message === "Invalid CSRF token";
+        var attempts = Number(item.attempts || 0) + 1;
+        var permanent = !authFailure && ((result && result.retryable === false) || (response.status >= 400 && response.status < 500));
+        try {
+          var failureTx = db.transaction(["sync_queue"], "readwrite");
+          item.attempts = attempts;
+          item.status = permanent || attempts >= 5 ? "failed" : "pending";
+          item.last_error = message;
+          item.last_attempt_at = new Date().toISOString();
+          item.retryable = !permanent;
+          failureTx.objectStore("sync_queue").put(item);
+          await waitForOfflineTransaction(failureTx);
+        } catch (e) {}
+        if (!authFailure && !permanent && attempts < 5) retryableFailureCount++;
+        if (authFailure) break;
       }
     } catch (err) {
       failedCount++;
+      try {
+        var retryTx = db.transaction(["sync_queue"], "readwrite");
+        item.attempts = Number(item.attempts || 0) + 1;
+        item.status = item.attempts >= 5 ? "failed" : "pending";
+        item.last_error = err && err.message ? err.message : "Network connection failed";
+        item.last_attempt_at = new Date().toISOString();
+        item.retryable = true;
+        retryTx.objectStore("sync_queue").put(item);
+        await waitForOfflineTransaction(retryTx);
+        if (item.attempts < 5) retryableFailureCount++;
+      } catch (e) {}
       console.warn("[SW Background Sync] Item sync error:", item.id, err);
     }
   }
@@ -507,5 +536,8 @@ async function handleBackgroundSync() {
       tag: "bshs-sync-completed",
       data: { url: resolvePath("/teacher/teacher.php") }
     });
+  }
+  if (retryableFailureCount > 0) {
+    throw new Error("Offline synchronization has retryable failures");
   }
 }

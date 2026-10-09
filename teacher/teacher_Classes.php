@@ -629,7 +629,7 @@ if(clearClassStudentsSearchBtn){
         }
     });
 }
-function createGradeItem(){
+async function createGradeItem(){
     const form=document.getElementById('createGradeItemForm');
     const fd=new FormData(form);
     const classId=(fd.get('class_id')||'').toString().trim();
@@ -643,30 +643,43 @@ function createGradeItem(){
         return;
     }
 
+    const localRec = {
+        local_id: 'act_' + classId + '_' + Date.now(),
+        class_id: parseInt(classId, 10),
+        title: title,
+        component: component,
+        total_score: totalScore,
+        activity_date: actDate,
+        scores: [],
+        saved_at: new Date().toISOString(),
+        sync_status: 'pending'
+    };
+
     if(!navigator.onLine){
-        if(window.bshsOfflineStorage){
-            const localRec = {
-                local_id: 'act_' + classId + '_' + Date.now(),
-                class_id: parseInt(classId, 10),
-                title: title,
-                component: component,
-                total_score: totalScore,
-                activity_date: actDate,
-                scores: [],
-                saved_at: new Date().toISOString(),
-                sync_status: 'pending'
-            };
-            window.bshsOfflineStorage.saveActivityLocally(localRec).then(()=>{
-                showNotification('Grade activity created locally (Offline)', 'success');
-                if(createGradeItemModal) createGradeItemModal.hide();
-                loadGradeItems();
-            });
+        try {
+            if(!window.bshsOfflineStorage) throw new Error('Offline storage is unavailable on this device.');
+            await window.bshsOfflineStorage.saveActivityLocally(localRec);
+            showNotification('Grade activity created locally (Offline)', 'success');
+            if(createGradeItemModal) createGradeItemModal.hide();
+            loadGradeItems();
+        } catch(error) {
+            showNotification(error.message || 'Grade activity could not be stored offline.', 'danger');
         }
         return;
     }
 
     setBusy(createBtn,'Creating...','Create',true);
-    fetch('teacher_Action.php?action=create_grade_item',{method:'POST',body:fd}).then(r=>r.json()).then(d=>{if(d.success){showNotification(d.message||'Grade activity created','success');if(createGradeItemModal)createGradeItemModal.hide();loadGradeItems();}else{showNotification(d.message||'Failed to create grade activity','danger');}}).catch(()=>showNotification('Error creating grade activity','danger')).finally(()=>setBusy(createBtn,'Creating...','Create',false));
+    fetch('teacher_Action.php?action=create_grade_item',{method:'POST',body:fd}).then(r=>r.json()).then(d=>{if(d.success){showNotification(d.message||'Grade activity created','success');if(createGradeItemModal)createGradeItemModal.hide();loadGradeItems();}else{showNotification(d.message||'Failed to create grade activity','danger');}}).catch(async()=>{
+        try {
+            if(!window.bshsOfflineStorage) throw new Error('Offline storage is unavailable on this device.');
+            await window.bshsOfflineStorage.saveActivityLocally(localRec);
+            showNotification('Connection dropped. Grade activity saved offline for synchronization.','warning');
+            if(createGradeItemModal) createGradeItemModal.hide();
+            loadGradeItems();
+        } catch(error) {
+            showNotification(error.message || 'Grade activity could not be saved.','danger');
+        }
+    }).finally(()=>setBusy(createBtn,'Creating...','Create',false));
 }
 let currentLoadedGradeItems = [];
 
@@ -792,7 +805,7 @@ function saveGradeItemScores(){
                         showNotification('Scores saved locally (Offline)', 'success');
                         if(recordScoresModal) recordScoresModal.hide();
                         loadGradeItems();
-                    });
+                    }).catch(error=>showNotification(error.message||'Scores could not be stored offline.','danger'));
                 }
             });
         }
@@ -800,7 +813,28 @@ function saveGradeItemScores(){
     }
 
     setBusy(saveBtn,'Saving...','Save Scores',true);
-    fetch(withCsrfUrl('teacher_Action.php?action=save_grade_item_scores'),{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrfToken},body:JSON.stringify({grade_item_id:parseInt(gradeItemId,10),scores:scores})}).then(r=>r.json()).then(d=>{if(d.success){showNotification(d.message||'Scores saved successfully. Finish the activity to include it in Grade Entry.','success');if(recordScoresModal)recordScoresModal.hide();loadGradeItems();}else{showNotification(d.message||'Failed to save scores','danger');}}).catch(()=>showNotification('Error saving scores','danger')).finally(()=>setBusy(saveBtn,'Saving...','Save Scores',false));
+    fetch(withCsrfUrl('teacher_Action.php?action=save_grade_item_scores'),{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrfToken},body:JSON.stringify({grade_item_id:parseInt(gradeItemId,10),scores:scores})}).then(r=>r.json()).then(d=>{if(d.success){showNotification(d.message||'Scores saved successfully. Finish the activity to include it in Grade Entry.','success');if(recordScoresModal)recordScoresModal.hide();loadGradeItems();}else{showNotification(d.message||'Failed to save scores','danger');}}).catch(async()=>{
+        try {
+            const loaded=(currentLoadedGradeItems||[]).find(i=>String(i.id)===String(gradeItemId));
+            if(!loaded||!window.bshsOfflineStorage) throw new Error('Reconnect and retry saving these scores.');
+            await window.bshsOfflineStorage.saveActivityLocally({
+                local_id:'act_server_'+loaded.id,
+                server_id:parseInt(loaded.id,10),
+                class_id:parseInt(loaded.class_id,10),
+                title:loaded.title,
+                component:loaded.component,
+                total_score:loaded.total_score,
+                activity_date:loaded.activity_date,
+                scores:scores,
+                sync_status:'pending'
+            });
+            showNotification('Connection dropped. Scores saved offline for synchronization.','warning');
+            if(recordScoresModal) recordScoresModal.hide();
+            loadGradeItems();
+        } catch(error) {
+            showNotification(error.message||'Scores could not be saved.','danger');
+        }
+    }).finally(()=>setBusy(saveBtn,'Saving...','Save Scores',false));
 }
 function finishGradeItem(id,title){pendingFinishGradeItemId=parseInt(id,10)||0;const nameEl=document.getElementById('finishGradeItemName');if(nameEl)nameEl.textContent=title?`Activity: ${title}`:'Activity: Grade Activity';if(!pendingFinishGradeItemId){showNotification('Invalid grade activity','warning');return;}if(finishGradeItemModal)finishGradeItemModal.show();}
 function confirmFinishGradeItem(){if(!pendingFinishGradeItemId){showNotification('Invalid grade activity','warning');return;}const btn=document.getElementById('confirmFinishGradeItemBtn');setBusy(btn,'Finishing...','Finish Activity',true);const fd=new FormData();fd.append('grade_item_id',pendingFinishGradeItemId);appendCsrfToFormData(fd);fetch('teacher_Action.php?action=finish_grade_item',{method:'POST',body:fd}).then(r=>r.json()).then(d=>{if(d.success){showNotification(d.message||'Grade activity finished and moved to archive','success');if(finishGradeItemModal)finishGradeItemModal.hide();loadGradeItems();}else{showNotification(d.message||'Failed to finish grade activity','danger');}}).catch(()=>showNotification('Error finishing grade activity','danger')).finally(()=>setBusy(btn,'Finishing...','Finish Activity',false));}

@@ -175,8 +175,10 @@ Attendance recording accepts only `present`, `absent`, and `late`. Additional ab
 - School and class announcements, attendance, materials, grade activities and scores, and report-card releases are always saved as in-app notifications before push delivery is attempted.
 - A subscribed device can receive Web Push while the installed PWA is closed when notification permission is granted, the device is online, and the operating system permits background notifications. Saved in-app notifications remain available on the next app open even when push delivery is unavailable.
 - Portal JavaScript and CSS use versioned URLs plus network-first service-worker updates, so a newly deployed notification fix is loaded before an older cached asset while offline fallback remains available.
-- Teacher attendance submissions can be queued in `localStorage` while offline and retried against `teacher_Action.php?action=submit_attendance` when the browser comes back online.
-- Teacher QR attendance scanning requires HTTPS and browser camera permission. Camera access is permitted only on `teacher/teacher_Attendance.php`; other application pages keep camera access disabled.
+- Teacher attendance and grade-activity changes use teacher-owned IndexedDB queues with account-scoped localStorage fallback. Saves are acknowledged only after durable local persistence, then retried through Background Sync, reconnection, startup, or the teacher's manual retry action.
+- The teacher offline-sync status panel shows pending and failed work, the last successful synchronization, Retry Sync, and confirmation-protected local-data clearing. Permanent server validation failures remain visible instead of retrying indefinitely.
+- Manual attendance is available offline only for dates allowed by the cached class schedule. Date-specific snapshots prevent one attendance date from being displayed as another.
+- Teacher QR attendance scanning requires HTTPS, an active connection, and browser camera permission because Present/Late classification uses authoritative `Asia/Manila` server time. Camera access is permitted only on `teacher/teacher_Attendance.php`; other application pages keep camera access disabled.
 - Before production, test install/offline behavior on desktop and mobile browsers.
 
 ## Wasmer Deployment

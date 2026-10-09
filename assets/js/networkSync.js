@@ -9,6 +9,79 @@
 
   var isProcessing = false;
 
+  function formatSyncTime(value) {
+    if (!value) return "Not synchronized yet";
+    var date = new Date(value);
+    return Number.isNaN(date.getTime()) ? "Not synchronized yet" : "Last sync " + date.toLocaleString("en-PH");
+  }
+
+  function ensureSyncPanel() {
+    if (typeof document === "undefined" || document.getElementById("offlineSyncStatus")) return;
+    var panel = document.createElement("aside");
+    panel.id = "offlineSyncStatus";
+    panel.className = "offline-sync-status";
+    panel.setAttribute("aria-live", "polite");
+    panel.innerHTML = '<div class="offline-sync-status__icon"><i class="bi bi-cloud-check"></i></div>' +
+      '<div class="offline-sync-status__copy"><strong id="offlineSyncTitle">Offline data ready</strong><span id="offlineSyncDetail">Checking synchronization status...</span></div>' +
+      '<div class="offline-sync-status__actions"><button type="button" class="btn btn-sm btn-outline-primary" id="offlineSyncRetryBtn">Retry Sync</button>' +
+      '<button type="button" class="btn btn-sm btn-link text-danger" id="offlineSyncClearBtn">Clear Local Data</button></div>';
+    document.body.appendChild(panel);
+    document.getElementById("offlineSyncRetryBtn")?.addEventListener("click", async function () {
+      var storage = global.bshsOfflineStorage;
+      if (!storage) return;
+      this.disabled = true;
+      await storage.retryFailedItems();
+      await processQueue();
+      this.disabled = false;
+      refreshSyncPanel();
+    });
+    document.getElementById("offlineSyncClearBtn")?.addEventListener("click", async function () {
+      var confirmed = typeof global.showAppConfirm === "function"
+        ? await global.showAppConfirm({
+            title: "Clear offline data?",
+            message: "Pending attendance and grade activity records on this device will be permanently removed.",
+            confirmText: "Clear local data",
+            cancelText: "Keep data",
+            tone: "danger",
+            icon: "bi-trash",
+          })
+        : global.confirm("Clear all offline data for this teacher on this device?");
+      if (!confirmed || !global.bshsOfflineStorage) return;
+      await global.bshsOfflineStorage.clearLocalData();
+      refreshSyncPanel();
+    });
+  }
+
+  async function refreshSyncPanel() {
+    if (typeof document === "undefined") return;
+    ensureSyncPanel();
+    var storage = global.bshsOfflineStorage;
+    var panel = document.getElementById("offlineSyncStatus");
+    if (!storage || !panel) return;
+    var status = await storage.getSyncStatus();
+    var online = navigator.onLine;
+    var title = document.getElementById("offlineSyncTitle");
+    var detail = document.getElementById("offlineSyncDetail");
+    var retry = document.getElementById("offlineSyncRetryBtn");
+    panel.classList.toggle("is-offline", !online);
+    panel.classList.toggle("has-failures", status.failed > 0);
+    panel.classList.toggle("has-pending", status.pending > 0);
+    if (title) {
+      title.textContent = status.failed > 0
+        ? status.failed + " offline item" + (status.failed === 1 ? " needs" : "s need") + " attention"
+        : status.pending > 0
+          ? status.pending + " item" + (status.pending === 1 ? "" : "s") + " waiting to sync"
+          : online ? "Offline data synchronized" : "Working offline";
+    }
+    if (detail) {
+      detail.textContent = status.failed > 0 && status.lastError
+        ? status.lastError
+        : online ? formatSyncTime(status.lastSyncedAt) : "Reconnect to synchronize saved work.";
+      detail.title = detail.textContent;
+    }
+    if (retry) retry.hidden = status.total === 0 || !online;
+  }
+
   async function verifyAndRestoreAuth() {
     try {
       var targetUrl =
@@ -47,7 +120,7 @@
     var storage = global.bshsOfflineStorage;
     if (!storage || !storage.isUnlocked()) return;
 
-    var queue = await storage.getSyncQueue();
+    var queue = (await storage.getSyncQueue()).filter(function (item) { return item.status !== "failed"; });
     if (!queue || queue.length === 0) return;
 
     // Pre-flight check: ensure valid server authentication & CSRF context
@@ -66,6 +139,7 @@
     }
 
     isProcessing = true;
+    refreshSyncPanel();
     var syncedAttendance = 0;
     var syncedActivities = 0;
 
@@ -80,6 +154,9 @@
       if (!url || !payload) continue;
 
       try {
+        if (typeof storage.updateSyncItemState === "function") {
+          await storage.updateSyncItemState(opId, { status: "syncing", last_attempt_at: new Date().toISOString() });
+        }
         var targetUrl = url;
         // The preflight token is authoritative; page-level csrfToken may be a stale const.
         var currentToken = authCheck.csrfToken || global.APP_CSRF_TOKEN || "";
@@ -100,9 +177,9 @@
           body: JSON.stringify(payload),
         });
 
-        if (response.ok) {
-          var result = await response.json();
-          if (result && result.success) {
+        var result = null;
+        try { result = await response.json(); } catch (e) {}
+        if (response.ok && result && result.success) {
             if (
               opType === "attendance.upsert" ||
               opType === "submit_attendance"
@@ -120,27 +197,33 @@
             } else if (typeof storage.removeSyncItem === "function") {
               await storage.removeSyncItem(item.id);
             }
-          } else if (
-            result &&
-            (result.message === "Unauthorized access" ||
-              result.message === "Invalid CSRF token")
-          ) {
-            // Mid-queue auth failure: halt and preserve remaining queue items
-            var sessionMsg =
-              "Authentication required to complete offline synchronization. Please refresh or sign in.";
-            if (typeof showNotification === "function") {
-              showNotification(sessionMsg, "danger");
-            }
+        } else {
+          var message = result && result.message ? result.message : "The server could not synchronize this offline item.";
+          var authFailure = response.status === 401 || response.status === 403 ||
+            message === "Unauthorized access" || message === "Invalid CSRF token";
+          var permanent = !authFailure && ((result && result.retryable === false) || (response.status >= 400 && response.status < 500));
+          if (typeof storage.markSyncItemFailed === "function") {
+            await storage.markSyncItemFailed(opId, message, permanent);
+          }
+          if (authFailure) {
+            var sessionMsg = "Authentication required to complete offline synchronization. Please refresh or sign in.";
+            if (typeof showNotification === "function") showNotification(sessionMsg, "danger");
             break;
+          }
+          if (permanent && typeof showNotification === "function") {
+            showNotification("An offline item needs review: " + message, "warning");
           }
         }
       } catch (err) {
-        // Keep item in queue for next sync cycle
+        if (typeof storage.markSyncItemFailed === "function") {
+          await storage.markSyncItemFailed(opId, err && err.message ? err.message : "Network connection failed", false);
+        }
         console.warn("[Sync] Sync attempt failed for item:", item.id, err);
       }
     }
 
     isProcessing = false;
+    refreshSyncPanel();
 
     var totalSynced = syncedAttendance + syncedActivities;
     if (totalSynced > 0) {
@@ -250,6 +333,7 @@
 
   global.addEventListener("online", handleOnline);
   global.addEventListener("offline", handleOffline);
+  global.addEventListener("bshs:sync-status-changed", refreshSyncPanel);
 
   global.BSHS_NetworkSync = {
     processQueue: processQueue,
@@ -268,5 +352,9 @@
   // Trigger sync on startup if online
   if (navigator.onLine) {
     setTimeout(processQueue, 1200);
+  }
+  if (typeof document !== "undefined") {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", refreshSyncPanel);
+    else refreshSyncPanel();
   }
 })(typeof window !== "undefined" ? window : this);

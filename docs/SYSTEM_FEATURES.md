@@ -47,8 +47,9 @@ The platform provides a centralized, role-based ecosystem connecting the **Princ
   - **Teacher Web Marking:** Daily class and advisory attendance recording with status indicators (*Present*, *Late/Tardy*, *Absent*). Additional context is stored in remarks.
   - **Server-Authoritative QR Code Scanner:** Instant QR code badge scanning via device camera (`teacher_Attendance.php`), utilizing `Asia/Manila` server time to automatically classify students as *Present* or *Late* (based on a configurable 15-minute grace threshold).
 - **Offline Attendance Capture & Auto-Sync:**
-  - Built-in Service Worker and `localStorage` queue allow teachers to take attendance without active internet.
-  - Submissions automatically synchronize to the database once network connectivity is restored.
+  - Teacher-owned IndexedDB with account-scoped localStorage fallback allows manual attendance on cached scheduled dates without active internet.
+  - Durable saves register Background Sync and also retry on reconnection or application startup; teachers can inspect pending/failed counts and retry explicitly.
+  - Attendance snapshots are keyed by class and date, while QR scanning remains online-only for server-authoritative Present/Late classification.
 - **DepEd School Form 2 (SF2) Daily Attendance Export:**
   - Fully automated XLSX generation strictly following the official `deped/SF2_Senior_High_School.xlsx` template.
   - Preserves merged headers, summary formulas (rows 60–89), dynamic Monday–Saturday day anchors, and official DepEd attendance symbols (Blank = Present, `X` = Absent, Upper-half block = Late).

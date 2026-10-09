@@ -2,6 +2,24 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v3.0.2 — 2026-10-09
+
+### Added
+
+- Added a compact teacher offline-sync status panel with pending/failed counts, last-sync information, manual retry, and confirmation-protected local-data clearing.
+- Added date-specific cached attendance snapshots and cached-schedule validation for manual offline attendance.
+
+### Fixed
+
+- Made offline attendance and grade-activity saves wait for confirmed IndexedDB or account-scoped localStorage persistence before reporting success.
+- Registered attendance for Background Sync, prevented legacy mirrored queue entries from replaying after service-worker synchronization, and bounded failed retries with visible permanent-error states.
+- Disabled QR scanning while offline so Present/Late classification remains authoritative to the `Asia/Manila` server clock.
+- Preserved grade activities and score changes locally when connectivity drops during a request even if the browser still reports that it is online.
+
+### Changed
+
+- Bumped the PWA cache namespace to `bshs-ams-v40` and expanded offline regression coverage for schedule checks, date isolation, durable-storage failures, and synchronization error reporting.
+
 ## v3.0.1 — 2026-10-09
 
 ### Fixed

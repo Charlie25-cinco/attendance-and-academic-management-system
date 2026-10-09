@@ -1,7 +1,7 @@
 # Product Specification: Balingasag SHS AMS
 
 **System Name:** Balingasag Senior High School - Attendance and Academic Management System (BSHS AMS)  
-**Document Version:** 3.0.1
+**Document Version:** 3.0.2
 **Standard Compliance:** ISO/IEC/IEEE 29148:2018 (Systems and software engineering — Life cycle processes — Requirements engineering)  
 **Status:** Approved  
 
@@ -31,7 +31,7 @@ The system serves five primary user roles:
 | **REQ-004** | DepEd Integration | The system shall import and export official DepEd Excel forms (SF1, SF2, SF5, SF9, ECR) preserving official row/column cell mappings. | Ensures compatibility with Department of Education reporting standards. | Official SF1, SF2, and ECR `.xlsx` files parse without structure errors; generated exports match DepEd template dimensions. |
 | **REQ-005** | Grading Workflow | The system shall enforce the workflow `submitted` → `admin_verified` → `submitted_admin` → `pending` → `approved` across Subject Teacher, Principal, Adviser, Principal, and Admin respectively. | Separates academic verification and endorsement from operational final release. | Principal verifies subject grades; Adviser submits compiled cards; Principal endorses them; Admin alone releases them; family portals display only `approved` records. |
 | **REQ-006** | Grading Recall | The system shall allow subject teachers to recall pending grade submissions while in `submitted` status, and auto-invalidate downstream approved report cards upon re-submission. | Ensures grade corrections update official records while preventing stale final report cards from being viewed. | Re-submitting a previously approved subject grade sets affected report cards to `rejected` until approved again. |
-| **REQ-007** | PWA & Offline | The system shall support offline attendance submission with local queueing and sync upon network recovery. | Enables teachers to mark attendance during network interruptions without losing records. | Submissions queue in `localStorage` when offline and submit automatically to `teacher_Action.php` when connectivity restores. |
+| **REQ-007** | PWA & Offline | The system shall support durable offline attendance submission with account-owned local queueing and synchronization recovery. | Enables teachers to mark attendance during network interruptions without losing or misattributing records. | A save is acknowledged only after IndexedDB or account-scoped localStorage persistence succeeds; queued work synchronizes only under the same authenticated teacher account. |
 | **REQ-008** | Web Push | The system shall support browser Web Push API notifications for student attendance events and grade publication. | Provides immediate notification to parents and students regarding attendance anomalies and academic updates. | Device subscriptions saved in `push_subscriptions` receive push payloads signed with VAPID keys. |
 | **REQ-009** | UI/UX Standard | The system shall maintain an accessible visual design system supporting high contrast, dark mode, and responsive layouts. | Adheres to UI/UX Engineering & Design Standards (§9 & §10). | UI components utilize tokens defined in `assets/css/main.css`; contrast ratios meet WCAG AA standards across light and dark themes. |
 | **REQ-010** | Communication | The system shall restrict parent chat contacts exclusively to the section adviser of their linked students. | Protects teacher privacy while maintaining clear communication channels with section advisers. | Parent chat directory lists only advisers of currently enrolled section classes for linked children. |
@@ -90,6 +90,17 @@ The system serves five primary user roles:
 - **Priority:** High
 - **Acceptance criteria:** The student-details view groups identity, academic placement, contact and address, family and guardian, linked parent account, enrollment history, and account activity information; the modal remains usable on desktop and mobile screens; Admin Manage Users links to Student Records without listing students; the response contains no password, token-version, reset-token, or authentication-secret fields.
 - **Traceability:** `admin/admin_Enrollments.php`, `admin/admin_Enrollments_Action.php`, `admin/admin_Users.php`, `includes/modals/enrollment_modals.php`, and `tests/AdminUsersStudentExclusionAndEnrollmentsRefCodeTest.php`.
+
+### 2.6 Offline Reliability Requirement
+
+- **Requirement ID:** REQ-016
+- **Category:** System requirement / offline reliability and data integrity
+- **Description:** The system shall durably preserve teacher offline attendance and grade-activity work, synchronize it under the owning account, and expose pending or failed synchronization state to the teacher.
+- **Rationale:** Connectivity indicators and background execution are not reliable enough to guarantee that unsaved or rejected academic records will recover without explicit persistence and user feedback.
+- **Source:** Developer-requested offline feature review and approved remediation plan, October 9, 2026
+- **Priority:** High
+- **Acceptance criteria:** Offline saves report success only after a durable local write; attendance registers Background Sync; transient failures receive no more than five automatic attempts before becoming visible failures; permanent validation failures become visible immediately; manual Retry Sync and confirmation-protected Clear Local Data controls are available; manual attendance is restricted by cached schedules and class/date snapshots; QR scanning is unavailable offline; server account ownership, CSRF, class ownership, schedule, and record validation remain authoritative.
+- **Traceability:** `sw.js`, `assets/js/offlineStorage.js`, `assets/js/networkSync.js`, `teacher/teacher_Attendance.php`, `teacher/teacher_Classes.php`, `teacher/teacher_Action.php`, `tests/browser-security.cjs`, `tests/QrAttendanceStatusTest.php`, and `tests/TeacherPwaOfflineLifecycleTest.php`.
 
 ---
 
