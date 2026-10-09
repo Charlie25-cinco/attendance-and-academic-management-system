@@ -2,6 +2,14 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v3.1.2 — 2026-10-09
+
+### Changed
+
+- Refined the Principal dashboard with a clearer approval-path hero, primary review actions, and four distinct report-card workflow metrics including Admin-released records.
+- Added compact monitoring shortcuts, report-card readiness indicators, and a cleaner recent-decisions timeline without changing permissions, queries, or approval behavior.
+- Improved Principal dashboard responsiveness, keyboard focus, dark-mode contrast, and reduced-motion behavior.
+
 ## v3.1.1 — 2026-10-09
 
 ### Fixed
