@@ -631,6 +631,21 @@ if (isset($_GET['download_template'])) {
             });
         }
 
+        function studentProfileDate(value, includeTime = false) {
+            if (!value) return 'N/A';
+            const normalized = /^\d{4}-\d{2}-\d{2}$/.test(String(value)) ? String(value) + 'T00:00:00' : String(value).replace(' ', 'T');
+            const parsed = new Date(normalized);
+            if (Number.isNaN(parsed.getTime())) return String(value);
+            return parsed.toLocaleString('en-PH', includeTime
+                ? { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }
+                : { year: 'numeric', month: 'long', day: 'numeric' });
+        }
+
+        function setStudentDetail(id, value) {
+            const element = document.getElementById(id);
+            if (element) element.textContent = value === null || value === undefined || String(value).trim() === '' ? 'N/A' : String(value);
+        }
+
         function viewStudent(id) {
             fetch('admin_Enrollments_Action.php?action=get&id=' + id)
                 .then(r => r.json())
@@ -640,7 +655,7 @@ if (isset($_GET['download_template'])) {
                         return;
                     }
                     const s = data.student;
-                    const fullName = [s.first_name, s.middle_name, s.last_name].filter(Boolean).join(' ');
+                    const fullName = [s.first_name, s.middle_name, s.last_name, s.name_extension].filter(Boolean).join(' ');
                     const initials = ((s.first_name || 'U')[0] + (s.last_name || 'N')[0]).toUpperCase();
 
                     document.getElementById('viewStudentAvatar').textContent = initials;
@@ -652,6 +667,23 @@ if (isset($_GET['download_template'])) {
                     document.getElementById('viewGradeLevel').textContent = s.grade_level ? 'Grade ' + s.grade_level : 'N/A';
                     document.getElementById('viewSection').textContent = s.section || 'N/A';
                     document.getElementById('viewTrack').textContent = programLabel(s) || 'N/A';
+                    setStudentDetail('viewCurriculum', s.curriculum ? String(s.curriculum).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'N/A');
+                    setStudentDetail('viewDateOfBirth', studentProfileDate(s.date_of_birth));
+                    setStudentDetail('viewReligion', s.religion);
+                    setStudentDetail('viewStudentContact', s.contact_number);
+                    setStudentDetail('viewHouseStreet', s.house_street);
+                    setStudentDetail('viewBarangay', s.barangay);
+                    setStudentDetail('viewMunicipality', s.municipality);
+                    setStudentDetail('viewProvince', s.province);
+                    const addressParts = [s.house_street, s.barangay, s.municipality, s.province].filter(part => part && String(part).trim());
+                    setStudentDetail('viewStudentAddress', s.address || addressParts.join(', '));
+                    setStudentDetail('viewFatherName', s.father_name);
+                    setStudentDetail('viewMotherName', s.mother_name);
+                    setStudentDetail('viewGuardianName', s.guardian_name);
+                    setStudentDetail('viewGuardianRelationship', s.guardian_relationship);
+                    setStudentDetail('viewStudentCreatedAt', studentProfileDate(s.created_at, true));
+                    setStudentDetail('viewStudentUpdatedAt', studentProfileDate(s.updated_at, true));
+                    setStudentDetail('viewStudentLastLogin', s.last_login ? studentProfileDate(s.last_login, true) : 'Never');
 
                     const statusEl = document.getElementById('viewStatus');
                     statusEl.textContent = ucfirst(s.status);
@@ -660,10 +692,34 @@ if (isset($_GET['download_template'])) {
                     const classesEl = document.getElementById('viewEnrolledClasses');
                     if (s.enrolled_classes && s.enrolled_classes.length) {
                         classesEl.innerHTML = s.enrolled_classes.map(ec =>
-                            `<span class="badge bg-info text-dark me-1 mb-1 d-inline-block">${escHtml(ec.class_name)}${ec.enrollment_status !== 'enrolled' ? ' (' + ucfirst(ec.enrollment_status) + ')' : ''}</span>`
+                            `<div class="border rounded-3 p-3 mb-2">
+                                <div class="d-flex flex-wrap justify-content-between gap-2">
+                                    <strong>${escHtml(ec.class_name || 'Unnamed class')}</strong>
+                                    <span class="badge ${ec.enrollment_status === 'enrolled' ? 'bg-success' : 'bg-secondary'}">${escHtml(ucfirst(ec.enrollment_status || 'unknown'))}</span>
+                                </div>
+                                <small class="text-muted d-block mt-1">Grade ${escHtml(ec.grade_level || s.grade_level || 'N/A')} · ${escHtml(ec.section || s.section || 'N/A')} · ${escHtml(ec.academic_year || 'N/A')}</small>
+                                <small class="text-muted d-block">${escHtml(ec.schedule || 'Schedule not assigned')}${ec.semester ? ' · Semester ' + escHtml(ec.semester) : ''}</small>
+                            </div>`
                         ).join('');
                     } else {
                         classesEl.innerHTML = '<span class="text-muted">Not enrolled in any class</span>';
+                    }
+
+                    const parentsEl = document.getElementById('viewLinkedParents');
+                    if (s.linked_parents && s.linked_parents.length) {
+                        parentsEl.innerHTML = s.linked_parents.map(parent => {
+                            const parentName = [parent.first_name, parent.middle_name, parent.last_name].filter(Boolean).join(' ');
+                            return `<div class="border rounded-3 p-3 mb-2">
+                                <div class="d-flex flex-wrap justify-content-between gap-2">
+                                    <strong>${escHtml(parentName || 'Unnamed parent')}</strong>
+                                    <span class="badge bg-info text-dark">${escHtml(parent.relationship || 'Parent')}</span>
+                                </div>
+                                <small class="text-muted d-block mt-1">${escHtml(parent.reference_code || 'No reference code')} · ${escHtml(parent.status ? ucfirst(parent.status) : 'Unknown status')}</small>
+                                <small class="text-muted d-block">${escHtml(parent.contact_number || 'No contact number')} · ${escHtml(parent.email || 'No email')}</small>
+                            </div>`;
+                        }).join('');
+                    } else {
+                        parentsEl.innerHTML = '<span class="text-muted">No linked parent account</span>';
                     }
 
                     new bootstrap.Modal(document.getElementById('viewStudentModal')).show();

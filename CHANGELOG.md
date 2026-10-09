@@ -2,6 +2,18 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v3.0.1 — 2026-10-09
+
+### Fixed
+
+- Expanded the Admin Enrollments student-details view to show the complete stored learner profile, academic placement, address, family and guardian information, linked parent accounts, enrollment history, and account activity dates.
+- Made the student-details modal responsive, scrollable, and accessible for complete records on desktop and mobile screens.
+
+### Changed
+
+- Added a Student Records shortcut from Admin Manage Users to the dedicated Enrollments workspace while preserving the separation between student records and staff/parent account management.
+- Kept passwords, token versions, and other authentication secrets out of the Admin student-details response.
+
 ## v3.0.0 — 2026-10-09
 
 ### Added

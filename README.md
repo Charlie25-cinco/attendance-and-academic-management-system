@@ -103,6 +103,7 @@ This operational documentation applies ISO/IEC/IEEE 29148 clarity and traceabili
 ### Admin
 
 - Users, sections, classes, enrollments, attendance, reports, archives, audit logs, announcements, final report-card release, SF1 import, and DepEd form exports from Reports.
+- Student accounts remain in Admin Enrollments rather than Manage Users; the eye action opens a read-only complete learner profile with identity, academic placement, address, family/guardian, linked-parent, enrollment, and account-activity information.
 - Final release saves notifications for students, linked parents, the adviser, subject teachers, and the Principal before optional Web Push delivery.
 
 ### Teacher

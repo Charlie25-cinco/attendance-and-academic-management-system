@@ -365,7 +365,12 @@ function getStudent(PDO $db): void {
         return;
     }
 
-    $stmt = $db->prepare("SELECT id, reference_code, first_name, middle_name, last_name, email, lrn, sex, grade_level, section, track, curriculum, program, status, contact_number, address, date_of_birth, created_at, last_login
+    $stmt = $db->prepare("SELECT id, reference_code, first_name, middle_name, last_name, name_extension,
+                                 email, lrn, sex, date_of_birth, religion, contact_number,
+                                 address, house_street, barangay, municipality, province,
+                                 father_name, mother_name, guardian_name, guardian_relationship,
+                                 grade_level, section, track, curriculum, program, status,
+                                 created_at, updated_at, last_login
                           FROM users WHERE id = ? AND role = 'student'");
     $stmt->execute([$userId]);
     $student = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -383,6 +388,15 @@ function getStudent(PDO $db): void {
                                ORDER BY e.status ASC, e.enrolled_at DESC");
     $classStmt->execute([$userId]);
     $student['enrolled_classes'] = $classStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $parentStmt = $db->prepare("SELECT p.id, p.reference_code, p.first_name, p.middle_name, p.last_name,
+                                      p.email, p.contact_number, p.status, ps.relationship
+                               FROM parent_students ps
+                               JOIN users p ON p.id = ps.parent_id AND p.role = 'parent'
+                               WHERE ps.student_id = ?
+                               ORDER BY p.last_name, p.first_name");
+    $parentStmt->execute([$userId]);
+    $student['linked_parents'] = $parentStmt->fetchAll(PDO::FETCH_ASSOC);
 
     echo json_encode(['success' => true, 'student' => $student]);
 }

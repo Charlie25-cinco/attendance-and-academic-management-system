@@ -1,7 +1,7 @@
 # Product Specification: Balingasag SHS AMS
 
 **System Name:** Balingasag Senior High School - Attendance and Academic Management System (BSHS AMS)  
-**Document Version:** 3.0.0
+**Document Version:** 3.0.1
 **Standard Compliance:** ISO/IEC/IEEE 29148:2018 (Systems and software engineering — Life cycle processes — Requirements engineering)  
 **Status:** Approved  
 
@@ -79,6 +79,17 @@ The system serves five primary user roles:
 - **Priority:** High
 - **Acceptance criteria:** Teacher controls cycle through three statuses; server requests reject any other status; summaries and SF2 exports contain no Cutting category or mark.
 - **Traceability:** `database/schema.sql`, `teacher/teacher_Attendance.php`, `teacher/teacher_Action.php`, `src/Export/Sf2Exporter.php`, and `tests/Sf2ExporterTest.php`.
+
+### 2.5 Admin Learner Information Requirement
+
+- **Requirement ID:** REQ-015
+- **Category:** System requirement / learner records and data privacy
+- **Description:** The system shall provide authenticated Administrators with a read-only complete learner profile in Admin Enrollments while excluding authentication secrets from the response.
+- **Rationale:** Administrators require the full stored student record for enrollment administration, but student records and account credentials require separate access boundaries.
+- **Source:** Developer-reported Admin student-information visibility issue, October 9, 2026
+- **Priority:** High
+- **Acceptance criteria:** The student-details view groups identity, academic placement, contact and address, family and guardian, linked parent account, enrollment history, and account activity information; the modal remains usable on desktop and mobile screens; Admin Manage Users links to Student Records without listing students; the response contains no password, token-version, reset-token, or authentication-secret fields.
+- **Traceability:** `admin/admin_Enrollments.php`, `admin/admin_Enrollments_Action.php`, `admin/admin_Users.php`, `includes/modals/enrollment_modals.php`, and `tests/AdminUsersStudentExclusionAndEnrollmentsRefCodeTest.php`.
 
 ---
 

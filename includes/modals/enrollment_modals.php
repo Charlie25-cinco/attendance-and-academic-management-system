@@ -195,14 +195,14 @@
 </div>
 
 <!-- View Student Modal -->
-<div class="modal fade" id="viewStudentModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
+<div class="modal fade" id="viewStudentModal" tabindex="-1" aria-labelledby="viewStudentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
         <div class="modal-content app-modal-content">
             <div class="modal-header app-modal-header">
                 <div>
                     <div class="app-modal-kicker"><i class="bi bi-person-circle"></i>Profile</div>
-                    <h5 class="modal-title mb-0">Student Details</h5>
-                    <p class="app-modal-subtitle">View student profile and enrolled classes.</p>
+                    <h5 class="modal-title mb-0" id="viewStudentModalLabel">Student Details</h5>
+                    <p class="app-modal-subtitle">Complete learner profile, family contacts, and enrollment history.</p>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -212,8 +212,10 @@
                     <h5 class="mt-3 mb-1" id="viewFullName"></h5>
                     <span class="role-badge role-student">Student</span>
                 </div>
-                <div class="app-modal-panel">
-                    <div class="app-modal-panel-title"><i class="bi bi-person-badge"></i>Student Snapshot</div>
+                <div class="row g-3">
+                    <div class="col-12 col-lg-6">
+                <div class="app-modal-panel h-100">
+                    <div class="app-modal-panel-title"><i class="bi bi-person-badge"></i>Identity</div>
                     <div class="app-modal-detail-list">
                         <div class="app-modal-detail-row">
                             <div class="app-modal-detail-label">LRN</div>
@@ -232,6 +234,21 @@
                             <div class="app-modal-detail-value" id="viewSex"></div>
                         </div>
                         <div class="app-modal-detail-row">
+                            <div class="app-modal-detail-label">Date of Birth</div>
+                            <div class="app-modal-detail-value" id="viewDateOfBirth"></div>
+                        </div>
+                        <div class="app-modal-detail-row">
+                            <div class="app-modal-detail-label">Religion</div>
+                            <div class="app-modal-detail-value" id="viewReligion"></div>
+                        </div>
+                    </div>
+                </div>
+                    </div>
+                    <div class="col-12 col-lg-6">
+                <div class="app-modal-panel h-100">
+                    <div class="app-modal-panel-title"><i class="bi bi-mortarboard"></i>Academic Placement</div>
+                    <div class="app-modal-detail-list">
+                        <div class="app-modal-detail-row">
                             <div class="app-modal-detail-label">Grade Level</div>
                             <div class="app-modal-detail-value" id="viewGradeLevel"></div>
                         </div>
@@ -244,13 +261,89 @@
                             <div class="app-modal-detail-value" id="viewTrack"></div>
                         </div>
                         <div class="app-modal-detail-row">
+                            <div class="app-modal-detail-label">Curriculum</div>
+                            <div class="app-modal-detail-value" id="viewCurriculum"></div>
+                        </div>
+                        <div class="app-modal-detail-row">
                             <div class="app-modal-detail-label">Status</div>
                             <div class="app-modal-detail-value"><span id="viewStatus" class="status-badge"></span></div>
                         </div>
+                    </div>
+                </div>
+                    </div>
+                    <div class="col-12 col-lg-6">
+                <div class="app-modal-panel h-100">
+                    <div class="app-modal-panel-title"><i class="bi bi-geo-alt"></i>Contact &amp; Address</div>
+                    <div class="app-modal-detail-list">
                         <div class="app-modal-detail-row">
-                            <div class="app-modal-detail-label">Enrolled Classes</div>
-                            <div class="app-modal-detail-value" id="viewEnrolledClasses"></div>
+                            <div class="app-modal-detail-label">Contact Number</div>
+                            <div class="app-modal-detail-value" id="viewStudentContact"></div>
                         </div>
+                        <div class="app-modal-detail-row">
+                            <div class="app-modal-detail-label">House / Street</div>
+                            <div class="app-modal-detail-value" id="viewHouseStreet"></div>
+                        </div>
+                        <div class="app-modal-detail-row">
+                            <div class="app-modal-detail-label">Barangay</div>
+                            <div class="app-modal-detail-value" id="viewBarangay"></div>
+                        </div>
+                        <div class="app-modal-detail-row">
+                            <div class="app-modal-detail-label">Municipality</div>
+                            <div class="app-modal-detail-value" id="viewMunicipality"></div>
+                        </div>
+                        <div class="app-modal-detail-row">
+                            <div class="app-modal-detail-label">Province</div>
+                            <div class="app-modal-detail-value" id="viewProvince"></div>
+                        </div>
+                        <div class="app-modal-detail-row">
+                            <div class="app-modal-detail-label">Complete Address</div>
+                            <div class="app-modal-detail-value" id="viewStudentAddress"></div>
+                        </div>
+                    </div>
+                </div>
+                    </div>
+                    <div class="col-12 col-lg-6">
+                <div class="app-modal-panel h-100">
+                    <div class="app-modal-panel-title"><i class="bi bi-people"></i>Family &amp; Guardian</div>
+                    <div class="app-modal-detail-list">
+                        <div class="app-modal-detail-row">
+                            <div class="app-modal-detail-label">Father</div>
+                            <div class="app-modal-detail-value" id="viewFatherName"></div>
+                        </div>
+                        <div class="app-modal-detail-row">
+                            <div class="app-modal-detail-label">Mother</div>
+                            <div class="app-modal-detail-value" id="viewMotherName"></div>
+                        </div>
+                        <div class="app-modal-detail-row">
+                            <div class="app-modal-detail-label">Guardian</div>
+                            <div class="app-modal-detail-value" id="viewGuardianName"></div>
+                        </div>
+                        <div class="app-modal-detail-row">
+                            <div class="app-modal-detail-label">Relationship</div>
+                            <div class="app-modal-detail-value" id="viewGuardianRelationship"></div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <div class="app-modal-detail-label mb-2">Linked Parent Accounts</div>
+                        <div id="viewLinkedParents"></div>
+                    </div>
+                </div>
+                    </div>
+                    <div class="col-12">
+                <div class="app-modal-panel">
+                    <div class="app-modal-panel-title"><i class="bi bi-journal-bookmark"></i>Enrollment History</div>
+                    <div id="viewEnrolledClasses"></div>
+                </div>
+                    </div>
+                    <div class="col-12">
+                <div class="app-modal-panel">
+                    <div class="app-modal-panel-title"><i class="bi bi-shield-check"></i>Account Activity</div>
+                    <div class="row g-3">
+                        <div class="col-12 col-md-4"><div class="app-modal-detail-label">Created</div><div class="app-modal-detail-value" id="viewStudentCreatedAt"></div></div>
+                        <div class="col-12 col-md-4"><div class="app-modal-detail-label">Last Updated</div><div class="app-modal-detail-value" id="viewStudentUpdatedAt"></div></div>
+                        <div class="col-12 col-md-4"><div class="app-modal-detail-label">Last Login</div><div class="app-modal-detail-value" id="viewStudentLastLogin"></div></div>
+                    </div>
+                </div>
                     </div>
                 </div>
             </div>

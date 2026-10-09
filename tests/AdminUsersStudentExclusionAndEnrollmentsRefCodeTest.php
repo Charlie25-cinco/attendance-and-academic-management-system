@@ -22,13 +22,19 @@ final class AdminUsersStudentExclusionAndEnrollmentsRefCodeTest extends TestCase
             first_name TEXT,
             middle_name TEXT,
             last_name TEXT,
+            name_extension TEXT,
             sex TEXT,
+            religion TEXT,
             contact_number TEXT,
             address TEXT,
             house_street TEXT,
             barangay TEXT,
             municipality TEXT,
             province TEXT,
+            father_name TEXT,
+            mother_name TEXT,
+            guardian_name TEXT,
+            guardian_relationship TEXT,
             date_of_birth TEXT,
             grade_level INTEGER,
             section TEXT,
@@ -99,6 +105,10 @@ final class AdminUsersStudentExclusionAndEnrollmentsRefCodeTest extends TestCase
 
         // Verify role totals query in Manage Users counts only teachers and parents
         $this->assertStringNotContainsString("SUM(CASE WHEN role = 'student'", $usersPhp);
+
+        // Student profiles remain discoverable from their dedicated Admin workspace.
+        $this->assertStringContainsString('href="admin_Enrollments.php"', $usersPhp);
+        $this->assertStringContainsString('Student Records', $usersPhp);
     }
 
     public function testManageUsersActionStrictlyBlocksAllStudentOperations(): void
@@ -159,10 +169,28 @@ final class AdminUsersStudentExclusionAndEnrollmentsRefCodeTest extends TestCase
         $db = $this->createSqliteDb();
 
         $now = date('Y-m-d H:i:s');
-        $stmt = $db->prepare("INSERT INTO users (reference_code, email, lrn, first_name, middle_name, last_name, sex, grade_level, section, track, role, status, created_at)
-                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'student', 'active', ?)");
-        $stmt->execute(['STU-2026-0042', 'pedro.reyes@students.balingasag.edu.ph', '123456789099', 'Pedro', 'Cruz', 'Reyes', 'male', 11, 'HUMILITY', 'academic', $now]);
+        $stmt = $db->prepare("INSERT INTO users (
+                                reference_code, email, lrn, first_name, middle_name, last_name, name_extension,
+                                sex, date_of_birth, religion, contact_number, address, house_street, barangay,
+                                municipality, province, father_name, mother_name, guardian_name, guardian_relationship,
+                                grade_level, section, track, curriculum, program, role, status, created_at, updated_at
+                              ) VALUES (
+                                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'student', 'active', ?, ?
+                              )");
+        $stmt->execute([
+            'STU-2026-0042', 'pedro.reyes@students.balingasag.edu.ph', '123456789099', 'Pedro', 'Cruz', 'Reyes', 'Jr.',
+            'male', '2009-03-14', 'Catholic', '09123456789', 'Poblacion, Balingasag, Misamis Oriental', 'Rizal Street',
+            'Poblacion', 'Balingasag', 'Misamis Oriental', 'Roberto Reyes', 'Elena Reyes', 'Elena Reyes', 'Mother',
+            11, 'HUMILITY', 'academic', 'strengthened_shs', 'Academic Track', $now, $now,
+        ]);
         $studentId = (int)$db->lastInsertId();
+
+        $parentStmt = $db->prepare("INSERT INTO users (reference_code, email, first_name, last_name, contact_number, role, status, created_at)
+                                    VALUES (?, ?, ?, ?, ?, 'parent', 'active', ?)");
+        $parentStmt->execute(['PAR-2026-0007', 'elena.reyes@example.test', 'Elena', 'Reyes', '09987654321', $now]);
+        $parentId = (int)$db->lastInsertId();
+        $db->prepare("INSERT INTO parent_students (parent_id, student_id, relationship) VALUES (?, ?, 'Mother')")
+           ->execute([$parentId, $studentId]);
 
         $db->exec("INSERT INTO classes (class_name, grade_level, section, track, status) VALUES ('General Mathematics', 11, 'HUMILITY', 'academic', 'active')");
         $classId = (int)$db->lastInsertId();
@@ -171,7 +199,12 @@ final class AdminUsersStudentExclusionAndEnrollmentsRefCodeTest extends TestCase
            ->execute([$studentId, $classId, $now]);
 
         // Query as in getStudent
-        $stmt = $db->prepare("SELECT id, reference_code, first_name, middle_name, last_name, email, lrn, sex, grade_level, section, track, status, created_at
+        $stmt = $db->prepare("SELECT id, reference_code, first_name, middle_name, last_name, name_extension,
+                                     email, lrn, sex, date_of_birth, religion, contact_number,
+                                     address, house_street, barangay, municipality, province,
+                                     father_name, mother_name, guardian_name, guardian_relationship,
+                                     grade_level, section, track, curriculum, program, status,
+                                     created_at, updated_at, last_login
                               FROM users WHERE id = ? AND role = 'student'");
         $stmt->execute([$studentId]);
         $student = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -180,6 +213,11 @@ final class AdminUsersStudentExclusionAndEnrollmentsRefCodeTest extends TestCase
         $this->assertSame('STU-2026-0042', $student['reference_code']);
         $this->assertSame('123456789099', $student['lrn']);
         $this->assertSame('Pedro', $student['first_name']);
+        $this->assertSame('Jr.', $student['name_extension']);
+        $this->assertSame('2009-03-14', $student['date_of_birth']);
+        $this->assertSame('Rizal Street', $student['house_street']);
+        $this->assertSame('Elena Reyes', $student['guardian_name']);
+        $this->assertSame('strengthened_shs', $student['curriculum']);
 
         // Enrolled classes query
         $classStmt = $db->prepare("SELECT c.class_name, e.status as enrollment_status
@@ -192,6 +230,18 @@ final class AdminUsersStudentExclusionAndEnrollmentsRefCodeTest extends TestCase
         $this->assertCount(1, $classes);
         $this->assertSame('General Mathematics', $classes[0]['class_name']);
         $this->assertSame('enrolled', $classes[0]['enrollment_status']);
+
+        $linkedParentStmt = $db->prepare("SELECT p.reference_code, p.first_name, p.last_name, p.email,
+                                                p.contact_number, p.status, ps.relationship
+                                         FROM parent_students ps
+                                         JOIN users p ON p.id = ps.parent_id AND p.role = 'parent'
+                                         WHERE ps.student_id = ?");
+        $linkedParentStmt->execute([$studentId]);
+        $linkedParents = $linkedParentStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $this->assertCount(1, $linkedParents);
+        $this->assertSame('PAR-2026-0007', $linkedParents[0]['reference_code']);
+        $this->assertSame('Mother', $linkedParents[0]['relationship']);
     }
 
     public function testEnrollmentModalsAndTableMarkupContainReferenceCodeElements(): void
@@ -199,9 +249,20 @@ final class AdminUsersStudentExclusionAndEnrollmentsRefCodeTest extends TestCase
         $modalsPhp = file_get_contents(__DIR__ . '/../includes/modals/enrollment_modals.php');
         $this->assertIsString($modalsPhp);
 
-        // View Student Modal has #viewRefCode and #viewLrn
+        // View Student Modal exposes the complete, responsive, scrollable profile workspace.
         $this->assertStringContainsString('id="viewRefCode"', $modalsPhp);
         $this->assertStringContainsString('id="viewLrn"', $modalsPhp);
+        $this->assertStringContainsString('modal-dialog-scrollable modal-xl', $modalsPhp);
+        $this->assertStringContainsString('aria-labelledby="viewStudentModalLabel"', $modalsPhp);
+        foreach ([
+            'viewDateOfBirth', 'viewReligion', 'viewCurriculum', 'viewStudentContact',
+            'viewHouseStreet', 'viewBarangay', 'viewMunicipality', 'viewProvince',
+            'viewStudentAddress', 'viewFatherName', 'viewMotherName', 'viewGuardianName',
+            'viewGuardianRelationship', 'viewLinkedParents', 'viewStudentCreatedAt',
+            'viewStudentUpdatedAt', 'viewStudentLastLogin',
+        ] as $elementId) {
+            $this->assertStringContainsString('id="' . $elementId . '"', $modalsPhp);
+        }
 
         // Edit Student Modal has #editReferenceCode (readonly) and #editLrn
         $this->assertStringContainsString('id="editReferenceCode"', $modalsPhp);
@@ -219,9 +280,27 @@ final class AdminUsersStudentExclusionAndEnrollmentsRefCodeTest extends TestCase
 
         // viewStudent sets viewRefCode
         $this->assertStringContainsString("document.getElementById('viewRefCode').textContent = s.reference_code", $enrollmentsPhp);
+        $this->assertStringContainsString("setStudentDetail('viewGuardianName', s.guardian_name)", $enrollmentsPhp);
+        $this->assertStringContainsString("document.getElementById('viewLinkedParents')", $enrollmentsPhp);
 
         // editStudent sets editReferenceCode
         $this->assertStringContainsString("document.getElementById('editReferenceCode')", $enrollmentsPhp);
+    }
+
+    public function testStudentDetailResponseExcludesAuthenticationSecrets(): void
+    {
+        $actionPhp = file_get_contents(__DIR__ . '/../admin/admin_Enrollments_Action.php');
+        $this->assertIsString($actionPhp);
+
+        $start = strpos($actionPhp, 'function getStudent(PDO $db): void');
+        $end = strpos($actionPhp, 'function updateStudent(PDO $db): void');
+        $this->assertNotFalse($start);
+        $this->assertNotFalse($end);
+
+        $getStudentSource = substr($actionPhp, (int)$start, (int)$end - (int)$start);
+        $this->assertStringContainsString("\$student['linked_parents']", $getStudentSource);
+        $this->assertStringNotContainsString('password', strtolower($getStudentSource));
+        $this->assertStringNotContainsString('token', strtolower($getStudentSource));
     }
 }
 

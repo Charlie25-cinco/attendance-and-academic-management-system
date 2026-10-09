@@ -30,7 +30,7 @@ This document acts as the primary entry point for AI agents and developers. Dedi
 
 - [README.md](file:///c:/laragon/www/attendance-and-academic-management-system/README.md) — Standard project documentation, environment setup, and CLI usage.
 - [AGENTS.md](file:///c:/laragon/www/attendance-and-academic-management-system/AGENTS.md) — Operational guidelines, coding standards, and security constraints.
-- [docs/PRODUCT_SPEC.md](file:///c:/laragon/www/attendance-and-academic-management-system/docs/PRODUCT_SPEC.md) — Product specifications, functional requirements (REQ-001..REQ-010), and user persona workflows.
+- [docs/PRODUCT_SPEC.md](file:///c:/laragon/www/attendance-and-academic-management-system/docs/PRODUCT_SPEC.md) — Product specifications, functional requirements (REQ-001..REQ-015), and user persona workflows.
 - [docs/SYSTEM_FEATURES.md](file:///c:/laragon/www/attendance-and-academic-management-system/docs/SYSTEM_FEATURES.md) — Comprehensive system features, DepEd compliance breakdown, and research paper technical specifications.
 - [docs/ARCHITECTURE.md](file:///c:/laragon/www/attendance-and-academic-management-system/docs/ARCHITECTURE.md) — Technical architecture, PSR-4 namespaces, security model, RBAC matrix, and Wasmer deployment setup.
 - [CHANGELOG.md](file:///c:/laragon/www/attendance-and-academic-management-system/CHANGELOG.md) — Semantic versioning changelog history.
@@ -74,6 +74,7 @@ These operational notes apply ISO/IEC/IEEE 29148 clarity and traceability princi
 - Protected system-account repair may use `composer run seed:admin`. Fresh or reset database-dashboard setup must use `composer run database:setup-sql` and import the ignored `database/reset_and_setup.local.sql`; it combines reset, canonical schema, baseline data, and Admin/Principal provisioning. Delete it after use and never commit generated hashes.
 - `DEFAULT_NEW_USER_PASSWORD` controls the initial password for every role and must be strong, stored only in local/hosting secrets, and replaced by each user during first login.
 - Admin may view the protected Principal account but must never create, edit, reset, activate/deactivate, or archive it through web or API user-management paths. Principal profile/password changes remain self-service, with deployment-operator reseeding reserved for recovery.
+- Student accounts must remain excluded from Admin Manage Users and managed through Admin Enrollments. The Admin student-details response may expose educational, contact, and guardian information required for learner-record administration, but it must never return password hashes, token versions, reset tokens, or other authentication secrets.
 - API first-login password changes require the temporary token returned by the login endpoint.
 - Web login, remember-me auto-login, and API login must force password setup while a user still matches `DEFAULT_NEW_USER_PASSWORD`.
 - Shared profile modal updates must persist email/session-visible fields through the profile API and keep password visibility toggles available on password inputs.
