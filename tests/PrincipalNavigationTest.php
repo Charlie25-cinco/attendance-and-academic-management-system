@@ -34,24 +34,20 @@ final class PrincipalNavigationTest extends TestCase
         self::assertFileDoesNotExist(APP_ROOT . '/includes/principal-report-card-page.php');
     }
 
-    public function testPrincipalDashboardPrioritizesWorkflowAndMonitoringShortcuts(): void
+    public function testPrincipalDashboardUsesSharedLayoutWithFourWorkflowTotals(): void
     {
         $dashboard = (string)file_get_contents(APP_ROOT . '/principal/principal.php');
-        $styles = (string)file_get_contents(APP_ROOT . '/assets/css/role.css');
 
-        foreach (['Pending endorsement', 'Awaiting Admin', 'Admin released', 'Returned / withdrawn'] as $metric) {
-            self::assertStringContainsString("'label' => '$metric'", $dashboard);
+        foreach (['Pending endorsement', 'Awaiting Admin', 'Admin released', 'Returned / withdrawn'] as $label) {
+            self::assertStringContainsString(">$label<", $dashboard);
         }
 
-        foreach (['principal_Subject_Grades.php', 'principal_Academic_Monitoring.php', 'principal_Attendance_Monitoring.php', 'principal_Activity_Logs.php'] as $destination) {
-            self::assertStringContainsString("'href' => '$destination'", $dashboard);
-        }
-
-        self::assertStringContainsString('principal-workflow-step', $dashboard);
-        self::assertStringContainsString('principal-readiness', $dashboard);
-        self::assertStringContainsString('principal-decision-list', $dashboard);
-        self::assertStringContainsString('@media (prefers-reduced-motion: reduce)', $styles);
-        self::assertStringContainsString('body.dark-mode .principal-workflow li.is-principal', $styles);
+        self::assertStringContainsString('href="principal_Released.php"', $dashboard);
+        self::assertSame(4, substr_count($dashboard, 'content-card principal-stat-card'));
+        self::assertStringContainsString('admin-hero admin-hero-compact mb-4', $dashboard);
+        self::assertStringNotContainsString('principal-quick-links', $dashboard);
+        self::assertStringNotContainsString('principal-workflow-step', $dashboard);
+        self::assertStringNotContainsString('principal-readiness', $dashboard);
     }
 
     public function testEveryPrincipalDestinationUsesReviewPermission(): void

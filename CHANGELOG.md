@@ -2,6 +2,14 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v3.1.3 — 2026-10-09
+
+### Fixed
+
+- Restored the Principal dashboard to the portal's established shared hero, card, table, and recent-decision layout after the v3.1.2 redesign appeared visually out of place.
+- Retained the useful Admin-released total as a fourth responsive summary card without adding a separate dashboard-only design system.
+- Removed the oversized Principal dashboard-specific workflow, shortcut, readiness, timeline, responsive, and dark-mode style layer introduced in v3.1.2.
+
 ## v3.1.2 — 2026-10-09
 
 ### Changed
