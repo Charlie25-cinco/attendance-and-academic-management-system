@@ -994,7 +994,8 @@ INSERT IGNORE INTO rbac_permissions (permission_key, label, category) VALUES
 ('messages.view', 'View Messages', 'messages'),
 ('messages.send', 'Send Messages', 'messages'),
 ('archives.view', 'View Archives', 'archives'),
-('archives.manage', 'Manage Archives', 'archives');
+('archives.manage', 'Manage Archives', 'archives'),
+('activity_logs.view_own', 'View Own Activity Logs', 'activity');
 
 INSERT IGNORE INTO rbac_role_permissions (role_id, permission_id, enabled)
 SELECT r.id, p.id, 1
@@ -1008,19 +1009,22 @@ WHERE r.role_key = 'admin'
            'attendance.view', 'attendance.manage', 'attendance.reports',
            'grades.view', 'grades.enter', 'classes.view', 'users.view',
            'announcements.view', 'reports.view', 'reports.export',
-           'messages.view', 'messages.send', 'archives.view'
+           'messages.view', 'messages.send', 'archives.view',
+           'activity_logs.view_own'
        )
    )
    OR (
        r.role_key = 'student'
        AND p.permission_key IN (
-           'attendance.view', 'grades.view', 'classes.view', 'announcements.view'
+           'attendance.view', 'grades.view', 'classes.view', 'announcements.view',
+           'activity_logs.view_own'
        )
    )
    OR (
        r.role_key = 'parent'
        AND p.permission_key IN (
            'attendance.view', 'grades.view', 'reports.view',
-           'announcements.view', 'messages.view', 'messages.send'
+           'announcements.view', 'messages.view', 'messages.send',
+           'activity_logs.view_own'
        )
    );

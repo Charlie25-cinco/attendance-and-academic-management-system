@@ -36,6 +36,8 @@ final class PwaPublicWebBaseUrlTest extends TestCase
         $_SERVER['SERVER_PORT'] = 443;
 
         $portals = [
+            '/principal/principal.php',
+            '/principal/principal_Activity_Logs.php',
             '/admin/admin.php',
             '/admin/admin_Attendance.php',
             '/teacher/teacher.php',
@@ -94,6 +96,7 @@ final class PwaPublicWebBaseUrlTest extends TestCase
         $_SERVER['SERVER_PORT'] = 80;
 
         $portals = [
+            '/attendance-and-academic-management-system/principal/principal.php',
             '/attendance-and-academic-management-system/admin/admin.php',
             '/attendance-and-academic-management-system/teacher/teacher_Attendance.php',
             '/attendance-and-academic-management-system/student/Student.php',

@@ -237,9 +237,6 @@ $page_title = 'Manage Users';
                     <p class="text-muted mb-0">Create staff and parent accounts, assign roles, and maintain secure user access.</p>
                 </div>
                 <div class="d-flex flex-wrap gap-2">
-                    <a class="btn btn-outline-primary" href="admin_Enrollments.php">
-                        <i class="bi bi-mortarboard me-2"></i>Student Records
-                    </a>
                     <?php if ($canCreateUsers): ?><button class="btn btn-primary-custom" data-bs-toggle="modal" data-bs-target="#addUserModal">
                         <i class="bi bi-person-plus me-2"></i>Add New User
                     </button><?php endif; ?>

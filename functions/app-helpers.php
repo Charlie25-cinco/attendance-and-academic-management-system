@@ -1315,6 +1315,7 @@ function ensureRbacRolesSeeded(PDO $db): void {
         ['settings.manage', 'Manage Settings', 'settings'],
         ['messages.view', 'View Messages', 'messages'],
         ['messages.send', 'Send Messages', 'messages'],
+        ['activity_logs.view_own', 'View Own Activity Logs', 'activity'],
         ['archives.view', 'View Archives', 'archives'],
         ['archives.manage', 'Manage Archives', 'archives'],
     ];
@@ -1329,12 +1330,14 @@ function ensureRbacRolesSeeded(PDO $db): void {
         'announcements.view',
         'reports.view', 'reports.export',
         'messages.view', 'messages.send',
+        'activity_logs.view_own',
         'archives.view',
     ];
-    $studentPerms = ['attendance.view', 'grades.view', 'classes.view', 'announcements.view'];
+    $studentPerms = ['attendance.view', 'grades.view', 'classes.view', 'announcements.view', 'activity_logs.view_own'];
     $parentPerms = [
         'attendance.view', 'grades.view', 'reports.view', 'announcements.view',
         'messages.view', 'messages.send',
+        'activity_logs.view_own',
     ];
 
     $roleMap = [
@@ -1506,6 +1509,7 @@ function permissionForScript(string $scriptName): string {
         'teacher_reports_action.php' => 'reports.view',
         'teacher_advisory.php' => 'grades.view',
         'teacher_announcements.php' => 'announcements.view',
+        'teacher_activity_logs.php' => 'activity_logs.view_own',
         'teacher_archives.php' => 'archives.view',
         'teacher_chat.php' => 'messages.view',
         'teacher_chat_action.php' => 'messages.view',
@@ -1519,11 +1523,13 @@ function permissionForScript(string $scriptName): string {
         'student_classes.php' => 'classes.view',
         'student_report_card.php' => 'grades.view',
         'student_announcements.php' => 'announcements.view',
+        'student_activity_logs.php' => 'activity_logs.view_own',
         'student_action.php' => 'classes.view',
         'parent.php' => 'reports.view',
         'parent_progress.php' => 'grades.view',
         'parent_report_card.php' => 'grades.view',
         'parent_announcements.php' => 'announcements.view',
+        'parent_activity_logs.php' => 'activity_logs.view_own',
         'parent_chat.php' => 'messages.view',
         'parent_chat_action.php' => 'messages.view',
     ];

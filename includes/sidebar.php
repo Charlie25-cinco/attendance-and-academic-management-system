@@ -46,6 +46,7 @@ $sidebar_menus = [
         ['id' => 'announcements', 'icon' => 'bi-megaphone', 'label' => 'Announcements', 'link' => 'teacher_Announcements.php'],
         ['id' => 'chat', 'icon' => 'bi-chat-dots', 'label' => 'Messages', 'link' => 'teacher_Chat.php'],
         ['id' => 'reports', 'icon' => 'bi-graph-up', 'label' => 'Reports', 'link' => 'teacher_Reports.php'],
+        ['id' => 'activity_logs', 'icon' => 'bi-clock-history', 'label' => 'My Activity', 'link' => 'teacher_Activity_Logs.php'],
         ['id' => 'archives', 'icon' => 'bi-archive', 'label' => 'Archives', 'link' => 'teacher_Archives.php'],
     ],
     'student' => [
@@ -55,6 +56,7 @@ $sidebar_menus = [
         ['id' => 'classes', 'icon' => 'bi-journal-bookmark', 'label' => 'Classes', 'link' => 'Student_Classes.php'],
         ['id' => 'report_card', 'icon' => 'bi-file-earmark-text', 'label' => 'Report Card', 'link' => 'Student_Report_Card.php'],
         ['id' => 'announcements', 'icon' => 'bi-megaphone', 'label' => 'Announcements', 'link' => 'Student_Announcements.php'],
+        ['id' => 'activity_logs', 'icon' => 'bi-clock-history', 'label' => 'My Activity', 'link' => 'Student_Activity_Logs.php'],
     ],
     'parent' => [
         ['id' => 'dashboard', 'icon' => 'bi-speedometer2', 'label' => 'Dashboard', 'link' => 'Parent.php'],
@@ -62,6 +64,7 @@ $sidebar_menus = [
         ['id' => 'report_card', 'icon' => 'bi-file-earmark-text', 'label' => 'Report Card', 'link' => 'Parent_Report_Card.php'],
         ['id' => 'announcements', 'icon' => 'bi-megaphone', 'label' => 'Announcements', 'link' => 'Parent_Announcements.php'],
         ['id' => 'chat', 'icon' => 'bi-chat-dots', 'label' => 'Messages', 'link' => 'Parent_Chat.php'],
+        ['id' => 'activity_logs', 'icon' => 'bi-clock-history', 'label' => 'My Activity', 'link' => 'Parent_Activity_Logs.php'],
     ],
 ];
 

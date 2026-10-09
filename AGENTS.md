@@ -79,6 +79,7 @@ These operational notes apply ISO/IEC/IEEE 29148 clarity and traceability princi
 - Web login, remember-me auto-login, and API login must force password setup while a user still matches `DEFAULT_NEW_USER_PASSWORD`.
 - Shared profile modal updates must persist email/session-visible fields through the profile API and keep password visibility toggles available on password inputs.
 - Admin Audit Logs must remain read-only and combine current `activity_logs`, historical `admin_audit_logs`, and `auth_login_logs`. New activity details must be privacy-sanitized and must not store passwords, secrets, tokens, full contact details, or notification message content.
+- Teacher, Student, and Parent My Activity pages must query `activity_logs` with both the current session `actor_user_id` and role. They must never expose another account, `auth_login_logs`, IP addresses, credentials, tokens, or sensitive detail fields.
 - RBAC permission enforcement is centralized from `functions/bootstrap.php`; keep the script-to-permission map in `functions/app-helpers.php` current when adding protected pages or action handlers.
 - Existing AJAX flows may pass CSRF by POST body, query string, or `X-CSRF-Token`; keep `requireCsrfToken()` compatible with all three unless those callers are migrated.
 - Browser camera access must remain limited to `teacher_Attendance.php` for QR attendance scanning; all other pages must keep camera access disabled through `Permissions-Policy`.

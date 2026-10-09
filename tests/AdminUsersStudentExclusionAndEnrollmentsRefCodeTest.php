@@ -106,9 +106,9 @@ final class AdminUsersStudentExclusionAndEnrollmentsRefCodeTest extends TestCase
         // Verify role totals query in Manage Users counts only teachers and parents
         $this->assertStringNotContainsString("SUM(CASE WHEN role = 'student'", $usersPhp);
 
-        // Student profiles remain discoverable from their dedicated Admin workspace.
-        $this->assertStringContainsString('href="admin_Enrollments.php"', $usersPhp);
-        $this->assertStringContainsString('Student Records', $usersPhp);
+        // Manage Users must not duplicate the dedicated Enrollments navigation.
+        $this->assertStringNotContainsString('href="admin_Enrollments.php"', $usersPhp);
+        $this->assertStringNotContainsString('Student Records', $usersPhp);
     }
 
     public function testManageUsersActionStrictlyBlocksAllStudentOperations(): void

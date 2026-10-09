@@ -111,7 +111,7 @@ The platform provides a centralized, role-based ecosystem connecting the **Princ
 ---
 
 ### 3.3 Governance, Auditing & Administrative Tools
-- **Role-Aware Activity Trail (`activity_logs`):** Logs critical Principal, Admin, and Teacher mutations with actor role, target, sanitized metadata, IP address, and timestamp. Legacy `admin_audit_logs` remains visible as historical data.
+- **Role-Aware Activity Trail (`activity_logs`):** Logs critical role-aware mutations with actor role, target, sanitized metadata, IP address, and timestamp. Principal/Admin monitoring retains broader read-only oversight, while Teacher, Student, and Parent My Activity pages return only the signed-in account's records and omit IP and sensitive metadata. Legacy `admin_audit_logs` remains visible only in administrative history.
 - **Authentication Login Logs (`auth_login_logs`):** Tracks successful and failed login attempts across the platform for forensic auditing.
 - **Soft-Delete & Archive Restoration:** Safely archives deleted users, enrollments, classes, and sections into an archive repository, allowing one-click administrative restoration.
 - **Universal Live Search & Filter:** Debounced, client-side and server-side search bars with quick-clear (`x`) buttons across all tables, modal lists, and enrollment registers.
@@ -145,7 +145,8 @@ The platform provides a centralized, role-based ecosystem connecting the **Princ
 | **Upload Learning Materials** | No | No | Yes | No | No |
 | **Download Enrolled Subject Materials** | No | No | Own uploads | Yes | No |
 | **Web Push Notifications** | Yes | Yes | Yes | Yes | Yes |
-| **System Activity Logs & Archive Recovery** | No | Yes | No | No | No |
+| **System-Wide Activity Logs & Archive Recovery** | Activity monitoring only | Yes | No | No | No |
+| **Self-Only Activity History** | Covered by monitoring | Covered by audit logs | Yes | Yes | Yes |
 
 ---
 

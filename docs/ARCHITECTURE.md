@@ -86,6 +86,7 @@ The application source code lives under the `BshsAms\` namespace in `src/`:
 ### 2.6 Notification and Audit Components
 - **In-app/Web Push delivery**: `appDispatchNotification()` persists user-visible notifications before optional browser push delivery; push failures do not roll back the originating transaction.
 - **`BshsAms\Audit\ActivityLogger`**: Records critical cross-role mutations in `activity_logs` after recursively redacting sensitive metadata.
+- **`BshsAms\Audit\OwnActivityLogQuery`**: Provides paginated Teacher, Student, and Parent history while enforcing the current actor ID and role in every query and excluding IP/login diagnostic fields.
 - **`BshsAms\Grade\ReportCardReview`**: Enforces Principal-only report-card endorsement/return decisions and verified-grade prerequisites.
 - **`BshsAms\Grade\AdminReportCardRelease`**: Enforces Admin-only final release, return, and withdrawal decisions after Principal endorsement.
 - **`BshsAms\Grade\PrincipalReportCardQuery`**: Supplies the Principal dashboard, endorsement queue, Admin-awaiting and released registers, and activity-backed decision timeline.

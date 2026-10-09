@@ -79,6 +79,7 @@ This operational documentation applies ISO/IEC/IEEE 29148 clarity and traceabili
 - Logout requires the session CSRF token, preventing cross-site drive-by logout links.
 - API sync routes use `API_SYNC_SECRET`.
 - Admin Audit Logs show role-aware critical activity from `activity_logs`, historical admin records from `admin_audit_logs`, and recent sign-in attempts from `auth_login_logs`. Sensitive details are redacted before new activity records are stored.
+- Teacher, Student, and Parent portals provide a read-only My Activity page limited to the signed-in account's role-scoped `activity_logs` records. These pages never expose other users, sign-in diagnostics, IP addresses, credentials, tokens, or sensitive metadata.
 - In production, set `APP_ENV=production`, `API_AUTH_SECRET`, `API_SYNC_SECRET`, and a trusted `API_ALLOWED_ORIGIN`.
 - Set `APP_SESSION_DRIVER=database` in stateless hosting such as Wasmer so active PHP sessions are stored in the SQL database instead of local instance files.
 - `APP_SESSION_LIFETIME` and `APP_SESSION_IDLE_TIMEOUT` control how long an active web/PWA session can survive after closing and reopening; the example uses 24 hours, while remember-me tokens keep trusted devices signed in longer.
@@ -103,24 +104,24 @@ This operational documentation applies ISO/IEC/IEEE 29148 clarity and traceabili
 ### Admin
 
 - Users, sections, classes, enrollments, attendance, reports, archives, audit logs, announcements, final report-card release, SF1 import, and DepEd form exports from Reports.
-- Student accounts remain in Admin Enrollments rather than Manage Users; the eye action opens a read-only complete learner profile with identity, academic placement, address, family/guardian, linked-parent, enrollment, and account-activity information.
+- Student accounts remain in the dedicated Admin Enrollments sidebar workspace rather than Manage Users; the eye action opens a read-only complete learner profile with identity, academic placement, address, family/guardian, linked-parent, enrollment, and account-activity information.
 - Final release saves notifications for students, linked parents, the adviser, subject teachers, and the Principal before optional Web Push delivery.
 
 ### Teacher
 
-- Dashboard, advisory section, attendance, classes, grades, reports, announcements, archives, adviser-parent chat, and SF2 export from Reports.
+- Dashboard, advisory section, attendance, classes, grades, reports, announcements, archives, self-only activity history, adviser-parent chat, and SF2 export from Reports.
 - Created grade activities are visible to enrolled students and linked parents before scores are recorded.
 - Attendance recording creates saved in-app notifications for students and linked parents.
 - Teacher QR attendance scans are classified by `Asia/Manila` server time: scans before the scheduled start plus 15 minutes are present, while scans at or after that boundary are late. QR scanning is available only for today's attendance sheet.
 
 ### Student
 
-- Dashboard, attendance, classes, announcements, QR, and report card views.
+- Dashboard, attendance, classes, announcements, QR, report card views, and self-only activity history.
 - Classes includes grade activity status and recorded scores when available.
 
 ### Parent
 
-- Dashboard, linked student progress, report cards, announcements, and adviser chat.
+- Dashboard, linked student progress, report cards, announcements, adviser chat, and self-only activity history.
 - Progress includes grade activity status, recorded scores, and attendance notifications for linked students.
 
 ## Report Card Approval Pipeline
@@ -219,6 +220,7 @@ Attendance recording accepts only `present`, `absent`, and `late`. Additional ab
 ## RBAC
 
 - RBAC tables, default roles, permissions, and role mappings are included in `database/schema.sql`; runtime helpers only preserve compatibility and idempotently confirm those rows.
+- After updating an existing database for v3.1.0, reset and import the canonical schema (or apply its `activity_logs.view_own` permission and role mappings) before testing My Activity access.
 - Permission checks are enforced through `functions/bootstrap.php` using page mappings from `permissionForScript()` and handler-action mappings from `permissionForScriptAction()` in `functions/app-helpers.php`.
 - The Admin RBAC Control Panel is available from the admin sidebar.
 

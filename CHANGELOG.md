@@ -2,6 +2,31 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v3.1.1 — 2026-10-09
+
+### Fixed
+
+- Corrected shared Profile, Settings, and password-recovery URLs in the Principal portal by exposing and using the canonical application base URL, with a Principal-aware relative fallback.
+- Replaced raw JSON parser exceptions for non-JSON API responses with a clear HTTP-aware request error.
+- Added regression coverage for canonical base URL resolution across all five role portals and shared Profile/Settings routing.
+
+## v3.1.0 — 2026-10-09
+
+### Added
+
+- Added dedicated read-only My Activity pages for Teacher, Student, and Parent portals, with action/target search, date filters, pagination, responsive empty states, and sidebar navigation.
+- Added the `activity_logs.view_own` permission and default Teacher, Student, and Parent role mappings to the canonical schema and runtime RBAC seed.
+- Added ownership and privacy regression coverage for role-scoped activity history.
+
+### Changed
+
+- Restricted each My Activity query to the signed-in user's ID and role and excluded login diagnostics, IP addresses, credentials, tokens, and other sensitive metadata from its result and display fields.
+- Updated role, security, architecture, requirements, and database setup documentation for self-service activity history.
+
+### Removed
+
+- Removed the redundant Student Records shortcut from Admin Manage Users; student records remain available from the dedicated Enrollments sidebar page.
+
 ## v3.0.3 â€” 2026-10-09
 
 ### Fixed

@@ -305,6 +305,7 @@ if ($displayName === '') {
 ?>
 <script>
 window.APP_CSRF_TOKEN = <?php echo json_encode($csrfToken); ?>;
+window.APP_BASE_URL = <?php echo json_encode(rtrim(appPublicWebBaseUrl(), '/')); ?>;
 window.APP_PUSH_PUBLIC_KEY = <?php echo json_encode(PUSH_VAPID_PUBLIC_KEY); ?>;
 // Auto-attach CSRF token to same-origin action endpoints.
 (function() {

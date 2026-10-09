@@ -735,6 +735,7 @@ function appApiUrl(route) {
     } else {
       const path = (window.location && window.location.pathname) || "";
       const isSubfolder =
+        path.includes("/principal/") ||
         path.includes("/admin/") ||
         path.includes("/teacher/") ||
         path.includes("/student/") ||
@@ -747,6 +748,48 @@ function appApiUrl(route) {
   const url = `${base}/api/index.php?route=${encodeURIComponent(route)}`;
   const token = (typeof window !== "undefined" && window.APP_CSRF_TOKEN) || "";
   return token ? `${url}&csrf_token=${encodeURIComponent(token)}` : url;
+}
+
+function appReadJsonResponse(response, fallbackMessage = "Request failed") {
+  const invalidResponse = () => {
+    const status = response.status ? `HTTP ${response.status}` : "server error";
+    const error = new Error(
+      `${fallbackMessage} (${status}). The server returned an invalid response.`,
+    );
+    error.status = response.status;
+    return error;
+  };
+  let parsedBody;
+  if (typeof response.text === "function") {
+    parsedBody = response.text().then((body) => {
+      try {
+        return body ? JSON.parse(body) : {};
+      } catch (error) {
+        throw invalidResponse();
+      }
+    });
+  } else if (typeof response.json === "function") {
+    parsedBody = response.json().catch(() => {
+      throw invalidResponse();
+    });
+  } else {
+    parsedBody = Promise.reject(invalidResponse());
+  }
+
+  return parsedBody.then((data) => {
+    if (!response.ok || !data.ok) {
+      const requestError = new Error(data.message || fallbackMessage);
+      requestError.status = response.status;
+      requestError.data = data;
+      throw requestError;
+    }
+
+    return data;
+  });
+}
+
+if (typeof window !== "undefined") {
+  window.appReadJsonResponse = appReadJsonResponse;
 }
 
 function appFetchJson(route, options = {}) {
@@ -768,17 +811,7 @@ function appFetchJson(route, options = {}) {
       headers,
       credentials: "same-origin",
     }),
-  ).then((response) =>
-    response.json().then((data) => {
-      if (!response.ok || !data.ok) {
-        const error = new Error(data.message || "Request failed");
-        error.status = response.status;
-        error.data = data;
-        throw error;
-      }
-      return data;
-    }),
-  );
+  ).then((response) => appReadJsonResponse(response));
 }
 
 function updateNotificationState(action, id = 0) {

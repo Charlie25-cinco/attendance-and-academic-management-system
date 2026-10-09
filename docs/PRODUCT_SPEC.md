@@ -1,7 +1,7 @@
 # Product Specification: Balingasag SHS AMS
 
 **System Name:** Balingasag Senior High School - Attendance and Academic Management System (BSHS AMS)  
-**Document Version:** 3.0.3
+**Document Version:** 3.1.0
 **Standard Compliance:** ISO/IEC/IEEE 29148:2018 (Systems and software engineering — Life cycle processes — Requirements engineering)  
 **Status:** Approved  
 
@@ -88,7 +88,7 @@ The system serves five primary user roles:
 - **Rationale:** Administrators require the full stored student record for enrollment administration, but student records and account credentials require separate access boundaries.
 - **Source:** Developer-reported Admin student-information visibility issue, October 9, 2026
 - **Priority:** High
-- **Acceptance criteria:** The student-details view groups identity, academic placement, contact and address, family and guardian, linked parent account, enrollment history, and account activity information; the modal remains usable on desktop and mobile screens; Admin Manage Users links to Student Records without listing students; the response contains no password, token-version, reset-token, or authentication-secret fields.
+- **Acceptance criteria:** The student-details view groups identity, academic placement, contact and address, family and guardian, linked parent account, enrollment history, and account activity information; the modal remains usable on desktop and mobile screens; student records remain in the dedicated Admin Enrollments navigation and no Student Records shortcut appears in Manage Users; the response contains no password, token-version, reset-token, or authentication-secret fields.
 - **Traceability:** `admin/admin_Enrollments.php`, `admin/admin_Enrollments_Action.php`, `admin/admin_Users.php`, `includes/modals/enrollment_modals.php`, and `tests/AdminUsersStudentExclusionAndEnrollmentsRefCodeTest.php`.
 
 ### 2.6 Offline Reliability Requirement
@@ -112,6 +112,17 @@ The system serves five primary user roles:
 - **Priority:** High
 - **Acceptance criteria:** Notification dispatch returns failure when saved-notification persistence fails and does not attempt push for that failed delivery; Admin final release and its saved family/staff notifications commit or roll back together; device push occurs only after successful persistence and does not roll back an already committed primary event.
 - **Traceability:** `functions/app-helpers.php`, `src/Grade/AdminReportCardRelease.php`, `tests/NotificationDeliveryTest.php`, and `tests/PrincipalReportCardWorkflowTest.php`.
+
+### 2.8 Self-Service Activity History Requirement
+
+- **Requirement ID:** REQ-018
+- **Category:** System requirement / accountability and data privacy
+- **Description:** The system shall provide Teacher, Student, and Parent users with a read-only activity history restricted to records whose actor user ID and actor role match the current authenticated session.
+- **Rationale:** Users require transparent access to actions attributed to their own accounts without receiving school-wide audit authority or access to another person's data.
+- **Source:** Developer-requested activity-log access expansion, October 9, 2026
+- **Priority:** High
+- **Acceptance criteria:** Each of the three role sidebars opens a dedicated My Activity page; server queries always constrain both `actor_user_id` and `actor_role`; search and date filters cannot broaden that ownership boundary; results omit sign-in logs, IP addresses, credentials, tokens, and sensitive metadata; pages are read-only, responsive, keyboard accessible, and protected by `activity_logs.view_own`.
+- **Traceability:** `src/Audit/OwnActivityLogQuery.php`, `includes/own_activity_page.php`, `teacher/teacher_Activity_Logs.php`, `student/Student_Activity_Logs.php`, `parent/Parent_Activity_Logs.php`, `functions/app-helpers.php`, `database/schema.sql`, and `tests/OwnActivityLogsTest.php`.
 
 ---
 

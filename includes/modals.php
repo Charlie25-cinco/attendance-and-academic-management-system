@@ -308,8 +308,9 @@
     function profileApiUrl() {
         var token = window.APP_CSRF_TOKEN || '';
         var path = window.location.pathname;
-        var isSubfolder = (path.indexOf('/admin/') !== -1 || path.indexOf('/teacher/') !== -1 || path.indexOf('/student/') !== -1 || path.indexOf('/parent/') !== -1 || path.indexOf('/auth/') !== -1);
-        var apiPath = isSubfolder ? '../api/index.php' : 'api/index.php';
+        var isSubfolder = (path.indexOf('/principal/') !== -1 || path.indexOf('/admin/') !== -1 || path.indexOf('/teacher/') !== -1 || path.indexOf('/student/') !== -1 || path.indexOf('/parent/') !== -1 || path.indexOf('/auth/') !== -1);
+        var basePath = window.APP_BASE_URL ? window.APP_BASE_URL.replace(/\/$/, '') : (isSubfolder ? '..' : '.');
+        var apiPath = basePath + '/api/index.php';
         return apiPath + '?route=profile' + (token ? '&csrf_token=' + encodeURIComponent(token) : '');
     }
 
@@ -488,6 +489,9 @@
                 },
                 body: JSON.stringify(payload)
             }).then(function (response) {
+                if (typeof window.appReadJsonResponse === 'function') {
+                    return window.appReadJsonResponse(response, 'Profile update failed');
+                }
                 return response.json();
             }).then(function (data) {
                 if (!data.ok) {
@@ -530,8 +534,10 @@
         resetProfilePasswordBtn.addEventListener('click', function () {
             var emailInput = document.getElementById('profileEmail');
             var email = emailInput ? String(emailInput.value || '').trim() : '';
-            var isSubfolder = (window.location.pathname.indexOf('/admin/') !== -1 || window.location.pathname.indexOf('/teacher/') !== -1 || window.location.pathname.indexOf('/student/') !== -1 || window.location.pathname.indexOf('/parent/') !== -1);
-            var recoveryUrl = isSubfolder ? '../auth/forgot-password.php' : 'auth/forgot-password.php';
+            var recoveryPath = window.location.pathname;
+            var isSubfolder = (recoveryPath.indexOf('/principal/') !== -1 || recoveryPath.indexOf('/admin/') !== -1 || recoveryPath.indexOf('/teacher/') !== -1 || recoveryPath.indexOf('/student/') !== -1 || recoveryPath.indexOf('/parent/') !== -1);
+            var basePath = window.APP_BASE_URL ? window.APP_BASE_URL.replace(/\/$/, '') : (isSubfolder ? '..' : '.');
+            var recoveryUrl = basePath + '/auth/forgot-password.php';
             if (email) {
                 recoveryUrl += '?email=' + encodeURIComponent(email);
             }
