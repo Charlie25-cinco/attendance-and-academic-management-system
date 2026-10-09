@@ -2,6 +2,30 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v3.0.0 — 2026-10-09
+
+### Added
+
+- Added dedicated Principal subject-grade verification, academic monitoring, attendance monitoring, activity-log, and Admin-endorsed report-card pages.
+- Added an Admin final report-card release queue and `AdminReportCardRelease` service with audited release, return, and withdrawal decisions.
+- Added the `principal.monitoring.view` permission and complete RBAC route coverage for the new Principal and Admin pages.
+
+### Changed
+
+- Changed the academic workflow to Subject Teacher → Principal subject verification → Adviser compilation → Principal endorsement → Admin final release → Student/Parent viewing.
+- Reinterpreted existing compatibility statuses without adding runtime database migrations: `admin_verified` means Principal-verified subject grades, while `pending` means a Principal-endorsed report card awaiting Admin release.
+- Made Principal activity monitoring read-only and excluded login diagnostics, IP addresses, credentials, and security tokens from that view.
+- Updated notifications, portal labels, tests, and project documentation to match the new separation of duties.
+
+### Removed
+
+- Removed the Cutting attendance status from teacher controls, request validation, summaries, styling, roster mapping, and SF2 exports. Attendance now uses only Present, Absent, and Late.
+- Removed Principal final-release and withdrawal authority; those actions now belong exclusively to Admin.
+
+### Migration note
+
+- Reset and re-import `database/schema.sql` before production testing because existing workflow status values have new role semantics.
+
 ## v2.1.1 — 2026-10-09
 
 ### Fixed

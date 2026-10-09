@@ -6,16 +6,16 @@ use PDO;
 
 final class PrincipalReportCardQuery
 {
-    private const ALLOWED_STATUSES = ['submitted_admin', 'approved', 'rejected'];
+    private const ALLOWED_STATUSES = ['pending', 'submitted_admin', 'approved', 'rejected'];
 
     public function __construct(private PDO $db)
     {
     }
 
-    /** @return array{submitted_admin: int, approved: int, rejected: int} */
+    /** @return array{pending: int, submitted_admin: int, approved: int, rejected: int} */
     public function statusCounts(): array
     {
-        $counts = ['submitted_admin' => 0, 'approved' => 0, 'rejected' => 0];
+        $counts = ['pending' => 0, 'submitted_admin' => 0, 'approved' => 0, 'rejected' => 0];
         $statement = $this->db->query(
             'SELECT status, COUNT(*) total FROM report_card_approvals GROUP BY status'
         );

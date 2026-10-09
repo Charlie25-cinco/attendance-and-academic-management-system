@@ -156,7 +156,8 @@ if ($db) {
 
             $rcStmt = $db->prepare("SELECT
                                         COUNT(*) AS total_rows,
-                                        SUM(CASE WHEN rc.status IN ('pending','submitted_admin') THEN 1 ELSE 0 END) AS pending_count,
+                                        SUM(CASE WHEN rc.status = 'submitted_admin' THEN 1 ELSE 0 END) AS principal_count,
+                                        SUM(CASE WHEN rc.status = 'pending' THEN 1 ELSE 0 END) AS admin_count,
                                         SUM(CASE WHEN rc.status = 'approved' THEN 1 ELSE 0 END) AS approved_count,
                                         SUM(CASE WHEN rc.status = 'rejected' THEN 1 ELSE 0 END) AS rejected_count
                                     FROM report_card_approvals rc
@@ -176,13 +177,16 @@ if ($db) {
             ]);
             $rcStatusRow = $rcStmt->fetch(PDO::FETCH_ASSOC) ?: [];
             $totalRows = (int)($rcStatusRow['total_rows'] ?? 0);
-            $pendingRows = (int)($rcStatusRow['pending_count'] ?? 0);
+            $principalRows = (int)($rcStatusRow['principal_count'] ?? 0);
+            $adminRows = (int)($rcStatusRow['admin_count'] ?? 0);
             $approvedRows = (int)($rcStatusRow['approved_count'] ?? 0);
             $rejectedRows = (int)($rcStatusRow['rejected_count'] ?? 0);
             if ($totalRows <= 0) {
                 $reportCardSectionStatus = '';
-            } elseif ($pendingRows > 0 && $approvedRows === 0 && $rejectedRows === 0) {
-                $reportCardSectionStatus = 'pending';
+            } elseif ($principalRows === $totalRows) {
+                $reportCardSectionStatus = 'submitted_principal';
+            } elseif ($adminRows === $totalRows) {
+                $reportCardSectionStatus = 'pending_admin';
             } elseif ($approvedRows === $totalRows) {
                 $reportCardSectionStatus = 'approved';
             } elseif ($rejectedRows === $totalRows) {
@@ -286,7 +290,7 @@ $page_title = 'Report Card';
                     <div class="alert alert-info py-2 px-3 mb-3 d-flex align-items-center rounded-3 border-0 bg-info bg-opacity-10 text-dark">
                         <i class="bi bi-folder-check me-2 fs-5 text-primary"></i>
                         <div>
-                            <strong>Step 2: Advisory Report Card Compilation</strong> — Review and consolidate verified subject grades. Submitting here sends the completed section report cards to the Principal for official approval, portal release, and in-app/Web Push notification.
+                            <strong>Step 2: Advisory Report Card Compilation</strong> — Review and consolidate Principal-verified subject grades. Submitting sends the completed section report cards to the Principal for endorsement before Admin release.
                         </div>
                     </div>
 
@@ -353,12 +357,14 @@ $page_title = 'Report Card';
                             <?php
                                 $rcBadge = $reportCardSectionStatus === 'approved' ? 'success'
                                     : ($reportCardSectionStatus === 'rejected' ? 'danger'
-                                    : ($reportCardSectionStatus === 'pending' ? 'warning text-dark'
+                                    : (in_array($reportCardSectionStatus, ['submitted_principal', 'pending_admin'], true) ? 'warning text-dark'
                                     : ($reportCardSectionStatus === 'mixed' ? 'info text-dark' : 'secondary')));
                                 if ($reportCardSectionStatus === '') {
                                     $rcText = 'Not Yet Submitted';
-                                } elseif ($reportCardSectionStatus === 'pending') {
-                                    $rcText = 'Pending Admin Review';
+                                } elseif ($reportCardSectionStatus === 'submitted_principal') {
+                                    $rcText = 'Pending Principal Endorsement';
+                                } elseif ($reportCardSectionStatus === 'pending_admin') {
+                                    $rcText = 'Endorsed - Pending Admin Release';
                                 } elseif ($reportCardSectionStatus === 'mixed') {
                                     $rcText = 'Partially Reviewed';
                                 } else {
@@ -370,7 +376,7 @@ $page_title = 'Report Card';
                                 <button class="btn btn-primary-custom btn-sm" type="button" onclick="submitReportCardToAdmin('<?php echo htmlspecialchars($selectedAcademicYear, ENT_QUOTES, 'UTF-8'); ?>')">
                                     <i class="bi bi-send-check me-1"></i>Submit Report Cards to Principal
                                 </button>
-                            <?php elseif ($reportCardSectionStatus === 'pending'): ?>
+                            <?php elseif ($reportCardSectionStatus === 'submitted_principal'): ?>
                                 <button class="btn btn-warning btn-sm" type="button" onclick="recallReportCard('<?php echo htmlspecialchars($selectedAcademicYear, ENT_QUOTES, 'UTF-8'); ?>')">
                                     <i class="bi bi-arrow-counterclockwise me-1"></i>Recall Report Cards
                                 </button>

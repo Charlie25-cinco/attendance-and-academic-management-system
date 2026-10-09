@@ -8,7 +8,7 @@ if (empty($_SESSION['logged_in']) || ($_SESSION['role'] ?? '') !== 'principal') 
 }
 
 $db = (new Database())->getConnection();
-$allowedDecisions = ['', 'report_card.approve', 'report_card.reject', 'report_card.withdraw'];
+$allowedDecisions = ['', 'report_card.approve', 'report_card.reject'];
 $decision = trim((string)($_GET['decision'] ?? ''));
 $filters = [
     'academic_year' => trim((string)($_GET['academic_year'] ?? '')),
@@ -28,16 +28,15 @@ try {
     error_log('Principal decision history load failed.');
     $loadError = 'The Principal decision history could not be loaded.';
 }
-$decisionCounts = ['report_card.approve' => 0, 'report_card.reject' => 0, 'report_card.withdraw' => 0];
+$decisionCounts = ['report_card.approve' => 0, 'report_card.reject' => 0];
 foreach ($events as $event) {
     if (array_key_exists($event['action_name'], $decisionCounts)) {
         $decisionCounts[$event['action_name']]++;
     }
 }
 $decisionMeta = [
-    'report_card.approve' => ['Released', 'success', 'bi-check2-circle'],
+    'report_card.approve' => ['Endorsed to Admin', 'success', 'bi-check2-circle'],
     'report_card.reject' => ['Returned', 'danger', 'bi-arrow-return-left'],
-    'report_card.withdraw' => ['Withdrawn', 'warning', 'bi-slash-circle'],
 ];
 $current_role = 'principal';
 $current_page = 'history';
@@ -58,11 +57,10 @@ $page_title = 'Principal Decision History';
 <main class="main-content">
 <?php include __DIR__ . '/../includes/header.php'; ?>
 <div class="page-content">
-    <section class="admin-hero admin-hero-compact mb-4" aria-labelledby="history-heading"><div class="admin-hero-grid"><div class="admin-hero-main"><div class="welcome-role-chip"><i class="bi bi-clock-history"></i><span>Read-only audit trail</span></div><h1 class="h4 mb-2" id="history-heading">Principal decision history</h1><p class="text-muted mb-0">Review every recorded report-card release, return, and withdrawal in chronological order.</p></div><div class="admin-hero-side"><i class="bi bi-lock fs-3"></i><span>Records cannot be edited here</span></div></div></section>
+    <section class="admin-hero admin-hero-compact mb-4" aria-labelledby="history-heading"><div class="admin-hero-grid"><div class="admin-hero-main"><div class="welcome-role-chip"><i class="bi bi-clock-history"></i><span>Read-only audit trail</span></div><h1 class="h4 mb-2" id="history-heading">Principal decision history</h1><p class="text-muted mb-0">Review every recorded report-card endorsement and return in chronological order.</p></div><div class="admin-hero-side"><i class="bi bi-lock fs-3"></i><span>Records cannot be edited here</span></div></div></section>
     <div class="row g-3 mb-4" aria-label="Decision totals for current filters">
-        <div class="col-4"><div class="content-card p-3 h-100"><small class="text-muted d-block">Released</small><strong class="fs-3 text-success"><?php echo $decisionCounts['report_card.approve']; ?></strong></div></div>
-        <div class="col-4"><div class="content-card p-3 h-100"><small class="text-muted d-block">Returned</small><strong class="fs-3 text-danger"><?php echo $decisionCounts['report_card.reject']; ?></strong></div></div>
-        <div class="col-4"><div class="content-card p-3 h-100"><small class="text-muted d-block">Withdrawn</small><strong class="fs-3 text-warning"><?php echo $decisionCounts['report_card.withdraw']; ?></strong></div></div>
+        <div class="col-6"><div class="content-card p-3 h-100"><small class="text-muted d-block">Endorsed to Admin</small><strong class="fs-3 text-success"><?php echo $decisionCounts['report_card.approve']; ?></strong></div></div>
+        <div class="col-6"><div class="content-card p-3 h-100"><small class="text-muted d-block">Returned</small><strong class="fs-3 text-danger"><?php echo $decisionCounts['report_card.reject']; ?></strong></div></div>
     </div>
     <?php if ($loadError !== ''): ?><div class="alert alert-danger" role="alert"><?php echo htmlspecialchars($loadError); ?></div><?php endif; ?>
     <section class="content-card" aria-labelledby="timeline-heading">

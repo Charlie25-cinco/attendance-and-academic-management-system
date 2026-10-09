@@ -102,19 +102,21 @@ These operational notes apply ISO/IEC/IEEE 29148 clarity and traceability princi
 
 ## Grading And Attendance Workflows
 
-- Grade approval flow is subject teacher to Admin, Admin verification to adviser, adviser submission to Principal, then final Principal approval.
-- Subject teacher grade submissions use `grade_approvals.status = submitted`; teacher recall is needed only while a submission is pending admin review.
+- Grade approval flow is Subject Teacher to Principal verification, Adviser compilation to Principal endorsement, Admin final release, then Student/Parent viewing.
+- Subject teacher grade submissions use `grade_approvals.status = submitted`; teacher recall is available only while a submission is pending Principal review.
 - Teacher grade activity creation, score editing, finishing, deleting, and restoring must be blocked only while the matching grading period is submitted.
-- Admin subject-grade verification uses `grade_approvals.status = admin_verified`, which unlocks adviser report-card submission.
-- Admin may return verified subject grades to teachers by setting `grade_approvals.status = rejected`; this unlocks teacher editing and resubmission.
-- Adviser report-card submissions use the legacy-compatible `report_card_approvals.status = submitted_admin`; adviser recall is allowed only before final Principal approval.
+- Principal subject-grade verification uses the legacy-compatible `grade_approvals.status = admin_verified`, which unlocks adviser report-card submission.
+- Principal may return verified subject grades to teachers by setting `grade_approvals.status = rejected`; this unlocks teacher editing and resubmission.
+- Adviser report-card submissions use the legacy-compatible `report_card_approvals.status = submitted_admin`; adviser recall is allowed only before Principal endorsement.
+- Principal endorsement uses `report_card_approvals.status = pending`; Admin alone may change endorsed cards to `approved` for release or `rejected` for correction.
 - Student and parent grade/report-card visibility must require `report_card_approvals.status = approved`.
-- Only an active Principal with `report_cards.review` may make the final report-card decision. Release (`report_card_approvals.status = approved`) saves in-app notifications for parents and students before Web Push is attempted. SMS is not part of the system.
+- Only an active Admin may make the final report-card release decision. Release (`report_card_approvals.status = approved`) saves in-app notifications for students, parents, the adviser, subject teachers, and Principal before Web Push is attempted. SMS is not part of the system.
 - After final release, teachers may submit corrected subject grades again; affected approved report cards should be marked `rejected` so student and parent portals stop showing stale final grades until approval runs again.
 - Teacher-created grade activities must be visible to enrolled students and linked parents before scores are recorded.
 - Grade activity creation and score recording should create saved in-app notifications for student and parent recipients.
 - Attendance recording from teacher web, API, or sync paths should create saved in-app notifications for student and linked parent recipients.
 - Teacher QR attendance classification must remain server-authoritative in `Asia/Manila`; scans at or after the class start plus 15 minutes are late, and QR time classification is limited to the current date.
+- Attendance status is limited to `present`, `absent`, and `late`; do not reintroduce Cutting as a status, control, summary, or SF2 mark.
 
 ## Chat
 

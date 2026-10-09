@@ -1225,7 +1225,7 @@ function ensureRbacRolesSeeded(PDO $db): void {
     } catch (Throwable $e) { return; }
 
     $roles = [
-        ['principal', 'Principal', 'Reviews, approves and releases report cards.', 1],
+        ['principal', 'Principal', 'Verifies grades, endorses report cards, and monitors academic operations.', 1],
         ['admin', 'Administrator', 'Full system access.', 1],
         ['teacher', 'Teacher', 'Can manage attendance, grades, and view assigned classes.', 1],
         ['student', 'Student', 'Can view attendance, grades, and class schedules.', 1],
@@ -1235,7 +1235,8 @@ function ensureRbacRolesSeeded(PDO $db): void {
     foreach ($roles as $r) { $stmt->execute($r); }
 
     $permissions = [
-        ['report_cards.review', 'Review and Release Report Cards (Principal)', 'grades'],
+        ['report_cards.review', 'Verify Grades and Endorse Report Cards (Principal)', 'grades'],
+        ['principal.monitoring.view', 'View Principal Monitoring', 'reports'],
         ['attendance.view', 'View Attendance', 'attendance'],
         ['attendance.manage', 'Manage Attendance', 'attendance'],
         ['attendance.reports', 'Attendance Reports', 'attendance'],
@@ -1283,7 +1284,7 @@ function ensureRbacRolesSeeded(PDO $db): void {
     ];
 
     $roleMap = [
-        'principal' => ['report_cards.review'],
+        'principal' => ['report_cards.review', 'principal.monitoring.view'],
         'admin' => null,
         'teacher' => $teacherPerms,
         'student' => $studentPerms,
@@ -1402,9 +1403,16 @@ function permissionForScript(string $scriptName): string {
     $scriptName = strtolower($scriptName);
     $map = [
         'principal.php' => 'report_cards.review',
+        'principal_subject_grades.php' => 'report_cards.review',
+        'principal_subject_grades_detail.php' => 'report_cards.review',
+        'principal_subject_grades_action.php' => 'report_cards.review',
         'principal_pending.php' => 'report_cards.review',
+        'principal_endorsed.php' => 'report_cards.review',
         'principal_released.php' => 'report_cards.review',
         'principal_history.php' => 'report_cards.review',
+        'principal_academic_monitoring.php' => 'principal.monitoring.view',
+        'principal_attendance_monitoring.php' => 'principal.monitoring.view',
+        'principal_activity_logs.php' => 'principal.monitoring.view',
         'principal_action.php' => 'report_cards.review',
         'admin.php' => 'users.view',
         'admin_users.php' => 'users.view',
@@ -1426,6 +1434,8 @@ function permissionForScript(string $scriptName): string {
         'admin_grade_approvals.php' => 'grades.approve',
         'admin_grade_approvals_detail.php' => 'grades.approve',
         'admin_grade_approvals_action.php' => 'grades.approve',
+        'admin_report_cards.php' => 'grades.approve',
+        'admin_report_cards_action.php' => 'grades.approve',
         'admin_reports.php' => 'reports.view',
         'admin_reports_action.php' => 'reports.view',
         'admin_archives.php' => 'archives.view',

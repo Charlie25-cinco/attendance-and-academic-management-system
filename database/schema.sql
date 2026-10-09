@@ -265,7 +265,7 @@ CREATE TABLE IF NOT EXISTS grade_item_score_verifications (
 CREATE TABLE IF NOT EXISTS grade_approvals (
     id INT AUTO_INCREMENT PRIMARY KEY,
     grade_id INT NOT NULL,
-    status ENUM('pending','submitted','admin_verified','rejected','approved') DEFAULT 'pending',
+    status ENUM('pending','submitted','admin_verified','rejected','approved') DEFAULT 'pending' COMMENT 'admin_verified is retained as the legacy name for Principal verification',
     submitted_by INT NULL,
     submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     reviewed_by INT NULL,
@@ -418,7 +418,7 @@ CREATE TABLE IF NOT EXISTS report_card_approvals (
     academic_year VARCHAR(20) NOT NULL,
     semester VARCHAR(5) NULL,
     advisory_teacher_id INT NOT NULL,
-    status ENUM('pending','rejected','submitted_admin','approved') DEFAULT 'pending',
+    status ENUM('pending','rejected','submitted_admin','approved') DEFAULT 'submitted_admin' COMMENT 'submitted_admin awaits Principal; pending is Principal-endorsed and awaits Admin',
     submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     reviewed_by INT NULL,
     reviewed_at TIMESTAMP NULL,
@@ -958,14 +958,15 @@ AND curriculum = 'strengthened_shs';
 -- DEFAULT RBAC ROLES, PERMISSIONS, AND ROLE MAPPINGS
 -- =============================================================================
 INSERT IGNORE INTO rbac_roles (role_key, label, description, is_system) VALUES
-('principal', 'Principal', 'Reviews, approves and releases report cards.', 1),
+('principal', 'Principal', 'Verifies grades, endorses report cards, and monitors academic operations.', 1),
 ('admin', 'Administrator', 'Full system access.', 1),
 ('teacher', 'Teacher', 'Can manage attendance, grades, and view assigned classes.', 1),
 ('student', 'Student', 'Can view attendance, grades, and class schedules.', 1),
 ('parent', 'Parent', 'Can view child progress and report cards.', 1);
 
 INSERT IGNORE INTO rbac_permissions (permission_key, label, category) VALUES
-('report_cards.review', 'Review and Release Report Cards (Principal)', 'grades'),
+('report_cards.review', 'Verify Grades and Endorse Report Cards (Principal)', 'grades'),
+('principal.monitoring.view', 'View Principal Monitoring', 'reports'),
 ('attendance.view', 'View Attendance', 'attendance'),
 ('attendance.manage', 'Manage Attendance', 'attendance'),
 ('attendance.reports', 'Attendance Reports', 'attendance'),
@@ -998,7 +999,7 @@ SELECT r.id, p.id, 1
 FROM rbac_roles r
 CROSS JOIN rbac_permissions p
 WHERE r.role_key = 'admin'
-   OR (r.role_key = 'principal' AND p.permission_key = 'report_cards.review')
+   OR (r.role_key = 'principal' AND p.permission_key IN ('report_cards.review', 'principal.monitoring.view'))
    OR (
        r.role_key = 'teacher'
        AND p.permission_key IN (

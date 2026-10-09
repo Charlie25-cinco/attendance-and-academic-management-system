@@ -4,8 +4,8 @@
 > **Document Purpose:** Academic Research Paper Reference / Capstone Technical Documentation  
 > **System Name:** Balingasag Senior High School - Attendance and Academic Management System (BSHS AMS)  
 > **Standard Compliance:** ISO/IEC/IEEE 29148:2018 (Requirements Engineering)  
-> **Version:** 1.0.0  
-> **Date:** August 2026  
+> **Version:** 3.0.0
+> **Date:** October 2026
 
 ---
 
@@ -31,11 +31,12 @@ The platform provides a centralized, role-based ecosystem connecting the **Princ
   - Import, preview, and parse official DepEd ECR (`.xlsx` / `.xlsm`) templates.
   - Automated calculation of quarterly and final grades directly from uploaded workbooks.
   - Direct export of consolidated student ratings into DepEd-formatted ECR workbooks.
-- **4-Stage Grade Approval & Governance State Machine:**
-  1. **Subject Teacher Submission (`submitted`):** Teachers submit grades per subject/section; input fields lock to prevent tampering during review. Teachers retain the option to recall pending submissions before admin action.
-  2. **Admin Subject Verification (`admin_verified`):** Administrators review and verify subject grades. Admin can reject with feedback, unlocking the grade sheet for teacher correction.
-  3. **Adviser Report Card Consolidation (`submitted_admin`):** Section advisers consolidate all verified subject grades into final report cards (SF9) and submit them to the Principal. The legacy status name is retained for database compatibility.
-  4. **Principal Final Approval & Publication (`approved`):** The Principal releases verified report cards to Student and Parent portals or returns/withdraws them for correction.
+- **5-Stage Grade Approval & Governance State Machine:**
+  1. **Subject Teacher Submission (`submitted`):** Teachers submit grades per subject/section; input fields lock during Principal review.
+  2. **Principal Subject Verification (`admin_verified`):** The Principal verifies or returns subject grades. The legacy storage name is retained for compatibility.
+  3. **Adviser Report Card Consolidation (`submitted_admin`):** Section advisers consolidate verified subject grades and submit report cards to the Principal.
+  4. **Principal Endorsement (`pending`):** The Principal verifies the complete card and endorses it to Admin, or returns it for correction.
+  5. **Admin Final Release (`approved`):** Admin releases the official report card to Student and Parent portals, or returns/withdraws it for correction.
 - **Grade Recall & Stale Data Invalidation:** If an approved subject grade requires post-release correction, re-submission automatically reverts affected report cards to `rejected` status, immediately masking stale final grades from student/parent portals until re-approved.
 - **Learner Progress Report Card (DepEd SF9) Generation:** Printable, formatted PDF/HTML report cards showing quarterly grades, general averages, attendance summaries, and core values observation ratings.
 
@@ -43,7 +44,7 @@ The platform provides a centralized, role-based ecosystem connecting the **Princ
 
 ### 2.2 Attendance Tracking & Management Engine
 - **Multi-Modal Attendance Recording:**
-  - **Teacher Web Marking:** Daily class and advisory attendance recording with status indicators (*Present*, *Late/Tardy*, *Absent*, *Excused*).
+  - **Teacher Web Marking:** Daily class and advisory attendance recording with status indicators (*Present*, *Late/Tardy*, *Absent*). Additional context is stored in remarks.
   - **Server-Authoritative QR Code Scanner:** Instant QR code badge scanning via device camera (`teacher_Attendance.php`), utilizing `Asia/Manila` server time to automatically classify students as *Present* or *Late* (based on a configurable 15-minute grace threshold).
 - **Offline Attendance Capture & Auto-Sync:**
   - Built-in Service Worker and `localStorage` queue allow teachers to take attendance without active internet.

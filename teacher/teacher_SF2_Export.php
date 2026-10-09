@@ -107,7 +107,7 @@ if ($export === 'csv') {
             $status = is_array($entry) ? strtolower((string)($entry['status'] ?? '')) : strtolower((string)$entry);
             if ($status === 'present') {
                 $present++;
-            } elseif ($status === 'absent' || $status === 'cutting') {
+            } elseif ($status === 'absent') {
                 $absent++;
             } elseif ($status === 'late' || $status === 'tardy') {
                 $tardy++;

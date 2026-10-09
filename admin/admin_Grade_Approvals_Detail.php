@@ -1,13 +1,15 @@
 <?php
 require_once __DIR__ . '/../functions/bootstrap.php';
-if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'admin') {
+$principalGradePortal = defined('PRINCIPAL_GRADE_PORTAL') && PRINCIPAL_GRADE_PORTAL === true;
+$requiredRole = $principalGradePortal ? 'principal' : 'admin';
+if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== $requiredRole) {
     header("Location: ../auth/login.php");
     exit();
 }
 
 $db = (new Database())->getConnection();
 
-$activeTab = strtolower(trim((string)($_GET['tab'] ?? 'report_cards')));
+$activeTab = $principalGradePortal ? 'grades' : strtolower(trim((string)($_GET['tab'] ?? 'report_cards')));
 if (!in_array($activeTab, ['grades', 'report_cards'], true)) {
     $activeTab = 'report_cards';
 }
@@ -33,12 +35,12 @@ $isFourQuarter = ($gs === '4_quarter');
 $termLabels = SshsGradeCalculator::validTerms($gs);
 
 if ($gradeLevel <= 0 || $section === '' || $academicYear === '') {
-    header("Location: admin_Grade_Approvals.php?status=" . urlencode($selectedStatus));
+    header('Location: ' . ($principalGradePortal ? 'principal_Subject_Grades.php' : 'admin_Grade_Approvals.php') . '?status=' . urlencode($selectedStatus));
     exit();
 }
 
 if ($isFourQuarter && !in_array($semester, ['S1', 'S2'], true)) {
-    header("Location: admin_Grade_Approvals.php?status=" . urlencode($selectedStatus));
+    header('Location: ' . ($principalGradePortal ? 'principal_Subject_Grades.php' : 'admin_Grade_Approvals.php') . '?status=' . urlencode($selectedStatus));
     exit();
 }
 
@@ -304,8 +306,8 @@ if ($db) {
 }
 
 $semDisplay = $isFourQuarter ? $semester : 'Full Year';
-$current_role = 'admin';
-$current_page = 'grade_approvals';
+$current_role = $principalGradePortal ? 'principal' : 'admin';
+$current_page = $principalGradePortal ? 'subject_grades' : 'grade_approvals';
 $page_title = 'Grade Approval Details';
 ?>
 <!DOCTYPE html>
@@ -542,7 +544,7 @@ async function returnApproval(approvalId) {
         ? await window.showAppConfirm({
             title: 'Return grade to teacher?',
             subtitle: 'The grade will be marked rejected so the teacher can correct and resubmit.',
-            message: 'This reverses admin verification for this subject grade.',
+            message: 'This reverses Principal verification for this subject grade.',
             confirmText: 'Return as Rejected',
             cancelText: 'Cancel',
             tone: 'danger',

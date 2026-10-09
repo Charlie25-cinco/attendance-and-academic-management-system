@@ -313,15 +313,8 @@ function teacherAttendanceSupportsColumn($db, $column) {
 
 function teacherAttendanceUpsertRecord($db, $teacherId, $classId, $date, $studentId, $status, $remarks = '') {
     $status = strtolower(trim((string)$status));
-    if ($status === 'cutting') {
-        $status = 'absent';
-        if ($remarks === '') {
-            $remarks = 'Cutting Class';
-        } elseif (!str_contains($remarks, 'Cutting Class')) {
-            $remarks = 'Cutting Class; ' . $remarks;
-        }
-    } elseif (!in_array($status, ['present', 'absent', 'late'], true)) {
-        $status = 'present';
+    if (!in_array($status, ['present', 'absent', 'late'], true)) {
+        throw new InvalidArgumentException('Attendance status must be present, absent, or late.');
     }
 
     $hasAttendanceTerms = attendanceHasTermColumns($db);
@@ -1160,7 +1153,7 @@ function gradeActivityPeriodLockMessage($db, $teacherId, $classId, $activityDate
     if ($status === '') {
         return null;
     }
-    return 'This grading period was already submitted to admin. Recall the submission before editing grade activities.';
+    return 'This grading period was already submitted to the Principal. Recall the submission before editing grade activities.';
 }
 
 function computeQuarterSummaryFromItems($db, $classId, $teacherId, $dateFrom, $dateTo, $weights) {
@@ -1269,7 +1262,7 @@ function buildStudentAttendancePayload($db, $classId, $date, $mode = 'subject', 
 
     $students = tEnrollFetchStudentsWithAttendance($db, $classId, $date, $sex);
 
-    $summary = ['present' => 0, 'absent' => 0, 'late' => 0, 'cutting' => 0, 'total' => count($students), 'rate' => 0];
+    $summary = ['present' => 0, 'absent' => 0, 'late' => 0, 'total' => count($students), 'rate' => 0];
     foreach ($students as $student) {
         $status = $student['attendance_status'];
         if (isset($summary[$status])) {
@@ -1394,7 +1387,14 @@ function submitAttendance($db, $teacherId) {
 
         $enrolledIds = getActiveEnrollmentStudentIds($db, $classId);
         $enrolledLookup = array_fill_keys($enrolledIds, true);
-        $validStatuses = ['present', 'absent', 'late', 'cutting'];
+        $validStatuses = ['present', 'absent', 'late'];
+        foreach ($records as $record) {
+            $requestedStatus = strtolower(trim((string)($record['status'] ?? '')));
+            if (!in_array($requestedStatus, $validStatuses, true)) {
+                echo json_encode(['success' => false, 'message' => 'Attendance status must be present, absent, or late.']);
+                return;
+            }
+        }
 
         $existingRecordsStmt = $db->prepare("SELECT student_id, status, remarks FROM attendance WHERE class_id = ? AND date = ?");
         $existingRecordsStmt->execute([(int)$classId, $date]);
@@ -1416,10 +1416,6 @@ function submitAttendance($db, $teacherId) {
             if ($studentId <= 0 || !isset($enrolledLookup[$studentId])) {
                 continue;
             }
-            if (!in_array($status, $validStatuses, true)) {
-                $status = 'present';
-            }
-
             if (!isset($existingMap[$studentId])) {
                 $changedRecords[] = ['student_id' => $studentId, 'status' => $status, 'remarks' => $remarks];
             } elseif ($existingMap[$studentId]['status'] !== $status || $existingMap[$studentId]['remarks'] !== $remarks) {
@@ -1800,7 +1796,7 @@ function submitGrades($db, $teacherId) {
         $lockedStmt->execute($lockedParams);
         $lockedStatus = strtolower((string)($lockedStmt->fetchColumn() ?: ''));
         if ($lockedStatus !== '') {
-            echo json_encode(['success' => false, 'message' => 'These grades are already submitted to admin. Recall the submission before editing or resubmitting.']);
+            echo json_encode(['success' => false, 'message' => 'These grades are already submitted to the Principal. Recall the submission before editing or resubmitting.']);
             return;
         }
 
@@ -1973,12 +1969,10 @@ function submitGrades($db, $teacherId) {
         }
 
         $db->commit();
-        notifyGradeSubmissionParents($db, $teacherId, $classId, $classSubjectId, $term, $academicYear, $records);
-
-        // Notify Admin users about new subject grade submission for Stage 1 Verification
+        // Notify Principal users about new subject-grade submissions.
         try {
-            $adminStmt = $db->query("SELECT id FROM users WHERE role = 'admin' AND COALESCE(status, 'active') = 'active'");
-            $adminIds = $adminStmt ? $adminStmt->fetchAll(PDO::FETCH_COLUMN) : [];
+            $principalStmt = $db->query("SELECT id FROM users WHERE role = 'principal' AND COALESCE(status, 'active') = 'active'");
+            $principalIds = $principalStmt ? $principalStmt->fetchAll(PDO::FETCH_COLUMN) : [];
             $classInfoStmt = $db->prepare("SELECT c.class_name, c.grade_level, c.section, u.first_name, u.last_name FROM classes c LEFT JOIN users u ON u.id = ? WHERE c.id = ?");
             $classInfoStmt->execute([$teacherId, $classId]);
             $classInfo = $classInfoStmt->fetch(PDO::FETCH_ASSOC);
@@ -1987,33 +1981,33 @@ function submitGrades($db, $teacherId) {
             $secName = (string)($classInfo['section'] ?? '');
             $cName = (string)($classInfo['class_name'] ?? '');
 
-            if (!empty($adminIds) && function_exists('appDispatchNotification')) {
-                $targetLink = 'admin_Grade_Approvals_Detail.php?tab=grades&grade_level=' . $gLevel . '&section=' . urlencode($secName) . '&academic_year=' . urlencode($academicYear) . '&semester=' . urlencode((string)($semester ?? ''));
+            if (!empty($principalIds) && function_exists('appDispatchNotification')) {
+                $targetLink = 'principal_Subject_Grades_Detail.php?tab=grades&grade_level=' . $gLevel . '&section=' . urlencode($secName) . '&academic_year=' . urlencode($academicYear) . '&semester=' . urlencode((string)($semester ?? ''));
                 $minApprStmt = $db->prepare("SELECT MIN(ga.id) AS min_id, MAX(ga.submitted_at) AS sub_at FROM grade_approvals ga JOIN grades g ON g.id = ga.grade_id WHERE g.class_subject_id = ? AND g.academic_year = ?");
                 $minApprStmt->execute([$classSubjectId, $academicYear]);
                 $apprMeta = $minApprStmt->fetch(PDO::FETCH_ASSOC) ?: [];
                 $minApprId = (int)($apprMeta['min_id'] ?? 0);
                 $subAtTs = strtotime((string)($apprMeta['sub_at'] ?? 'now')) ?: time();
-                $subKey = 'grade_sub_admin_' . $classSubjectId . '_' . $term . '_' . preg_replace('/[^a-zA-Z0-9]/', '', $academicYear) . '_appr_' . $minApprId . '_' . $subAtTs;
+                $subKey = 'grade_sub_principal_' . $classSubjectId . '_' . $term . '_' . preg_replace('/[^a-zA-Z0-9]/', '', $academicYear) . '_appr_' . $minApprId . '_' . $subAtTs;
 
                 appDispatchNotification(
                     $db,
-                    $adminIds,
+                    $principalIds,
                     $subKey,
                     'Subject Grades Submitted',
-                    "Teacher {$tName} submitted {$cName} (Grade {$gLevel} - {$secName}, {$term}) for admin verification.",
+                    "Teacher {$tName} submitted {$cName} (Grade {$gLevel} - {$secName}, {$term}) for Principal verification.",
                     'bi-journal-check',
                     'primary',
-                    ['admin' => $targetLink],
+                    ['principal' => $targetLink],
                     ['type' => 'grade_submission', 'class_id' => $classId, 'term' => $term, 'academic_year' => $academicYear]
                 );
             }
         } catch (Throwable $e) {
-            error_log('Admin grade submission notification failed: ' . $e->getMessage());
+            error_log('Principal grade submission notification failed: ' . $e->getMessage());
         }
 
         recordActivityLog($db, 'grades.submit', 'class', $classId, ['academic_year' => $academicYear, 'term' => $term], $teacherId, 'teacher');
-        echo json_encode(['success' => true, 'message' => 'Grades submitted to Admin for verification']);
+        echo json_encode(['success' => true, 'message' => 'Grades submitted to the Principal for verification']);
     } catch (PDOException $e) {
         if ($db->inTransaction()) {
             $db->rollBack();
@@ -2075,7 +2069,7 @@ function recallGrades($db, $teacherId) {
         $lockedStmt = $db->prepare($lockedSql);
         $lockedStmt->execute($lockedParams);
         if ((int)$lockedStmt->fetchColumn() > 0) {
-            echo json_encode(['success' => false, 'message' => 'These grades were already verified by admin. Ask admin to return them as rejected before recalling or resubmitting.']);
+            echo json_encode(['success' => false, 'message' => 'These grades were already verified by the Principal. Ask the Principal to return them before editing.']);
             return;
         }
 
@@ -2906,12 +2900,12 @@ function submitReportCard($db, $teacherId) {
             return;
         }
 
-        $approvedCheck = $db->prepare("SELECT COUNT(*)
+        $lockedCheck = $db->prepare("SELECT COUNT(*)
                                        FROM report_card_approvals
                                        WHERE student_id = ?
                                        AND academic_year = ?
                                        " . ($semester !== null ? "AND semester = ?" : "AND semester IS NULL") . "
-                                       AND status = 'approved'");
+                                       AND status IN ('pending','approved')");
         $deleteExisting = $db->prepare("DELETE FROM report_card_approvals
                                         WHERE student_id = ?
                                         AND academic_year = ?
@@ -2935,17 +2929,17 @@ function submitReportCard($db, $teacherId) {
                 continue;
             }
             if ($semester !== null) {
-                $approvedCheck->execute([$studentId, $academicYear, $semester]);
-                $hasApproved = (int)$approvedCheck->fetchColumn() > 0;
+                $lockedCheck->execute([$studentId, $academicYear, $semester]);
+                $isLocked = (int)$lockedCheck->fetchColumn() > 0;
                 $deleteExisting->execute([$studentId, $academicYear, $semester]);
             } else {
-                $approvedCheck->execute([$studentId, $academicYear]);
-                $hasApproved = (int)$approvedCheck->fetchColumn() > 0;
+                $lockedCheck->execute([$studentId, $academicYear]);
+                $isLocked = (int)$lockedCheck->fetchColumn() > 0;
                 $deleteExisting->execute([$studentId, $academicYear]);
             }
-            if ($hasApproved) {
+            if ($isLocked) {
                 $db->rollBack();
-                echo json_encode(['success' => false, 'message' => 'Recall approved report cards before resubmitting.']);
+                echo json_encode(['success' => false, 'message' => 'A report card already endorsed to Admin or released cannot be resubmitted.']);
                 return;
             }
             $upsert->execute([$studentId, $academicYear, $semester, $teacherId]);
@@ -2965,7 +2959,7 @@ function submitReportCard($db, $teacherId) {
             $advSecName = (string)($advInfo['section_name'] ?? '');
 
             if (!empty($principalIds) && function_exists('appDispatchNotification')) {
-                $targetLink = 'principal.php?status=submitted_admin&grade_level=' . $advGLevel . '&section=' . urlencode($advSecName) . '&academic_year=' . urlencode($academicYear) . '&semester=' . urlencode((string)($semester ?? ''));
+                $targetLink = 'principal_Pending.php?grade_level=' . $advGLevel . '&section=' . urlencode($advSecName) . '&academic_year=' . urlencode($academicYear) . '&semester=' . urlencode((string)($semester ?? ''));
                 $minRcStmt = $db->prepare("SELECT MIN(rc.id) AS min_id, MAX(rc.submitted_at) AS sub_at FROM report_card_approvals rc WHERE rc.advisory_teacher_id = ? AND rc.academic_year = ?");
                 $minRcStmt->execute([$teacherId, $academicYear]);
                 $rcMeta = $minRcStmt->fetch(PDO::FETCH_ASSOC) ?: [];
@@ -2977,8 +2971,8 @@ function submitReportCard($db, $teacherId) {
                     $db,
                     $principalIds,
                     $rcSubKey,
-                    'Report Cards Submitted for Approval',
-                    "Adviser {$advName} submitted report cards for Grade {$advGLevel} - {$advSecName} ({$submittedCount} students) for final principal approval.",
+                    'Report Cards Submitted for Endorsement',
+                    "Adviser {$advName} submitted report cards for Grade {$advGLevel} - {$advSecName} ({$submittedCount} students) for Principal endorsement.",
                     'bi-folder-check',
                     'success',
                     ['principal' => $targetLink],
@@ -2990,7 +2984,7 @@ function submitReportCard($db, $teacherId) {
         }
 
         recordActivityLog($db, 'report_card.submit', 'class', $classId, ['academic_year' => $academicYear, 'semester' => $semester, 'student_count' => $submittedCount], $teacherId, 'teacher');
-        echo json_encode(['success' => true, 'message' => 'Submitted report cards for ' . $submittedCount . ' student(s) to principal for approval']);
+        echo json_encode(['success' => true, 'message' => 'Submitted report cards for ' . $submittedCount . ' student(s) to the Principal for endorsement']);
     } catch (PDOException $e) {
         if ($db->inTransaction()) {
             $db->rollBack();
@@ -3049,7 +3043,7 @@ function recallReportCard($db, $teacherId) {
         $db->commit();
 
         if ($deletedCount <= 0) {
-            echo json_encode(['success' => false, 'message' => 'No adviser report card submission is available to recall, or it was already finally approved by the Principal.']);
+            echo json_encode(['success' => false, 'message' => 'No adviser report card submission is available to recall, or it was already endorsed by the Principal.']);
             return;
         }
         recordActivityLog($db, 'report_card.recall', 'class', $classId, ['academic_year' => $academicYear, 'semester' => $semester, 'student_count' => $deletedCount], $teacherId, 'teacher');

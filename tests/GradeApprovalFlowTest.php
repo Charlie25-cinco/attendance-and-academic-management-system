@@ -24,20 +24,22 @@ final class GradeApprovalFlowTest extends TestCase
     public function testGradeSubmissionStateTransitions(): void
     {
         $teacherState = 'submitted';
-        $adminActionVerified = 'admin_verified';
-        $adminActionRejected = 'rejected';
+        $principalActionVerified = 'admin_verified';
+        $principalActionRejected = 'rejected';
 
-        $this->assertSame('admin_verified', $adminActionVerified);
-        $this->assertSame('rejected', $adminActionRejected);
-        $this->assertNotEquals($teacherState, $adminActionVerified);
+        $this->assertSame('admin_verified', $principalActionVerified);
+        $this->assertSame('rejected', $principalActionRejected);
+        $this->assertNotEquals($teacherState, $principalActionVerified);
     }
 
     public function testReportCardApprovalStateTransitions(): void
     {
         $adviserSubmission = 'submitted_admin';
+        $principalEndorsement = 'pending';
         $finalApproval = 'approved';
 
         $this->assertSame('submitted_admin', $adviserSubmission);
+        $this->assertSame('pending', $principalEndorsement);
         $this->assertSame('approved', $finalApproval);
 
         $isStudentVisible = ($finalApproval === 'approved');

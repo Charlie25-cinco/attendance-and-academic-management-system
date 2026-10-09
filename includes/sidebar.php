@@ -12,9 +12,14 @@ if (!isset($current_page)) $current_page = 'dashboard';
 // Define sidebar menus for each role
 $sidebar_menus = [
     'principal' => [
-        ['id' => 'dashboard', 'icon' => 'bi-journal-check', 'label' => 'Report Card Dashboard', 'link' => 'principal.php'],
-        ['id' => 'pending', 'icon' => 'bi-hourglass-split', 'label' => 'Pending Review', 'link' => 'principal_Pending.php'],
-        ['id' => 'released', 'icon' => 'bi-patch-check', 'label' => 'Released Cards', 'link' => 'principal_Released.php'],
+        ['id' => 'dashboard', 'icon' => 'bi-speedometer2', 'label' => 'Dashboard', 'link' => 'principal.php'],
+        ['id' => 'subject_grades', 'icon' => 'bi-clipboard-check', 'label' => 'Subject Grade Verification', 'link' => 'principal_Subject_Grades.php'],
+        ['id' => 'pending', 'icon' => 'bi-journal-check', 'label' => 'Report Card Endorsement', 'link' => 'principal_Pending.php'],
+        ['id' => 'endorsed', 'icon' => 'bi-send-check', 'label' => 'Endorsed to Admin', 'link' => 'principal_Endorsed.php'],
+        ['id' => 'academic_monitoring', 'icon' => 'bi-bar-chart-line', 'label' => 'Academic Monitoring', 'link' => 'principal_Academic_Monitoring.php'],
+        ['id' => 'attendance_monitoring', 'icon' => 'bi-calendar2-check', 'label' => 'Attendance Monitoring', 'link' => 'principal_Attendance_Monitoring.php'],
+        ['id' => 'activity_logs', 'icon' => 'bi-activity', 'label' => 'Activity Logs', 'link' => 'principal_Activity_Logs.php'],
+        ['id' => 'released', 'icon' => 'bi-patch-check', 'label' => 'Admin-Released Records', 'link' => 'principal_Released.php'],
         ['id' => 'history', 'icon' => 'bi-clock-history', 'label' => 'Decision History', 'link' => 'principal_History.php'],
     ],
     'admin' => [
@@ -25,7 +30,7 @@ $sidebar_menus = [
         ['id' => 'sections', 'icon' => 'bi-diagram-3', 'label' => 'Sections', 'link' => 'admin_Sections.php'],
         ['id' => 'attendance', 'icon' => 'bi-calendar-check', 'label' => 'Attendance', 'link' => 'admin_Attendance.php'],
         ['id' => 'announcements', 'icon' => 'bi-megaphone', 'label' => 'Announcements', 'link' => 'admin_Announcements.php'],
-        ['id' => 'grade_approvals', 'icon' => 'bi-check2-square', 'label' => 'Grade Approvals', 'link' => 'admin_Grade_Approvals.php'],
+        ['id' => 'report_cards', 'icon' => 'bi-check2-square', 'label' => 'Final Report Card Release', 'link' => 'admin_Report_Cards.php'],
         ['id' => 'reports', 'icon' => 'bi-graph-up', 'label' => 'Reports', 'link' => 'admin_Reports.php'],
         ['id' => 'archives', 'icon' => 'bi-archive', 'label' => 'Archived Records', 'link' => 'admin_Archives.php'],
         ['id' => 'audit_logs', 'icon' => 'bi-shield-check', 'label' => 'Audit Logs', 'link' => 'admin_Audit_Logs.php'],

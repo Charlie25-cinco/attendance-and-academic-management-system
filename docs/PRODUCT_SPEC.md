@@ -1,7 +1,7 @@
 # Product Specification: Balingasag SHS AMS
 
 **System Name:** Balingasag Senior High School - Attendance and Academic Management System (BSHS AMS)  
-**Document Version:** 2.1.1
+**Document Version:** 3.0.0
 **Standard Compliance:** ISO/IEC/IEEE 29148:2018 (Systems and software engineering — Life cycle processes — Requirements engineering)  
 **Status:** Approved  
 
@@ -13,9 +13,9 @@ The Balingasag Senior High School Attendance and Academic Management System (BSH
 
 ### 1.1 Scope & Purpose
 The system serves five primary user roles:
-- **Principal**: Final report-card review, release, return, and withdrawal.
-- **Administrators**: Operational setup, non-Principal user lifecycle, curriculum mapping, grade approval governance, DepEd reporting, and audit logs.
-- **Subject Teachers & Advisers**: Attendance recording, score tracking, DepEd ECR import/export, grade submission to admin, advisory section management, and parent communication.
+- **Principal**: Subject-grade verification, report-card endorsement, academic/attendance monitoring, and read-only system activity oversight.
+- **Administrators**: Operational setup, non-Principal user lifecycle, final report-card release, curriculum mapping, DepEd reporting, and audit logs.
+- **Subject Teachers & Advisers**: Attendance recording, score tracking, DepEd ECR import/export, grade submission to the Principal, advisory report-card compilation, and parent communication.
 - **Students**: Class schedules, score transparency, attendance history, PWA QR identity card, and released report cards.
 - **Parents / Guardians**: Linked student academic monitoring, attendance notifications, report cards, and direct adviser messaging.
 
@@ -29,7 +29,7 @@ The system serves five primary user roles:
 | **REQ-002** | Security & Compliance | The system shall store session tokens and authentication state in the database when `APP_SESSION_DRIVER=database`. | Enables session persistence across stateless cloud instances (e.g., Wasmer Edge) without relying on local server files. | Active sessions remain valid across container restarts; session data is queryable in `php_sessions` table. |
 | **REQ-003** | Data Privacy | The system shall redact sensitive values and log critical Principal, Admin, and Teacher transactions to `activity_logs`. | Establishes cross-role accountability without storing credentials, tokens, full contact details, or notification content. | Critical mutations store actor ID/role, action, target, sanitized metadata, IP address, and timestamp; legacy admin history remains readable. |
 | **REQ-004** | DepEd Integration | The system shall import and export official DepEd Excel forms (SF1, SF2, SF5, SF9, ECR) preserving official row/column cell mappings. | Ensures compatibility with Department of Education reporting standards. | Official SF1, SF2, and ECR `.xlsx` files parse without structure errors; generated exports match DepEd template dimensions. |
-| **REQ-005** | Grading Workflow | The system shall enforce a 4-tier grade approval state machine (`submitted` → `admin_verified` → `submitted_admin` → `approved`) with the Principal as the sole final reviewer. | Prevents unverified grade changes and separates academic verification from official release authority. | Admin verifies subject grades; adviser submits; only an active Principal with `report_cards.review` may release, return, or withdraw; family portals display only `approved` records. |
+| **REQ-005** | Grading Workflow | The system shall enforce the workflow `submitted` → `admin_verified` → `submitted_admin` → `pending` → `approved` across Subject Teacher, Principal, Adviser, Principal, and Admin respectively. | Separates academic verification and endorsement from operational final release. | Principal verifies subject grades; Adviser submits compiled cards; Principal endorses them; Admin alone releases them; family portals display only `approved` records. |
 | **REQ-006** | Grading Recall | The system shall allow subject teachers to recall pending grade submissions while in `submitted` status, and auto-invalidate downstream approved report cards upon re-submission. | Ensures grade corrections update official records while preventing stale final report cards from being viewed. | Re-submitting a previously approved subject grade sets affected report cards to `rejected` until approved again. |
 | **REQ-007** | PWA & Offline | The system shall support offline attendance submission with local queueing and sync upon network recovery. | Enables teachers to mark attendance during network interruptions without losing records. | Submissions queue in `localStorage` when offline and submit automatically to `teacher_Action.php` when connectivity restores. |
 | **REQ-008** | Web Push | The system shall support browser Web Push API notifications for student attendance events and grade publication. | Provides immediate notification to parents and students regarding attendance anomalies and academic updates. | Device subscriptions saved in `push_subscriptions` receive push payloads signed with VAPID keys. |
@@ -41,7 +41,7 @@ The system serves five primary user roles:
 - **Requirement ID:** REQ-011
 - **Category:** Security and separation of duties
 - **Description:** The system shall provision the Principal as a deployment-owned protected account and shall deny Administrator attempts to create, edit, reset, activate, deactivate, or archive any Principal account through web or API user-management interfaces.
-- **Rationale:** Prevents an Administrator from assuming the Principal identity and bypassing independent final report-card authority.
+- **Rationale:** Prevents an Administrator from assuming the Principal identity and bypassing independent academic verification and endorsement authority.
 - **Source:** Capstone defense follow-up clarification, October 8, 2026
 - **Priority:** High
 - **Acceptance criteria:** The Principal account is seeded from the same `DEFAULT_NEW_USER_PASSWORD` used for every role; Admin interfaces expose it read-only; direct Admin mutation requests return a denial; Principal self-service profile changes, password changes, and password recovery remain available; web, remembered-session, and API login require the default password to be replaced before portal access.
@@ -58,6 +58,28 @@ The system serves five primary user roles:
 - **Acceptance criteria:** Each sidebar item resolves to a distinct protected URL, independently rendered workspace, and correct active state; the pending page presents a readiness-focused action queue with release and return controls; the released page presents a family-visibility register with withdrawal controls; the history page presents a read-only chronological audit trail; all four pages require `report_cards.review`.
 - **Traceability:** `principal/principal.php`, `principal/principal_Pending.php`, `principal/principal_Released.php`, `principal/principal_History.php`, `src/Grade/PrincipalReportCardQuery.php`, `functions/app-helpers.php`, and `tests/PrincipalNavigationTest.php`.
 
+### 2.3 Principal Monitoring Requirement
+
+- **Requirement ID:** REQ-013
+- **Category:** Stakeholder requirement / monitoring
+- **Description:** The system shall provide the Principal with read-only academic workflow summaries, attendance summaries, Admin-released report cards, and role-aware activity logs.
+- **Rationale:** The defense panel identified school-wide monitoring as a Principal responsibility.
+- **Source:** Capstone defense panel feedback, October 2026
+- **Priority:** High
+- **Acceptance criteria:** Principal navigation opens dedicated monitoring pages; attendance can be filtered by date, grade, and section; activity logs omit login diagnostics, IP addresses, credentials, and security tokens; monitoring pages contain no mutation controls.
+- **Traceability:** `principal/principal_Academic_Monitoring.php`, `principal/principal_Attendance_Monitoring.php`, `principal/principal_Activity_Logs.php`, `functions/app-helpers.php`, `database/schema.sql`, and `tests/PrincipalNavigationTest.php`.
+
+### 2.4 Attendance Status Requirement
+
+- **Requirement ID:** REQ-014
+- **Category:** System requirement / attendance
+- **Description:** The system shall accept and display only Present, Absent, and Late attendance statuses.
+- **Rationale:** The defense panel directed the team to remove the Cutting status.
+- **Source:** Capstone defense panel feedback, October 2026
+- **Priority:** High
+- **Acceptance criteria:** Teacher controls cycle through three statuses; server requests reject any other status; summaries and SF2 exports contain no Cutting category or mark.
+- **Traceability:** `database/schema.sql`, `teacher/teacher_Attendance.php`, `teacher/teacher_Action.php`, `src/Export/Sf2Exporter.php`, and `tests/Sf2ExporterTest.php`.
+
 ---
 
 ## 3. User Personas & Workflows
@@ -72,10 +94,10 @@ The system serves five primary user roles:
 
 ### 3.2 Principal Workflow
 ```
-[ Login ] ──► [ Principal Dashboard ] ──► [ Pending Review ] ──► [ Release / Return ]
-                       │                                           │
-                       ├──► [ Released Cards / Withdraw ]          ▼
-                       └──► [ Read-only Decision History ] [ Family Notifications ]
+[ Login ] -> [ Verify Subject Grades ] -> [ Endorse Report Cards to Admin ]
+    |                    |                              |
+    +-> [ Academic / Attendance Monitoring ]           +-> [ Read-only Decision History ]
+    +-> [ Privacy-filtered Activity Logs ]              +-> [ Monitor Admin Releases ]
 ```
 
 ### 3.3 Teacher & Adviser Workflow
@@ -83,7 +105,7 @@ The system serves five primary user roles:
 [ Login ] ──► [ Select Class ] ──► [ Mark Attendance ] ──► (Offline Queue / Online Push)
                     │
                     ▼
-          [ Grade Activities ] ──► [ Submit to Admin ] ──► (Lock Editing)
+          [ Grade Activities ] ──► [ Submit to Principal ] ──► (Lock Editing)
                     │
                     ▼
           [ Adviser Chat ] ◄── [ Parent Messages ]

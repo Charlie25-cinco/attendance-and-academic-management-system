@@ -2,15 +2,22 @@
 require_once __DIR__ . '/../functions/bootstrap.php';
 header('Content-Type: application/json');
 
-if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'admin') {
+$principalGradePortal = defined('PRINCIPAL_GRADE_PORTAL') && PRINCIPAL_GRADE_PORTAL === true;
+$requiredRole = $principalGradePortal ? 'principal' : 'admin';
+if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== $requiredRole) {
     echo json_encode(['success' => false, 'message' => 'Unauthorized access']);
+    exit();
+}
+if (!$principalGradePortal) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Subject-grade verification is handled by the Principal.']);
     exit();
 }
 
 // Legacy final-review URLs must not permit an Admin to bypass the Principal.
 if (in_array($_GET['action'] ?? '', ['review_report_card', 'review_report_card_batch', 'return_released_report_card_batch'], true)) {
     http_response_code(403);
-    echo json_encode(['success' => false, 'message' => 'Final report card decisions are handled in the Principal portal.']);
+    echo json_encode(['success' => false, 'message' => 'Report-card endorsement and final release use their dedicated Principal and Admin pages.']);
     exit();
 }
 $db = (new Database())->getConnection();
@@ -130,7 +137,7 @@ if ($action === 'review') {
                 $sec,
                 $ay,
                 'Subject Grades Verified',
-                "Admin verified grades for {$cName} (Grade {$gLevel} - {$sec}).",
+                "Principal verified grades for {$cName} (Grade {$gLevel} - {$sec}).",
                 'bi-check2-circle',
                 'info',
                 'teacher_Advisory.php',
@@ -145,7 +152,7 @@ if ($action === 'review') {
                 $sec,
                 $ay,
                 'Subject Grades Returned for Correction',
-                "Admin returned grades for {$cName} (Grade {$gLevel} - {$sec}) for correction{$reasonText}",
+                "Principal returned grades for {$cName} (Grade {$gLevel} - {$sec}) for correction{$reasonText}",
                 'bi-exclamation-triangle',
                 'warning',
                 'teacher_Grades.php',
@@ -155,10 +162,10 @@ if ($action === 'review') {
         }
     }
 
-    recordAdminAuditLog($db, 'grade_approval.' . $status, 'grade_approval', $approvalId, [
+    recordActivityLog($db, 'grade_approval.principal_' . $status, 'grade_approval', $approvalId, [
         'new_status' => $status,
         'remarks_provided' => $remarks !== '',
-    ], $adminId);
+    ], $adminId, 'principal');
 
     echo json_encode(['success' => true, 'message' => 'Grade status updated to ' . ucfirst($status)]);
     exit();
@@ -206,7 +213,7 @@ if ($action === 'return_grade') {
             $sec,
             $ay,
             'Verified Grades Returned for Teacher Edit',
-            "Admin returned verified grades for {$cName} (Grade {$gLevel} - {$sec}) as editable{$reasonText}",
+            "Principal returned verified grades for {$cName} (Grade {$gLevel} - {$sec}) as editable{$reasonText}",
             'bi-exclamation-triangle',
             'warning',
             'teacher_Grades.php',
@@ -215,10 +222,10 @@ if ($action === 'return_grade') {
         );
     }
 
-    recordAdminAuditLog($db, 'grade_approval.return', 'grade_approval', $approvalId, [
+    recordActivityLog($db, 'grade_approval.principal_return', 'grade_approval', $approvalId, [
         'new_status' => 'rejected',
         'remarks_provided' => $remarks !== '',
-    ], $adminId);
+    ], $adminId, 'principal');
 
     echo json_encode(['success' => true, 'message' => 'Grade returned to teacher as rejected for correction']);
     exit();
@@ -275,7 +282,7 @@ if ($action === 'review_grade_batch') {
             $section,
             $academicYear,
             'Subject Grades Verified',
-            "Admin verified subject grades for Grade {$gradeLevel} - {$section}. Adviser report cards can now be compiled.",
+            "Principal verified subject grades for Grade {$gradeLevel} - {$section}. Adviser report cards can now be compiled.",
             'bi-check2-circle',
             'info',
             'teacher_Advisory.php'
@@ -288,21 +295,21 @@ if ($action === 'review_grade_batch') {
             $section,
             $academicYear,
             'Subject Grades Returned for Correction',
-            "Admin returned subject grades for Grade {$gradeLevel} - {$section}{$reasonText}",
+            "Principal returned subject grades for Grade {$gradeLevel} - {$section}{$reasonText}",
             'bi-exclamation-triangle',
             'warning',
             'teacher_Grades.php'
         );
     }
 
-    recordAdminAuditLog($db, 'grade_approval.batch_' . $status, 'section_grades', null, [
+    recordActivityLog($db, 'grade_approval.principal_batch_' . $status, 'section_grades', null, [
         'grade_level' => $gradeLevel,
         'section' => $section,
         'academic_year' => $academicYear,
         'semester' => $semester,
         'record_count' => $updatedCount,
         'remarks_provided' => $remarks !== '',
-    ], $adminId);
+    ], $adminId, 'principal');
 
     echo json_encode(['success' => true, 'message' => 'Section grades updated to ' . str_replace('_', ' ', $status)]);
     exit();
@@ -354,20 +361,20 @@ if ($action === 'return_grade_batch') {
         $section,
         $academicYear,
         'Verified Grades Returned for Teacher Edit',
-        "Admin returned verified grades for Grade {$gradeLevel} - {$section} as editable{$reasonText}",
+        "Principal returned verified grades for Grade {$gradeLevel} - {$section} as editable{$reasonText}",
         'bi-exclamation-triangle',
         'warning',
         'teacher_Grades.php'
     );
 
-    recordAdminAuditLog($db, 'grade_approval.batch_return', 'section_grades', null, [
+    recordActivityLog($db, 'grade_approval.principal_batch_return', 'section_grades', null, [
         'grade_level' => $gradeLevel,
         'section' => $section,
         'academic_year' => $academicYear,
         'semester' => $semester,
         'record_count' => $updatedCount,
         'remarks_provided' => $remarks !== '',
-    ], $adminId);
+    ], $adminId, 'principal');
 
     echo json_encode(['success' => true, 'message' => 'Verified grades returned as rejected. Teachers can edit and submit again.']);
     exit();

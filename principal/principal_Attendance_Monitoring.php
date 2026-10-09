@@ -1,0 +1,40 @@
+<?php
+require_once __DIR__ . '/../functions/bootstrap.php';
+if (empty($_SESSION['logged_in']) || ($_SESSION['role'] ?? '') !== 'principal') { header('Location: ../auth/login.php'); exit; }
+$db = (new Database())->getConnection();
+$dateFrom = trim((string)($_GET['date_from'] ?? date('Y-m-01')));
+$dateTo = trim((string)($_GET['date_to'] ?? date('Y-m-d')));
+$grade = in_array((int)($_GET['grade_level'] ?? 0), [11, 12], true) ? (int)$_GET['grade_level'] : 0;
+$section = trim((string)($_GET['section'] ?? ''));
+$validDate = static function (string $value): bool { $date = DateTime::createFromFormat('Y-m-d', $value); return $date instanceof DateTime && $date->format('Y-m-d') === $value; };
+if (!$validDate($dateFrom)) { $dateFrom = date('Y-m-01'); }
+if (!$validDate($dateTo)) { $dateTo = date('Y-m-d'); }
+$totals = ['present' => 0, 'absent' => 0, 'late' => 0]; $classRows = []; $sections = []; $loadError = '';
+try {
+    $sections = $db->query("SELECT DISTINCT section FROM classes WHERE status = 'active' AND COALESCE(section, '') <> '' ORDER BY section")->fetchAll(PDO::FETCH_COLUMN);
+    $where = ['a.date BETWEEN ? AND ?']; $params = [$dateFrom, $dateTo];
+    if ($grade > 0) { $where[] = 'c.grade_level = ?'; $params[] = $grade; }
+    if ($section !== '') { $where[] = 'LOWER(TRIM(c.section)) = LOWER(TRIM(?))'; $params[] = $section; }
+    $whereSql = implode(' AND ', $where);
+    $summary = $db->prepare("SELECT a.status, COUNT(*) total FROM attendance a JOIN classes c ON c.id = a.class_id WHERE $whereSql GROUP BY a.status");
+    $summary->execute($params);
+    foreach ($summary->fetchAll(PDO::FETCH_ASSOC) as $row) { if (isset($totals[$row['status']])) { $totals[$row['status']] = (int)$row['total']; } }
+    $byClass = $db->prepare("SELECT c.grade_level, c.section, c.class_name, COUNT(*) total,
+        SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) present_count,
+        SUM(CASE WHEN a.status = 'absent' THEN 1 ELSE 0 END) absent_count,
+        SUM(CASE WHEN a.status = 'late' THEN 1 ELSE 0 END) late_count
+        FROM attendance a JOIN classes c ON c.id = a.class_id WHERE $whereSql
+        GROUP BY c.id, c.grade_level, c.section, c.class_name ORDER BY c.grade_level, c.section, c.class_name LIMIT 100");
+    $byClass->execute($params); $classRows = $byClass->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $e) { error_log('Principal attendance monitoring load failed.'); $loadError = 'Attendance monitoring could not be loaded.'; }
+$recorded = array_sum($totals); $presentRate = $recorded > 0 ? round((($totals['present'] + $totals['late']) / $recorded) * 100, 1) : 0;
+$current_role = 'principal'; $current_page = 'attendance_monitoring'; $page_title = 'Attendance Monitoring';
+?>
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?php echo htmlspecialchars($page_title); ?> - Balingasag Senior High School</title><link href="<?php echo appAssetPath('src/vendor/bootstrap/bootstrap.min.css'); ?>" rel="stylesheet"><link rel="stylesheet" href="<?php echo appAssetPath('src/vendor/bootstrap-icons/bootstrap-icons.css'); ?>"><link rel="stylesheet" href="<?php echo appAssetPath('css/main.css'); ?>"><link rel="stylesheet" href="<?php echo appAssetPath('css/role.css'); ?>"><?php echo pwaHeadHtml(); ?></head><body>
+<?php include __DIR__ . '/../includes/sidebar.php'; ?><main class="main-content"><?php include __DIR__ . '/../includes/header.php'; ?><div class="page-content">
+<section class="admin-hero admin-hero-compact mb-4" aria-labelledby="attendance-monitoring-heading"><div class="admin-hero-main"><div class="welcome-role-chip"><i class="bi bi-calendar2-check"></i><span>Read-only oversight</span></div><h1 class="h4 mb-2" id="attendance-monitoring-heading">Attendance monitoring</h1><p class="text-muted mb-0">Review present, absent, and late records by date range and class. Attendance changes remain with authorized teachers.</p></div></section>
+<section class="content-card mb-4"><div class="content-card-body"><form method="get" class="row g-3 align-items-end app-responsive-filter-form"><div class="col-6 col-lg-2"><label class="form-label" for="attendance-from">From</label><input class="form-control" type="date" id="attendance-from" name="date_from" value="<?php echo htmlspecialchars($dateFrom); ?>"></div><div class="col-6 col-lg-2"><label class="form-label" for="attendance-to">To</label><input class="form-control" type="date" id="attendance-to" name="date_to" value="<?php echo htmlspecialchars($dateTo); ?>"></div><div class="col-6 col-lg-2"><label class="form-label" for="attendance-grade">Grade</label><select class="form-select" id="attendance-grade" name="grade_level"><option value="0">All grades</option><option value="11" <?php echo $grade === 11 ? 'selected' : ''; ?>>11</option><option value="12" <?php echo $grade === 12 ? 'selected' : ''; ?>>12</option></select></div><div class="col-6 col-lg-3"><label class="form-label" for="attendance-section">Section</label><select class="form-select" id="attendance-section" name="section"><option value="">All sections</option><?php foreach ($sections as $option): ?><option value="<?php echo htmlspecialchars((string)$option); ?>" <?php echo strcasecmp($section, (string)$option) === 0 ? 'selected' : ''; ?>><?php echo htmlspecialchars((string)$option); ?></option><?php endforeach; ?></select></div><div class="col-12 col-lg-2 d-grid"><button class="btn btn-primary" type="submit"><i class="bi bi-funnel me-1"></i>Apply</button></div></form></div></section>
+<?php if ($loadError !== ''): ?><div class="alert alert-danger"><?php echo htmlspecialchars($loadError); ?></div><?php endif; ?>
+<div class="row g-3 mb-4" aria-label="Attendance totals"><div class="col-6 col-xl"><div class="content-card p-3 h-100"><small class="text-muted d-block">Recorded</small><strong class="fs-3"><?php echo number_format($recorded); ?></strong></div></div><div class="col-6 col-xl"><div class="content-card p-3 h-100"><small class="text-muted d-block">Present</small><strong class="fs-3 text-success"><?php echo number_format($totals['present']); ?></strong></div></div><div class="col-6 col-xl"><div class="content-card p-3 h-100"><small class="text-muted d-block">Absent</small><strong class="fs-3 text-danger"><?php echo number_format($totals['absent']); ?></strong></div></div><div class="col-6 col-xl"><div class="content-card p-3 h-100"><small class="text-muted d-block">Late</small><strong class="fs-3 text-warning"><?php echo number_format($totals['late']); ?></strong></div></div><div class="col-12 col-xl"><div class="content-card p-3 h-100"><small class="text-muted d-block">Attendance rate</small><strong class="fs-3 text-primary"><?php echo number_format($presentRate, 1); ?>%</strong></div></div></div>
+<section class="content-card"><div class="content-card-header"><h2 class="content-card-title">Class summary</h2></div><div class="content-card-body"><div class="table-responsive"><table class="table custom-table align-middle mb-0"><thead><tr><th>Class</th><th>Recorded</th><th>Present</th><th>Absent</th><th>Late</th><th>Rate</th></tr></thead><tbody><?php if (!$classRows): ?><tr><td colspan="6"><div class="empty-state py-4">No attendance records match these filters.</div></td></tr><?php endif; ?><?php foreach ($classRows as $row): $rate = (int)$row['total'] > 0 ? round((((int)$row['present_count'] + (int)$row['late_count']) / (int)$row['total']) * 100, 1) : 0; ?><tr><td><strong>Grade <?php echo (int)$row['grade_level']; ?> <?php echo htmlspecialchars((string)$row['section']); ?></strong><small class="d-block text-muted"><?php echo htmlspecialchars((string)$row['class_name']); ?></small></td><td><?php echo number_format((int)$row['total']); ?></td><td><?php echo number_format((int)$row['present_count']); ?></td><td><?php echo number_format((int)$row['absent_count']); ?></td><td><?php echo number_format((int)$row['late_count']); ?></td><td><?php echo number_format($rate, 1); ?>%</td></tr><?php endforeach; ?></tbody></table></div></div></section>
+</div></main><?php include __DIR__ . '/../includes/footer.php'; ?>

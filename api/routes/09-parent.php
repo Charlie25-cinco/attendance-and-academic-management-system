@@ -77,6 +77,12 @@ if ($route === 'parent-progress' && $method === 'GET') {
                                     JOIN classes c ON c.id = g.class_id
                                     LEFT JOIN subjects s ON s.id = c.subject_id
                                     WHERE g.student_id = ?
+                                    AND EXISTS (
+                                        SELECT 1 FROM report_card_approvals rc
+                                        WHERE rc.student_id = g.student_id
+                                        AND rc.academic_year = g.academic_year
+                                        AND rc.status = 'approved'
+                                    )
                                     ORDER BY c.grade_level, c.section, c.class_name, g.term");
         $gradesStmt->execute([$cid]);
         $grades = $gradesStmt->fetchAll(PDO::FETCH_ASSOC);

@@ -179,10 +179,6 @@ $page_title = 'Attendance';
                         <strong id="lateCount"><?php echo (int)$summary['late']; ?></strong>
                     </div>
                     <div class="teacher-kpi-card">
-                        <span>Cutting</span>
-                        <strong id="cuttingCount"><?php echo (int)($summary['cutting'] ?? 0); ?></strong>
-                    </div>
-                    <div class="teacher-kpi-card">
                         <span>Total</span>
                         <strong><?php echo (int)$summary['total']; ?></strong>
                     </div>
@@ -201,7 +197,7 @@ $page_title = 'Attendance';
                                     <td><?php echo htmlspecialchars($student['reference_code']); ?></td>
                                     <td>
                                         <button type="button" class="teacher-status <?php echo htmlspecialchars($student['attendance_status']); ?>" data-status="<?php echo htmlspecialchars($student['attendance_status']); ?>" onclick="cycleStatus(this)">
-                                            <?php if ($student['attendance_status'] === 'present'): ?><i class="bi bi-check-circle"></i> Present<?php elseif ($student['attendance_status'] === 'absent'): ?><i class="bi bi-x-circle"></i> Absent<?php elseif ($student['attendance_status'] === 'cutting'): ?><i class="bi bi-box-arrow-right"></i> Cutting<?php else: ?><i class="bi bi-clock"></i> Late<?php endif; ?>
+                                            <?php if ($student['attendance_status'] === 'present'): ?><i class="bi bi-check-circle"></i> Present<?php elseif ($student['attendance_status'] === 'absent'): ?><i class="bi bi-x-circle"></i> Absent<?php else: ?><i class="bi bi-clock"></i> Late<?php endif; ?>
                                         </button>
                                     </td>
                                     <td><input type="text" class="form-control form-control-sm attendance-remarks" value="<?php echo htmlspecialchars($student['remarks']); ?>" placeholder="Add remarks..."></td>
@@ -214,7 +210,7 @@ $page_title = 'Attendance';
             <div class="p-3 border-top">
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <div class="teacher-section-note">
-                        Status buttons cycle through <strong>Present</strong>, <strong>Absent</strong>, <strong>Late</strong>, and <strong>Cutting</strong>. Add remarks only when needed.
+                        Status buttons cycle through <strong>Present</strong>, <strong>Absent</strong>, and <strong>Late</strong>. Add remarks only when needed.
                     </div>
                     <button class="btn btn-primary-custom" id="submitAttendanceBtn" onclick="submitAttendance()"><i class="bi bi-save me-2"></i>Save Attendance</button>
                 </div>
@@ -311,16 +307,15 @@ if (!navigator.onLine && window.bshsOfflineStorage) {
     });
 }
 
-const statusCycle=['present','absent','late','cutting'];
+const statusCycle=['present','absent','late'];
 const statusTemplate={
     present:'<i class="bi bi-check-circle"></i> Present',
     absent:'<i class="bi bi-x-circle"></i> Absent',
-    late:'<i class="bi bi-clock"></i> Late',
-    cutting:'<i class="bi bi-box-arrow-right"></i> Cutting'
+    late:'<i class="bi bi-clock"></i> Late'
 };
 function updateEditState(){const btn=document.getElementById('submitAttendanceBtn');if(!btn)return;if(canEditAttendance){btn.disabled=false;btn.title='';btn.innerHTML='<i class=\"bi bi-save me-2\"></i>Save Attendance';}else{btn.disabled=true;btn.title=editBlockedReason||'Attendance is unavailable for this class on the selected date';btn.innerHTML='<i class=\"bi bi-eye me-2\"></i>Attendance Unavailable';}}
-function cycleStatus(button){if(!canEditAttendance){return;}const current=button.dataset.status||'present';const next=statusCycle[(statusCycle.indexOf(current)+1)%statusCycle.length];button.dataset.status=next;button.classList.remove('present','absent','late','cutting');button.classList.add(next);button.innerHTML=statusTemplate[next];updateSummaryCounts();}
-function updateSummaryCounts(summary){if(summary){document.getElementById('presentCount').textContent=summary.present||0;document.getElementById('absentCount').textContent=summary.absent||0;document.getElementById('lateCount').textContent=summary.late||0;if(document.getElementById('cuttingCount'))document.getElementById('cuttingCount').textContent=summary.cutting||0;return;}let p=0,a=0,l=0,c=0;document.querySelectorAll('#attendanceBody tr[data-student-id]').forEach(r=>{const s=r.querySelector('.teacher-status')?.dataset.status;if(s==='present')p++;if(s==='absent')a++;if(s==='late')l++;if(s==='cutting')c++;});document.getElementById('presentCount').textContent=p;document.getElementById('absentCount').textContent=a;document.getElementById('lateCount').textContent=l;if(document.getElementById('cuttingCount'))document.getElementById('cuttingCount').textContent=c;}
+function cycleStatus(button){if(!canEditAttendance){return;}const current=button.dataset.status||'present';const next=statusCycle[(statusCycle.indexOf(current)+1)%statusCycle.length];button.dataset.status=next;button.classList.remove('present','absent','late');button.classList.add(next);button.innerHTML=statusTemplate[next];updateSummaryCounts();}
+function updateSummaryCounts(summary){if(summary){document.getElementById('presentCount').textContent=summary.present||0;document.getElementById('absentCount').textContent=summary.absent||0;document.getElementById('lateCount').textContent=summary.late||0;return;}let p=0,a=0,l=0;document.querySelectorAll('#attendanceBody tr[data-student-id]').forEach(r=>{const s=r.querySelector('.teacher-status')?.dataset.status;if(s==='present')p++;if(s==='absent')a++;if(s==='late')l++;});document.getElementById('presentCount').textContent=p;document.getElementById('absentCount').textContent=a;document.getElementById('lateCount').textContent=l;}
 function applySearchFilter(){
     const input = document.getElementById('attendanceSearch');
     const clearBtn = document.getElementById('clearAttendanceSearchBtn');

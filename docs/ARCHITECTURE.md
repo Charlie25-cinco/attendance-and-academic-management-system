@@ -1,7 +1,7 @@
 # Technical Architecture Specification
 
 **System Name:** Balingasag Senior High School - Attendance and Academic Management System (BSHS AMS)  
-**Document Version:** 2.1.1
+**Document Version:** 3.0.0
 **Status:** Approved  
 
 ---
@@ -86,8 +86,9 @@ The application source code lives under the `BshsAms\` namespace in `src/`:
 ### 2.6 Notification and Audit Components
 - **In-app/Web Push delivery**: `appDispatchNotification()` persists user-visible notifications before optional browser push delivery; push failures do not roll back the originating transaction.
 - **`BshsAms\Audit\ActivityLogger`**: Records critical cross-role mutations in `activity_logs` after recursively redacting sensitive metadata.
-- **`BshsAms\Grade\ReportCardReview`**: Enforces Principal-only final report-card decisions and verified-grade prerequisites.
-- **`BshsAms\Grade\PrincipalReportCardQuery`**: Supplies the independently rendered Principal dashboard, pending queue, release register, and activity-backed decision timeline with one parameterized read model.
+- **`BshsAms\Grade\ReportCardReview`**: Enforces Principal-only report-card endorsement/return decisions and verified-grade prerequisites.
+- **`BshsAms\Grade\AdminReportCardRelease`**: Enforces Admin-only final release, return, and withdrawal decisions after Principal endorsement.
+- **`BshsAms\Grade\PrincipalReportCardQuery`**: Supplies the Principal dashboard, endorsement queue, Admin-awaiting and released registers, and activity-backed decision timeline.
 
 ### 2.7 Storage Component (`BshsAms\Storage`)
 - **`MaterialStorage.php`**: Secure learning material storage manager with randomized filenames, path traversal protection, and role-authorized file streaming.

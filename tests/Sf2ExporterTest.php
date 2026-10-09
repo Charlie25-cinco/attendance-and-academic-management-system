@@ -154,7 +154,7 @@ final class Sf2ExporterTest extends TestCase
                 '2026-08-07' => 'absent',
             ],
             20 => [
-                '2026-08-03' => ['status' => 'cutting', 'remarks' => 'Cutting Class (Period 3)'],
+                '2026-08-03' => ['status' => 'absent', 'remarks' => 'Excused absence'],
                 '2026-08-04' => 'present',
             ],
         ]);
@@ -171,10 +171,10 @@ final class Sf2ExporterTest extends TestCase
 
             // Learner remarks column AV (index 47)
             $this->assertSame('5 consecutive days absent', $rows[12][47] ?? null);
-            $this->assertSame('CCT Recipient; Cutting Class (Period 3)', $rows[30][47] ?? null);
+            $this->assertSame('CCT Recipient; Excused absence', $rows[30][47] ?? null);
 
-            // Cutting mark for female learner on Aug 3 (row 30, col 7)
-            $this->assertSame("\u{2584}", $rows[30][7] ?? null);
+            // Absent mark for female learner on Aug 3 (row 30, col 7)
+            $this->assertSame('X', $rows[30][7] ?? null);
 
             // Row 68 summary: 5 consecutive days absent count (1 male, 0 female, 1 total)
             $this->assertSame(1, (int)($rows[68][48] ?? 0));

@@ -206,7 +206,7 @@ $page_title = 'Admin Dashboard';
                             <a href="admin_Users.php" class="btn btn-primary-custom">
                                 <i class="bi bi-people me-1"></i>Manage Users
                             </a>
-                            <a href="admin_Grade_Approvals.php" class="btn btn-outline-primary">
+                            <a href="admin_Report_Cards.php" class="btn btn-outline-primary">
                                 <i class="bi bi-folder-check me-1"></i>Review Approvals
                             </a>
                             <a href="admin_Reports.php" class="btn btn-outline-primary">

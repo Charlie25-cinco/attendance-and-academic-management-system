@@ -1,6 +1,7 @@
 <?php
 
 use BshsAms\Audit\ActivityLogger;
+use BshsAms\Grade\AdminReportCardRelease;
 use BshsAms\Grade\PrincipalReportCardQuery;
 use BshsAms\Grade\ReportCardReview;
 use PHPUnit\Framework\TestCase;
@@ -42,7 +43,7 @@ final class PrincipalReportCardWorkflowTest extends TestCase
         $this->db->exec("INSERT INTO report_card_approvals VALUES (1, 10, '2026-2027', 'S1', 20, 'submitted_admin', NULL, NULL, NULL)");
     }
 
-    public function testPrincipalCanReleaseAdminVerifiedReportCardAndAuditDecision(): void
+    public function testPrincipalCanEndorseVerifiedReportCardAndAuditDecision(): void
     {
         $notified = [];
         $service = new ReportCardReview($this->db, function (array $card, string $decision) use (&$notified): void {
@@ -50,23 +51,34 @@ final class PrincipalReportCardWorkflowTest extends TestCase
         });
 
         self::assertSame(1, $service->review(1, [1], 'approve'));
-        self::assertSame('approved', $this->db->query('SELECT status FROM report_card_approvals WHERE id = 1')->fetchColumn());
+        self::assertSame('pending', $this->db->query('SELECT status FROM report_card_approvals WHERE id = 1')->fetchColumn());
         self::assertSame([[10, 'approve']], $notified);
         self::assertSame('report_card.approve', $this->db->query('SELECT action_name FROM activity_logs')->fetchColumn());
     }
 
-    public function testDecisionHistoryPreservesReleaseAndWithdrawalEvents(): void
+    public function testAdminCanReleasePrincipalEndorsedReportCard(): void
     {
-        $service = new ReportCardReview($this->db, static function (): void {});
-        self::assertSame(1, $service->review(1, [1], 'approve'));
-        self::assertSame(1, $service->review(1, [1], 'withdraw', 'Correct the learner record.'));
+        (new ReportCardReview($this->db, static function (): void {}))->review(1, [1], 'approve');
+        $notified = [];
+        $service = new AdminReportCardRelease($this->db, function (array $card, string $decision) use (&$notified): void {
+            $notified[] = [(int)$card['student_id'], $decision];
+        });
 
+        self::assertSame(1, $service->decide(2, [1], 'approve'));
+        self::assertSame('approved', $this->db->query('SELECT status FROM report_card_approvals WHERE id = 1')->fetchColumn());
+        self::assertSame([[10, 'approve']], $notified);
+        self::assertSame(
+            ['report_card.approve', 'report_card.admin_approve'],
+            $this->db->query('SELECT action_name FROM activity_logs ORDER BY id')->fetchAll(PDO::FETCH_COLUMN)
+        );
+    }
+
+    public function testDecisionHistoryPreservesPrincipalEndorsement(): void
+    {
+        (new ReportCardReview($this->db, static function (): void {}))->review(1, [1], 'approve');
         $events = (new PrincipalReportCardQuery($this->db))->decisionHistory();
-
-        self::assertCount(2, $events);
-        self::assertSame('report_card.withdraw', $events[0]['action_name']);
-        self::assertSame('Correct the learner record.', $events[0]['decision_remarks']);
-        self::assertSame('report_card.approve', $events[1]['action_name']);
+        self::assertCount(1, $events);
+        self::assertSame('report_card.approve', $events[0]['action_name']);
         self::assertSame('Sample', $events[0]['first_name']);
         self::assertSame('School Principal', $events[0]['reviewer_name']);
     }
@@ -83,6 +95,13 @@ final class PrincipalReportCardWorkflowTest extends TestCase
 
         $this->expectException(DomainException::class);
         $service->review(1, [1], 'reject', '');
+    }
+
+    public function testPrincipalCannotPerformAdminWithdrawal(): void
+    {
+        $this->expectException(DomainException::class);
+        (new ReportCardReview($this->db, static function (): void {}))
+            ->review(1, [1], 'withdraw', 'Not a Principal decision.');
     }
 
     public function testActivityLoggerRedactsSensitiveDetails(): void

@@ -8,7 +8,7 @@ if (empty($_SESSION['logged_in']) || ($_SESSION['role'] ?? '') !== 'principal') 
 }
 
 $db = (new Database())->getConnection();
-$counts = ['submitted_admin' => 0, 'approved' => 0, 'rejected' => 0];
+$counts = ['pending' => 0, 'submitted_admin' => 0, 'approved' => 0, 'rejected' => 0];
 $pendingRows = [];
 $decisionRows = [];
 $loadError = '';
@@ -47,12 +47,12 @@ $page_title = 'Principal Dashboard';
         <section class="admin-hero admin-hero-compact mb-4" aria-labelledby="principal-heading">
             <div class="admin-hero-grid">
                 <div class="admin-hero-main">
-                    <div class="welcome-role-chip"><i class="bi bi-patch-check"></i><span>Final release authority</span></div>
-                    <h1 class="h4 mb-2" id="principal-heading">Principal report-card dashboard</h1>
-                    <p class="text-muted mb-0">See what needs attention, monitor released cards, and review recent decisions from one overview.</p>
+                    <div class="welcome-role-chip"><i class="bi bi-patch-check"></i><span>Academic verification authority</span></div>
+                    <h1 class="h4 mb-2" id="principal-heading">Principal monitoring dashboard</h1>
+                    <p class="text-muted mb-0">Verify subject grades, endorse Adviser report cards, and monitor final Admin releases.</p>
                 </div>
                 <div class="admin-hero-side principal-workflow" aria-label="Approval workflow">
-                    <span>Teacher</span><i class="bi bi-arrow-right"></i><span>Admin</span><i class="bi bi-arrow-right"></i><span>Adviser</span><i class="bi bi-arrow-right"></i><strong>Principal</strong>
+                    <span>Teacher</span><i class="bi bi-arrow-right"></i><strong>Principal</strong><i class="bi bi-arrow-right"></i><span>Adviser</span><i class="bi bi-arrow-right"></i><strong>Principal</strong><i class="bi bi-arrow-right"></i><span>Admin</span>
                 </div>
             </div>
         </section>
@@ -60,8 +60,8 @@ $page_title = 'Principal Dashboard';
         <?php if ($loadError !== ''): ?><div class="alert alert-danger" role="alert"><?php echo htmlspecialchars($loadError); ?></div><?php endif; ?>
 
         <div class="row g-3 mb-4" aria-label="Report-card totals">
-            <div class="col-12 col-md-4"><a class="content-card principal-stat-card" href="principal_Pending.php"><span>Pending review<small class="d-block text-muted mt-1">Open review queue <i class="bi bi-arrow-right"></i></small></span><strong><?php echo number_format($counts['submitted_admin']); ?></strong></a></div>
-            <div class="col-12 col-md-4"><a class="content-card principal-stat-card" href="principal_Released.php"><span>Released cards<small class="d-block text-muted mt-1">View family-visible cards <i class="bi bi-arrow-right"></i></small></span><strong><?php echo number_format($counts['approved']); ?></strong></a></div>
+            <div class="col-12 col-md-4"><a class="content-card principal-stat-card" href="principal_Pending.php"><span>Pending endorsement<small class="d-block text-muted mt-1">Open Adviser submissions <i class="bi bi-arrow-right"></i></small></span><strong><?php echo number_format($counts['submitted_admin']); ?></strong></a></div>
+            <div class="col-12 col-md-4"><a class="content-card principal-stat-card" href="principal_Endorsed.php"><span>Awaiting Admin<small class="d-block text-muted mt-1">Monitor endorsed cards <i class="bi bi-arrow-right"></i></small></span><strong><?php echo number_format($counts['pending']); ?></strong></a></div>
             <div class="col-12 col-md-4"><a class="content-card principal-stat-card" href="principal_History.php"><span>Returned / withdrawn<small class="d-block text-muted mt-1">Review decision history <i class="bi bi-arrow-right"></i></small></span><strong><?php echo number_format($counts['rejected']); ?></strong></a></div>
         </div>
 

@@ -88,7 +88,7 @@ class Sf2Exporter {
             $dateStr = sprintf('%04d-%02d-%02d', $this->year, $this->month, $day);
             $rec = $this->attendance[$studentId][$dateStr] ?? '';
             $status = is_array($rec) ? strtolower(trim((string)($rec['status'] ?? ''))) : strtolower(trim((string)$rec));
-            if ($status === 'absent' || $status === 'cutting') {
+            if ($status === 'absent') {
                 $currentStreak++;
                 if ($currentStreak > $maxConsecutive) {
                     $maxConsecutive = $currentStreak;
@@ -378,9 +378,6 @@ class Sf2Exporter {
                 } elseif ($status === 'late' || $status === 'tardy') {
                     $mark = "\u{2580}";
                     $tardyCount++;
-                } elseif ($status === 'cutting') {
-                    $mark = "\u{2584}";
-                    $absentCount++;
                 }
                 $editor->setCell($col . $row, $mark);
             }
@@ -433,7 +430,6 @@ class Sf2Exporter {
                 if ($status === 'present') { $groupTotals[$group]['present_by_day'][$day]++; $groupTotals['combined']['present_by_day'][$day]++; }
                 elseif ($status === 'absent') { $mark = 'X'; $absentCount++; }
                 elseif ($status === 'late' || $status === 'tardy') { $mark = "\u{2580}"; $tardyCount++; }
-                elseif ($status === 'cutting') { $mark = "\u{2584}"; $absentCount++; }
                 $ws->setCellValue($col . $row, $mark);
             }
             $groupTotals[$group]['absent'] += $absentCount; $groupTotals[$group]['tardy'] += $tardyCount;

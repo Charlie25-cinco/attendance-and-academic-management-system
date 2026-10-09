@@ -273,7 +273,8 @@ function apiAdvisorySectionStatus(PDO $db, array $advisory, string $academicYear
         : "AND rc.semester IS NULL";
     $stmt = $db->prepare("SELECT
                                 COUNT(*) AS total_rows,
-                                SUM(CASE WHEN rc.status IN ('pending','submitted_admin') THEN 1 ELSE 0 END) AS pending_count,
+                                SUM(CASE WHEN rc.status = 'submitted_admin' THEN 1 ELSE 0 END) AS principal_count,
+                                SUM(CASE WHEN rc.status = 'pending' THEN 1 ELSE 0 END) AS admin_count,
                                 SUM(CASE WHEN rc.status = 'approved' THEN 1 ELSE 0 END) AS approved_count,
                                 SUM(CASE WHEN rc.status = 'rejected' THEN 1 ELSE 0 END) AS rejected_count
                             FROM report_card_approvals rc
@@ -298,14 +299,18 @@ function apiAdvisorySectionStatus(PDO $db, array $advisory, string $academicYear
     $stmt->execute($params);
     $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
     $total = (int)($row['total_rows'] ?? 0);
-    $pending = (int)($row['pending_count'] ?? 0);
+    $principal = (int)($row['principal_count'] ?? 0);
+    $admin = (int)($row['admin_count'] ?? 0);
     $approved = (int)($row['approved_count'] ?? 0);
     $rejected = (int)($row['rejected_count'] ?? 0);
     if ($total <= 0) {
         return '';
     }
-    if ($pending > 0 && $approved === 0 && $rejected === 0) {
-        return 'pending';
+    if ($principal === $total) {
+        return 'submitted_principal';
+    }
+    if ($admin === $total) {
+        return 'pending_admin';
     }
     if ($approved === $total) {
         return 'approved';
@@ -325,7 +330,7 @@ function apiMarkGradePendingApproval(PDO $db, int $gradeId, int $teacherId): voi
                             submitted_at = NOW(),
                             reviewed_by = NULL,
                             reviewed_at = NULL,
-                            remarks = 'Awaiting admin review'");
+                            remarks = 'Awaiting Principal review'");
     $stmt->execute([$gradeId, $teacherId]);
 }
 

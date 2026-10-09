@@ -52,7 +52,7 @@ Open `http://localhost:5000`.
 - `functions/` - bootstrap, helpers, grade logic, database helpers, and exporters.
 - `includes/` - shared header, sidebar, footer, modals, and UI fragments.
 - `parent/`, `student/`, `teacher/` - role-specific web modules.
-- `principal/` - independently rendered Principal dashboard, readiness-focused pending queue, family-visible release register, read-only decision history, and secured action route.
+- `principal/` - Principal grade verification, report-card endorsement, academic/attendance monitoring, activity logs, release register, and decision history.
 - `resources/` - legacy/reference DepEd material.
 - `site/` - public site entry point.
 - `src/` - PSR-4 namespaced classes (`BshsAms\Database`, `BshsAms\Schedule`, `BshsAms\Grade`, `BshsAms\Export`, `BshsAms\Xlsx`).
@@ -96,13 +96,14 @@ This operational documentation applies ISO/IEC/IEEE 29148 clarity and traceabili
 
 ### Principal
 
-- Dedicated dashboard for pending, released, and returned report cards.
-- Final report-card release, return-for-correction, and release-withdrawal actions through the `report_cards.review` permission.
-- Final release saves notifications for students and linked parents before Web Push delivery is attempted.
+- Verifies or returns subject-teacher grade submissions before adviser compilation.
+- Endorses or returns compiled adviser report cards before Admin release.
+- Monitors academic workflow, attendance summaries, Admin-released records, and privacy-filtered role activity through read-only pages.
 
 ### Admin
 
-- Users, sections, classes, enrollments, attendance, reports, archives, audit logs, announcements, grade approvals, SF1 import, and DepEd form exports from Reports.
+- Users, sections, classes, enrollments, attendance, reports, archives, audit logs, announcements, final report-card release, SF1 import, and DepEd form exports from Reports.
+- Final release saves notifications for students, linked parents, the adviser, subject teachers, and the Principal before optional Web Push delivery.
 
 ### Teacher
 
@@ -123,16 +124,19 @@ This operational documentation applies ISO/IEC/IEEE 29148 clarity and traceabili
 
 ## Report Card Approval Pipeline
 
-1. Subject teacher submits grades to admin: `grade_approvals.status = 'submitted'`.
+1. Subject teacher submits grades to the Principal: `grade_approvals.status = 'submitted'`.
 2. Subject teacher grade activities and score edits are locked only while grades are `submitted`.
 3. Subject teacher may recall while grades are `submitted`; rejected, verified, or final-released grades may be corrected by submitting again.
-4. Admin verifies subject grades for adviser review or rejects them: `admin_verified` or `rejected`.
-5. Admin may return verified subject grades to the teacher by marking them `rejected`, which unlocks teacher editing and resubmission.
+4. Principal verifies subject grades for adviser review or rejects them: `admin_verified` or `rejected` (the legacy storage name is retained for compatibility).
+5. Principal may return verified subject grades to the teacher by marking them `rejected`, which unlocks teacher editing and resubmission.
 6. Adviser submits compiled report cards to the Principal: `report_card_approvals.status = 'submitted_admin'` (the legacy storage name is retained for compatibility).
 7. Adviser may recall while report cards are `submitted_admin`; Principal-returned cards may be corrected and resubmitted.
-8. Principal gives final report-card approval or return decision: `approved` or `rejected`; a released card may also be withdrawn for correction.
-9. Student and parent portals show grades only after final Principal approval through `report_card_approvals.status = 'approved'`.
-10. After final release, teachers may submit corrected subject grades again; the affected approved report cards are marked `rejected` so student and parent portals stop showing stale final grades until approval runs again.
+8. Principal endorses a report card to Admin as `pending`, or returns it as `rejected`.
+9. Admin gives final release as `approved`, returns an endorsed card as `rejected`, or withdraws a previously released card to `rejected`.
+10. Student and parent portals show grades only after Admin release through `report_card_approvals.status = 'approved'`.
+11. After final release, teachers may submit corrected subject grades again; the affected approved report cards are marked `rejected` so student and parent portals stop showing stale final grades until approval runs again.
+
+Attendance recording accepts only `present`, `absent`, and `late`. Additional absence context belongs in the remarks field.
 
 ## Chat
 

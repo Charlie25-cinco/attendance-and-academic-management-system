@@ -104,7 +104,7 @@ final class WorkflowIntegrationTest extends TestCase
             UNIQUE(student_id, class_subject_id, term, academic_year)
         )");
 
-        // Grade Approvals (Subject Teacher -> Admin)
+        // Grade Approvals (Subject Teacher -> Principal)
         $this->db->exec("CREATE TABLE grade_approvals (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             class_subject_id INTEGER NOT NULL,
@@ -117,7 +117,7 @@ final class WorkflowIntegrationTest extends TestCase
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )");
 
-        // Report Card Approvals (Adviser -> Principal -> Release)
+        // Report Card Approvals (Adviser -> Principal -> Admin release)
         $this->db->exec("CREATE TABLE report_card_approvals (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             class_id INTEGER NOT NULL,
@@ -204,7 +204,7 @@ final class WorkflowIntegrationTest extends TestCase
         $this->db->exec("INSERT INTO grades (student_id, class_subject_id, ww_raw_score, pt_raw_score, assessment_raw_score, final_grade, term, academic_year)
             VALUES (10, 501, 48.00, 90.00, 92.00, 94.00, 'Term1', '2026-2027')");
 
-        // Step 2: Subject Teacher submits grades to Admin
+        // Step 2: Subject Teacher submits grades to Principal
         $this->db->exec("INSERT INTO grade_approvals (class_subject_id, term, academic_year, status, submitted_by)
             VALUES (501, 'Term1', '2026-2027', 'submitted', 2)");
 
@@ -212,7 +212,7 @@ final class WorkflowIntegrationTest extends TestCase
         $stmt = $this->db->query("SELECT COUNT(*) FROM report_card_approvals WHERE class_id = 1 AND status = 'approved'");
         $this->assertSame(0, (int)$stmt->fetchColumn(), 'Grades must not be visible to students before official approval');
 
-        // Step 3: Admin verifies Subject Grades
+        // Step 3: Principal verifies Subject Grades
         $this->db->exec("UPDATE grade_approvals SET status = 'admin_verified', verified_by = 1 WHERE class_subject_id = 501 AND term = 'Term1'");
 
         $stmt = $this->db->query("SELECT status FROM grade_approvals WHERE class_subject_id = 501 AND term = 'Term1'");
@@ -222,16 +222,20 @@ final class WorkflowIntegrationTest extends TestCase
         $this->db->exec("INSERT INTO report_card_approvals (class_id, student_id, term, academic_year, status, submitted_by)
             VALUES (1, NULL, 'Term1', '2026-2027', 'submitted_admin', 3)");
 
-        // Step 5: Principal gives final official approval and releases report cards
+        // Step 5: Principal endorses report cards to Admin
+        $this->db->exec("UPDATE report_card_approvals SET status = 'pending', approved_by = 4 WHERE class_id = 1 AND term = 'Term1'");
+        $this->assertSame('pending', $this->db->query("SELECT status FROM report_card_approvals WHERE class_id = 1 AND term = 'Term1'")->fetchColumn());
+
+        // Step 6: Admin gives final official approval and releases report cards
         $this->db->exec("UPDATE report_card_approvals SET status = 'approved', approved_by = 4 WHERE class_id = 1 AND term = 'Term1'");
 
-        // Step 6: Verify Student & Parent visibility rule
+        // Step 7: Verify Student & Parent visibility rule
         $stmt = $this->db->query("SELECT status FROM report_card_approvals WHERE class_id = 1 AND term = 'Term1'");
         $approvalStatus = $stmt->fetchColumn();
         $this->assertSame('approved', $approvalStatus);
         $this->assertTrue($approvalStatus === 'approved', 'Student and Parent portal visibility is unlocked');
 
-        // Step 7: Verify saved portal notifications for student and parent publication
+        // Step 8: Verify saved portal notifications for student and parent publication
         $this->db->exec("INSERT INTO notifications (user_id, title, message, type, link)
             VALUES (10, 'Official Report Card Released', 'Your report card is now available.', 'grade_publication', 'Student_Report_Card.php')");
         $this->db->exec("INSERT INTO notifications (user_id, title, message, type, link)

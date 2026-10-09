@@ -1,7 +1,13 @@
 <?php
 require_once __DIR__ . '/../functions/bootstrap.php';
-if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'admin') {
+$principalGradePortal = defined('PRINCIPAL_GRADE_PORTAL') && PRINCIPAL_GRADE_PORTAL === true;
+$requiredRole = $principalGradePortal ? 'principal' : 'admin';
+if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== $requiredRole) {
     header("Location: ../auth/login.php");
+    exit();
+}
+if (!$principalGradePortal) {
+    header('Location: admin_Report_Cards.php');
     exit();
 }
 
@@ -105,7 +111,8 @@ if ($db) {
         }
     }
 
-    $rcSql = "SELECT rc.academic_year,
+    if (!$principalGradePortal) {
+        $rcSql = "SELECT rc.academic_year,
                      rc.semester,
                      s.grade_level,
                      s.section,
@@ -133,17 +140,18 @@ if ($db) {
     $rcStmt = $db->prepare($rcSql);
     $rcStmt->execute();
     $reportCardRows = $rcStmt->fetchAll(PDO::FETCH_ASSOC);
-    foreach ($reportCardRows as $row) {
-        $reportCardStatusCounts['pending'] += (int)($row['pending_count'] ?? 0);
-        $reportCardStatusCounts['approved'] += (int)($row['approved_count'] ?? 0);
-        $reportCardStatusCounts['rejected'] += (int)($row['rejected_count'] ?? 0);
+        foreach ($reportCardRows as $row) {
+            $reportCardStatusCounts['pending'] += (int)($row['pending_count'] ?? 0);
+            $reportCardStatusCounts['approved'] += (int)($row['approved_count'] ?? 0);
+            $reportCardStatusCounts['rejected'] += (int)($row['rejected_count'] ?? 0);
+        }
     }
 
 }
 
-$current_role = 'admin';
-$current_page = 'grade_approvals';
-$page_title = 'Grade Approvals';
+$current_role = 'principal';
+$current_page = 'subject_grades';
+$page_title = 'Subject Grade Verification';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -164,8 +172,8 @@ $page_title = 'Grade Approvals';
     <div class="page-content">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
-                <h4 class="mb-1">Grade Approvals</h4>
-                <p class="text-muted mb-0">Verify subject grades and monitor report-card decisions by the Principal.</p>
+                <h4 class="mb-1">Subject Grade Verification</h4>
+                <p class="text-muted mb-0">Review subject-teacher submissions before advisers compile report cards.</p>
             </div>
         </div>
 
@@ -174,32 +182,39 @@ $page_title = 'Grade Approvals';
             <div class="content-card-body p-3">
                 <h6 class="fw-bold mb-2 text-primary d-flex align-items-center"><i class="bi bi-diagram-3-fill me-2"></i>DepEd Grade Approval & Publication Pipeline</h6>
                 <div class="row g-2 text-center small">
-                    <div class="col-md-3">
+                    <div class="col-md">
                         <div class="p-2 rounded bg-white border shadow-sm h-100">
                             <span class="badge bg-primary mb-1">Step 1</span>
                             <div class="fw-semibold">Subject Teachers</div>
-                            <div class="text-muted" style="font-size: 11px;">Encode scores & submit subject grades to Admin</div>
+                            <div class="text-muted" style="font-size: 11px;">Encode scores and submit subject grades to the Principal</div>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md">
                         <div class="p-2 rounded bg-white border border-primary shadow-sm h-100">
-                            <span class="badge bg-info text-dark mb-1">Step 2: Admin Action</span>
-                            <div class="fw-semibold">Admin Verification</div>
+                            <span class="badge bg-info text-dark mb-1">Step 2</span>
+                            <div class="fw-semibold">Principal Verification</div>
                             <div class="text-muted" style="font-size: 11px;">Verify subject grades to unlock section report card compilation</div>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md">
                         <div class="p-2 rounded bg-white border shadow-sm h-100">
                             <span class="badge bg-warning text-dark mb-1">Step 3</span>
                             <div class="fw-semibold">Class Advisers</div>
-                            <div class="text-muted" style="font-size: 11px;">Review compiled section report cards & submit to Principal</div>
+                            <div class="text-muted" style="font-size: 11px;">Compile verified grades and submit report cards</div>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md">
                         <div class="p-2 rounded bg-white border border-success shadow-sm h-100">
-                            <span class="badge bg-success mb-1">Step 4: Final Release</span>
-                            <div class="fw-semibold">Principal Approval & Release</div>
-                            <div class="text-muted" style="font-size: 11px;">Final release unlocks student/parent viewing and sends in-app/Web Push notifications</div>
+                            <span class="badge bg-success mb-1">Step 4</span>
+                            <div class="fw-semibold">Principal Endorsement</div>
+                            <div class="text-muted" style="font-size: 11px;">Verify the complete report card and endorse it to Admin</div>
+                        </div>
+                    </div>
+                    <div class="col-md">
+                        <div class="p-2 rounded bg-white border shadow-sm h-100">
+                            <span class="badge bg-primary mb-1">Step 5</span>
+                            <div class="fw-semibold">Admin Release</div>
+                            <div class="text-muted" style="font-size: 11px;">Final release enables student and parent viewing</div>
                         </div>
                     </div>
                 </div>
@@ -210,7 +225,7 @@ $page_title = 'Grade Approvals';
             <div class="content-card-header d-flex justify-content-between align-items-center">
                 <div>
                     <h5 class="content-card-title mb-0">Subject Grade Submissions</h5>
-                    <small class="text-muted">Subject teacher submissions waiting for admin verification before adviser review.</small>
+                    <small class="text-muted">Subject-teacher submissions waiting for Principal verification before adviser review.</small>
                 </div>
                 <form method="GET" class="d-flex gap-2">
                     <select name="status" class="form-select form-select-sm">
@@ -291,10 +306,11 @@ $page_title = 'Grade Approvals';
             </div>
         </div>
 
+        <?php if (!$principalGradePortal): ?>
         <div class="content-card mt-4">
             <div class="content-card-header">
                 <h5 class="content-card-title mb-0">Report Card Submissions</h5>
-                <small class="text-muted">Adviser submissions waiting for final principal approval.</small>
+                <small class="text-muted">Adviser submissions use the dedicated Principal endorsement queue.</small>
             </div>
             <div class="content-card-body">
                 <div class="d-flex flex-wrap gap-2 mb-3">
@@ -359,6 +375,7 @@ $page_title = 'Grade Approvals';
                 </div>
             </div>
         </div>
+        <?php endif; ?>
     </div>
 </div>
 
