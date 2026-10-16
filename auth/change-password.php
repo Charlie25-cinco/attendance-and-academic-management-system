@@ -41,38 +41,20 @@ if (!$db) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $db) {
-    $csrfToken = trim((string)($_POST['csrf_token'] ?? ''));
-    if ($csrfToken === '' || !hash_equals((string)($_SESSION['csrf_token'] ?? ''), $csrfToken)) {
-        $error = 'Invalid request. Please refresh and try again.';
-    }
-
-    $newPassword = (string)($_POST['new_password'] ?? '');
-    $confirmPassword = (string)($_POST['confirm_password'] ?? '');
-    if ($error === '' && ($newPassword === '' || $confirmPassword === '')) {
-        $error = 'Please fill in all fields.';
-    } elseif ($newPassword !== $confirmPassword) {
-        $error = 'Passwords do not match.';
-    } elseif (!validateStrongPassword($newPassword, $error)) {
-        // Error message populated by shared validator.
-    } else {
-        $userId = (int)$_SESSION['pending_user_id'];
-        $hash = password_hash($newPassword, PASSWORD_DEFAULT);
-        $stmt = $db->prepare("UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?");
-        $stmt->execute([$hash, $userId]);
-        bumpUserApiTokenVersion($db, $userId);
-
-        $userStmt = $db->prepare("SELECT id, reference_code, email, first_name, last_name, role
-                                  FROM users WHERE id = ? LIMIT 1");
-        $userStmt->execute([$userId]);
-        $user = $userStmt->fetch(PDO::FETCH_ASSOC);
+    try {
+        // The shared operation rejects invalid CSRF before any write.
+        $user = \BshsAms\Security\AuthSecurity::completePasswordSetup($db, $_SESSION, $_POST, $error);
         if ($user) {
+            $userId = (int)$user['id'];
             recordActivityLog($db, 'account.first_password_change', 'user', $userId, [], $userId, (string)$user['role']);
-            unset($_SESSION['pending_password_change'], $_SESSION['pending_user_id'], $_SESSION['pending_reference_code']);
+            unset($_SESSION['pending_password_change'], $_SESSION['pending_user_id'], $_SESSION['pending_reference_code'],
+                $_SESSION['pending_token_version'], $_SESSION['pending_password_until']);
             establishLoginSession($db, $user);
             redirectByRole($user['role']);
-        } else {
-            $error = 'Unable to load user. Please login again.';
         }
+    } catch (Throwable $e) {
+        error_log('Password setup failed: ' . $e->getMessage());
+        $error = 'Unable to change password. Please try again.';
     }
 }
 ?>

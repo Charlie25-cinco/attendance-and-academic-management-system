@@ -50,6 +50,16 @@ For local manual testing, `composer run serve` starts the PHP development server
 
 ## Security Notes
 
+### Assessment readiness invariants (v3.1.6)
+
+These operational constraints apply ISO/IEC/IEEE 29148 clarity and traceability principles, with full requirements metadata simplified for an agent guide. IDs correspond to the README assessment-readiness guidance.
+
+- **SEC-AUTH-01/02:** Keep web/API reset verification on `BshsAms\Security\AuthSecurity::reserveResetAttempt()` (five attempts per normalized email per 15 minutes, independent of IP/session). Reserve before token verification; do not clear the counter when sending a new code. Consume password tokens inside the transaction before writing the password, require a successful conditional claim, and roll back if credential revocation fails.
+- **SEC-AUTH-03/04:** Preserve bootstrap validation of account status, role, and `auth_token_version` against `users.api_token_version`. Password/status changes invalidate older credentials; only a verified current session may be retained on a self-service password change. First-login web setup requires CSRF plus an unexpired, version-bound pending session. Never suppress a credential-version update failure. Keep login errors generic.
+- **SEC-IMPORT-01:** Preserve `SimpleXlsxParser` compressed/expanded-byte, entry-count, XML-node, row, column, and cell limits in native and fallback readers. Never use unbounded decompression for uploaded workbooks; reject DTD/entity declarations and NUL-encoded XML. Keep official-template compatibility tests passing when changing limits.
+- **SEC-SYNC-01:** `syncUpdateExistingUser()` must lock and recheck the existing role, exclude both Admin and Principal, and revoke credentials on deactivation. Do not rely on the incoming role to authorize updates to an existing account.
+- Authentication/resource-limit changes require behavioral regression coverage, including invalid-CSRF no-write, token replay/lost-claim/rollback, stale-session rejection, protected-account sync, and both ZIP-reader paths. Run `composer run lint`, `composer run test`, and `node tests/browser-security.cjs`.
+
 ### Review remediation constraints (v0.3.171)
 
 These operational notes apply ISO/IEC/IEEE 29148 clarity and traceability principles, with full requirements metadata simplified because this is an agent guide rather than a requirements specification.

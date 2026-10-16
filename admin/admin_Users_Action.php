@@ -332,10 +332,9 @@ function deleteUser($db) {
             return;
         }
         
-        $stmt = $db->prepare("UPDATE users SET status = 'inactive' WHERE id = ?");
-        $stmt->execute([$userId]);
+        \BshsAms\Security\AuthSecurity::setAccountStatus($db, $userId, 'inactive');
         
-        if ($stmt->rowCount() > 0) {
+        if ($role !== false) {
             recordAdminAuditLog($db, 'user.archive', 'user', $userId, [
                 'role' => (string)$role,
             ]);
@@ -385,18 +384,13 @@ function resetUserPassword($db) {
             return;
         }
         $hashedPassword = password_hash(getDefaultNewUserPassword(), PASSWORD_DEFAULT);
+        $db->beginTransaction();
         $stmt = $db->prepare("UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?");
         $stmt->execute([$hashedPassword, $userId]);
         bumpUserApiTokenVersion($db, $userId);
 
-        // Revoke active remember-me tokens for security after admin reset.
-        $hasRememberTable = dbHasTable($db, 'auth_remember_tokens');
-        if ($hasRememberTable) {
-            $revokeStmt = $db->prepare("UPDATE auth_remember_tokens
-                                        SET revoked_at = NOW()
-                                        WHERE user_id = ? AND revoked_at IS NULL");
-            $revokeStmt->execute([$userId]);
-        }
+        \BshsAms\Security\AuthSecurity::revokeRecoveryCredentials($db, $userId);
+        $db->commit();
 
         recordAdminAuditLog($db, 'user.reset_password', 'user', $userId, [
             'role' => (string)$existingUser['role'],
@@ -405,7 +399,8 @@ function resetUserPassword($db) {
             'success' => true,
             'message' => 'Password has been reset to the default. User should change it on next login.'
         ]);
-    } catch (PDOException $e) {
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) { $db->rollBack(); }
         error_log("Admin_Users_Action resetUserPassword error: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Database error. Please try again.']);
     }
@@ -853,12 +848,11 @@ function setUserStatus(PDO $db): void {
         echo json_encode(['success' => false, 'message' => 'Students must be managed through the Enrollments page']);
         return;
     }
-    $stmt = $db->prepare("UPDATE users SET status = ? WHERE id = ?");
-    $stmt->execute([$status, $userId]);
-    if ($stmt->rowCount() === 0) {
+    if ($role === false) {
         echo json_encode(['success' => false, 'message' => 'User not found']);
         return;
     }
+    \BshsAms\Security\AuthSecurity::setAccountStatus($db, $userId, $status);
     $label = $status === 'active' ? 'activated' : ($status === 'inactive' ? 'archived' : 'set to pending');
     recordAdminAuditLog($db, 'user.set_status', 'user', $userId, [
         'role' => (string)$role,

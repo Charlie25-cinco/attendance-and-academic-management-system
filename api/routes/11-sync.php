@@ -24,6 +24,31 @@ function syncValidAttendanceRecorder(PDO $db, int $recordedBy, int $classId): bo
     return apiTeacherOwnsClass($db, $recordedBy, $classId);
 }
 
+function syncUpdateExistingUser(PDO $db, int $userId, string $firstName, string $lastName, string $email, string $status): bool {
+    $db->beginTransaction();
+    try {
+        $lock = $db->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite' ? '' : ' FOR UPDATE';
+        $stmt = $db->prepare('SELECT role FROM users WHERE id = ?' . $lock);
+        $stmt->execute([$userId]);
+        $role = $stmt->fetchColumn();
+        if (!in_array($role, ['teacher', 'student', 'parent'], true)) {
+            $db->rollBack();
+            return false;
+        }
+        $stmt = $db->prepare("UPDATE users SET first_name = ?, last_name = ?, email = ?,
+                              api_token_version = api_token_version + CASE WHEN status <> ? THEN 1 ELSE 0 END,
+                              status = ?, updated_at = CURRENT_TIMESTAMP
+                              WHERE id = ? AND role IN ('teacher', 'student', 'parent')");
+        $stmt->execute([$firstName, $lastName, $email, $status, $status, $userId]);
+        if ($status !== 'active') { \BshsAms\Security\AuthSecurity::revokeRecoveryCredentials($db, $userId); }
+        $db->commit();
+        return true;
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) { $db->rollBack(); }
+        throw $e;
+    }
+}
+
 if ($route === 'sync-attendance' && $method === 'POST') {
     apiRequireSyncKey();
     $db = apiDb();
@@ -142,15 +167,10 @@ if ($route === 'sync-users' && $method === 'POST') {
         $existingRole = strtolower((string)($existingUser['role'] ?? ''));
 
         if ($userId > 0) {
-            if ($existingRole === 'admin') {
+            if ($existingRole === 'admin' || \BshsAms\User\SystemAccountPolicy::isPrincipalRole($existingRole)) {
                 continue;
             }
-            $db->prepare(
-                "UPDATE users
-                 SET first_name = ?, last_name = ?, email = ?, status = ?, updated_at = NOW()
-                 WHERE id = ?"
-            )
-                ->execute([$firstName, $lastName, $email, $status, $userId]);
+            if (!syncUpdateExistingUser($db, $userId, $firstName, $lastName, $email, $status)) { continue; }
         } else {
             $password = password_hash(getDefaultNewUserPassword(), PASSWORD_DEFAULT);
             $stmt = $db->prepare(

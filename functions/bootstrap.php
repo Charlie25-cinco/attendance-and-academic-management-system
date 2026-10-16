@@ -41,6 +41,25 @@ spl_autoload_register(function (string $class): void {
 if (PHP_SAPI !== 'cli') {
     require_once APP_ROOT . '/config/session.php';
 
+    if (!empty($_SESSION['logged_in'])) {
+        try {
+            $sessionDb = (new Database())->getConnection();
+            if (!$sessionDb) { throw new RuntimeException('Session validation database unavailable.'); }
+            if (!\BshsAms\Security\AuthSecurity::sessionIsCurrent($sessionDb, $_SESSION)) {
+                appExpireCurrentSession();
+                session_start();
+                appAuthClearRememberCookie();
+                unset($_COOKIE['remember_token']);
+                $_SESSION['session_expired'] = true;
+            }
+        } catch (Throwable $e) {
+            error_log('Session validation failed: ' . $e->getMessage());
+            http_response_code(503);
+            header('Cache-Control: no-store');
+            exit('Authentication temporarily unavailable. Please try again.');
+        }
+    }
+
     if (empty($_SESSION['logged_in']) && !empty($_COOKIE['remember_token']) && function_exists('appAttemptRememberLogin')) {
         try {
             $dbInstance = new Database();

@@ -60,49 +60,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($error === '') {
         try {
-            $tokenHash = hash('sha256', $otpInput);
-            $tokenStmt = $db->prepare("SELECT r.id, r.user_id
-                                       FROM auth_password_resets r
-                                       JOIN users u ON u.id = r.user_id
-                                       WHERE u.email = ?
-                                         AND u.status = 'active'
-                                         AND r.token_hash = ?
-                                         AND r.used_at IS NULL
-                                         AND r.expires_at > NOW()
-                                       ORDER BY r.id DESC
-                                       LIMIT 1");
-            $tokenStmt->execute([$emailInput, $tokenHash]);
-            $tokenRow = $tokenStmt->fetch(PDO::FETCH_ASSOC);
-            if (!$tokenRow) {
+            $remaining = \BshsAms\Security\AuthSecurity::reserveResetAttempt($db, $emailInput);
+            if ($remaining > 0) {
+                http_response_code(429);
+                header('Retry-After: ' . $remaining);
+                $error = 'Too many reset attempts. Please try again in ' . (int)ceil($remaining / 60) . ' minute(s).';
+            } elseif (!\BshsAms\Security\AuthSecurity::resetPassword(
+                $db, $emailInput, $otpInput, password_hash($newPassword, PASSWORD_DEFAULT)
+            )) {
                 $error = 'Reset code is invalid or expired.';
-                throw new RuntimeException('Invalid reset OTP.');
+            } else {
+                $success = 'Password reset successful. You can now login with your new password.';
+                $emailInput = '';
+                $otpInput = '';
             }
-            $resetUserId = (int)$tokenRow['user_id'];
-            $resetTokenRowId = (int)$tokenRow['id'];
-
-            $hashed = password_hash($newPassword, PASSWORD_DEFAULT);
-            $db->beginTransaction();
-
-            $updUser = $db->prepare("UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?");
-            $updUser->execute([$hashed, $resetUserId]);
-            bumpUserApiTokenVersion($db, $resetUserId);
-
-            $markToken = $db->prepare("UPDATE auth_password_resets
-                                       SET used_at = NOW()
-                                       WHERE id = ? AND used_at IS NULL");
-            $markToken->execute([$resetTokenRowId]);
-
-            if (resetHasTable($db, 'auth_remember_tokens')) {
-                $revokeRemember = $db->prepare("UPDATE auth_remember_tokens
-                                                SET revoked_at = NOW()
-                                                WHERE user_id = ? AND revoked_at IS NULL");
-                $revokeRemember->execute([$resetUserId]);
-            }
-
-            $db->commit();
-            $success = 'Password reset successful. You can now login with your new password.';
-            $emailInput = '';
-            $otpInput = '';
         } catch (Throwable $e) {
             if ($db->inTransaction()) $db->rollBack();
             if ($error === '') {

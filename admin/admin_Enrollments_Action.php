@@ -506,8 +506,7 @@ function deleteStudent(PDO $db): void {
         return;
     }
 
-    $stmt = $db->prepare("UPDATE users SET status = 'inactive' WHERE id = ?");
-    $stmt->execute([$userId]);
+    \BshsAms\Security\AuthSecurity::setAccountStatus($db, $userId, 'inactive');
 
     recordAdminAuditLog($db, 'student.archive', 'student', $userId);
     echo json_encode(['success' => true, 'message' => 'Student archived successfully']);
@@ -530,8 +529,7 @@ function toggleStudentStatus(PDO $db): void {
         return;
     }
 
-    $stmt = $db->prepare("UPDATE users SET status = ? WHERE id = ?");
-    $stmt->execute([$status, $userId]);
+    \BshsAms\Security\AuthSecurity::setAccountStatus($db, $userId, $status);
 
     $label = $status === 'active' ? 'activated' : 'archived';
     recordAdminAuditLog($db, 'student.set_status', 'student', $userId, [

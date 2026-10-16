@@ -61,6 +61,19 @@ Open `http://localhost:5000`.
 
 ## Authentication And Security
 
+### Assessment readiness hardening (v3.1.6)
+
+This operational guidance applies ISO/IEC/IEEE 29148 clarity and traceability principles; full requirements metadata is simplified because this is usage documentation rather than a requirements specification.
+
+- **SEC-AUTH-01:** Web and API reset-code verification share a maximum of five attempts per normalized email address in a fixed 15-minute window, independent of IP address or browser session. Blocked verification returns HTTP 429 with `Retry-After`. Requesting another code does not clear this verification limit.
+- **SEC-AUTH-02:** Reset and temporary password-change tokens are consumed transactionally before a password update. Password changes revoke outstanding reset/setup/remember credentials and advance `users.api_token_version`; revocation failures abort transactional password changes.
+- **SEC-AUTH-03:** Every authenticated web request validates the active account, role, and credential version through `functions/bootstrap.php`. Password resets and account-status changes invalidate older web/API sessions. A verified self-service profile password change retains only the current browser session. Existing unversioned web sessions must sign in again after this deployment; no schema reset is needed for these security fixes.
+- **SEC-AUTH-04:** First-login web password setup requires valid CSRF, a matching account version, and a pending setup session no older than 15 minutes. Login failure messages do not disclose whether a reference code exists.
+- **SEC-IMPORT-01:** The shared XLSX reader accepts at most 20 MiB compressed, 2,048 ZIP entries, 16 MiB expanded per entry, and 64 MiB expanded overall. Parsed XML is limited to 250,000 opening elements per part; each selected worksheet is limited to 10,000 rows, Excel's 16,384 columns, and 200,000 cells (including formatting-only cells in official ECR templates). XML containing DTD/entity declarations or NUL bytes is rejected. Limits also apply to the PHP ZIP fallback; split oversized imports into smaller workbooks.
+- **SEC-SYNC-01:** User synchronization may update only existing Teacher, Student, and Parent accounts. Admin and Principal accounts remain protected, including status changes.
+
+Regression coverage: `tests/AuthSecurityTest.php`, `tests/XlsxSecurityLimitsTest.php`, and the existing PWA/security tests. Validate with `composer run lint`, `composer run test`, and `node tests/browser-security.cjs`. `composer audit --locked` checks PHP package advisories separately; it does not audit the Wasmer PHP runtime or certify the hosted deployment.
+
 ### Security review fixes (v0.3.171)
 
 This operational documentation applies ISO/IEC/IEEE 29148 clarity and traceability principles; it is not a complete requirements specification.

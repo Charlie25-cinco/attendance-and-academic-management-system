@@ -73,12 +73,11 @@ function ensureUserApiTokenVersionColumn(PDO $db): void {
 
 function bumpUserApiTokenVersion(PDO $db, int $userId): void {
     if ($userId <= 0) { return; }
-    try {
-        ensureUserApiTokenVersionColumn($db);
-        $stmt = $db->prepare("UPDATE users SET api_token_version = api_token_version + 1 WHERE id = ?");
-        $stmt->execute([$userId]);
-    } catch (Throwable $e) {
-        error_log('API token version bump failed for user ' . $userId . ': ' . $e->getMessage());
+    // Fail closed: password changes must not succeed without credential revocation.
+    $stmt = $db->prepare("UPDATE users SET api_token_version = api_token_version + 1 WHERE id = ?");
+    $stmt->execute([$userId]);
+    if ($stmt->rowCount() !== 1) {
+        throw new RuntimeException('Credential version update did not affect the expected account.');
     }
 }
 
@@ -1766,6 +1765,7 @@ function appEstablishLoginSession(PDO $db, array $user): void {
     $_SESSION['last_name'] = (string)$user['last_name'];
     $_SESSION['role'] = (string)$user['role'];
     $_SESSION['logged_in'] = true;
+    $_SESSION['auth_token_version'] = (int)($user['api_token_version'] ?? 0);
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
     $_SESSION['last_activity'] = time();
 
@@ -1808,7 +1808,7 @@ function appAttemptRememberLogin(?PDO $db = null): ?array {
     }
 
     $now = date('Y-m-d H:i:s');
-    $stmt = $db->prepare("SELECT rt.id AS token_id, rt.token_hash, u.id, u.reference_code, u.email, u.password, u.first_name, u.last_name, u.role
+    $stmt = $db->prepare("SELECT rt.id AS token_id, rt.token_hash, u.id, u.reference_code, u.email, u.password, u.first_name, u.last_name, u.role, u.api_token_version
                           FROM auth_remember_tokens rt
                           JOIN users u ON u.id = rt.user_id
                           WHERE rt.selector = ?
@@ -1838,6 +1838,7 @@ function appAttemptRememberLogin(?PDO $db = null): ?array {
         'password' => $row['password'],
         'first_name' => $row['first_name'],
         'last_name' => $row['last_name'],
-        'role' => $row['role']
+        'role' => $row['role'],
+        'api_token_version' => (int)$row['api_token_version'],
     ];
 }

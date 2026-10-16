@@ -2,6 +2,16 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v3.1.6 — 2026-10-16
+
+### Fixed
+
+- Shared account-based reset-code verification limits across web/API and made password-token consumption and credential revocation transactional.
+- Prevented first-login password setup after invalid CSRF, pending-session expiry, account deactivation, or credential-version changes; standardized web login failure messages.
+- Validated active web sessions against account status, role, and credential version, revoked older credentials on password/status changes, and retained only the verified current browser session during self-service password changes.
+- Protected Admin and Principal accounts from user-sync updates, including concurrent role changes.
+- Bounded XLSX archive/decompression/XML/worksheet processing in native and PHP fallback readers, with behavioral security regression coverage.
+
 ## v3.1.3 — 2026-10-09
 
 ### Fixed

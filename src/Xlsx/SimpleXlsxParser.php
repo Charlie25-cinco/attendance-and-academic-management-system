@@ -6,6 +6,15 @@ use Exception;
 use ZipArchive;
 
 class SimpleXlsxParser {
+    public const MAX_ARCHIVE_BYTES = 20 * 1024 * 1024;
+    public const MAX_ENTRY_BYTES = 16 * 1024 * 1024;
+    public const MAX_EXPANDED_BYTES = 64 * 1024 * 1024;
+    public const MAX_ENTRIES = 2048;
+    public const MAX_XML_NODES = 250000;
+    public const MAX_CELLS = 200000;
+    public const MAX_ROWS = 10000;
+    public const MAX_COLUMNS = 16384;
+    private $expandedBytes = 0;
     private $zip;
     private $sheets = [];
     private $sharedStrings = [];
@@ -18,6 +27,10 @@ class SimpleXlsxParser {
         if (!file_exists($filePath)) {
             throw new Exception("File not found: $filePath");
         }
+        $size = filesize($filePath);
+        if ($size === false || $size > self::MAX_ARCHIVE_BYTES) {
+            throw new Exception('Workbook exceeds the 20 MiB archive limit.');
+        }
         $this->filePath = $filePath;
         $this->sharedStrings = [];
 
@@ -25,6 +38,14 @@ class SimpleXlsxParser {
             $this->zip = new ZipArchive();
             if ($this->zip->open($filePath) === true) {
                 $this->useZipArchive = true;
+                if ($this->zip->numFiles > self::MAX_ENTRIES) {
+                    throw new Exception('Workbook contains too many archive entries.');
+                }
+                for ($i = 0; $i < $this->zip->numFiles; $i++) {
+                    $stat = $this->zip->statIndex($i);
+                    if ($stat === false) { throw new Exception('Invalid workbook archive entry.'); }
+                    $this->checkEntrySize((int)$stat['size']);
+                }
                 $this->loadSharedStrings();
                 return;
             }
@@ -46,11 +67,18 @@ class SimpleXlsxParser {
         if (!function_exists('zip_open')) { return; }
         $this->zipResource = zip_open($this->filePath);
         if (!is_resource($this->zipResource)) { $this->zipResource = null; return; }
+        $count = 0;
+        while ($entry = zip_read($this->zipResource)) {
+            if (++$count > self::MAX_ENTRIES) { throw new Exception('Workbook contains too many archive entries.'); }
+            $this->checkEntrySize((int)zip_entry_filesize($entry));
+        }
+        zip_close($this->zipResource);
+        $this->zipResource = zip_open($this->filePath);
         while ($entry = zip_read($this->zipResource)) {
             $name = zip_entry_name($entry);
             if ($name === 'xl/sharedStrings.xml' || $name === 'xl\\sharedStrings.xml') {
                 if (zip_entry_open($this->zipResource, $entry, 'r')) {
-                    $content = zip_entry_read($entry, zip_entry_filesize($entry));
+                    $content = zip_entry_read($entry, min(zip_entry_filesize($entry), self::MAX_ENTRY_BYTES + 1));
                     zip_entry_close($entry);
                     $this->parseSharedStrings($content);
                     break;
@@ -61,7 +89,7 @@ class SimpleXlsxParser {
 
     private function parseSharedStrings(string $content): void {
         if ($content === '') return;
-        $xml = @simplexml_load_string($content);
+        $xml = $this->parseXml($content);
         if ($xml === false) return;
         foreach ($xml->si as $item) {
             $text = '';
@@ -77,7 +105,7 @@ class SimpleXlsxParser {
 
     private function loadSharedStrings(): void {
         if ($this->useZipArchive) {
-            $content = $this->zip->getFromName('xl/sharedStrings.xml');
+            $content = $this->zip->getFromName('xl/sharedStrings.xml', self::MAX_ENTRY_BYTES + 1);
             if ($content !== false) { $this->parseSharedStrings($content); }
         }
     }
@@ -87,7 +115,7 @@ class SimpleXlsxParser {
         if ($workbookXml === false || $workbookXml === '') {
             throw new Exception("Invalid xlsx: missing workbook.xml");
         }
-        $workbook = @simplexml_load_string($workbookXml);
+        $workbook = $this->parseXml($workbookXml);
         if ($workbook === false) { throw new Exception("Invalid xlsx: cannot parse workbook.xml"); }
         $sheets = $workbook->sheets->sheet;
         if (!isset($sheets[$index])) { throw new Exception("Sheet index $index not found"); }
@@ -98,7 +126,7 @@ class SimpleXlsxParser {
     public function getSheetNames(): array {
         $workbookXml = $this->getFileContent('xl/workbook.xml');
         if ($workbookXml === false || $workbookXml === '') { return []; }
-        $workbook = @simplexml_load_string($workbookXml);
+        $workbook = $this->parseXml($workbookXml);
         if ($workbook === false) { return []; }
         $names = [];
         foreach ($workbook->sheets->sheet as $sheet) {
@@ -109,8 +137,8 @@ class SimpleXlsxParser {
 
     private function getFileContent(string $path): string {
         if ($this->useZipArchive) {
-            $content = $this->zip->getFromName($path);
-            if ($content === false) { $content = $this->zip->getFromName(str_replace('/', '\\', $path)); }
+            $content = $this->zip->getFromName($path, self::MAX_ENTRY_BYTES + 1);
+            if ($content === false) { $content = $this->zip->getFromName(str_replace('/', '\\', $path), self::MAX_ENTRY_BYTES + 1); }
             return $content === false ? '' : $content;
         }
         if (is_array($this->zipEntries)) {
@@ -127,7 +155,7 @@ class SimpleXlsxParser {
             $name = str_replace('\\', '/', zip_entry_name($entry));
             if ($name === $normalizedPath) {
                 if (zip_entry_open($this->zipResource, $entry, 'r')) {
-                    $content = zip_entry_read($entry, zip_entry_filesize($entry));
+                    $content = zip_entry_read($entry, min(zip_entry_filesize($entry), self::MAX_ENTRY_BYTES + 1));
                     zip_entry_close($entry);
                     return $content;
                 }
@@ -148,6 +176,7 @@ class SimpleXlsxParser {
         }
 
         $entries = [];
+        $count = 0;
         $offset = 0;
         $length = strlen($bytes);
         while ($offset + 30 <= $length) {
@@ -160,6 +189,9 @@ class SimpleXlsxParser {
             $flags = $this->littleEndian(substr($bytes, $offset + 6, 2));
             $method = $this->littleEndian(substr($bytes, $offset + 8, 2));
             $compressedSize = $this->littleEndian(substr($bytes, $offset + 18, 4));
+            $uncompressedSize = $this->littleEndian(substr($bytes, $offset + 22, 4));
+            if (++$count > self::MAX_ENTRIES) { throw new Exception('Workbook contains too many archive entries.'); }
+            $this->checkEntrySize($uncompressedSize);
             $fileNameLength = $this->littleEndian(substr($bytes, $offset + 26, 2));
             $extraLength = $this->littleEndian(substr($bytes, $offset + 28, 2));
             $nameStart = $offset + 30;
@@ -183,14 +215,17 @@ class SimpleXlsxParser {
             if ($method === 0) {
                 $content = $compressed;
             } elseif ($method === 8 && function_exists('gzinflate')) {
-                $inflated = @gzinflate($compressed);
+                $inflated = @gzinflate($compressed, self::MAX_ENTRY_BYTES + 1);
                 if ($inflated !== false) {
                     $content = $inflated;
                 }
             }
 
             if ($content !== '') {
+                if (strlen($content) !== $uncompressedSize) { throw new Exception('Workbook entry size does not match its data.'); }
                 $entries[$name] = $content;
+            } elseif ($uncompressedSize > 0) {
+                throw new Exception('Unable to decompress workbook entry within its limits.');
             }
 
             $offset = $dataStart + $compressedSize;
@@ -211,6 +246,7 @@ class SimpleXlsxParser {
         if ($entryCount < 1 || $centralOffset < 0 || $centralOffset >= $length) {
             return [];
         }
+        if ($entryCount > self::MAX_ENTRIES) { throw new Exception('Workbook contains too many archive entries.'); }
 
         $entries = [];
         $offset = $centralOffset;
@@ -221,6 +257,8 @@ class SimpleXlsxParser {
 
             $method = $this->littleEndian(substr($bytes, $offset + 10, 2));
             $compressedSize = $this->littleEndian(substr($bytes, $offset + 20, 4));
+            $uncompressedSize = $this->littleEndian(substr($bytes, $offset + 24, 4));
+            $this->checkEntrySize($uncompressedSize);
             $fileNameLength = $this->littleEndian(substr($bytes, $offset + 28, 2));
             $extraLength = $this->littleEndian(substr($bytes, $offset + 30, 2));
             $commentLength = $this->littleEndian(substr($bytes, $offset + 32, 2));
@@ -238,13 +276,16 @@ class SimpleXlsxParser {
                     if ($method === 0) {
                         $content = $compressed;
                     } elseif ($method === 8 && function_exists('gzinflate')) {
-                        $inflated = @gzinflate($compressed);
+                        $inflated = @gzinflate($compressed, self::MAX_ENTRY_BYTES + 1);
                         if ($inflated !== false) {
                             $content = $inflated;
                         }
                     }
                     if ($content !== '') {
+                        if (strlen($content) !== $uncompressedSize) { throw new Exception('Workbook entry size does not match its data.'); }
                         $entries[$name] = $content;
+                    } elseif ($uncompressedSize > 0) {
+                        throw new Exception('Unable to decompress workbook entry within its limits.');
                     }
                 }
             }
@@ -271,17 +312,24 @@ class SimpleXlsxParser {
             $content = $this->getFileContent($altFile);
             if ($content === '') { throw new Exception("Sheet not found: $sheetFile"); }
         }
-        $xml = @simplexml_load_string($content);
+        $xml = $this->parseXml($content);
         if ($xml === false || $xml->sheetData === null) { throw new Exception("Invalid sheet XML structure"); }
         $rows = [];
+        $cellCount = 0;
+        $rowCount = 0;
         foreach ($xml->sheetData->row as $row) {
+            if (++$rowCount > self::MAX_ROWS) { throw new Exception('Workbook exceeds the worksheet row limit.'); }
             $rowIndex = (int)$row['r'];
             if ($rowIndex < 1) continue;
+            if ($rowIndex > self::MAX_ROWS) { throw new Exception('Workbook exceeds the worksheet row limit.'); }
             $cells = [];
             foreach ($row->c as $cell) {
                 $ref = (string)$cell['r'];
+                if (++$cellCount > self::MAX_CELLS) { throw new Exception('Workbook exceeds cell limits.'); }
+                if (!preg_match('/^[A-Z]{1,3}[1-9][0-9]{0,4}$/D', $ref)) { throw new Exception('Workbook contains an invalid cell reference.'); }
                 $colLetter = preg_replace('/[0-9]/', '', $ref);
                 $colIndex = $this->columnLetterToIndex($colLetter);
+                if ($colIndex >= self::MAX_COLUMNS) { throw new Exception('Workbook exceeds the worksheet column limit.'); }
                 $type = (string)$cell['t'];
                 $value = '';
                 if (isset($cell->v)) { $value = (string)$cell->v; }
@@ -308,6 +356,21 @@ class SimpleXlsxParser {
             $index = $index * 26 + (ord($letter[$i]) - ord('A') + 1);
         }
         return $index - 1;
+    }
+
+    private function checkEntrySize(int $size): void {
+        if ($size < 0 || $size > self::MAX_ENTRY_BYTES) { throw new Exception('Workbook entry exceeds the 16 MiB expanded limit.'); }
+        $this->expandedBytes += $size;
+        if ($this->expandedBytes > self::MAX_EXPANDED_BYTES) { throw new Exception('Workbook exceeds the 64 MiB expanded limit.'); }
+    }
+
+    private function parseXml(string $content) {
+        if (strlen($content) > self::MAX_ENTRY_BYTES || str_contains($content, "\0")
+            || preg_match('/<!\s*(?:DOCTYPE|ENTITY)\b/i', $content)
+            || preg_match_all('/<[A-Za-z_]/', $content) > self::MAX_XML_NODES) {
+            throw new Exception('Workbook XML exceeds processing limits or contains forbidden declarations.');
+        }
+        return @simplexml_load_string($content, \SimpleXMLElement::class, LIBXML_NONET);
     }
 
     public function __destruct() {

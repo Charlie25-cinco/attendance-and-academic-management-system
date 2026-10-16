@@ -147,20 +147,30 @@ if ($route === 'profile' && $method === 'POST') {
     }
     $params[] = (int)$user['id'];
     $setStr = implode(', ', $setClauses);
-    $updateStmt = $db->prepare("UPDATE users SET $setStr, updated_at = NOW() WHERE id = ?");
-    $executed = $updateStmt->execute($params);
-
-    if (!$executed) {
-        apiJson(['ok' => false, 'message' => 'Failed to update profile'], 500);
+    try {
+        $db->beginTransaction();
+        // Recheck the credential version under the write lock to reject stale concurrent requests.
+        $params[] = (int)$user['api_token_version'];
+        $updateStmt = $db->prepare("UPDATE users SET $setStr, updated_at = NOW()
+                                   WHERE id = ? AND api_token_version = ? AND status = 'active'");
+        $updateStmt->execute($params);
+        if ($passwordChanged) {
+            if ($updateStmt->rowCount() !== 1) {
+                throw new RuntimeException('Password update rejected for a stale account version.');
+            }
+            bumpUserApiTokenVersion($db, (int)$user['id']);
+            \BshsAms\Security\AuthSecurity::revokeRecoveryCredentials($db, (int)$user['id']);
+        }
+        $db->commit();
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) { $db->rollBack(); }
+        error_log('Profile update failed: ' . $e->getMessage());
+        apiJson(['ok' => false, 'message' => 'Unable to update profile. Please sign in again and retry.'], 409);
     }
-
-    if ($passwordChanged && apiHasTable($db, 'auth_remember_tokens')) {
-        $revokeStmt = $db->prepare("UPDATE auth_remember_tokens SET revoked_at = NOW() WHERE user_id = ? AND revoked_at IS NULL");
-        $revokeStmt->execute([(int)$user['id']]);
-    }
-
-    if ($passwordChanged) {
-        bumpUserApiTokenVersion($db, (int)$user['id']);
+    if ($passwordChanged && ($GLOBALS['api_auth_source'] ?? '') === 'session') {
+        // Keep only this verified browser session; all older web/API credentials are stale.
+        session_regenerate_id(true);
+        $_SESSION['auth_token_version'] = (int)$user['api_token_version'] + 1;
     }
 
     recordActivityLog(

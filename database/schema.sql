@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(100) UNIQUE NOT NULL,
     lrn VARCHAR(12) NULL UNIQUE COMMENT 'DepEd Learner Reference Number (9-12 digits)',
     password VARCHAR(255) NOT NULL,
-    api_token_version INT NOT NULL DEFAULT 0 COMMENT 'Bumped on password change to revoke issued API bearer tokens',
+    api_token_version INT NOT NULL DEFAULT 0 COMMENT 'Credential version for web/API revocation on password and account status changes',
     first_name VARCHAR(50) NOT NULL,
     middle_name VARCHAR(50) NULL,
     last_name VARCHAR(50) NOT NULL,

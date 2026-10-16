@@ -187,8 +187,7 @@ if ($route === 'admin-user-status' && $method === 'POST') {
         apiJson(['ok' => false, 'message' => \BshsAms\User\SystemAccountPolicy::protectedMessage()], 403);
     }
 
-    $stmt = $db->prepare("UPDATE users SET status = ?, updated_at = NOW() WHERE id = ?");
-    $stmt->execute([$newStatus, $userId]);
+    \BshsAms\Security\AuthSecurity::setAccountStatus($db, $userId, $newStatus);
 
     recordAdminAuditLog($db, 'update_user_status', 'users', $userId, ['new_status' => $newStatus]);
 

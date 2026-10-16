@@ -88,7 +88,8 @@ final class CsrfHandlerCoverageTest extends TestCase
         foreach ($handlers as $file) {
             $content = (string)file_get_contents(APP_ROOT . '/auth/' . $file);
             $this->assertTrue(
-                $this->hasInlineHashEqualsCheck($content) || str_contains($content, 'requireCsrfToken('),
+                $this->hasInlineHashEqualsCheck($content) || str_contains($content, 'requireCsrfToken(')
+                    || ($file === 'change-password.php' && str_contains($content, 'AuthSecurity::completePasswordSetup(')),
                 $file . ' must validate the session CSRF token before processing POST input.'
             );
         }

@@ -24,6 +24,7 @@ final class TeacherPwaOfflineLifecycleTest extends TestCase
             reference_code TEXT NOT NULL UNIQUE,
             email TEXT NOT NULL,
             password TEXT NOT NULL,
+            api_token_version INTEGER NOT NULL DEFAULT 0,
             first_name TEXT NOT NULL,
             middle_name TEXT,
             last_name TEXT NOT NULL,

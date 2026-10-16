@@ -283,13 +283,15 @@ function apiAuthUser(): ?array {
     if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true && isset($_SESSION['user_id'])) {
         $db = apiDb();
         if ($db) {
-            $stmt = $db->prepare("SELECT id, reference_code, email, first_name, last_name, role, status, grade_level, section
+            $stmt = $db->prepare("SELECT id, reference_code, email, first_name, last_name, role, status, grade_level, section, api_token_version
                                   FROM users
                                   WHERE id = ? AND status = 'active'
                                   LIMIT 1");
             $stmt->execute([(int)$_SESSION['user_id']]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($user) {
+            if ($user && isset($_SESSION['auth_token_version'])
+                && (int)$_SESSION['auth_token_version'] === (int)$user['api_token_version']
+                && (string)($_SESSION['role'] ?? '') === (string)$user['role']) {
                 $GLOBALS['api_auth_source'] = 'session';
                 return $user;
             }

@@ -152,6 +152,9 @@ if ((!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) && $db) {
             $_SESSION['pending_password_change'] = true;
             $_SESSION['pending_user_id'] = (int)$rememberUser['id'];
             $_SESSION['pending_reference_code'] = (string)$rememberUser['reference_code'];
+            $_SESSION['pending_token_version'] = (int)$rememberUser['api_token_version'];
+            $_SESSION['pending_password_until'] = time() + 900;
+            session_regenerate_id(true);
             header("Location: change-password.php");
             exit();
         }
@@ -184,7 +187,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $mins = (int)ceil($remaining / 60);
             $error = 'Too many login attempts. Try again in ' . $mins . ' minute(s).';
         } else {
-            $query = "SELECT id, reference_code, email, password, first_name, middle_name, last_name, role, status
+            $query = "SELECT id, reference_code, email, password, first_name, middle_name, last_name, role, status, api_token_version
                       FROM users
                       WHERE reference_code = :reference_code AND status = 'active'
                       LIMIT 1";
@@ -198,6 +201,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $_SESSION['pending_password_change'] = true;
                     $_SESSION['pending_user_id'] = (int)$user['id'];
                     $_SESSION['pending_reference_code'] = (string)$user['reference_code'];
+                    $_SESSION['pending_token_version'] = (int)$user['api_token_version'];
+                    $_SESSION['pending_password_until'] = time() + 900;
+                    session_regenerate_id(true);
                     header("Location: change-password.php");
                     exit();
                 }
@@ -216,7 +222,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             authRateRecordFailure($db, 'login', $reference_code, LOGIN_MAX_ATTEMPTS, LOGIN_LOCK_SECONDS);
             loginLogAttempt($db, $reference_code, false, $user ? 'invalid_password' : 'not_found_or_inactive');
-            $error = $user ? 'Invalid password!' : 'Invalid reference code or account not active!';
+            $error = 'Invalid reference code or password.';
         }
     }
 }

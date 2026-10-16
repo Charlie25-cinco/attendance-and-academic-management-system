@@ -78,10 +78,13 @@ if ($route === 'login' && $method === 'POST') {
             ->execute([(int)$user['id']]);
         $db->prepare("INSERT INTO auth_password_change_tokens (user_id, token_hash, expires_at, request_ip, created_at)
                       VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE), ?, NOW())")
-            ->execute([(int)$user['id'], hash('sha256', $token), (string)($_SERVER['REMOTE_ADDR'] ?? '')]);
+            ->execute([(int)$user['id'], \BshsAms\Security\AuthSecurity::passwordChangeTokenHash($token, (int)$user['api_token_version']), (string)($_SERVER['REMOTE_ADDR'] ?? '')]);
         $_SESSION['pending_password_change'] = true;
         $_SESSION['pending_user_id'] = (int)$user['id'];
         $_SESSION['pending_reference_code'] = (string)$user['reference_code'];
+        $_SESSION['pending_token_version'] = (int)$user['api_token_version'];
+        $_SESSION['pending_password_until'] = time() + 900;
+        session_regenerate_id(true);
         apiJson([
             'ok' => false,
             'message' => 'You must change your password before proceeding.',
@@ -147,54 +150,17 @@ if ($route === 'change-password' && $method === 'POST') {
         apiJson(['ok' => false, 'message' => $errorMsg], 422);
     }
 
-    $stmt = $db->prepare("SELECT id, reference_code, email, first_name, last_name, role FROM users WHERE reference_code = ? AND status = 'active' LIMIT 1");
-    $stmt->execute([$referenceCode]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$user) {
-        apiJson(['ok' => false, 'message' => 'User not found'], 404);
-    }
-
-    $userId = (int)$user['id'];
-    $tokenHash = hash('sha256', $tempToken);
-    $tokenStmt = $db->prepare("SELECT id FROM auth_password_change_tokens
-                               WHERE user_id = ?
-                               AND token_hash = ?
-                               AND used_at IS NULL
-                               AND expires_at > NOW()
-                               LIMIT 1");
-    $tokenStmt->execute([$userId, $tokenHash]);
-    $tokenId = (int)($tokenStmt->fetchColumn() ?: 0);
-    if ($tokenId <= 0) {
-        apiJson(['ok' => false, 'message' => 'Temporary token is invalid or expired'], 400);
-    }
-
-    $hashed = password_hash($newPassword, PASSWORD_DEFAULT);
     try {
-        $db->beginTransaction();
-
-        $updateStmt = $db->prepare("UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?");
-        $updateStmt->execute([$hashed, $userId]);
-        bumpUserApiTokenVersion($db, $userId);
-
-        $markToken = $db->prepare("UPDATE auth_password_change_tokens SET used_at = NOW() WHERE id = ?");
-        $markToken->execute([$tokenId]);
-
-        if (apiTableExists($db, 'auth_remember_tokens')) {
-            $db->prepare("UPDATE auth_remember_tokens SET revoked_at = NOW() WHERE user_id = ? AND revoked_at IS NULL")->execute([$userId]);
-        }
-
-        $db->commit();
+        $user = \BshsAms\Security\AuthSecurity::changePasswordWithToken(
+            $db, $referenceCode, $tempToken, password_hash($newPassword, PASSWORD_DEFAULT)
+        );
     } catch (Throwable $e) {
-        if ($db->inTransaction()) {
-            $db->rollBack();
-        }
+        error_log('API password setup failed: ' . $e->getMessage());
         apiJson(['ok' => false, 'message' => 'Unable to change password. Please try again.'], 500);
     }
-
-    $refreshed = $db->prepare("SELECT id, reference_code, email, first_name, last_name, role, status, api_token_version
-                               FROM users WHERE id = ? AND status = 'active' LIMIT 1");
-    $refreshed->execute([$userId]);
-    $user = $refreshed->fetch(PDO::FETCH_ASSOC) ?: $user;
+    if (!$user) {
+        apiJson(['ok' => false, 'message' => 'Temporary token is invalid or expired'], 400);
+    }
 
     $token = apiIssueToken($user);
     apiJson([
@@ -300,71 +266,21 @@ if ($route === 'reset-password' && $method === 'POST') {
         apiJson(['ok' => false, 'message' => $errorMsg], 422);
     }
 
-    $identifierHash = hash('sha256', $email . '|' . ($_SERVER['REMOTE_ADDR'] ?? ''));
-    $maxAttempts = 5;
-    $lockSeconds = 900;
-
-    $rateStmt = $db->prepare("SELECT lock_until FROM rate_limits WHERE context = 'api' AND action_key = 'reset-password' AND identifier_hash = ? AND expires_at > NOW() LIMIT 1");
-    $rateStmt->execute([$identifierHash]);
-    $lockUntil = $rateStmt->fetchColumn();
-    if ($lockUntil) {
-        $remaining = strtotime((string)$lockUntil) - time();
-        if ($remaining > 0) {
-            apiJson(['ok' => false, 'message' => "Too many requests. Try again in " . ceil($remaining / 60) . " minutes."], 429);
-        }
-    }
-
-    $db->prepare("INSERT INTO rate_limits (context, action_key, identifier_hash, attempts, first_attempt, lock_until, expires_at)
-                  VALUES ('api', 'reset-password', ?, 1, UNIX_TIMESTAMP(), NULL, DATE_ADD(NOW(), INTERVAL ? SECOND))
-                  ON DUPLICATE KEY UPDATE
-                    attempts = attempts + 1,
-                    first_attempt = IF(attempts = 0, UNIX_TIMESTAMP(), first_attempt),
-                    lock_until = IF(attempts + 1 >= ?, DATE_ADD(NOW(), INTERVAL ? SECOND), NULL),
-                    expires_at = DATE_ADD(NOW(), INTERVAL ? SECOND),
-                    updated_at = NOW()")
-        ->execute([$identifierHash, $lockSeconds, $maxAttempts, $lockSeconds]);
-
-    $tokenHash = hash('sha256', $otp);
-    $tokenStmt = $db->prepare("SELECT r.id, r.user_id
-                               FROM auth_password_resets r
-                               JOIN users u ON u.id = r.user_id
-                               WHERE u.email = ?
-                                 AND u.status = 'active'
-                                 AND r.token_hash = ?
-                                 AND r.used_at IS NULL
-                                 AND r.expires_at > NOW()
-                               ORDER BY r.id DESC
-                               LIMIT 1");
-    $tokenStmt->execute([$email, $tokenHash]);
-    $tokenRow = $tokenStmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$tokenRow) {
-        apiJson(['ok' => false, 'message' => 'Reset code is invalid or expired'], 400);
-    }
-
-    $resetUserId = (int)$tokenRow['user_id'];
-    $hashed = password_hash($newPassword, PASSWORD_DEFAULT);
-
     try {
-        $db->beginTransaction();
-
-        $updUser = $db->prepare("UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?");
-        $updUser->execute([$hashed, $resetUserId]);
-        bumpUserApiTokenVersion($db, $resetUserId);
-
-        $markToken = $db->prepare("UPDATE auth_password_resets SET used_at = NOW() WHERE id = ?");
-        $markToken->execute([(int)$tokenRow['id']]);
-
-        if (apiTableExists($db, 'auth_remember_tokens')) {
-            $db->prepare("UPDATE auth_remember_tokens SET revoked_at = NOW() WHERE user_id = ? AND revoked_at IS NULL")->execute([$resetUserId]);
+        $remaining = \BshsAms\Security\AuthSecurity::reserveResetAttempt($db, $email);
+        if ($remaining > 0) {
+            header('Retry-After: ' . $remaining);
+            apiJson(['ok' => false, 'message' => 'Too many reset attempts. Please try again later.'], 429);
         }
-
-        $db->commit();
+        $user = \BshsAms\Security\AuthSecurity::resetPassword(
+            $db, $email, $otp, password_hash($newPassword, PASSWORD_DEFAULT)
+        );
+        if (!$user) {
+            apiJson(['ok' => false, 'message' => 'Reset code is invalid or expired'], 400);
+        }
         apiJson(['ok' => true, 'message' => 'Password reset successful. You can now login.']);
     } catch (Throwable $e) {
-        if ($db->inTransaction()) {
-            $db->rollBack();
-        }
+        error_log('API password reset failed: ' . $e->getMessage());
         apiJson(['ok' => false, 'message' => 'Unable to reset password. Please try again.'], 500);
     }
 }
