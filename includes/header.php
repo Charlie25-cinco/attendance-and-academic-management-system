@@ -250,7 +250,6 @@ if ($headerDb && $sessionUserId > 0) {
                 'push_notifications' => (int)($settingsCache['settings']['push_notifications'] ?? 1)
             ];
             $_SESSION['ui_dark_mode'] = $headerInitialSettings['dark_mode'] === 1 ? 1 : 0;
-            setcookie('app_dark_mode', $_SESSION['ui_dark_mode'] ? '1' : '0', appCookieParams(time() + (86400 * 365), false));
         }
     } catch (Throwable $e) {
         error_log('Header settings query error: ' . $e->getMessage());

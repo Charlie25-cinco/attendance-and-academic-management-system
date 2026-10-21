@@ -24,12 +24,22 @@ final class AdminSectionsTest extends TestCase
 
         $this->db->exec("CREATE TABLE sections (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE,
+            name TEXT,
             grade_level INTEGER,
             track TEXT,
             curriculum TEXT,
             program TEXT,
-            created_at TEXT
+            created_at TEXT,
+            UNIQUE (name, grade_level, track)
+        )");
+
+        $this->db->exec("CREATE TABLE users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            role TEXT,
+            status TEXT DEFAULT 'active',
+            grade_level INTEGER,
+            section TEXT,
+            track TEXT
         )");
 
         $this->db->exec("CREATE TABLE classes (
@@ -68,44 +78,35 @@ final class AdminSectionsTest extends TestCase
         // 1. Section 1: Emerald (0 students)
         $this->db->exec("INSERT INTO sections (id, name, grade_level, track) VALUES (1, 'Emerald', 11, 'academic')");
 
-        // 2. Section 2: Diamond (1 student in 1 class)
+        // 2. Section 2: Diamond (1 active student, even though no classes exist yet)
         $this->db->exec("INSERT INTO sections (id, name, grade_level, track) VALUES (2, 'Diamond', 11, 'academic')");
-        $this->db->exec("INSERT INTO classes (id, class_name, grade_level, section, track, status) VALUES (20, 'Filipino', 11, 'Diamond', 'academic', 'active')");
-        $this->db->exec("INSERT INTO enrollments (student_id, class_id, status) VALUES (101, 20, 'enrolled')");
+        $this->db->exec("INSERT INTO users (id, role, status, grade_level, section, track) VALUES (101, 'student', 'active', 11, 'Diamond', 'academic')");
 
-        // 3. Section 3: Humility (1 student enrolled in 3 classes within the same section)
+        // 3. Section 3: Humility (1 active student and non-student accounts that must not be counted)
         $this->db->exec("INSERT INTO sections (id, name, grade_level, track) VALUES (3, 'Humility', 11, 'academic')");
-        $this->db->exec("INSERT INTO classes (id, class_name, grade_level, section, track, status) VALUES (30, 'Filipino', 11, 'Humility', 'academic', 'active')");
-        $this->db->exec("INSERT INTO classes (id, class_name, grade_level, section, track, status) VALUES (31, 'Mathematics', 11, 'Humility', 'academic', 'active')");
-        $this->db->exec("INSERT INTO classes (id, class_name, grade_level, section, track, status) VALUES (32, 'General Chemistry', 11, 'Humility', 'academic', 'active')");
-        $this->db->exec("INSERT INTO enrollments (student_id, class_id, status) VALUES (201, 30, 'enrolled')");
-        $this->db->exec("INSERT INTO enrollments (student_id, class_id, status) VALUES (201, 31, 'enrolled')");
-        $this->db->exec("INSERT INTO enrollments (student_id, class_id, status) VALUES (201, 32, 'enrolled')");
+        $this->db->exec("INSERT INTO users (id, role, status, grade_level, section, track) VALUES
+            (201, 'student', 'active', 11, 'Humility', 'academic'),
+            (202, 'parent', 'active', 11, 'Humility', 'academic'),
+            (203, 'teacher', 'active', 11, 'Humility', 'academic')");
 
-        // 4. Section 4: Integrity (2 enrolled students, 1 dropped enrollment, 1 enrollment in inactive class)
+        // 4. Section 4: Integrity (2 active students; archived students are excluded)
         $this->db->exec("INSERT INTO sections (id, name, grade_level, track) VALUES (4, 'Integrity', 11, 'techpro')");
-        $this->db->exec("INSERT INTO classes (id, class_name, grade_level, section, track, status) VALUES (40, 'Computer Systems', 11, 'Integrity', 'techpro', 'active')");
-        $this->db->exec("INSERT INTO classes (id, class_name, grade_level, section, track, status) VALUES (41, 'Technical Drafting', 11, 'Integrity', 'techpro', 'active')");
-        $this->db->exec("INSERT INTO classes (id, class_name, grade_level, section, track, status) VALUES (42, 'Archived Subject', 11, 'Integrity', 'techpro', 'inactive')");
-
-        $this->db->exec("INSERT INTO enrollments (student_id, class_id, status) VALUES (301, 40, 'enrolled')");
-        $this->db->exec("INSERT INTO enrollments (student_id, class_id, status) VALUES (302, 40, 'enrolled')");
-        $this->db->exec("INSERT INTO enrollments (student_id, class_id, status) VALUES (302, 41, 'enrolled')");
-        $this->db->exec("INSERT INTO enrollments (student_id, class_id, status) VALUES (303, 40, 'dropped')");
-        $this->db->exec("INSERT INTO enrollments (student_id, class_id, status) VALUES (304, 42, 'enrolled')");
+        $this->db->exec("INSERT INTO users (id, role, status, grade_level, section, track) VALUES
+            (301, 'student', 'active', 11, 'Integrity', 'techpro'),
+            (302, 'student', 'active', 11, 'Integrity', 'techpro'),
+            (303, 'student', 'archived', 11, 'Integrity', 'techpro')");
 
         // Execute list query from admin_Sections_Action.php
-        $sectionMatch = "LOWER(TRIM(COALESCE(c.section, ''))) = LOWER(TRIM(COALESCE(s.name, '')))";
+        $sectionMatch = "LOWER(TRIM(COALESCE(u.section, ''))) = LOWER(TRIM(COALESCE(s.name, '')))";
         $sql = "SELECT s.id, s.name, s.grade_level, s.track, s.curriculum, s.program, s.created_at,
                        (
-                           SELECT COUNT(DISTINCT e.student_id)
-                           FROM enrollments e
-                           JOIN classes c ON c.id = e.class_id
-                           WHERE e.status = 'enrolled'
-                             AND c.status = 'active'
-                             AND c.grade_level = s.grade_level
+                           SELECT COUNT(*)
+                           FROM users u
+                           WHERE u.role = 'student'
+                             AND u.status = 'active'
+                             AND u.grade_level = s.grade_level
                              AND ({$sectionMatch})
-                             AND (c.track IS NULL OR TRIM(c.track) = '' OR LOWER(TRIM(c.track)) = LOWER(TRIM(s.track)))
+                             AND (u.track IS NULL OR TRIM(u.track) = '' OR LOWER(TRIM(u.track)) = LOWER(TRIM(s.track)))
                        ) AS student_count
                 FROM sections s
                 ORDER BY s.id ASC";
@@ -123,11 +124,11 @@ final class AdminSectionsTest extends TestCase
         $this->assertSame('Diamond', $sections[1]['name']);
         $this->assertSame(1, (int)$sections[1]['student_count']);
 
-        // Section 3: Humility -> 1 Student (distinct counting across 3 classes)
+        // Section 3: Humility -> 1 Student (parent and teacher accounts excluded)
         $this->assertSame('Humility', $sections[2]['name']);
         $this->assertSame(1, (int)$sections[2]['student_count']);
 
-        // Section 4: Integrity -> 2 Students (excluding dropped and inactive class enrollments)
+        // Section 4: Integrity -> 2 Students (archived student excluded)
         $this->assertSame('Integrity', $sections[3]['name']);
         $this->assertSame(2, (int)$sections[3]['student_count']);
     }
@@ -139,29 +140,23 @@ final class AdminSectionsTest extends TestCase
             (2, 'Integrity', 11, 'techpro'),
             (3, 'Wisdom', 12, 'academic')");
 
-        $this->db->exec("INSERT INTO classes (id, class_name, grade_level, section, track, status) VALUES
-            (10, 'Filipino', 11, 'Emerald', 'academic', 'active'),
-            (20, 'ICT', 11, 'Integrity', 'techpro', 'active'),
-            (30, 'Physics', 12, 'Wisdom', 'academic', 'active')");
+        $this->db->exec("INSERT INTO users (id, role, status, grade_level, section, track) VALUES
+            (101, 'student', 'active', 11, 'Emerald', 'academic'),
+            (201, 'student', 'active', 11, 'Integrity', 'techpro'),
+            (202, 'student', 'active', 11, 'Integrity', 'techpro'),
+            (301, 'student', 'active', 12, 'Wisdom', 'academic')");
 
-        $this->db->exec("INSERT INTO enrollments (student_id, class_id, status) VALUES
-            (101, 10, 'enrolled'),
-            (201, 20, 'enrolled'),
-            (202, 20, 'enrolled'),
-            (301, 30, 'enrolled')");
-
-        $sectionMatch = "LOWER(TRIM(COALESCE(c.section, ''))) = LOWER(TRIM(COALESCE(s.name, '')))";
+        $sectionMatch = "LOWER(TRIM(COALESCE(u.section, ''))) = LOWER(TRIM(COALESCE(s.name, '')))";
 
         $sql = "SELECT s.id, s.name, s.grade_level, s.track, s.curriculum, s.program, s.created_at,
                        (
-                           SELECT COUNT(DISTINCT e.student_id)
-                           FROM enrollments e
-                           JOIN classes c ON c.id = e.class_id
-                           WHERE e.status = 'enrolled'
-                             AND c.status = 'active'
-                             AND c.grade_level = s.grade_level
+                           SELECT COUNT(*)
+                           FROM users u
+                           WHERE u.role = 'student'
+                             AND u.status = 'active'
+                             AND u.grade_level = s.grade_level
                              AND ({$sectionMatch})
-                             AND (c.track IS NULL OR TRIM(c.track) = '' OR LOWER(TRIM(c.track)) = LOWER(TRIM(s.track)))
+                             AND (u.track IS NULL OR TRIM(u.track) = '' OR LOWER(TRIM(u.track)) = LOWER(TRIM(s.track)))
                        ) AS student_count
                 FROM sections s
                 WHERE s.grade_level = :grade_level AND s.track = :track

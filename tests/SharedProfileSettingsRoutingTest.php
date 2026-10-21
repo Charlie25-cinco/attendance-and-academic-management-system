@@ -43,4 +43,18 @@ final class SharedProfileSettingsRoutingTest extends TestCase
         self::assertStringContainsString('The server returned an invalid response.', $main);
         self::assertStringContainsString('window.appReadJsonResponse(response', $modals);
     }
+
+    public function testDarkModeCookieIsWrittenBeforeApiOutputInsteadOfDuringHeaderRendering(): void
+    {
+        $header = (string)file_get_contents(APP_ROOT . '/includes/header.php');
+        $settingsRoute = (string)file_get_contents(APP_ROOT . '/api/routes/04-settings.php');
+
+        self::assertStringNotContainsString("setcookie('app_dark_mode'", $header);
+        self::assertStringContainsString("setcookie('app_dark_mode'", $settingsRoute);
+        self::assertStringContainsString('$_SESSION[\'ui_dark_mode\'] = $darkMode;', $settingsRoute);
+        self::assertLessThan(
+            strpos($settingsRoute, "apiJson(['ok' => true, 'message' => 'Settings saved successfully'])"),
+            strpos($settingsRoute, "setcookie('app_dark_mode'")
+        );
+    }
 }

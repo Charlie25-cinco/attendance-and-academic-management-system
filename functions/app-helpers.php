@@ -713,19 +713,36 @@ function sectionMatchSql(string $leftColumn = 'section', ?string $rightColumn = 
         . " OR LOWER(TRIM(SUBSTRING_INDEX(COALESCE({$left}, ''), '(', 1))) = LOWER(TRIM(SUBSTRING_INDEX(COALESCE({$right}, ''), '(', 1))))";
 }
 
-function sf1NormalizeSectionName(string $name): string {
-    $s = trim(strtolower($name));
-    if ($s === '') {
+function canonicalSectionName(string $name): string {
+    $original = trim($name);
+    if ($original === '') {
         return '';
     }
-    // Strip parenthetical descriptors: e.g. "Humility (Academic)", "Humility (STEM)" -> "Humility"
-    $s = preg_replace('/\s*\([^)]*\)\s*$/', '', $s);
-    // Strip grade level prefixes: e.g. "Grade 11 - Humility", "11 - Humility", "G11 Humility", "11-Humility" -> "Humility"
-    $s = preg_replace('/^(?:grade\s*|g)?(?:11|12)\s*[-:]*\s*/i', '', $s);
-    // Strip track/strand dash suffixes: e.g. "Humility - Academic", "Humility - STEM", "Humility - TVL" -> "Humility"
-    $s = preg_replace('/\s*[-:]\s*(?:academic|techpro|stem|humss|abm|gas|tvl|ict|he|agri-fishery|industrial\s*arts)\s*$/i', '', $s);
-    $s = trim(preg_replace('/\s+/', ' ', $s));
-    return $s !== '' ? $s : trim(strtolower($name));
+
+    $s = preg_replace('/[\x{00A0}\x{1680}\x{2000}-\x{200A}\x{202F}\x{205F}\x{3000}]/u', ' ', $original);
+    $s = preg_replace('/[\x{2010}-\x{2015}\x{2212}]/u', '-', (string)$s);
+    $s = trim((string)preg_replace('/\s+/u', ' ', (string)$s));
+
+    // Grade and section context live in dedicated columns, so remove redundant labels from the display name.
+    $prefixPattern = '/^(?:(?:section\s*[-:]*\s*)|(?:(?:grade\s*|g)?(?:11|12)\s*[-:]*\s*))+/iu';
+    $s = trim((string)preg_replace($prefixPattern, '', $s));
+
+    $descriptor = '(?:academic|tech(?:nical)?\s*pro(?:fessional)?|techpro|stem|humss|abm|gas|tvl|ict|he|home\s+economics|agri(?:-|\s+)fishery|industrial\s+arts)';
+    $s = preg_replace('/\s*\(' . $descriptor . '\)\s*$/iu', '', $s);
+    $s = preg_replace('/\s*[-:]\s*' . $descriptor . '\s*$/iu', '', (string)$s);
+    $s = trim((string)preg_replace('/\s+/u', ' ', (string)$s), " \t\n\r\0\x0B-:");
+
+    return $s !== '' ? $s : $original;
+}
+
+function sf1NormalizeSectionName(string $name): string {
+    $canonical = canonicalSectionName($name);
+    if ($canonical === '') {
+        return '';
+    }
+    return function_exists('mb_strtolower')
+        ? mb_strtolower($canonical, 'UTF-8')
+        : strtolower($canonical);
 }
 
 function appEnsureUserNotificationsTable(PDO $db): void {

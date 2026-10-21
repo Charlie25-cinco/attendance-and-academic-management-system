@@ -67,6 +67,10 @@ if ($route === 'settings' && $method === 'POST') {
     }
 
     unset($_SESSION['app_header_settings']);
+    if ($darkMode !== null) {
+        $_SESSION['ui_dark_mode'] = $darkMode;
+        setcookie('app_dark_mode', $darkMode === 1 ? '1' : '0', appCookieParams(time() + (86400 * 365), false));
+    }
 
     apiJson(['ok' => true, 'message' => 'Settings saved successfully']);
 }

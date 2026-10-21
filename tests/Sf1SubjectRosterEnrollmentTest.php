@@ -79,12 +79,13 @@ final class Sf1SubjectRosterEnrollmentTest extends TestCase
 
         $this->db->exec("CREATE TABLE sections (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE,
+            name TEXT,
             grade_level INTEGER,
             track TEXT,
             curriculum TEXT,
             program TEXT,
-            created_at TEXT
+            created_at TEXT,
+            UNIQUE (name, grade_level, track)
         )");
 
         $this->db->exec("CREATE TABLE classes (
@@ -607,21 +608,27 @@ final class Sf1SubjectRosterEnrollmentTest extends TestCase
         $this->assertSame(10, (int)$techproIntegrity['id']);
         $this->assertFalse($techproIntegrity['created']);
 
-        // 3. Querying Integrity for Academic must not resolve to TechPro section 10 (fails to resolve existing record)
-        try {
-            ensureSf1Section($this->db, 'Integrity', 11, 'academic', '2026-2027');
-            $this->fail('Academic import must not resolve to TechPro section 10');
-        } catch (\PDOException $e) {
-            $this->assertStringContainsString('UNIQUE constraint failed', $e->getMessage());
-        }
+        // 3. Querying Integrity for Academic creates a distinct identity rather than reusing TechPro section 10.
+        $academicIntegrity = ensureSf1Section($this->db, 'Integrity', 11, 'academic', '2026-2027');
+        $this->assertTrue($academicIntegrity['created']);
+        $this->assertNotSame(10, (int)$academicIntegrity['id']);
 
-        // 4. Querying Courage for Academic must not resolve to blank-track section 20
-        try {
-            ensureSf1Section($this->db, 'Courage', 11, 'academic', '2026-2027');
-            $this->fail('Academic import must not resolve to blank track section 20');
-        } catch (\PDOException $e) {
-            $this->assertStringContainsString('UNIQUE constraint failed', $e->getMessage());
-        }
+        // 4. Querying Courage for Academic creates a distinct identity rather than reusing the blank-track legacy row.
+        $academicCourage = ensureSf1Section($this->db, 'Courage', 11, 'academic', '2026-2027');
+        $this->assertTrue($academicCourage['created']);
+        $this->assertNotSame(20, (int)$academicCourage['id']);
+    }
+
+    public function testEnsureSf1SectionCanonicalizesExcelFormattingWithoutCreatingDuplicates(): void
+    {
+        $first = ensureSf1Section($this->db, "Grade 11 \u{2013} HUMILITY", 11, 'academic', '2026-2027');
+        $second = ensureSf1Section($this->db, "\u{00A0}SECTION: Grade 11 - HUMILITY (Academic)\u{00A0}", 11, 'academic', '2026-2027');
+
+        $this->assertTrue($first['created']);
+        $this->assertSame('HUMILITY', $first['name']);
+        $this->assertFalse($second['created']);
+        $this->assertSame((int)$first['id'], (int)$second['id']);
+        $this->assertSame(1, (int)$this->db->query("SELECT COUNT(*) FROM sections")->fetchColumn());
     }
 
     public function testSf1CommitRecordsErrorWhenEnrollmentSyncFailsForExistingLrn(): void

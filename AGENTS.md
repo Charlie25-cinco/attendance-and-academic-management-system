@@ -101,6 +101,8 @@ These operational notes apply ISO/IEC/IEEE 29148 clarity and traceability princi
 - SF1 XLSX import must parse the official combined learner-name cell in columns C:F (`Last Name, First Name, Name Extension, Middle Name`) and the LRN from the merged A:B area.
 - Student address storage should preserve SF1 separated columns: `house_street`, `barangay`, `municipality`, and `province`; keep combined `address` for backward compatibility.
 - SF1 import may auto-create missing section records from the template grade level, section, and track; do not auto-create subject classes from SF1.
+- Canonicalize SF1 and manually entered section names before storage by removing redundant grade/track labels and normalizing spreadsheet whitespace/dashes; section identity is canonical name plus grade level and track.
+- Admin Sections learner totals must count active student accounts assigned to the section, even before subject classes and enrollment rows exist.
 - SF2 follows `deped/SF2_Senior_High_School.xlsx`.
 - SF2 XLSX export must write into the official merged header and irregular Mon-Sat day-slot anchors, preserve rows 60-89, and clone the complete template for learner overflow.
 - SF2 attendance marks must follow the form legend: blank for present, `X` for absent, and an upper-half block for late/tardy.

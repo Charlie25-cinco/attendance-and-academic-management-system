@@ -40,19 +40,18 @@ try {
 
             $driver = strtolower((string)$db->getAttribute(PDO::ATTR_DRIVER_NAME));
             $sectionMatch = ($driver === 'sqlite')
-                ? "LOWER(TRIM(COALESCE(c.section, ''))) = LOWER(TRIM(COALESCE(s.name, '')))"
-                : sectionMatchSql('c.section', 's.name');
+                ? "LOWER(TRIM(COALESCE(u.section, ''))) = LOWER(TRIM(COALESCE(s.name, '')))"
+                : sectionMatchSql('u.section', 's.name');
 
             $sql = "SELECT s.id, s.name, s.grade_level, s.track, s.curriculum, s.program, s.created_at,
                            (
-                               SELECT COUNT(DISTINCT e.student_id)
-                               FROM enrollments e
-                               JOIN classes c ON c.id = e.class_id
-                               WHERE e.status = 'enrolled'
-                                 AND c.status = 'active'
-                                 AND c.grade_level = s.grade_level
+                               SELECT COUNT(*)
+                               FROM users u
+                               WHERE u.role = 'student'
+                                 AND u.status = 'active'
+                                 AND u.grade_level = s.grade_level
                                  AND ({$sectionMatch})
-                                 AND (c.track IS NULL OR TRIM(c.track) = '' OR LOWER(TRIM(c.track)) = LOWER(TRIM(s.track)))
+                                 AND (u.track IS NULL OR TRIM(u.track) = '' OR LOWER(TRIM(u.track)) = LOWER(TRIM(s.track)))
                            ) AS student_count
                     FROM sections s
                     WHERE 1=1";
@@ -85,7 +84,7 @@ try {
 
         case 'create':
             ensureStrengthenedShsColumns($db);
-            $name = strtoupper(trim((string)($_POST['name'] ?? '')));
+            $name = strtoupper(canonicalSectionName((string)($_POST['name'] ?? '')));
             $gradeLevel = (int)($_POST['grade_level'] ?? 0);
             $track = trim((string)($_POST['track'] ?? ''));
 
@@ -104,9 +103,16 @@ try {
             $curriculum = strengthenedShsCurriculum($gradeLevel);
             $program = strengthenedShsProgram($gradeLevel, $track);
 
-            $check = $db->prepare("SELECT id FROM sections WHERE name = ?");
-            $check->execute([$name]);
-            if ($check->fetch()) {
+            $check = $db->prepare("SELECT id, name FROM sections WHERE grade_level = ? AND LOWER(TRIM(track)) = LOWER(TRIM(?))");
+            $check->execute([$gradeLevel, $track]);
+            $duplicate = false;
+            foreach ($check->fetchAll(PDO::FETCH_ASSOC) as $candidate) {
+                if (sf1NormalizeSectionName((string)$candidate['name']) === sf1NormalizeSectionName($name)) {
+                    $duplicate = true;
+                    break;
+                }
+            }
+            if ($duplicate) {
                 echo json_encode(['success' => false, 'message' => "Section \"$name\" already exists."]);
                 break;
             }
@@ -128,7 +134,7 @@ try {
         case 'update':
             ensureStrengthenedShsColumns($db);
             $id = (int)($_POST['id'] ?? 0);
-            $name = strtoupper(trim((string)($_POST['name'] ?? '')));
+            $name = strtoupper(canonicalSectionName((string)($_POST['name'] ?? '')));
             $gradeLevel = (int)($_POST['grade_level'] ?? 0);
             $track = trim((string)($_POST['track'] ?? ''));
 
@@ -151,9 +157,16 @@ try {
             $curriculum = strengthenedShsCurriculum($gradeLevel);
             $program = strengthenedShsProgram($gradeLevel, $track);
 
-            $check = $db->prepare("SELECT id FROM sections WHERE name = ? AND id != ?");
-            $check->execute([$name, $id]);
-            if ($check->fetch()) {
+            $check = $db->prepare("SELECT id, name FROM sections WHERE grade_level = ? AND LOWER(TRIM(track)) = LOWER(TRIM(?)) AND id != ?");
+            $check->execute([$gradeLevel, $track, $id]);
+            $duplicate = false;
+            foreach ($check->fetchAll(PDO::FETCH_ASSOC) as $candidate) {
+                if (sf1NormalizeSectionName((string)$candidate['name']) === sf1NormalizeSectionName($name)) {
+                    $duplicate = true;
+                    break;
+                }
+            }
+            if ($duplicate) {
                 echo json_encode(['success' => false, 'message' => "Section \"$name\" already exists."]);
                 break;
             }

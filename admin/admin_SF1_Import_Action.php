@@ -87,7 +87,7 @@ function ensureSf1Section(PDO $db, string $section, int $gradeLevel, string $tra
     }
     $resolvedCache = $resolvedCaches[$db];
 
-    $sectionTrimmed = trim($section);
+    $sectionTrimmed = canonicalSectionName($section);
     if ($sectionTrimmed === '' || $gradeLevel <= 0) {
         return ['id' => 0, 'name' => $sectionTrimmed, 'created' => false];
     }
@@ -170,7 +170,9 @@ function ensureSf1Section(PDO $db, string $section, int $gradeLevel, string $tra
         ]);
 
         $result = ['id' => $newId, 'name' => $sectionTrimmed, 'created' => true];
-        $resolvedCache[$cacheKey] = $result;
+        // Only the first row that creates the section reports created=true.
+        // Later learners in the same import reuse it without inflating the creation count.
+        $resolvedCache[$cacheKey] = ['id' => $newId, 'name' => $sectionTrimmed, 'created' => false];
         $resolvedCaches[$db] = $resolvedCache;
         return $result;
     } catch (PDOException $e) {

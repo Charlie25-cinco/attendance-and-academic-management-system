@@ -12,6 +12,21 @@ Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR fo
 - Protected Admin and Principal accounts from user-sync updates, including concurrent role changes.
 - Bounded XLSX archive/decompression/XML/worksheet processing in native and PHP fallback readers, with behavioral security regression coverage.
 
+## v3.1.5 — 2026-10-10
+
+### Fixed
+
+- Prevented SF1 and manual section creation from treating spreadsheet whitespace, Unicode dash variants, or redundant grade/track labels as distinct section names.
+- Changed section uniqueness to canonical name, grade level, and track so legitimate cross-grade or cross-track sections remain separate while same-context duplicates are rejected.
+- Corrected Admin Sections learner totals to count active student accounts directly, including SF1-imported learners who do not yet have subject-class enrollment rows.
+
+## v3.1.4 — 2026-10-10
+
+### Fixed
+
+- Prevented shared portal pages from attempting to write the dark-mode cookie after HTML output had already started, eliminating the PHP `Cannot modify header information` warning.
+- Moved dark-mode session and cookie synchronization to the Settings API response so preference changes remain persistent without relying on output buffering.
+
 ## v3.1.3 — 2026-10-09
 
 ### Fixed

@@ -118,7 +118,7 @@ CREATE TABLE IF NOT EXISTS sections (
     curriculum VARCHAR(50) DEFAULT NULL COMMENT 'strengthened_shs for Grade 11 SY 2026+',
     program VARCHAR(50) DEFAULT NULL COMMENT 'academic_strengthened|technical_professional for Grade 11 SSHS',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY uq_section_name (name)
+    UNIQUE KEY uq_section_identity (name, grade_level, track)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =============================================================================
