@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v3.1.7 — 2026-10-29
+
+### Fixed
+
+- Hid the floating offline-sync panel when online with no pending or failed work; successful sync now auto-hides after four seconds while offline and error warnings remain visible.
+- Added browser regression coverage for sync-panel visibility and success timeout behavior.
+
 ## v3.1.6 — 2026-10-16
 
 ### Fixed

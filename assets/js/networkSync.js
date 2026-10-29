@@ -8,6 +8,8 @@
   "use strict";
 
   var isProcessing = false;
+  var successVisibleUntil = 0;
+  var successHideTimer = null;
 
   function formatSyncTime(value) {
     if (!value) return "Not synchronized yet";
@@ -20,6 +22,7 @@
     var panel = document.createElement("aside");
     panel.id = "offlineSyncStatus";
     panel.className = "offline-sync-status";
+    panel.hidden = true;
     panel.setAttribute("aria-live", "polite");
     panel.innerHTML = '<div class="offline-sync-status__icon"><i class="bi bi-cloud-check"></i></div>' +
       '<div class="offline-sync-status__copy"><strong id="offlineSyncTitle">Offline data ready</strong><span id="offlineSyncDetail">Checking synchronization status...</span></div>' +
@@ -52,7 +55,7 @@
     });
   }
 
-  async function refreshSyncPanel() {
+  async function refreshSyncPanel(showSuccess) {
     if (typeof document === "undefined") return;
     ensureSyncPanel();
     var storage = global.bshsOfflineStorage;
@@ -60,6 +63,17 @@
     if (!storage || !panel) return;
     var status = await storage.getSyncStatus();
     var online = navigator.onLine;
+    var needsAttention = !online || status.pending > 0 || status.failed > 0;
+    if (needsAttention) {
+      successVisibleUntil = 0;
+      clearTimeout(successHideTimer);
+      successHideTimer = null;
+    } else if (showSuccess === true) {
+      successVisibleUntil = Date.now() + 4000;
+      clearTimeout(successHideTimer);
+      successHideTimer = setTimeout(refreshSyncPanel, 4000);
+    }
+    panel.hidden = !needsAttention && Date.now() >= successVisibleUntil;
     var title = document.getElementById("offlineSyncTitle");
     var detail = document.getElementById("offlineSyncDetail");
     var retry = document.getElementById("offlineSyncRetryBtn");
@@ -223,9 +237,8 @@
     }
 
     isProcessing = false;
-    refreshSyncPanel();
-
     var totalSynced = syncedAttendance + syncedActivities;
+    refreshSyncPanel(totalSynced > 0);
     if (totalSynced > 0) {
       var parts = [];
       if (syncedAttendance > 0) {
@@ -279,6 +292,7 @@
   var onlineDebounceTimer = null;
 
   function handleOnline() {
+    refreshSyncPanel();
     if (onlineDebounceTimer) {
       clearTimeout(onlineDebounceTimer);
     }
@@ -323,6 +337,7 @@
 
   function handleOffline() {
     wasOffline = true;
+    refreshSyncPanel();
     if (typeof showNotification === "function") {
       showNotification(
         "You are in offline mode. All records will be stored safely on this device.",
