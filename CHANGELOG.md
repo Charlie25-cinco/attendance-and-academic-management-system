@@ -2,6 +2,13 @@
 
 Project changes follow Semantic Versioning: MAJOR for breaking changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
 
+## v3.1.8 — 2026-10-30
+
+### Fixed
+
+- Replaced root `.htaccess` lookahead expressions with ordered API/upload allow-deny rules for Wasmer evaluator compatibility, retaining private-path and document-upload restrictions.
+- Added rewrite-rule regression coverage for public entry points and denied private paths.
+
 ## v3.1.7 — 2026-10-29
 
 ### Fixed

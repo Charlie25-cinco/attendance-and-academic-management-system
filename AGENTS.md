@@ -65,6 +65,7 @@ These operational constraints apply ISO/IEC/IEEE 29148 clarity and traceability 
 These operational notes apply ISO/IEC/IEEE 29148 clarity and traceability principles, with full requirements metadata simplified because this is an agent guide rather than a requirements specification.
 
 - Keep `src/Security/HttpAccessPolicy.php`, `router.php`, and root Apache `.htaccess` aligned: only public entry points/assets are served; private source, dotfiles, configuration, dependencies, and document uploads remain blocked.
+- Root `.htaccess` rules must avoid regex lookaround: express exceptions as ordered allow/deny rules for Wasmer compatibility. Preserve private-path regression coverage. This operational constraint applies ISO/IEC/IEEE 29148 clarity/verifiability principles; full requirements metadata is simplified for this guide.
 - Development API secrets belong in `storage/secrets`; preserve migration/removal of legacy public-directory secret files. Production uses environment secrets.
 - Every authenticated API route/method must be mapped in `src/Security/ApiAccessPolicy.php`; unknown mappings fail closed. Enforce permissions for bearer and session users. Session mutations validate CSRF centrally; JSON routes validate content type.
 - Offline data uses teacher-owned namespaces. Preserve pending work under its owner on logout, but lock all local access, purge private HTML caches, and compare the owner again at the server before syncing. Do not import unowned legacy queues automatically.
