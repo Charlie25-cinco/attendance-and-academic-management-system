@@ -3246,6 +3246,10 @@ body.dark-mode .alert-danger {
   backdrop-filter: blur(12px);
 }
 
+.offline-sync-status[hidden] {
+  display: none;
+}
+
 .offline-sync-status__icon {
   display: inline-flex;
   align-items: center;

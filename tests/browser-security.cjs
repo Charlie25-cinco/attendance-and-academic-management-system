@@ -214,6 +214,71 @@ async function syncTests() {
   console.log('PASS network sync: other-account rejection, authoritative preflight CSRF, and permanent failure reporting');
 }
 
+async function syncPanelTests() {
+  let now = 10000;
+  let status = { pending: 0, failed: 0, total: 0 };
+  const events = {};
+  const timers = new Map();
+  let nextTimer = 0;
+  const elements = {};
+  const element = () => ({ hidden: false, classList: { toggle() {} }, setAttribute() {}, addEventListener() {} });
+  const document = {
+    readyState: 'complete',
+    getElementById: id => elements[id],
+    createElement: element,
+    body: { appendChild(panel) {
+      elements[panel.id] = panel;
+      for (const id of ['offlineSyncTitle', 'offlineSyncDetail', 'offlineSyncRetryBtn', 'offlineSyncClearBtn']) elements[id] = element();
+    } },
+  };
+  const navigator = { onLine: true };
+  const window = {
+    addEventListener: (type, fn) => { events[type] = fn; },
+    bshsOfflineStorage: {
+      owner: 'teacher:1', isUnlocked: () => true,
+      getSyncStatus: async () => ({ ...status }),
+      getSyncQueue: async () => [{ owner: 'teacher:1', id: 'op_1', url: 'teacher_Action.php', payload: {} }],
+      markRecordSynced: async () => { status = { pending: 0, failed: 0, total: 0 }; },
+    },
+  };
+  class Clock extends Date { static now() { return now; } }
+  vm.runInNewContext(source('assets/js/networkSync.js'), {
+    window, document, navigator, Date: Clock, console,
+    setTimeout: (fn, delay) => { const id = ++nextTimer; timers.set(id, { fn, delay }); return id; },
+    clearTimeout: id => timers.delete(id),
+    fetch: async (url, options) => new Response(JSON.stringify(options.method === 'POST'
+      ? { success: true } : { success: true, teacher: { id: 1 }, csrf_token: 'fresh' })),
+  });
+  await events['bshs:sync-status-changed']();
+  const panel = elements.offlineSyncStatus;
+  assert.equal(panel.hidden, true, 'idle online panel is hidden on startup');
+  status = { pending: 1, failed: 0, total: 1 };
+  await events['bshs:sync-status-changed']();
+  assert.equal(panel.hidden, false, 'pending work stays visible');
+  await window.BSHS_NetworkSync.processQueue();
+  await events['bshs:sync-status-changed']();
+  assert.equal(panel.hidden, false, 'successful sync is briefly visible');
+  assert.equal(elements.offlineSyncTitle.textContent, 'Offline data synchronized');
+  now += 4000;
+  await [...timers.values()].find(timer => timer.delay === 4000).fn();
+  assert.equal(panel.hidden, true, 'success hides after four seconds');
+  await events['bshs:sync-status-changed']();
+  assert.equal(panel.hidden, true, 'later status refresh does not reopen success');
+  navigator.onLine = false;
+  events.offline();
+  await events['bshs:sync-status-changed']();
+  assert.equal(panel.hidden, false, 'offline warning stays visible');
+  navigator.onLine = true;
+  events.online();
+  await events['bshs:sync-status-changed']();
+  assert.equal(panel.hidden, true, 'reconnecting without pending work hides panel');
+  status = { pending: 0, failed: 1, total: 1, lastError: 'Needs review' };
+  await events['bshs:sync-status-changed']();
+  assert.equal(panel.hidden, false, 'failed items stay visible');
+  assert.match(source('assets/css/main.css'), /\.offline-sync-status\[hidden\]\s*\{\s*display:\s*none;/);
+  console.log('PASS sync panel: idle hidden, persistent warnings, four-second success timeout, and CSS hidden override');
+}
+
 async function identityTests() {
   let cookie = 'app_offline_account=' + encodeURIComponent('teacher:1|' + (Date.now() / 1000 + 3600));
   const redirects = [];
@@ -233,4 +298,4 @@ async function identityTests() {
   console.log('PASS document lock: account switch and expiry prevent stale-document access');
 }
 
-(async () => { await serviceWorkerTests(); await storageTests(); await storageTests(true); await storageFailureTests(); await syncTests(); await identityTests(); })().catch(error => { console.error(error); process.exitCode = 1; });
+(async () => { await serviceWorkerTests(); await storageTests(); await storageTests(true); await storageFailureTests(); await syncTests(); await syncPanelTests(); await identityTests(); })().catch(error => { console.error(error); process.exitCode = 1; });
